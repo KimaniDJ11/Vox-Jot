@@ -401,71 +401,71 @@
       "downloadModel": "Failed to download model: {{error}}"
     },
     "permissions": {
-      "title": "Permissions Required",
-      "description": "Set up the permissions that power assistive dictation. Screen Recording is optional for local visual context.",
+      "title": "Set Up Permissions",
+      "description": "Vox Jot asks for the macOS access needed for the dictation features you turn on. Screen Recording is optional for local visual context.",
       "microphone": {
         "title": "Microphone Access",
-        "description": "Required to hear your voice for assistive transcription.",
+        "description": "Lets Vox Jot hear your voice when you choose to dictate.",
         "cardTitle": "Microphone access for dictation",
-        "cardDescription": "Vox Jot only needs the microphone while you are dictating.",
+        "cardDescription": "Vox Jot uses the microphone only while dictation is active.",
         "eyebrow": "Voice capture",
         "storyTitle": "Microphone Access",
-        "storyDescription": "Powers assistive dictation so Vox Jot can hear you only when you choose to record.",
+        "storyDescription": "Lets Vox Jot capture your speech only when you start recording for dictation.",
         "bullets": [
-          "Capture your voice for speech-to-text.",
-          "Run transcription locally on this device.",
+          "Capture speech while dictation is active.",
+          "Run transcription locally on this device by default.",
           "Use your selected microphone during dictation."
         ],
-        "privacy": "Only listens while you are actively dictating.",
+        "privacy": "Not used for background listening.",
         "cta": "Continue"
       },
       "accessibility": {
         "title": "Accessibility Access",
-        "description": "Required for assistive voice text entry when typing is difficult, painful, or not possible.",
+        "description": "Lets Vox Jot place dictated text into the focused field when you use assistive text entry.",
         "cardTitle": "Assistive voice text entry",
-        "cardDescription": "This lets Vox Jot place your spoken words into the field you are actively using, so you do not have to type them by hand.",
+        "cardDescription": "This lets Vox Jot insert your spoken words into the text field you are actively using, so you do not have to type them by hand.",
         "eyebrow": "Assistive text entry",
         "storyTitle": "Accessibility",
-        "storyDescription": "Lets Vox Jot enter dictated text into the app and field you are already using, then support optional correction learning for people who rely on voice instead of manual typing.",
+        "storyDescription": "Allows user-started text insertion into the app and field you are already using, with optional correction learning for people who rely on voice instead of manual typing.",
         "bullets": [
           "Place dictated text where your cursor is focused.",
-          "Trigger dictation from anywhere with the global shortcut.",
+          "Support hands-free text insertion after you dictate.",
           "Support optional correction learning after insertion so repeated fixes do not have to be typed again."
         ],
-        "privacy": "Used for user-started assistive insertion and optional correction learning after dictation.",
+        "privacy": "Used for user-started assistive insertion; not for inspecting unrelated app content.",
         "cta": "Continue"
       },
       "inputMonitoring": {
         "title": "Input Monitoring",
-        "description": "Required so Vox Jot can support hands-free shortcuts and better tell the difference between sending a message and manually clearing text.",
+        "description": "Lets Vox Jot recognize dictation shortcuts and local send-or-delete signals for hands-free control.",
         "cardTitle": "Keyboard state for shortcuts",
-        "cardDescription": "This helps Vox Jot notice shortcut state, quick edits, Enter-to-send actions, and delete-driven clears. It does not store your keystrokes.",
+        "cardDescription": "This helps Vox Jot notice shortcut state, quick edits, Enter-to-send actions, and delete-driven clears. It does not save what you type.",
         "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it, then select /Applications/Vox Jot.app.",
         "eyebrow": "Keyboard state",
         "storyTitle": "Input Monitoring",
-        "storyDescription": "Helps Vox Jot understand shortcut and key state locally so assistive dictation behaves correctly across apps.",
+        "storyDescription": "Helps Vox Jot understand shortcut and key state locally so assistive dictation can start, stop, paste, and clean up reliably across apps.",
         "bullets": [
           "Detect start and stop shortcut state reliably.",
-          "Understand quick send-versus-delete changes.",
+          "Recognize send-versus-delete actions after dictation.",
           "Keep correction tracking local to this device."
         ],
-        "privacy": "Used for shortcut and send-versus-delete signals; it does not store your keystrokes.",
+        "privacy": "Used for shortcut and send-versus-delete signals; it does not save what you type.",
         "cta": "Continue"
       },
       "screenRecording": {
         "title": "Screen Recording",
-        "description": "Optional. When enabled, Vox Jot builds a rolling OCR cache from the active display and uses it as dictation context.",
+        "description": "Optional. When enabled, Vox Jot reads visible text locally to improve dictation context.",
         "cardTitle": "Screen context for dictation",
-        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating.",
+        "cardDescription": "This lets Vox Jot use local OCR on the active display so visible names, jargon, and phrase keys are more accurate when you dictate.",
         "eyebrow": "Visual context",
         "storyTitle": "Screen Recording",
-        "storyDescription": "Optionally powers local OCR context so Vox Jot can better handle names, jargon, and phrase keys.",
+        "storyDescription": "Optionally provides local visual context so Vox Jot can better handle names, jargon, and phrase keys that are already visible on screen.",
         "bullets": [
-          "Read active-screen context for better assistive dictation accuracy.",
-          "Recognize visible terms without cloud processing.",
+          "Read visible screen text for better assistive dictation accuracy.",
+          "Recognize visible terms with local OCR.",
           "Improve phrase keys and app-aware writing."
         ],
-        "privacy": "Optional and controlled separately; local OCR context can be disabled from Screen Context settings.",
+        "privacy": "Optional and controlled separately; Screen Context can be turned off from settings.",
         "cta": "Continue"
       },
       "grant": "Continue",
@@ -477,7 +477,7 @@
         "requestFailed": "Failed to request permission. Please try again."
       },
       "heading": "Set up your dictation toolkit",
-      "privacyBadge": "Vox Jot is assistive voice text entry for people who cannot comfortably type. Local routes stay on device; cloud cleanup only runs when you configure it.",
+      "privacyBadge": "Vox Jot is assistive voice text entry for people who cannot comfortably type. Local transcription stays on device by default; cloud cleanup only runs when you configure it.",
       "continue": "Continue setup",
       "moreInfo": "More info",
       "checking": "Checking permissions...",
@@ -486,9 +486,9 @@
       "skip": "Skip",
       "stepProgress": "{{current}} of {{total}}",
       "completeTitle": "Permissions are ready",
-      "completeDescription": "Vox Jot has the access it needs for assistive dictation.",
+      "completeDescription": "Vox Jot has the access needed for the dictation features you selected.",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Microphone, Accessibility, and Input Monitoring support voice capture, assistive text entry, correction learning after insertion, and hands-free control. Optional Screen Recording adds OCR context from the active display."
+      "visualDescription": "Microphone, Accessibility, and Input Monitoring support voice capture, assistive text entry, correction learning after insertion, and hands-free control. Optional Screen Recording adds local OCR context from visible screen text."
     },
     "steps": {
       "welcome": "Overview",
@@ -1096,7 +1096,7 @@
       },
       "pasteMethod": {
         "title": "Paste Method",
-        "description": "Choose how assistive dictated text is delivered. Direct and clipboard paste need Accessibility for hands-free insertion; Clipboard only works without Accessibility for manual paste.",
+        "description": "Choose how dictated text is delivered. Direct and clipboard paste use Accessibility for hands-free insertion into the focused field; Clipboard only copies the transcript for manual paste.",
         "options": {
           "clipboard": "Clipboard ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Clipboard (Ctrl+Shift+V)",
@@ -1106,10 +1106,10 @@
           "externalScript": "External Script"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
-        "directDescription": "Types the final text into the focused field for hands-free assistive entry.",
-        "clipboardDescription": "Copies the text, sends the system paste shortcut, then restores the clipboard.",
+        "directDescription": "Types the final text into the focused field for hands-free assistive text entry.",
+        "clipboardDescription": "Copies the text, sends the system paste shortcut to the focused field, then restores the clipboard.",
         "clipboardOnly": "Clipboard only",
-        "clipboardOnlyDescription": "Copies the text for manual paste and skips Accessibility-controlled insertion.",
+        "clipboardOnlyDescription": "Copies the text for manual paste and does not use Accessibility-controlled insertion.",
         "platformMethods": "Platform methods"
       },
       "typingTool": {
@@ -1912,7 +1912,7 @@
     "permissionsRequired": "Accessibility Permissions Required",
     "permissionNeeded": "Permission Needed",
     "permissionsTitle": "macOS permissions need attention",
-    "permissionsDescription": "Vox Jot needs Accessibility for assistive voice text entry and correction learning, Input Monitoring for shortcut and send-versus-delete signals, and Screen Recording only when optional Screen Context OCR is enabled.",
+    "permissionsDescription": "Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring for shortcut and send-versus-delete signals, and Screen Recording only when optional local Screen Context OCR is enabled.",
     "openSettings": "Open System Settings",
     "dismiss": "Dismiss"
   },
@@ -2838,13 +2838,13 @@
         },
         "accessibility": {
           "label": "Accessibility",
-          "blocked": "Grant Accessibility for automatic paste, or choose Clipboard only to copy transcripts for manual paste.",
-          "ready": "Paste automation permission is available."
+          "blocked": "Grant Accessibility for hands-free insertion into the focused field, or choose Clipboard only to copy transcripts for manual paste.",
+          "ready": "Assistive text insertion permission is available."
         },
         "inputMonitoring": {
           "label": "Input Monitoring",
-          "blocked": "Grant Input Monitoring so shortcuts are reliable.",
-          "ready": "Shortcut monitoring permission is available."
+          "blocked": "Grant Input Monitoring so dictation shortcuts and send-or-delete signals are reliable.",
+          "ready": "Shortcut and key-state permission is available."
         },
         "sttModel": {
           "label": "Speech model",

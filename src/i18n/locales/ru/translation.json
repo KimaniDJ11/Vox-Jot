@@ -2205,13 +2205,43 @@
       "llm": "Уточнить (LLM)",
       "tts": "Голоса (TTS)",
       "ocr": "Экран OCR",
-      "ariaLabel": "Категории моделей"
+      "ariaLabel": "Категории моделей",
+      "creativeAudio": "Креативное аудио"
     },
     "download": {
       "failed": "Не удалось скачать",
       "retry": "Повторить попытку",
       "dismiss": "Закрыть",
       "cancel": "Отменить загрузку"
+    },
+    "creativeAudio": {
+      "title": "Креативное аудио",
+      "description": "Загружайте локальные движки музыки, атмосферы и звуковых эффектов для саунд-дизайна в Story Studio.",
+      "loading": "Загрузка моделей креативного аудио...",
+      "ready": "Готово",
+      "readyDetail": "Установлено и доступно в саунд-дизайне Story Studio.",
+      "recommendedDetail": "Рекомендуемая стартовая модель для этого режима креативного аудио.",
+      "modeDetail": "Тип звука Story Studio, поддерживаемый этой моделью.",
+      "runtimeDetail": "Среда выполнения для локальной генерации аудио.",
+      "installed": "установлено",
+      "weightsNeeded": "веса не загружены",
+      "downloadModel": "Загрузить {{modelName}}",
+      "deleteModel": "Удалить {{modelName}}",
+      "deleteConfirmTitle": "Удалить загруженные веса?",
+      "deleteConfirmDetail": "{{modelName}} будет удалена из локального хранилища моделей креативного аудио Vox Jot. Позже ее можно загрузить снова.",
+      "confirmDelete": "Удалить",
+      "cancelDownload": "Отменить загрузку {{modelName}}",
+      "progress": {
+        "preparing": "Подготовка загрузки...",
+        "installingRuntime": "Установка среды MLX...",
+        "downloadingWeights": "Загрузка весов модели...",
+        "ready": "Готово к использованию",
+        "cancelled": "Загрузка отменена"
+      },
+      "empty": {
+        "title": "Нет моделей креативного аудио, соответствующих поиску.",
+        "description": "Очистите поле поиска или фильтр режима, чтобы показать все доступные модели креативного аудио."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "Инструменты студии",
     "tools": {
       "script": "Скрипт",
-      "cast": "В ролях"
+      "cast": "В ролях",
+      "sound": "Звук"
     },
     "expressionTags": "Теги выражений",
     "clearExpressionSearch": "Очистить поиск по тегам выражений",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "Линейная инструкция",
     "lineInstructionPlaceholder": "Опишите, как должна выполняться эта линия.",
     "closeExpressionControls": "Закрыть элементы управления выражением",
-    "pauseBetweenLines": "Пауза между строками"
+    "pauseBetweenLines": "Пауза между строками",
+    "sound": {
+      "title": "Саунд-дизайн",
+      "description": "Генерируйте локальные звуковые эффекты, атмосферу и музыкальные подложки для сценариев и историй.",
+      "modeAriaLabel": "Тип звука",
+      "modes": {
+        "sfx": "Эффекты",
+        "ambience": "Атмосфера",
+        "music": "Музыка"
+      },
+      "ready": "Готово",
+      "needsSetup": "Нужна модель",
+      "loadingModels": "Загрузка моделей",
+      "model": "Модель",
+      "noCompatibleModels": "Нет совместимых моделей",
+      "modelNeededTitle": "Загрузите модель креативного аудио",
+      "modelNeededDescription": "Модели креативного аудио управляются в Model Hub, чтобы крупные загрузки имели централизованный прогресс и очистку.",
+      "openModelHub": "Открыть модели креативного аудио",
+      "soundTitle": "Название звука",
+      "duration": "Секунды",
+      "prompt": "Запрос",
+      "noModelSelected": "Модель не выбрана",
+      "openGenerated": "Открыть сгенерированное аудио",
+      "generate": "Сгенерировать звук",
+      "generating": "Генерация"
+    }
   },
   "appSections": {
     "common": {

@@ -2197,13 +2197,43 @@
       "llm": "精煉 (LLM)",
       "tts": "聲音 (TTS)",
       "ocr": "螢幕OCR",
-      "ariaLabel": "模型類別"
+      "ariaLabel": "模型類別",
+      "creativeAudio": "創意音訊"
     },
     "download": {
       "failed": "下載失敗",
       "retry": "重試",
       "dismiss": "關閉",
       "cancel": "取消下載"
+    },
+    "creativeAudio": {
+      "title": "創意音訊",
+      "description": "下載本機音樂、環境聲與音效引擎，用於 Story Studio 聲音設計。",
+      "loading": "正在載入創意音訊模型...",
+      "ready": "已就緒",
+      "readyDetail": "已安裝，可在 Story Studio 聲音設計中使用。",
+      "recommendedDetail": "此創意音訊模式的建議入門模型。",
+      "modeDetail": "此模型支援的 Story Studio 聲音類型。",
+      "runtimeDetail": "用於在本機產生音訊的執行環境。",
+      "installed": "已安裝",
+      "weightsNeeded": "權重尚未下載",
+      "downloadModel": "下載 {{modelName}}",
+      "deleteModel": "刪除 {{modelName}}",
+      "deleteConfirmTitle": "刪除已下載的權重？",
+      "deleteConfirmDetail": "{{modelName}} 將從 Vox Jot 的本機創意音訊模型儲存區移除。之後可以再次下載。",
+      "confirmDelete": "刪除",
+      "cancelDownload": "取消下載 {{modelName}}",
+      "progress": {
+        "preparing": "正在準備下載...",
+        "installingRuntime": "正在安裝 MLX 執行環境...",
+        "downloadingWeights": "正在下載模型權重...",
+        "ready": "可以使用",
+        "cancelled": "下載已取消"
+      },
+      "empty": {
+        "title": "沒有符合搜尋的創意音訊模型。",
+        "description": "清除搜尋欄或模式篩選器，以顯示所有可用的創意音訊模型。"
+      }
     }
   },
   "commandMenu": {
@@ -2289,7 +2319,8 @@
     "toolAriaLabel": "工作室工具",
     "tools": {
       "script": "腳本",
-      "cast": "演員陣容"
+      "cast": "演員陣容",
+      "sound": "聲音"
     },
     "expressionTags": "表達標籤",
     "clearExpressionSearch": "清晰的表達標籤搜尋",
@@ -2299,7 +2330,32 @@
     "lineInstruction": "線路指令",
     "lineInstructionPlaceholder": "描述這條線應該如何執行。",
     "closeExpressionControls": "關閉表達式控制",
-    "pauseBetweenLines": "行與行之間的停頓"
+    "pauseBetweenLines": "行與行之間的停頓",
+    "sound": {
+      "title": "聲音設計",
+      "description": "為腳本與故事在本機產生音效、環境聲和音樂鋪底。",
+      "modeAriaLabel": "聲音類型",
+      "modes": {
+        "sfx": "音效",
+        "ambience": "環境聲",
+        "music": "音樂"
+      },
+      "ready": "已就緒",
+      "needsSetup": "需要模型",
+      "loadingModels": "正在載入模型",
+      "model": "模型",
+      "noCompatibleModels": "沒有相容模型",
+      "modelNeededTitle": "下載創意音訊模型",
+      "modelNeededDescription": "創意音訊模型在 Model Hub 中管理，因此大型下載可以集中顯示進度並統一清理。",
+      "openModelHub": "開啟創意音訊模型",
+      "soundTitle": "聲音標題",
+      "duration": "秒數",
+      "prompt": "提示詞",
+      "noModelSelected": "未選取模型",
+      "openGenerated": "開啟已產生音訊",
+      "generate": "產生聲音",
+      "generating": "正在產生"
+    }
   },
   "appSections": {
     "common": {

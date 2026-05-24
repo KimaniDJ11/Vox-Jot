@@ -2205,13 +2205,43 @@
       "llm": "Upřesnit (LLM)",
       "tts": "Hlasy (TTS)",
       "ocr": "Obrazovka OCR",
-      "ariaLabel": "Kategorie modelů"
+      "ariaLabel": "Kategorie modelů",
+      "creativeAudio": "Kreativní audio"
     },
     "download": {
       "failed": "Stahování se nezdařilo",
       "retry": "Zkusit znovu",
       "dismiss": "Zavřít",
       "cancel": "Zrušit stahování"
+    },
+    "creativeAudio": {
+      "title": "Kreativní audio",
+      "description": "Stáhněte místní enginy pro hudbu, atmosféry a zvukové efekty pro návrh zvuku ve Story Studiu.",
+      "loading": "Načítají se modely kreativního audia...",
+      "ready": "Připraveno",
+      "readyDetail": "Nainstalováno a dostupné ve zvukovém designu Story Studia.",
+      "recommendedDetail": "Doporučený úvodní model pro tento režim kreativního audia.",
+      "modeDetail": "Typ zvuku Story Studia podporovaný tímto modelem.",
+      "runtimeDetail": "Běhové prostředí používané pro místní generování audia.",
+      "installed": "nainstalováno",
+      "weightsNeeded": "váhy nejsou stažené",
+      "downloadModel": "Stáhnout {{modelName}}",
+      "deleteModel": "Smazat {{modelName}}",
+      "deleteConfirmTitle": "Smazat stažené váhy?",
+      "deleteConfirmDetail": "{{modelName}} bude odebrán z místního úložiště modelů kreativního audia ve Vox Jotu. Později ho můžete stáhnout znovu.",
+      "confirmDelete": "Smazat",
+      "cancelDownload": "Zrušit stahování {{modelName}}",
+      "progress": {
+        "preparing": "Připravuje se stahování...",
+        "installingRuntime": "Instaluje se prostředí MLX...",
+        "downloadingWeights": "Stahují se váhy modelu...",
+        "ready": "Připraveno k použití",
+        "cancelled": "Stahování zrušeno"
+      },
+      "empty": {
+        "title": "Žádné modely kreativního audia neodpovídají hledání.",
+        "description": "Vymažte vyhledávání nebo filtr režimu a zobrazte všechny dostupné modely kreativního audia."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "Studiové nástroje",
     "tools": {
       "script": "Skript",
-      "cast": "Obsazení"
+      "cast": "Obsazení",
+      "sound": "Zvuk"
     },
     "expressionTags": "Výrazové značky",
     "clearExpressionSearch": "Jasné vyhledávání značek výrazu",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "Linková instrukce",
     "lineInstructionPlaceholder": "Popište, jak má být tento řádek proveden.",
     "closeExpressionControls": "Zavřete ovládací prvky výrazu",
-    "pauseBetweenLines": "Pauza mezi řádky"
+    "pauseBetweenLines": "Pauza mezi řádky",
+    "sound": {
+      "title": "Zvukový design",
+      "description": "Generujte místní zvukové efekty, atmosféry a hudební podklady pro scénáře a příběhy.",
+      "modeAriaLabel": "Typ zvuku",
+      "modes": {
+        "sfx": "Efekty",
+        "ambience": "Atmosféra",
+        "music": "Hudba"
+      },
+      "ready": "Připraveno",
+      "needsSetup": "Je potřeba model",
+      "loadingModels": "Načítají se modely",
+      "model": "Model",
+      "noCompatibleModels": "Žádné kompatibilní modely",
+      "modelNeededTitle": "Stáhněte model kreativního audia",
+      "modelNeededDescription": "Modely kreativního audia se spravují v Model Hubu, aby velká stahování měla centrální průběh a úklid.",
+      "openModelHub": "Otevřít modely kreativního audia",
+      "soundTitle": "Název zvuku",
+      "duration": "Sekundy",
+      "prompt": "Zadání",
+      "noModelSelected": "Není vybrán model",
+      "openGenerated": "Otevřít vygenerované audio",
+      "generate": "Generovat zvuk",
+      "generating": "Generuje se"
+    }
   },
   "appSections": {
     "common": {

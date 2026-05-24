@@ -9,7 +9,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
-  ChevronDown,
   Loader2,
   FileMusic,
   Music2,
@@ -25,6 +24,14 @@ import { Textarea } from "@/components/ui/Textarea";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 
 type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
+
+const allStorySoundModes: StorySoundMode[] = [
+  "sfx",
+  "ambience",
+  "music",
+  "song",
+  "composition",
+];
 
 interface CreativeAudioModelDescriptor {
   id: string;
@@ -114,6 +121,27 @@ export const SoundDesignPanel: React.FC = () => {
     );
   }, [compatibleModels, selectedModelId]);
   const modeReady = Boolean(selectedModel?.runnable);
+  const availableModes = useMemo(() => {
+    const modes = new Set<StorySoundMode>();
+    for (const model of catalog?.models ?? []) {
+      for (const modelMode of model.modes) {
+        modes.add(modelMode);
+      }
+    }
+
+    const catalogModes = allStorySoundModes.filter((modelMode) =>
+      modes.has(modelMode),
+    );
+    return catalogModes.length > 0 ? catalogModes : allStorySoundModes;
+  }, [catalog]);
+  const modeItems = useMemo(
+    () =>
+      availableModes.map((value) => ({
+        value,
+        label: soundModeLabel(value, t),
+      })),
+    [availableModes, t],
+  );
 
   const durationBounds =
     mode === "sfx"
@@ -161,6 +189,11 @@ export const SoundDesignPanel: React.FC = () => {
     setDuration(nextDefaults.duration);
     setLastGenerated(null);
   }, []);
+
+  useEffect(() => {
+    if (availableModes.includes(mode)) return;
+    applyMode(availableModes[0] ?? "sfx");
+  }, [applyMode, availableModes, mode]);
 
   const generate = useCallback(async () => {
     const trimmedPrompt = prompt.trim();
@@ -218,7 +251,7 @@ export const SoundDesignPanel: React.FC = () => {
   }, []);
 
   const openCreativeAudioModels = useCallback(async () => {
-    await openModelHub("creative_audio");
+    await openModelHub("creative_audio", { scope: "creative_audio" });
   }, []);
 
   const openGeneratedAudio = useCallback(() => {
@@ -266,36 +299,7 @@ export const SoundDesignPanel: React.FC = () => {
           ariaLabel={t("storyStudio.sound.modeAriaLabel", {
             defaultValue: "Sound type",
           })}
-          items={[
-            {
-              value: "sfx",
-              label: t("storyStudio.sound.modes.sfx", { defaultValue: "SFX" }),
-            },
-            {
-              value: "ambience",
-              label: t("storyStudio.sound.modes.ambience", {
-                defaultValue: "Ambience",
-              }),
-            },
-            {
-              value: "music",
-              label: t("storyStudio.sound.modes.music", {
-                defaultValue: "Music",
-              }),
-            },
-            {
-              value: "song",
-              label: t("storyStudio.sound.modes.song", {
-                defaultValue: "Song",
-              }),
-            },
-            {
-              value: "composition",
-              label: t("storyStudio.sound.modes.composition", {
-                defaultValue: "Composition",
-              }),
-            },
-          ]}
+          items={modeItems}
         />
         <span
           className={`inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-semibold ${
@@ -316,37 +320,6 @@ export const SoundDesignPanel: React.FC = () => {
                 }))}
         </span>
       </div>
-
-      <label className="block text-sm font-medium text-[var(--text)]">
-        {t("storyStudio.sound.model", { defaultValue: "Model" })}
-        <span className="relative mt-1 block">
-          <select
-            value={selectedModel?.id ?? ""}
-            onChange={(event) => setSelectedModelId(event.target.value)}
-            disabled={compatibleModels.length === 0 || isGenerating}
-            className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 pe-9 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-          >
-            {compatibleModels.length > 0 ? (
-              compatibleModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                  {model.runnable ? "" : ` (${model.status_label})`}
-                </option>
-              ))
-            ) : (
-              <option value="">
-                {t("storyStudio.sound.noCompatibleModels", {
-                  defaultValue: "No compatible models",
-                })}
-              </option>
-            )}
-          </select>
-          <ChevronDown
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
-            aria-hidden
-          />
-        </span>
-      </label>
 
       {!modeReady ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
@@ -502,6 +475,29 @@ export const SoundDesignPanel: React.FC = () => {
 
 function clampDuration(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
+}
+
+function soundModeLabel(
+  mode: StorySoundMode,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  if (mode === "sfx") {
+    return t("storyStudio.sound.modes.sfx", { defaultValue: "SFX" });
+  }
+  if (mode === "ambience") {
+    return t("storyStudio.sound.modes.ambience", {
+      defaultValue: "Ambience",
+    });
+  }
+  if (mode === "music") {
+    return t("storyStudio.sound.modes.music", { defaultValue: "Music" });
+  }
+  if (mode === "song") {
+    return t("storyStudio.sound.modes.song", { defaultValue: "Song" });
+  }
+  return t("storyStudio.sound.modes.composition", {
+    defaultValue: "Composition",
+  });
 }
 
 function normalizeError(error: unknown, fallback: string): string {

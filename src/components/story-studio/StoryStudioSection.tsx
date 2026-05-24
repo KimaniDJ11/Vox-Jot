@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   CheckCircle2,
+  Layers,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -45,6 +46,7 @@ import {
   buildCreateVoiceHubRows,
   type CreateVoiceHubVoiceRow,
 } from "@/components/settings/general/listen/createVoiceVoiceHub";
+import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import {
   defaultVoiceTuning,
   getTtsVoicesForSelection,
@@ -520,6 +522,9 @@ export const StoryStudioSection: React.FC = () => {
     title,
     validation.lines,
   ]);
+  const openCreativeAudioModels = useCallback(async () => {
+    await openModelHub("creative_audio", { scope: "creative_audio" });
+  }, []);
   const visibleValidationErrors = validation.errors.slice(0, 4);
   const hiddenValidationErrorCount =
     validation.errors.length - visibleValidationErrors.length;
@@ -710,7 +715,17 @@ export const StoryStudioSection: React.FC = () => {
               {renderReadinessPill}
             </div>
           ) : (
-            <div className="ms-auto" />
+            <div className="story-studio-toolbar__trailing ms-auto flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void openCreativeAudioModels()}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                {t("listen.createVoices.models", { defaultValue: "Models" })}
+              </Button>
+            </div>
           )}
         </div>
 

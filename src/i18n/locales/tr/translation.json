@@ -2205,13 +2205,43 @@
       "llm": "İncelt (LLM)",
       "tts": "Sesler (TTS)",
       "ocr": "Ekran OCR",
-      "ariaLabel": "Model kategorileri"
+      "ariaLabel": "Model kategorileri",
+      "creativeAudio": "Yaratıcı ses"
     },
     "download": {
       "failed": "İndirme başarısız",
       "retry": "Tekrar dene",
       "dismiss": "Kapat",
       "cancel": "İndirmeyi iptal et"
+    },
+    "creativeAudio": {
+      "title": "Yaratıcı ses",
+      "description": "Story Studio ses tasarımı için yerel müzik, ortam ve ses efekti motorlarını indirin.",
+      "loading": "Yaratıcı ses modelleri yükleniyor...",
+      "ready": "Hazır",
+      "readyDetail": "Kurulu ve Story Studio Ses Tasarımı içinde kullanılabilir.",
+      "recommendedDetail": "Bu yaratıcı ses modu için önerilen başlangıç modeli.",
+      "modeDetail": "Bu modelin desteklediği Story Studio ses türü.",
+      "runtimeDetail": "Sesi yerel olarak üretmek için kullanılan çalışma ortamı.",
+      "installed": "kurulu",
+      "weightsNeeded": "ağırlıklar indirilmedi",
+      "downloadModel": "{{modelName}} indir",
+      "deleteModel": "{{modelName}} sil",
+      "deleteConfirmTitle": "İndirilen ağırlıklar silinsin mi?",
+      "deleteConfirmDetail": "{{modelName}}, Vox Jot’un yerel yaratıcı ses modeli deposundan kaldırılacak. Daha sonra tekrar indirebilirsiniz.",
+      "confirmDelete": "Sil",
+      "cancelDownload": "{{modelName}} indirmesini iptal et",
+      "progress": {
+        "preparing": "İndirme hazırlanıyor...",
+        "installingRuntime": "MLX çalışma ortamı kuruluyor...",
+        "downloadingWeights": "Model ağırlıkları indiriliyor...",
+        "ready": "Kullanıma hazır",
+        "cancelled": "İndirme iptal edildi"
+      },
+      "empty": {
+        "title": "Aramayla eşleşen yaratıcı ses modeli yok.",
+        "description": "Tüm kullanılabilir yaratıcı ses modellerini göstermek için arama alanını veya mod filtresini temizleyin."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "Stüdyo araçları",
     "tools": {
       "script": "Senaryo",
-      "cast": "Oyuncular"
+      "cast": "Oyuncular",
+      "sound": "Ses"
     },
     "expressionTags": "İfade etiketleri",
     "clearExpressionSearch": "İfade etiketi aramasını temizle",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "Hat talimatı",
     "lineInstructionPlaceholder": "Bu satırın nasıl yapılması gerektiğini açıklayın.",
     "closeExpressionControls": "İfade kontrollerini kapat",
-    "pauseBetweenLines": "Satır arasında duraklat"
+    "pauseBetweenLines": "Satır arasında duraklat",
+    "sound": {
+      "title": "Ses tasarımı",
+      "description": "Senaryolar ve hikayeler için yerel ses efektleri, ortamlar ve müzik yatakları üretin.",
+      "modeAriaLabel": "Ses türü",
+      "modes": {
+        "sfx": "Efektler",
+        "ambience": "Ortam",
+        "music": "Müzik"
+      },
+      "ready": "Hazır",
+      "needsSetup": "Model gerekli",
+      "loadingModels": "Modeller yükleniyor",
+      "model": "Model",
+      "noCompatibleModels": "Uyumlu model yok",
+      "modelNeededTitle": "Bir yaratıcı ses modeli indirin",
+      "modelNeededDescription": "Yaratıcı ses modelleri Model Hub içinde yönetilir; böylece büyük indirmeler merkezi ilerleme ve temizleme akışına sahip olur.",
+      "openModelHub": "Yaratıcı ses modellerini aç",
+      "soundTitle": "Ses başlığı",
+      "duration": "Saniye",
+      "prompt": "İstem",
+      "noModelSelected": "Model seçilmedi",
+      "openGenerated": "Üretilen sesi aç",
+      "generate": "Ses üret",
+      "generating": "Üretiliyor"
+    }
   },
   "appSections": {
     "common": {

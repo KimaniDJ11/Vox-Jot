@@ -2205,13 +2205,43 @@
       "llm": "صقل (LLM)",
       "tts": "الأصوات (TTS)",
       "ocr": "شاشة OCR",
-      "ariaLabel": "فئات النماذج"
+      "ariaLabel": "فئات النماذج",
+      "creativeAudio": "الصوت الإبداعي"
     },
     "download": {
       "failed": "فشل التنزيل",
       "retry": "حاول مرة أخرى",
       "dismiss": "تجاهل",
       "cancel": "إلغاء التنزيل"
+    },
+    "creativeAudio": {
+      "title": "الصوت الإبداعي",
+      "description": "نزّل محركات محلية للموسيقى والأجواء والمؤثرات الصوتية لتصميم الصوت في Story Studio.",
+      "loading": "جار تحميل نماذج الصوت الإبداعي...",
+      "ready": "جاهز",
+      "readyDetail": "مثبّت ومتاح في تصميم الصوت داخل Story Studio.",
+      "recommendedDetail": "نموذج بداية موصى به لهذا نمط الصوت الإبداعي.",
+      "modeDetail": "نوع صوت Story Studio الذي يدعمه هذا النموذج.",
+      "runtimeDetail": "بيئة التشغيل المستخدمة لإنشاء الصوت محليًا.",
+      "installed": "مثبّت",
+      "weightsNeeded": "لم يتم تنزيل الأوزان",
+      "downloadModel": "تنزيل {{modelName}}",
+      "deleteModel": "حذف {{modelName}}",
+      "deleteConfirmTitle": "حذف الأوزان التي تم تنزيلها؟",
+      "deleteConfirmDetail": "ستتم إزالة {{modelName}} من مخزن نماذج الصوت الإبداعي المحلي في Vox Jot. يمكنك تنزيله مرة أخرى لاحقًا.",
+      "confirmDelete": "حذف",
+      "cancelDownload": "إلغاء تنزيل {{modelName}}",
+      "progress": {
+        "preparing": "جار تجهيز التنزيل...",
+        "installingRuntime": "جار تثبيت بيئة MLX...",
+        "downloadingWeights": "جار تنزيل أوزان النموذج...",
+        "ready": "جاهز للاستخدام",
+        "cancelled": "تم إلغاء التنزيل"
+      },
+      "empty": {
+        "title": "لا توجد نماذج صوت إبداعي تطابق البحث.",
+        "description": "امسح حقل البحث أو مرشح النمط لعرض كل نماذج الصوت الإبداعي المتاحة."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "أدوات الاستوديو",
     "tools": {
       "script": "البرنامج النصي",
-      "cast": "يلقي"
+      "cast": "يلقي",
+      "sound": "الصوت"
     },
     "expressionTags": "علامات التعبير",
     "clearExpressionSearch": "مسح البحث عن علامة التعبير",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "تعليمات الخط",
     "lineInstructionPlaceholder": "وصف كيفية تنفيذ هذا الخط.",
     "closeExpressionControls": "إغلاق عناصر التحكم في التعبير",
-    "pauseBetweenLines": "وقفة بين السطور"
+    "pauseBetweenLines": "وقفة بين السطور",
+    "sound": {
+      "title": "تصميم الصوت",
+      "description": "أنشئ مؤثرات صوتية وأجواء ومقاطع موسيقية محلية للنصوص والقصص.",
+      "modeAriaLabel": "نوع الصوت",
+      "modes": {
+        "sfx": "مؤثرات",
+        "ambience": "أجواء",
+        "music": "موسيقى"
+      },
+      "ready": "جاهز",
+      "needsSetup": "يلزم نموذج",
+      "loadingModels": "جار تحميل النماذج",
+      "model": "النموذج",
+      "noCompatibleModels": "لا توجد نماذج متوافقة",
+      "modelNeededTitle": "نزّل نموذج صوت إبداعي",
+      "modelNeededDescription": "تُدار نماذج الصوت الإبداعي في Model Hub حتى يكون للتنزيلات الكبيرة مسار تقدم وتنظيف مركزي.",
+      "openModelHub": "فتح نماذج الصوت الإبداعي",
+      "soundTitle": "عنوان الصوت",
+      "duration": "الثواني",
+      "prompt": "الموجه",
+      "noModelSelected": "لم يتم اختيار نموذج",
+      "openGenerated": "فتح الصوت المنشأ",
+      "generate": "إنشاء الصوت",
+      "generating": "جار الإنشاء"
+    }
   },
   "appSections": {
     "common": {

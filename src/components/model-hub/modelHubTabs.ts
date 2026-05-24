@@ -8,7 +8,7 @@ export type ModelHubTabId =
   | "tts"
   | "creative_audio"
   | "ocr";
-export type ModelHubScope = "all" | "analysis";
+export type ModelHubScope = "all" | "analysis" | "creative_audio";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
 export const MODEL_HUB_SCOPE_STORAGE_KEY = "vox-jot-model-hub-scope";

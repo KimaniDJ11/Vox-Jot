@@ -2205,13 +2205,43 @@
       "llm": "Tinh chỉnh (LLM)",
       "tts": "Giọng nói (TTS)",
       "ocr": "Màn hình OCR",
-      "ariaLabel": "Danh mục mô hình"
+      "ariaLabel": "Danh mục mô hình",
+      "creativeAudio": "Âm thanh sáng tạo"
     },
     "download": {
       "failed": "Tải xuống thất bại",
       "retry": "Thử lại",
       "dismiss": "Đóng",
       "cancel": "Hủy tải xuống"
+    },
+    "creativeAudio": {
+      "title": "Âm thanh sáng tạo",
+      "description": "Tải các bộ máy cục bộ cho nhạc, không khí và hiệu ứng âm thanh dùng trong thiết kế âm thanh của Story Studio.",
+      "loading": "Đang tải mô hình âm thanh sáng tạo...",
+      "ready": "Sẵn sàng",
+      "readyDetail": "Đã cài đặt và có trong Thiết kế âm thanh của Story Studio.",
+      "recommendedDetail": "Mô hình khởi đầu được đề xuất cho chế độ âm thanh sáng tạo này.",
+      "modeDetail": "Loại âm thanh Story Studio được mô hình này hỗ trợ.",
+      "runtimeDetail": "Môi trường chạy dùng để tạo âm thanh cục bộ.",
+      "installed": "đã cài đặt",
+      "weightsNeeded": "chưa tải trọng số",
+      "downloadModel": "Tải {{modelName}}",
+      "deleteModel": "Xóa {{modelName}}",
+      "deleteConfirmTitle": "Xóa trọng số đã tải?",
+      "deleteConfirmDetail": "{{modelName}} sẽ bị xóa khỏi kho mô hình âm thanh sáng tạo cục bộ của Vox Jot. Bạn có thể tải lại sau.",
+      "confirmDelete": "Xóa",
+      "cancelDownload": "Hủy tải {{modelName}}",
+      "progress": {
+        "preparing": "Đang chuẩn bị tải...",
+        "installingRuntime": "Đang cài môi trường MLX...",
+        "downloadingWeights": "Đang tải trọng số mô hình...",
+        "ready": "Sẵn sàng sử dụng",
+        "cancelled": "Đã hủy tải xuống"
+      },
+      "empty": {
+        "title": "Không có mô hình âm thanh sáng tạo nào khớp với tìm kiếm.",
+        "description": "Xóa ô tìm kiếm hoặc bộ lọc chế độ để hiển thị tất cả mô hình âm thanh sáng tạo có sẵn."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "Công cụ phòng thu",
     "tools": {
       "script": "kịch bản",
-      "cast": "Truyền"
+      "cast": "Truyền",
+      "sound": "Âm thanh"
     },
     "expressionTags": "Thẻ biểu thức",
     "clearExpressionSearch": "Xóa tìm kiếm thẻ biểu thức",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "Hướng dẫn dòng",
     "lineInstructionPlaceholder": "Mô tả cách thực hiện dòng này.",
     "closeExpressionControls": "Đóng điều khiển biểu thức",
-    "pauseBetweenLines": "Tạm dừng giữa các dòng"
+    "pauseBetweenLines": "Tạm dừng giữa các dòng",
+    "sound": {
+      "title": "Thiết kế âm thanh",
+      "description": "Tạo hiệu ứng âm thanh, không khí và nền nhạc cục bộ cho kịch bản và câu chuyện.",
+      "modeAriaLabel": "Loại âm thanh",
+      "modes": {
+        "sfx": "Hiệu ứng",
+        "ambience": "Không khí",
+        "music": "Nhạc"
+      },
+      "ready": "Sẵn sàng",
+      "needsSetup": "Cần mô hình",
+      "loadingModels": "Đang tải mô hình",
+      "model": "Mô hình",
+      "noCompatibleModels": "Không có mô hình tương thích",
+      "modelNeededTitle": "Tải một mô hình âm thanh sáng tạo",
+      "modelNeededDescription": "Mô hình âm thanh sáng tạo được quản lý trong Model Hub để các lượt tải lớn có tiến trình và dọn dẹp tập trung.",
+      "openModelHub": "Mở mô hình âm thanh sáng tạo",
+      "soundTitle": "Tiêu đề âm thanh",
+      "duration": "Giây",
+      "prompt": "Lời nhắc",
+      "noModelSelected": "Chưa chọn mô hình",
+      "openGenerated": "Mở âm thanh đã tạo",
+      "generate": "Tạo âm thanh",
+      "generating": "Đang tạo"
+    }
   },
   "appSections": {
     "common": {

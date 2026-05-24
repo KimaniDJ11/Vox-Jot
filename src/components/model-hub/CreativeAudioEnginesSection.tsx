@@ -498,22 +498,9 @@ const CreativeAudioEnginesSection: React.FC<
       {headerActionPortal
         ? createPortal(filterAction, headerActionPortal)
         : null}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            {t("modelHub.creativeAudio.title", {
-              defaultValue: "Creative Audio",
-            })}
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm leading-5 text-[var(--muted)]">
-            {t("modelHub.creativeAudio.description", {
-              defaultValue:
-                "Download local music, ambience, and sound-effect engines for Story Studio sound design.",
-            })}
-          </p>
-        </div>
-        {!headerActionPortal ? filterAction : null}
-      </div>
+      {!headerActionPortal ? (
+        <div className="flex flex-wrap justify-end gap-3">{filterAction}</div>
+      ) : null}
 
       {error ? (
         <div

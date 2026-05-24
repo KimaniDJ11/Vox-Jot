@@ -2205,13 +2205,43 @@
       "llm": "개선(LLM)",
       "tts": "음색(TTS)",
       "ocr": "스크린 OCR",
-      "ariaLabel": "모델 카테고리"
+      "ariaLabel": "모델 카테고리",
+      "creativeAudio": "크리에이티브 오디오"
     },
     "download": {
       "failed": "다운로드 실패",
       "retry": "다시 시도",
       "dismiss": "닫기",
       "cancel": "다운로드 취소"
+    },
+    "creativeAudio": {
+      "title": "크리에이티브 오디오",
+      "description": "Story Studio 사운드 디자인을 위한 로컬 음악, 앰비언스, 효과음 엔진을 다운로드합니다.",
+      "loading": "크리에이티브 오디오 모델을 불러오는 중...",
+      "ready": "준비됨",
+      "readyDetail": "설치되어 Story Studio 사운드 디자인에서 사용할 수 있습니다.",
+      "recommendedDetail": "이 크리에이티브 오디오 모드에 권장되는 시작 모델입니다.",
+      "modeDetail": "이 모델이 지원하는 Story Studio 사운드 유형입니다.",
+      "runtimeDetail": "로컬에서 오디오를 생성하는 데 사용하는 런타임입니다.",
+      "installed": "설치됨",
+      "weightsNeeded": "가중치가 다운로드되지 않음",
+      "downloadModel": "{{modelName}} 다운로드",
+      "deleteModel": "{{modelName}} 삭제",
+      "deleteConfirmTitle": "다운로드한 가중치를 삭제할까요?",
+      "deleteConfirmDetail": "{{modelName}}이 Vox Jot의 로컬 크리에이티브 오디오 모델 저장소에서 제거됩니다. 나중에 다시 다운로드할 수 있습니다.",
+      "confirmDelete": "삭제",
+      "cancelDownload": "{{modelName}} 다운로드 취소",
+      "progress": {
+        "preparing": "다운로드 준비 중...",
+        "installingRuntime": "MLX 런타임 설치 중...",
+        "downloadingWeights": "모델 가중치 다운로드 중...",
+        "ready": "사용 준비 완료",
+        "cancelled": "다운로드가 취소됨"
+      },
+      "empty": {
+        "title": "검색과 일치하는 크리에이티브 오디오 모델이 없습니다.",
+        "description": "검색 필드나 모드 필터를 지우면 사용 가능한 모든 크리에이티브 오디오 모델이 표시됩니다."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "스튜디오 도구",
     "tools": {
       "script": "스크립트",
-      "cast": "캐스트"
+      "cast": "캐스트",
+      "sound": "사운드"
     },
     "expressionTags": "표현식 태그",
     "clearExpressionSearch": "표현 태그 검색 지우기",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "라인 지시",
     "lineInstructionPlaceholder": "이 라인을 어떻게 수행해야 하는지 설명하세요.",
     "closeExpressionControls": "표현 컨트롤 닫기",
-    "pauseBetweenLines": "줄 사이에 일시 중지"
+    "pauseBetweenLines": "줄 사이에 일시 중지",
+    "sound": {
+      "title": "사운드 디자인",
+      "description": "대본과 이야기를 위한 로컬 효과음, 앰비언스, 음악 배경을 생성합니다.",
+      "modeAriaLabel": "사운드 유형",
+      "modes": {
+        "sfx": "효과음",
+        "ambience": "앰비언스",
+        "music": "음악"
+      },
+      "ready": "준비됨",
+      "needsSetup": "모델 필요",
+      "loadingModels": "모델 불러오는 중",
+      "model": "모델",
+      "noCompatibleModels": "호환 모델 없음",
+      "modelNeededTitle": "크리에이티브 오디오 모델 다운로드",
+      "modelNeededDescription": "크리에이티브 오디오 모델은 Model Hub에서 관리되어 대용량 다운로드의 진행 상황과 정리를 한곳에서 처리합니다.",
+      "openModelHub": "크리에이티브 오디오 모델 열기",
+      "soundTitle": "사운드 제목",
+      "duration": "초",
+      "prompt": "프롬프트",
+      "noModelSelected": "선택된 모델 없음",
+      "openGenerated": "생성된 오디오 열기",
+      "generate": "사운드 생성",
+      "generating": "생성 중"
+    }
   },
   "appSections": {
     "common": {

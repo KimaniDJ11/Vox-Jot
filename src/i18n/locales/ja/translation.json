@@ -2205,13 +2205,43 @@
       "llm": "絞り込み (LLM)",
       "tts": "声 (TTS)",
       "ocr": "画面 OCR",
-      "ariaLabel": "モデルカテゴリ"
+      "ariaLabel": "モデルカテゴリ",
+      "creativeAudio": "クリエイティブ音声"
     },
     "download": {
       "failed": "ダウンロードに失敗しました",
       "retry": "もう一度試す",
       "dismiss": "閉じる",
       "cancel": "ダウンロードをキャンセル"
+    },
+    "creativeAudio": {
+      "title": "クリエイティブ音声",
+      "description": "Story Studio のサウンドデザイン向けに、音楽、環境音、効果音のローカルエンジンをダウンロードします。",
+      "loading": "クリエイティブ音声モデルを読み込み中...",
+      "ready": "準備完了",
+      "readyDetail": "インストール済みで、Story Studio のサウンドデザインで利用できます。",
+      "recommendedDetail": "このクリエイティブ音声モードの初期モデルとして推奨されます。",
+      "modeDetail": "このモデルが対応する Story Studio の音声タイプです。",
+      "runtimeDetail": "ローカルで音声を生成するために使うランタイムです。",
+      "installed": "インストール済み",
+      "weightsNeeded": "重み未ダウンロード",
+      "downloadModel": "{{modelName}} をダウンロード",
+      "deleteModel": "{{modelName}} を削除",
+      "deleteConfirmTitle": "ダウンロード済みの重みを削除しますか？",
+      "deleteConfirmDetail": "{{modelName}} は Vox Jot のローカルクリエイティブ音声モデルストアから削除されます。後で再ダウンロードできます。",
+      "confirmDelete": "削除",
+      "cancelDownload": "{{modelName}} のダウンロードをキャンセル",
+      "progress": {
+        "preparing": "ダウンロードを準備中...",
+        "installingRuntime": "MLX ランタイムをインストール中...",
+        "downloadingWeights": "モデルの重みをダウンロード中...",
+        "ready": "使用できます",
+        "cancelled": "ダウンロードをキャンセルしました"
+      },
+      "empty": {
+        "title": "検索に一致するクリエイティブ音声モデルはありません。",
+        "description": "検索欄またはモードフィルターをクリアすると、利用可能なすべてのクリエイティブ音声モデルを表示できます。"
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "スタジオツール",
     "tools": {
       "script": "スクリプト",
-      "cast": "キャスト"
+      "cast": "キャスト",
+      "sound": "サウンド"
     },
     "expressionTags": "式タグ",
     "clearExpressionSearch": "表現タグ検索のクリア",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "ライン命令",
     "lineInstructionPlaceholder": "この行をどのように実行するかを説明します。",
     "closeExpressionControls": "式コントロールを閉じる",
-    "pauseBetweenLines": "行間で一時停止する"
+    "pauseBetweenLines": "行間で一時停止する",
+    "sound": {
+      "title": "サウンドデザイン",
+      "description": "脚本やストーリー向けに、効果音、環境音、音楽ベッドをローカル生成します。",
+      "modeAriaLabel": "音声タイプ",
+      "modes": {
+        "sfx": "効果音",
+        "ambience": "環境音",
+        "music": "音楽"
+      },
+      "ready": "準備完了",
+      "needsSetup": "モデルが必要です",
+      "loadingModels": "モデルを読み込み中",
+      "model": "モデル",
+      "noCompatibleModels": "対応モデルがありません",
+      "modelNeededTitle": "クリエイティブ音声モデルをダウンロード",
+      "modelNeededDescription": "クリエイティブ音声モデルは Model Hub で管理されるため、大容量ダウンロードの進行状況とクリーンアップを一元管理できます。",
+      "openModelHub": "クリエイティブ音声モデルを開く",
+      "soundTitle": "サウンドタイトル",
+      "duration": "秒数",
+      "prompt": "プロンプト",
+      "noModelSelected": "モデルが選択されていません",
+      "openGenerated": "生成済み音声を開く",
+      "generate": "サウンドを生成",
+      "generating": "生成中"
+    }
   },
   "appSections": {
     "common": {

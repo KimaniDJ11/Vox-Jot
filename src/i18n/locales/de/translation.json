@@ -2205,13 +2205,43 @@
       "llm": "Verfeinern (LLM)",
       "tts": "Stimmen (TTS)",
       "ocr": "Bildschirm OCR",
-      "ariaLabel": "Modellkategorien"
+      "ariaLabel": "Modellkategorien",
+      "creativeAudio": "Kreatives Audio"
     },
     "download": {
       "failed": "Download fehlgeschlagen",
       "retry": "Erneut versuchen",
       "dismiss": "Schließen",
       "cancel": "Download abbrechen"
+    },
+    "creativeAudio": {
+      "title": "Kreatives Audio",
+      "description": "Lokale Engines für Musik, Atmosphäre und Soundeffekte für das Sounddesign in Story Studio herunterladen.",
+      "loading": "Kreative Audiomodelle werden geladen...",
+      "ready": "Bereit",
+      "readyDetail": "Installiert und im Sounddesign von Story Studio verfügbar.",
+      "recommendedDetail": "Empfohlenes Einstiegsmodell für diesen kreativen Audiomodus.",
+      "modeDetail": "Von diesem Modell unterstützter Story-Studio-Soundtyp.",
+      "runtimeDetail": "Laufzeitumgebung für die lokale Audiogenerierung.",
+      "installed": "installiert",
+      "weightsNeeded": "Gewichte nicht heruntergeladen",
+      "downloadModel": "{{modelName}} herunterladen",
+      "deleteModel": "{{modelName}} löschen",
+      "deleteConfirmTitle": "Heruntergeladene Gewichte löschen?",
+      "deleteConfirmDetail": "{{modelName}} wird aus dem lokalen Speicher für kreative Audiomodelle von Vox Jot entfernt. Sie können es später erneut herunterladen.",
+      "confirmDelete": "Löschen",
+      "cancelDownload": "Download von {{modelName}} abbrechen",
+      "progress": {
+        "preparing": "Download wird vorbereitet...",
+        "installingRuntime": "MLX-Laufzeit wird installiert...",
+        "downloadingWeights": "Modellgewichte werden heruntergeladen...",
+        "ready": "Einsatzbereit",
+        "cancelled": "Download abgebrochen"
+      },
+      "empty": {
+        "title": "Keine kreativen Audiomodelle passen zur Suche.",
+        "description": "Löschen Sie das Suchfeld oder den Modusfilter, um alle verfügbaren kreativen Audiomodelle anzuzeigen."
+      }
     }
   },
   "commandMenu": {
@@ -2297,7 +2327,8 @@
     "toolAriaLabel": "Studio-Tools",
     "tools": {
       "script": "Skript",
-      "cast": "Besetzung"
+      "cast": "Besetzung",
+      "sound": "Ton"
     },
     "expressionTags": "Ausdrucks-Tags",
     "clearExpressionSearch": "Klare Ausdrucks-Tag-Suche",
@@ -2307,7 +2338,32 @@
     "lineInstruction": "Linienanweisung",
     "lineInstructionPlaceholder": "Beschreiben Sie, wie diese Zeile ausgeführt werden soll.",
     "closeExpressionControls": "Schließen Sie die Ausdruckssteuerung",
-    "pauseBetweenLines": "Pause zwischen den Zeilen"
+    "pauseBetweenLines": "Pause zwischen den Zeilen",
+    "sound": {
+      "title": "Sounddesign",
+      "description": "Lokale Soundeffekte, Atmosphären und Musikbetten für Skripte und Geschichten erzeugen.",
+      "modeAriaLabel": "Soundtyp",
+      "modes": {
+        "sfx": "Effekte",
+        "ambience": "Atmosphäre",
+        "music": "Musik"
+      },
+      "ready": "Bereit",
+      "needsSetup": "Modell erforderlich",
+      "loadingModels": "Modelle werden geladen",
+      "model": "Modell",
+      "noCompatibleModels": "Keine kompatiblen Modelle",
+      "modelNeededTitle": "Kreatives Audiomodell herunterladen",
+      "modelNeededDescription": "Kreative Audiomodelle werden im Model Hub verwaltet, damit große Downloads einen zentralen Fortschritts- und Bereinigungspfad haben.",
+      "openModelHub": "Kreative Audiomodelle öffnen",
+      "soundTitle": "Soundtitel",
+      "duration": "Sekunden",
+      "prompt": "Eingabe",
+      "noModelSelected": "Kein Modell ausgewählt",
+      "openGenerated": "Generiertes Audio öffnen",
+      "generate": "Sound erzeugen",
+      "generating": "Wird erzeugt"
+    }
   },
   "appSections": {
     "common": {

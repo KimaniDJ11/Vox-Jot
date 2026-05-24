@@ -38,7 +38,7 @@ function isModelHubTabId(value: string | null): value is ModelHubTabId {
 }
 
 function isModelHubScope(value: string | null): value is ModelHubScope {
-  return value === "all" || value === "analysis";
+  return value === "all" || value === "analysis" || value === "creative_audio";
 }
 
 function readInitialScope(): ModelHubScope {
@@ -94,7 +94,12 @@ const ModelHubSection: React.FC = () => {
       analysis: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.analysis },
     }));
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
-  const visibleTab = scope === "analysis" ? "analysis" : activeTab;
+  const visibleTab =
+    scope === "analysis"
+      ? "analysis"
+      : scope === "creative_audio"
+        ? "creative_audio"
+        : activeTab;
   const controlScope = getControlScope(visibleTab);
 
   const setControlValue = useCallback(
@@ -144,13 +149,11 @@ const ModelHubSection: React.FC = () => {
   }, []);
 
   const tabs =
-    scope === "analysis"
-      ? ALL_TABS.filter((tab) => tab.id === "analysis")
-      : ALL_TABS;
+    scope === "all" ? ALL_TABS : ALL_TABS.filter((tab) => tab.id === scope);
 
   useEffect(() => {
-    if (scope === "analysis" && activeTab !== "analysis") {
-      setActiveTab("analysis");
+    if (scope !== "all" && activeTab !== scope) {
+      setActiveTab(scope);
     }
   }, [activeTab, scope]);
 
@@ -275,6 +278,15 @@ const ModelHubSection: React.FC = () => {
                     t("modelHub.tabs.analysis", {
                       defaultValue: "Speech Analysis",
                     })}
+                </h2>
+              ) : scope === "creative_audio" ? (
+                <h2
+                  id="model-hub-tab-creative_audio"
+                  className="text-sm font-semibold text-[var(--text)]"
+                >
+                  {t("modelHub.tabs.creativeAudio", {
+                    defaultValue: "Creative Audio",
+                  })}
                 </h2>
               ) : (
                 <LayoutGroup id="model-hub-tabs">

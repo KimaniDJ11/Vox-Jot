@@ -102,6 +102,7 @@
     "permissions": {
       "title": "Yêu cầu quyền",
       "description": "Cấp các quyền cần thiết để tiếp tục. Ghi màn hình là tùy chọn cho bối cảnh hình ảnh cục bộ.",
+      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
       "microphone": {
         "title": "Truy cập micrô",
         "description": "Cần phải nghe giọng nói của bạn để phiên âm.",
@@ -147,6 +148,7 @@
       "moreInfo": "Thêm thông tin",
       "visualPath": "Cài đặt hệ thống -> Quyền riêng tư & bảo mật",
       "visualDescription": "Cấp micrô, khả năng truy cập và giám sát đầu vào để Vox Jot có thể ghi lại giọng nói của bạn, đặt văn bản vào ứng dụng phù hợp và hiểu các thay đổi gửi và xóa nhanh chóng. Ghi màn hình tùy chọn thêm bối cảnh OCR cục bộ từ màn hình đang hoạt động.",
+      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
       "inputMonitoring": {
         "title": "Giám sát đầu vào",
         "description": "Cần thiết để Vox Jot có thể phân biệt rõ hơn sự khác biệt giữa gửi tin nhắn và xóa văn bản theo cách thủ công.",
@@ -181,6 +183,7 @@
         "cta": "Bật ghi màn hình"
       },
       "privacyBadge": "Vox Jot chạy chính tả trên thiết bị của bạn. Chúng tôi không bao giờ tải lên giọng nói, tổ hợp phím hoặc ngữ cảnh màn hình của bạn.",
+      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
       "checking": "Đang kiểm tra quyền...",
       "required": "Bắt buộc",
       "optional": "Tùy chọn",
@@ -610,6 +613,7 @@
       "pasteMethod": {
         "title": "Phương pháp dán",
         "description": "Chọn cách chèn văn bản. Trực tiếp gõ văn bản trực tiếp. Không có gì lưu kết quả mà không dán.",
+        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
         "options": {
           "clipboard": "Bảng nhớ tạm ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Bảng nhớ tạm (Ctrl+Shift+V)",
@@ -623,6 +627,7 @@
         "clipboardDescription": "Sao chép văn bản, gửi phím tắt dán hệ thống, sau đó khôi phục bảng nhớ tạm.",
         "clipboardOnly": "Chỉ bảng nhớ tạm",
         "clipboardOnlyDescription": "Sao chép văn bản và bỏ qua thao tác dán tự động.",
+        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
         "platformMethods": "Phương pháp nền tảng"
       },
       "typingTool": {

@@ -403,6 +403,7 @@
     "permissions": {
       "title": "Permissions Required",
       "description": "Set up the permissions that power assistive dictation. Screen Recording is optional for local visual context.",
+      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
       "microphone": {
         "title": "Microphone Access",
         "description": "Required to hear your voice for assistive transcription.",
@@ -478,6 +479,7 @@
       },
       "heading": "Set up your dictation toolkit",
       "privacyBadge": "Vox Jot is assistive voice text entry for people who cannot comfortably type. Local routes stay on device; cloud cleanup only runs when you configure it.",
+      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
       "continue": "Continue setup",
       "moreInfo": "More info",
       "checking": "Checking permissions...",
@@ -488,7 +490,8 @@
       "completeTitle": "Permissions are ready",
       "completeDescription": "Vox Jot has the access it needs for assistive dictation.",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Microphone, Accessibility, and Input Monitoring support voice capture, assistive text entry, correction learning after insertion, and hands-free control. Optional Screen Recording adds OCR context from the active display."
+      "visualDescription": "Microphone, Accessibility, and Input Monitoring support voice capture, assistive text entry, correction learning after insertion, and hands-free control. Optional Screen Recording adds OCR context from the active display.",
+      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring."
     },
     "steps": {
       "welcome": "Overview",
@@ -1097,6 +1100,7 @@
       "pasteMethod": {
         "title": "Paste Method",
         "description": "Choose how assistive dictated text is delivered. Direct and clipboard paste need Accessibility for hands-free insertion; Clipboard only works without Accessibility for manual paste.",
+        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
         "options": {
           "clipboard": "Clipboard ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Clipboard (Ctrl+Shift+V)",
@@ -1110,6 +1114,7 @@
         "clipboardDescription": "Copies the text, sends the system paste shortcut, then restores the clipboard.",
         "clipboardOnly": "Clipboard only",
         "clipboardOnlyDescription": "Copies the text for manual paste and skips Accessibility-controlled insertion.",
+        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
         "platformMethods": "Platform methods"
       },
       "typingTool": {

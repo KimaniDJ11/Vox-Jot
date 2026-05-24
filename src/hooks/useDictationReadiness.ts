@@ -9,6 +9,7 @@ import {
 
 import { commands } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 
 export type DictationReadinessGateId =
   | "microphone"
@@ -55,12 +56,21 @@ export function useDictationReadiness(): DictationReadiness {
   const refresh = useCallback(async () => {
     const os = platform();
     if (os === "macos") {
-      const [microphone, accessibility, inputMonitoring] = await Promise.all([
-        checkMicrophonePermission().catch(() => false),
-        checkAccessibilityPermission().catch(() => false),
-        checkInputMonitoringPermission().catch(() => false),
-      ]);
-      setPermissions({ microphone, accessibility, inputMonitoring });
+      if (isMacAppStoreBuild) {
+        const microphone = await checkMicrophonePermission().catch(() => false);
+        setPermissions({
+          microphone,
+          accessibility: true,
+          inputMonitoring: true,
+        });
+      } else {
+        const [microphone, accessibility, inputMonitoring] = await Promise.all([
+          checkMicrophonePermission().catch(() => false),
+          checkAccessibilityPermission().catch(() => false),
+          checkInputMonitoringPermission().catch(() => false),
+        ]);
+        setPermissions({ microphone, accessibility, inputMonitoring });
+      }
     } else if (os === "windows") {
       const status = await commands
         .getWindowsMicrophonePermissionStatus()
@@ -102,7 +112,9 @@ export function useDictationReadiness(): DictationReadiness {
     const postKeyReady = postProvider
       ? (settings?.post_process_api_key_status?.[postProvider] ?? true)
       : true;
-    const screenContextEnabled = settings?.screen_context_enabled ?? true;
+    const screenContextEnabled = isMacAppStoreBuild
+      ? false
+      : (settings?.screen_context_enabled ?? true);
 
     const gates: DictationReadinessGate[] = [
       {
@@ -119,29 +131,34 @@ export function useDictationReadiness(): DictationReadiness {
             ? "blocked"
             : "ready",
       },
-      {
-        id: "accessibility",
-        label: t("appSections.readiness.gates.accessibility.label"),
-        detail:
-          permissions.accessibility === false
-            ? t("appSections.readiness.gates.accessibility.blocked")
-            : t("appSections.readiness.gates.accessibility.ready"),
-        state:
-          permissions.accessibility === false
-            ? clipboardOnlyEnabled
-              ? "warning"
-              : "blocked"
-            : "ready",
-      },
-      {
-        id: "input_monitoring",
-        label: t("appSections.readiness.gates.inputMonitoring.label"),
-        detail:
-          permissions.inputMonitoring === false
-            ? t("appSections.readiness.gates.inputMonitoring.blocked")
-            : t("appSections.readiness.gates.inputMonitoring.ready"),
-        state: permissions.inputMonitoring === false ? "blocked" : "ready",
-      },
+      ...(!isMacAppStoreBuild
+        ? ([
+            {
+              id: "accessibility",
+              label: t("appSections.readiness.gates.accessibility.label"),
+              detail:
+                permissions.accessibility === false
+                  ? t("appSections.readiness.gates.accessibility.blocked")
+                  : t("appSections.readiness.gates.accessibility.ready"),
+              state:
+                permissions.accessibility === false
+                  ? clipboardOnlyEnabled
+                    ? "warning"
+                    : "blocked"
+                  : "ready",
+            },
+            {
+              id: "input_monitoring",
+              label: t("appSections.readiness.gates.inputMonitoring.label"),
+              detail:
+                permissions.inputMonitoring === false
+                  ? t("appSections.readiness.gates.inputMonitoring.blocked")
+                  : t("appSections.readiness.gates.inputMonitoring.ready"),
+              state:
+                permissions.inputMonitoring === false ? "blocked" : "ready",
+            },
+          ] satisfies DictationReadinessGate[])
+        : []),
       {
         id: "stt_model",
         label: t("appSections.readiness.gates.sttModel.label"),

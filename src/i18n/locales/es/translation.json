@@ -102,6 +102,7 @@
     "permissions": {
       "title": "Permisos requeridos",
       "description": "Conceda los permisos necesarios para continuar. La grabación de pantalla es opcional para el contexto visual local.",
+      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
       "microphone": {
         "title": "Acceso al micrófono",
         "description": "Se requiere escuchar su voz para la transcripción.",
@@ -147,6 +148,7 @@
       "moreInfo": "Más información",
       "visualPath": "Configuración del sistema -> Privacidad y seguridad",
       "visualDescription": "Otorgue micrófono, accesibilidad y monitoreo de entrada para que Vox Jot pueda capturar su voz, colocar texto en la aplicación correcta y comprender cambios rápidos de envío y eliminación. La grabación de pantalla opcional agrega contexto OCR local desde la pantalla activa.",
+      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
       "inputMonitoring": {
         "title": "Monitoreo de entrada",
         "description": "Se requiere para que Vox Jot pueda diferenciar mejor entre enviar un mensaje y borrar texto manualmente.",
@@ -181,6 +183,7 @@
         "cta": "Habilitar grabación de pantalla"
       },
       "privacyBadge": "Vox Jot ejecuta el dictado en su dispositivo. Nunca subimos su voz, pulsaciones de teclas o contexto de pantalla.",
+      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
       "checking": "Comprobando permisos...",
       "required": "Requerido",
       "optional": "Opcional",
@@ -610,6 +613,7 @@
       "pasteMethod": {
         "title": "Método de pegado",
         "description": "Elija cómo se inserta el texto. Tipos directos de texto directamente. Ninguno guarda los resultados sin pegarlos.",
+        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
         "options": {
           "clipboard": "Portapapeles ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Portapapeles (Ctrl+Mayús+V)",
@@ -623,6 +627,7 @@
         "clipboardDescription": "Copia el texto, envía el acceso directo para pegar del sistema y luego restaura el portapapeles.",
         "clipboardOnly": "Solo portapapeles",
         "clipboardOnlyDescription": "Copia el texto y omite la acción de pegado automático.",
+        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
         "platformMethods": "Métodos de plataforma"
       },
       "typingTool": {

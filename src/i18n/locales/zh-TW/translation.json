@@ -102,6 +102,7 @@
     "permissions": {
       "title": "所需權限",
       "description": "授予所需的權限以繼續。對於本地視覺上下文，螢幕錄製是可選的。",
+      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
       "microphone": {
         "title": "麥克風訪問",
         "description": "需要聽到您的聲音才能進行轉錄。",
@@ -147,6 +148,7 @@
       "moreInfo": "更多資訊",
       "visualPath": "系統設定 -> 隱私和安全",
       "visualDescription": "授予麥克風、輔助功能和輸入監控功能，以便 Vox Jot 可以捕捉您的聲音、將文字放置在正確的應用程式中，並了解快速發送與刪除的變更。可選螢幕錄製從活動顯示中新增本機 OCR 上下文。",
+      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
       "inputMonitoring": {
         "title": "輸入監控",
         "description": "必需的，以便 Vox Jot 可以更好地區分發送訊息和手動清除文字之間的差異。",
@@ -181,6 +183,7 @@
         "cta": "啟用螢幕錄製"
       },
       "privacyBadge": "Vox Jot 在您的裝置上執行聽寫。我們絕不會上傳您的語音、按鍵或螢幕上下文。",
+      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
       "checking": "正在檢查權限...",
       "required": "必填",
       "optional": "可選",
@@ -610,6 +613,7 @@
       "pasteMethod": {
         "title": "貼上法",
         "description": "選擇文字的插入方式。直接直接鍵入文字。 None 不保存結果而不貼上。",
+        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
         "options": {
           "clipboard": "剪貼簿({{modifier}}+V)",
           "clipboardCtrlShiftV": "剪貼簿 (Ctrl+Shift+V)",
@@ -623,6 +627,7 @@
         "clipboardDescription": "複製文本，發送系統貼上捷徑，然後恢復剪貼簿。",
         "clipboardOnly": "僅剪貼簿",
         "clipboardOnlyDescription": "複製文字並跳過自動貼上操作。",
+        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
         "platformMethods": "平台方法"
       },
       "typingTool": {

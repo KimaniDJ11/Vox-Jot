@@ -227,10 +227,9 @@ pub enum PasteMethod {
     ExternalScript,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ClipboardHandling {
-    #[default]
     DontModify,
     CopyToClipboard,
 }
@@ -296,20 +295,37 @@ pub enum KeyboardImplementation {
 
 impl Default for KeyboardImplementation {
     fn default() -> Self {
-        #[cfg(target_os = "linux")]
+        #[cfg(vox_jot_app_store)]
         return KeyboardImplementation::Tauri;
-        #[cfg(not(target_os = "linux"))]
+
+        #[cfg(all(not(vox_jot_app_store), target_os = "linux"))]
+        return KeyboardImplementation::Tauri;
+
+        #[cfg(all(not(vox_jot_app_store), not(target_os = "linux")))]
         return KeyboardImplementation::HandyKeys;
     }
 }
 
 impl Default for PasteMethod {
     fn default() -> Self {
-        // Default to CtrlV for macOS and Windows, Direct for Linux
-        #[cfg(target_os = "linux")]
+        #[cfg(vox_jot_app_store)]
+        return PasteMethod::None;
+
+        #[cfg(all(not(vox_jot_app_store), target_os = "linux"))]
         return PasteMethod::Direct;
-        #[cfg(not(target_os = "linux"))]
+
+        #[cfg(all(not(vox_jot_app_store), not(target_os = "linux")))]
         return PasteMethod::CtrlV;
+    }
+}
+
+impl Default for ClipboardHandling {
+    fn default() -> Self {
+        #[cfg(vox_jot_app_store)]
+        return ClipboardHandling::CopyToClipboard;
+
+        #[cfg(not(vox_jot_app_store))]
+        return ClipboardHandling::DontModify;
     }
 }
 
@@ -1123,6 +1139,12 @@ fn default_screen_context_stale_threshold_ms() -> u32 {
 }
 
 fn default_screen_context_enabled() -> bool {
+    #[cfg(vox_jot_app_store)]
+    {
+        return false;
+    }
+
+    #[cfg(not(vox_jot_app_store))]
     true
 }
 
@@ -1388,6 +1410,12 @@ fn default_typing_tool() -> TypingTool {
 }
 
 fn default_correction_tracking_enabled() -> bool {
+    #[cfg(vox_jot_app_store)]
+    {
+        return false;
+    }
+
+    #[cfg(not(vox_jot_app_store))]
     true
 }
 
@@ -2634,6 +2662,43 @@ fn normalize_post_process_api_key_statuses(settings: &mut AppSettings) {
     }
 }
 
+#[cfg(vox_jot_app_store)]
+fn ensure_app_store_permission_defaults(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+
+    if settings.keyboard_implementation != KeyboardImplementation::Tauri {
+        settings.keyboard_implementation = KeyboardImplementation::Tauri;
+        changed = true;
+    }
+    if settings.paste_method != PasteMethod::None {
+        settings.paste_method = PasteMethod::None;
+        changed = true;
+    }
+    if settings.clipboard_handling != ClipboardHandling::CopyToClipboard {
+        settings.clipboard_handling = ClipboardHandling::CopyToClipboard;
+        changed = true;
+    }
+    if settings.auto_submit {
+        settings.auto_submit = false;
+        changed = true;
+    }
+    if settings.screen_context_enabled {
+        settings.screen_context_enabled = false;
+        changed = true;
+    }
+    if settings.correction_tracking_enabled {
+        settings.correction_tracking_enabled = false;
+        changed = true;
+    }
+
+    changed
+}
+
+#[cfg(not(vox_jot_app_store))]
+fn ensure_app_store_permission_defaults(_settings: &mut AppSettings) -> bool {
+    false
+}
+
 fn migrate_legacy_post_process_api_keys(settings: &mut AppSettings) -> bool {
     let legacy_entries: Vec<(String, String)> = settings
         .post_process_api_keys
@@ -2742,6 +2807,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
+    let app_store_permission_changed = ensure_app_store_permission_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -2750,6 +2816,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         || post_process_changed
         || model_platform_changed
         || http_api_changed
+        || app_store_permission_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -2780,6 +2847,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
+    let app_store_permission_changed = ensure_app_store_permission_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -2788,6 +2856,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         || post_process_changed
         || model_platform_changed
         || http_api_changed
+        || app_store_permission_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -2819,6 +2888,7 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
     ensure_http_api_defaults(&mut settings);
+    ensure_app_store_permission_defaults(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
     settings.http_api_token.clear();
 

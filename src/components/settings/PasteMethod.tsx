@@ -7,6 +7,7 @@ import { Input } from "../ui/Input";
 import { useSettings } from "../../hooks/useSettings";
 import { useOsType } from "../../hooks/useOsType";
 import type { ClipboardHandling, PasteMethod } from "@/bindings";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import {
   SelectionDot,
   visualizationStateClass,
@@ -25,6 +26,15 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
 
     const getPasteMethodOptions = (osType: string) => {
       const mod = osType === "macos" ? "Cmd" : "Ctrl";
+
+      if (isMacAppStoreBuild) {
+        return [
+          {
+            value: "none",
+            label: t("settings.advanced.pasteMethod.clipboardOnly"),
+          },
+        ];
+      }
 
       const options = [
         {
@@ -76,6 +86,12 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
       "ctrl_v") as PasteMethod;
     const selectedHandling = (getSetting("clipboard_handling") ||
       "dont_modify") as ClipboardHandling;
+    const effectiveSelectedMethod = isMacAppStoreBuild
+      ? "none"
+      : selectedMethod;
+    const effectiveSelectedHandling = isMacAppStoreBuild
+      ? "copy_to_clipboard"
+      : selectedHandling;
     const externalScriptPath = getSetting("external_script_path") || "";
 
     const pasteMethodOptions = getPasteMethodOptions(osType);
@@ -96,46 +112,62 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
     return (
       <SettingContainer
         title={t("settings.advanced.pasteMethod.title")}
-        description={t("settings.advanced.pasteMethod.description")}
+        description={t(
+          isMacAppStoreBuild
+            ? "settings.advanced.pasteMethod.appStoreDescription"
+            : "settings.advanced.pasteMethod.description",
+        )}
         descriptionMode={descriptionMode}
         grouped={grouped}
         layout="stacked"
         tooltipPosition="bottom"
       >
         <div className="space-y-3">
-          <div className="grid gap-2 lg:grid-cols-3">
-            <PasteMethodCard
-              icon={<Zap className="h-4 w-4" aria-hidden />}
-              title={t("settings.advanced.pasteMethod.options.direct")}
-              description={t("settings.advanced.pasteMethod.directDescription")}
-              sample="Hello world"
-              selected={selectedMethod === "direct"}
-              disabled={isUpdating("paste_method")}
-              onSelect={() => void selectPasteMethod("direct")}
-            />
-            <PasteMethodCard
-              icon={<Keyboard className="h-4 w-4" aria-hidden />}
-              title={t("settings.advanced.pasteMethod.options.clipboard", {
-                modifier: osType === "macos" ? "Cmd" : "Ctrl",
-              })}
-              description={t(
-                "settings.advanced.pasteMethod.clipboardDescription",
-              )}
-              sample="Cmd/Ctrl + V"
-              selected={selectedMethod === "ctrl_v"}
-              disabled={isUpdating("paste_method")}
-              onSelect={() => void selectPasteMethod("ctrl_v")}
-            />
+          <div
+            className={
+              isMacAppStoreBuild ? "grid gap-2" : "grid gap-2 lg:grid-cols-3"
+            }
+          >
+            {!isMacAppStoreBuild ? (
+              <>
+                <PasteMethodCard
+                  icon={<Zap className="h-4 w-4" aria-hidden />}
+                  title={t("settings.advanced.pasteMethod.options.direct")}
+                  description={t(
+                    "settings.advanced.pasteMethod.directDescription",
+                  )}
+                  sample="Hello world"
+                  selected={effectiveSelectedMethod === "direct"}
+                  disabled={isUpdating("paste_method")}
+                  onSelect={() => void selectPasteMethod("direct")}
+                />
+                <PasteMethodCard
+                  icon={<Keyboard className="h-4 w-4" aria-hidden />}
+                  title={t("settings.advanced.pasteMethod.options.clipboard", {
+                    modifier: osType === "macos" ? "Cmd" : "Ctrl",
+                  })}
+                  description={t(
+                    "settings.advanced.pasteMethod.clipboardDescription",
+                  )}
+                  sample="Cmd/Ctrl + V"
+                  selected={effectiveSelectedMethod === "ctrl_v"}
+                  disabled={isUpdating("paste_method")}
+                  onSelect={() => void selectPasteMethod("ctrl_v")}
+                />
+              </>
+            ) : null}
             <PasteMethodCard
               icon={<Clipboard className="h-4 w-4" aria-hidden />}
               title={t("settings.advanced.pasteMethod.clipboardOnly")}
               description={t(
-                "settings.advanced.pasteMethod.clipboardOnlyDescription",
+                isMacAppStoreBuild
+                  ? "settings.advanced.pasteMethod.appStoreClipboardOnlyDescription"
+                  : "settings.advanced.pasteMethod.clipboardOnlyDescription",
               )}
               sample="Text -> Clipboard"
               selected={
-                selectedMethod === "none" &&
-                selectedHandling === "copy_to_clipboard"
+                effectiveSelectedMethod === "none" &&
+                effectiveSelectedHandling === "copy_to_clipboard"
               }
               disabled={
                 isUpdating("paste_method") || isUpdating("clipboard_handling")

@@ -200,16 +200,16 @@ for (const falsePrivacyClaim of [
   }
 }
 
-for (const requiredAssistiveDisclosure of [
-  "assistive voice text entry",
-  "correction learning",
-  "Screen Context",
-  "Assistive access & privacy",
+for (const requiredAppStoreDisclosure of [
+  "First-run onboarding asks only for Microphone access.",
+  "clipboard-only delivery",
+  "does not require Accessibility or Input Monitoring",
+  "Accessibility-controlled insertion, correction monitoring",
 ]) {
-  if (!appStoreCopySources.includes(requiredAssistiveDisclosure)) {
+  if (!appStoreCopySources.includes(requiredAppStoreDisclosure)) {
     add(
       "fail",
-      `App Store-facing copy must disclose full-capability assistive behavior: ${requiredAssistiveDisclosure}.`,
+      `App Store-facing copy must disclose Mac App Store permission behavior: ${requiredAppStoreDisclosure}.`,
     );
   }
 }

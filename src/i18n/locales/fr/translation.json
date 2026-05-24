@@ -102,6 +102,7 @@
     "permissions": {
       "title": "Autorisations requises",
       "description": "Accordez les autorisations requises pour continuer. L'enregistrement d'écran est facultatif pour le contexte visuel local.",
+      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
       "microphone": {
         "title": "Accès au microphone",
         "description": "Nécessaire pour entendre votre voix pour la transcription.",
@@ -147,6 +148,7 @@
       "moreInfo": "Plus d'informations",
       "visualPath": "Paramètres système -> Confidentialité et sécurité",
       "visualDescription": "Accordez le microphone, l'accessibilité et la surveillance des entrées afin que Vox Jot puisse capturer votre voix, placer du texte dans la bonne application et comprendre les modifications rapides d'envoi ou de suppression. L'enregistrement d'écran en option ajoute le contexte OCR local à partir de l'affichage actif.",
+      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
       "inputMonitoring": {
         "title": "Surveillance des entrées",
         "description": "Obligatoire pour que Vox Jot puisse mieux faire la différence entre l'envoi d'un message et l'effacement manuel du texte.",
@@ -181,6 +183,7 @@
         "cta": "Activer l'enregistrement d'écran"
       },
       "privacyBadge": "Vox Jot exécute la dictée sur votre appareil. Nous ne téléchargeons jamais votre voix, vos frappes au clavier ou le contexte de l'écran.",
+      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
       "checking": "Vérification des autorisations...",
       "required": "Obligatoire",
       "optional": "Facultatif",
@@ -610,6 +613,7 @@
       "pasteMethod": {
         "title": "Méthode Coller",
         "description": "Choisissez la façon dont le texte est inséré. Types directs de texte directement. Aucun n'enregistre les résultats sans les coller.",
+        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
         "options": {
           "clipboard": "Presse-papiers ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Presse-papiers (Ctrl+Maj+V)",
@@ -623,6 +627,7 @@
         "clipboardDescription": "Copie le texte, envoie le raccourci système de collage, puis restaure le presse-papiers.",
         "clipboardOnly": "Presse-papiers uniquement",
         "clipboardOnlyDescription": "Copie le texte et ignore l'action de collage automatique.",
+        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
         "platformMethods": "Méthodes de plateforme"
       },
       "typingTool": {

@@ -28,6 +28,11 @@ Those flags disable self-hosted-only behavior:
 - LaunchAgent autostart plugin is not registered.
 - Update checking UI is hidden.
 - Autostart UI is hidden.
+- First-run onboarding asks only for Microphone access.
+- Dictation output defaults to clipboard-only delivery for manual paste.
+- Input Monitoring, Accessibility-controlled insertion, correction monitoring,
+  hands-free submit, and Screen Context OCR are forced off in the Mac App Store
+  build.
 - Tauri updater artifacts are disabled.
 - macOS private APIs are disabled in the Tauri App Store config.
 
@@ -64,8 +69,8 @@ Apple product trademarks in the subtitle.
   product/service terms in the subtitle. Avoid pairing model names with Apple
   platform terms in a way that reads like an Apple product.
 - Suggested short description: `Vox Jot helps people who cannot comfortably
-type enter text by speaking, with local transcription and user-started
-insertion into the active text field.`
+type create text by speaking, with local transcription and clipboard delivery
+for manual paste.`
 - Suggested review-note positioning: Vox Jot is an assistive voice text-entry
   tool for users who cannot comfortably type because of disability, motor
   limitations, repetitive strain, temporary injury, fatigue, or pain.
@@ -100,16 +105,13 @@ bun run mac:app-store:build
 
 ## Review risks to verify before submission
 
-- Accessibility permission must be presented as assistive text entry for users
-  who cannot comfortably type. The app should describe Accessibility use as
-  entering user-dictated text, learning user corrections after insertion, and
-  supporting hands-free text entry.
+- The Mac App Store build must not require Accessibility or Input Monitoring.
+  Dictation should remain useful after Microphone access alone by copying the
+  transcript to the clipboard for manual paste.
 - Do not claim Vox Jot never reads app content while correction monitoring or
-  Screen Context are available; review notes must accurately disclose those
-  user-enabled assistive features.
-- Global shortcut, text insertion, and hands-free submit require clear user
-  control and permission prompts.
-- Screen context/OCR features must be optional and privacy copy must be accurate.
+  Screen Context are available in non-App-Store builds; App Store review notes
+  should state that those features are disabled in the Mac App Store build.
+- Screen context/OCR features must remain disabled in the Mac App Store build.
 - Microphone permission text must match local dictation behavior.
 - Sentry must remain opt-in and must not send transcripts, audio, prompts, or personal content.
 - Model and runtime downloads must work inside the App Sandbox.
@@ -117,7 +119,8 @@ bun run mac:app-store:build
 
 ## Review response template
 
-Use this response after removing `Mac` from the App Store Connect subtitle:
+Use this response after removing `Mac` from the App Store Connect subtitle and
+switching the Mac App Store build to clipboard-only delivery:
 
 > We removed the Apple trademark term from the app subtitle. The subtitle is now
 > `Assistive Voice Dictation`.
@@ -125,13 +128,12 @@ Use this response after removing `Mac` from the App Store Connect subtitle:
 > Vox Jot is intended as assistive voice text entry for users who cannot
 > comfortably type because of disability, motor limitations, repetitive strain
 > injury, temporary injury, fatigue, pain, or other accessibility needs.
-> Accessibility access and related macOS permissions are used for user-enabled
-> assistive dictation features: inserting dictated text into the focused field,
-> learning user corrections after insertion so repeated fixes do not have to be
-> typed again, and supporting hands-free text entry. Screen Context is optional
-> and uses separate Screen Recording permission for local OCR context that helps
-> with visible names, jargon, and phrase keys. These controls are disclosed in
-> onboarding and in Privacy & Storage under Assistive access & privacy.
+> This Mac App Store build no longer requires Accessibility or Input Monitoring.
+> First-run onboarding asks only for Microphone access. After dictation, Vox Jot
+> copies the transcript to the clipboard so the user can manually paste it into
+> the destination app. Accessibility-controlled insertion, correction monitoring,
+> hands-free submit, and Screen Context OCR are disabled in this Mac App Store
+> build.
 
 ## Release checklist
 

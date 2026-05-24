@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
@@ -136,6 +137,8 @@ const macPermissionOrder: PermissionId[] = [
   "screenRecording",
 ];
 
+const macAppStorePermissionOrder: PermissionId[] = ["microphone"];
+
 const windowsPermissionOrder: PermissionId[] = ["microphone"];
 
 const PermissionsStep: React.FC<PermissionsStepProps> = ({
@@ -165,7 +168,9 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const isWindows = permissionPlatform === "windows";
 
   const permissionOrder = useMemo<PermissionId[]>(() => {
-    if (isMacOS) return macPermissionOrder;
+    if (isMacOS) {
+      return isMacAppStoreBuild ? macAppStorePermissionOrder : macPermissionOrder;
+    }
     if (isWindows) return windowsPermissionOrder;
     return [];
   }, [isMacOS, isWindows]);
@@ -430,6 +435,15 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const isChecking =
     permissionPlatform === null ||
     permissionOrder.some((id) => permissions[id] === "checking");
+  const permissionsDescriptionKey = isMacAppStoreBuild
+    ? "onboarding.permissions.descriptionAppStore"
+    : "onboarding.permissions.description";
+  const permissionsPrivacyBadgeKey = isMacAppStoreBuild
+    ? "onboarding.permissions.privacyBadgeAppStore"
+    : "onboarding.permissions.privacyBadge";
+  const permissionsVisualDescriptionKey = isMacAppStoreBuild
+    ? "onboarding.permissions.visualDescriptionAppStore"
+    : "onboarding.permissions.visualDescription";
 
   const handleSkipOptional = async (id: PermissionId) => {
     if (permissionStories[id].required) return;
@@ -451,7 +465,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const handleContinue = async () => {
     if (!requiredPermissionsGranted) return;
 
-    if (isMacOS && permissions.screenRecording !== "granted") {
+    if (
+      isMacOS &&
+      !isMacAppStoreBuild &&
+      permissions.screenRecording !== "granted"
+    ) {
       const result = await commands.changeScreenContextEnabledSetting(false);
       if (result.status !== "ok") {
         toast.error(result.error);
@@ -492,11 +510,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         <header className="ob-permission-grid-header">
           <div className="ob-privacy-badge">
             <Eye size={18} aria-hidden />
-            <span>{t("onboarding.permissions.privacyBadge")}</span>
+            <span>{t(permissionsPrivacyBadgeKey)}</span>
           </div>
           <h1 className="ob-heading">{t("onboarding.permissions.heading")}</h1>
           <p className="ob-subtext">
-            {t("onboarding.permissions.visualDescription")}
+            {t(permissionsVisualDescriptionKey)}
           </p>
         </header>
 
@@ -596,7 +614,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               ? optionalPermissionsDone
                 ? t("onboarding.permissions.allGranted")
                 : t("onboarding.permissions.completeDescription")
-              : t("onboarding.permissions.description")}
+              : t(permissionsDescriptionKey)}
           </div>
           <div className="ob-permission-grid-action-buttons">
             <button

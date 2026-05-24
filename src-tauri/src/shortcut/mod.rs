@@ -277,6 +277,11 @@ pub fn change_keyboard_implementation_setting(
 ) -> Result<ImplementationChangeResult, String> {
     let current_settings = settings::get_settings(&app);
     let current_impl = current_settings.keyboard_implementation;
+    #[cfg(vox_jot_app_store)]
+    let _ = implementation;
+    #[cfg(vox_jot_app_store)]
+    let new_impl = KeyboardImplementation::Tauri;
+    #[cfg(not(vox_jot_app_store))]
     let new_impl = parse_keyboard_implementation(&implementation);
 
     // If same implementation, nothing to do
@@ -317,7 +322,10 @@ pub fn change_keyboard_implementation_setting(
         "settings-changed",
         serde_json::json!({
             "setting": "keyboard_implementation",
-            "value": implementation,
+            "value": match new_impl {
+                KeyboardImplementation::Tauri => "tauri",
+                KeyboardImplementation::HandyKeys => "handy_keys",
+            },
             "reset_bindings": reset_bindings
         }),
     );
@@ -357,6 +365,7 @@ fn validate_shortcut_for_implementation(
 }
 
 /// Parse a keyboard implementation string into the enum
+#[cfg(not(vox_jot_app_store))]
 fn parse_keyboard_implementation(s: &str) -> KeyboardImplementation {
     match s {
         "tauri" => KeyboardImplementation::Tauri,
@@ -1158,6 +1167,11 @@ pub fn change_word_correction_threshold_setting(
 #[specta::specta]
 pub fn change_paste_method_setting(app: AppHandle, method: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
+    #[cfg(vox_jot_app_store)]
+    let _ = method;
+    #[cfg(vox_jot_app_store)]
+    let parsed = PasteMethod::None;
+    #[cfg(not(vox_jot_app_store))]
     let parsed = match method.as_str() {
         "ctrl_v" => PasteMethod::CtrlV,
         "direct" => PasteMethod::Direct,
@@ -1225,6 +1239,11 @@ pub fn change_external_script_path_setting(
 #[specta::specta]
 pub fn change_clipboard_handling_setting(app: AppHandle, handling: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
+    #[cfg(vox_jot_app_store)]
+    let _ = handling;
+    #[cfg(vox_jot_app_store)]
+    let parsed = ClipboardHandling::CopyToClipboard;
+    #[cfg(not(vox_jot_app_store))]
     let parsed = match handling.as_str() {
         "dont_modify" => ClipboardHandling::DontModify,
         "copy_to_clipboard" => ClipboardHandling::CopyToClipboard,
@@ -1245,7 +1264,13 @@ pub fn change_clipboard_handling_setting(app: AppHandle, handling: String) -> Re
 #[specta::specta]
 pub fn change_auto_submit_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.auto_submit = enabled;
+    #[cfg(vox_jot_app_store)]
+    let _ = enabled;
+    #[cfg(vox_jot_app_store)]
+    let next_enabled = false;
+    #[cfg(not(vox_jot_app_store))]
+    let next_enabled = enabled;
+    settings.auto_submit = next_enabled;
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -1304,14 +1329,20 @@ pub fn change_local_privacy_mode_setting(app: AppHandle, enabled: bool) -> Resul
 #[specta::specta]
 pub fn change_screen_context_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.screen_context_enabled = enabled;
+    #[cfg(vox_jot_app_store)]
+    let _ = enabled;
+    #[cfg(vox_jot_app_store)]
+    let next_enabled = false;
+    #[cfg(not(vox_jot_app_store))]
+    let next_enabled = enabled;
+    settings.screen_context_enabled = next_enabled;
     settings::write_settings(&app, settings);
 
     let _ = app.emit(
         "settings-changed",
         serde_json::json!({
             "setting": "screen_context_enabled",
-            "value": enabled
+            "value": next_enabled
         }),
     );
 
@@ -1942,7 +1973,13 @@ pub fn change_correction_tracking_enabled_setting(
     enabled: bool,
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.correction_tracking_enabled = enabled;
+    #[cfg(vox_jot_app_store)]
+    let _ = enabled;
+    #[cfg(vox_jot_app_store)]
+    let next_enabled = false;
+    #[cfg(not(vox_jot_app_store))]
+    let next_enabled = enabled;
+    settings.correction_tracking_enabled = next_enabled;
     settings::write_settings(&app, settings);
     Ok(())
 }

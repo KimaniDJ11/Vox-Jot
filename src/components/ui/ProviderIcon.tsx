@@ -1264,6 +1264,151 @@ function MediatekMark({ size }: { size: number; color: string }) {
   );
 }
 
+function StabilityAIMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4.5 12c1.9-5.2 5.3-7.4 10.2-6.4 2.8.6 4.7 2.2 5.8 4.7"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.5 15.7c3.1 2.6 6.4 3.2 10 1.8 2.3-.9 4-2.5 5-4.8"
+        fill="none"
+        stroke="#A7F3D0"
+        strokeWidth={1.9}
+        strokeLinecap="round"
+      />
+      <circle cx={14.8} cy={10.7} r={2} fill={color} />
+    </svg>
+  );
+}
+
+function AceStepMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 17.5h3.2v-3.7h3.3v-3.6h3.3V6.5H19"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 7.2c1.5 1.6 3 1.6 4.5 0s3-1.6 4.5 0 3 1.6 4.5 0"
+        fill="none"
+        stroke="#FDE68A"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function YueMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M9 6v10.2a2.8 2.8 0 1 1-1.8-2.6V8l9-2v8.2a2.8 2.8 0 1 1-1.8-2.6V4.5L9 6Z"
+        fill={color}
+      />
+      <path
+        d="M5 19h8.5M5 21h6"
+        stroke="#BFDBFE"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DiffRhythmMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle
+        cx={12}
+        cy={12}
+        r={7}
+        fill="none"
+        stroke={color}
+        strokeWidth={2.1}
+      />
+      <circle
+        cx={12}
+        cy={12}
+        r={3.8}
+        fill="none"
+        stroke="#C4B5FD"
+        strokeWidth={1.8}
+      />
+      <path
+        d="M4 12h3.2M16.8 12H20M12 4v3.2M12 16.8V20"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MagentaMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <rect x={4} y={5} width={4} height={14} rx={1.4} fill={color} />
+      <rect x={10} y={9} width={4} height={10} rx={1.4} fill="#FBCFE8" />
+      <rect x={16} y={3} width={4} height={16} rx={1.4} fill={color} />
+    </svg>
+  );
+}
+
+function FigaroMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 18V6h12.5M5 12h9"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.5 6c1.9 1.4 2.9 3.3 2.9 5.8s-1 4.4-2.9 5.8"
+        fill="none"
+        stroke="#C7D2FE"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function RuleGuidedMusicMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 7h14M5 12h14M5 17h14"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <circle cx={8} cy={7} r={2} fill="#A7F3D0" />
+      <circle cx={15} cy={12} r={2} fill={color} />
+      <circle cx={10.5} cy={17} r={2} fill="#A7F3D0" />
+    </svg>
+  );
+}
+
 // ---------- Brand Configurations ----------
 
 type MarkComponent = (props: {
@@ -1305,6 +1450,38 @@ const BRANDS: Record<string, BrandConfig> = {
   google: { bg: "#FFFFFF", fg: "#4285F4", letter: "G", mark: GoogleMark },
   deepseek: { bg: "#4D6BFE", fg: "#FFFFFF", letter: "D", mark: DeepSeekMark },
   mediatek: { bg: "#E60012", fg: "#FFFFFF", letter: "MT", mark: MediatekMark },
+  stability_ai: {
+    bg: "#111827",
+    fg: "#FFFFFF",
+    letter: "SA",
+    mark: StabilityAIMark,
+  },
+  ace_step: {
+    bg: "#7C3AED",
+    fg: "#FFFFFF",
+    letter: "AS",
+    mark: AceStepMark,
+  },
+  yue: { bg: "#2563EB", fg: "#FFFFFF", letter: "Y", mark: YueMark },
+  diffrhythm: {
+    bg: "#4338CA",
+    fg: "#FFFFFF",
+    letter: "D",
+    mark: DiffRhythmMark,
+  },
+  magenta: {
+    bg: "#BE185D",
+    fg: "#FFFFFF",
+    letter: "M",
+    mark: MagentaMark,
+  },
+  figaro: { bg: "#4F46E5", fg: "#FFFFFF", letter: "F", mark: FigaroMark },
+  rule_guided_music: {
+    bg: "#047857",
+    fg: "#FFFFFF",
+    letter: "R",
+    mark: RuleGuidedMusicMark,
+  },
   liquid_ai: {
     bg: "#00A7A7",
     fg: "#FFFFFF",
@@ -1496,6 +1673,14 @@ const PROVIDER_BRAND: Record<string, string> = {
   stt_qwen: "qwen",
   apple: "apple",
   qwen: "qwen",
+  stability_ai: "stability_ai",
+  stable_audio: "stability_ai",
+  ace_step: "ace_step",
+  yue: "yue",
+  diffrhythm: "diffrhythm",
+  magenta: "magenta",
+  figaro: "figaro",
+  rule_guided_music: "rule_guided_music",
   stt_mlx_audio: "apple",
   stt_apple_speech: "apple",
   stt_hf_verified: "huggingface",
@@ -1859,6 +2044,14 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   stt_mlx_audio: "MLX Audio",
   stt_apple_speech: "Apple Speech",
   mlx_longcat_audiodit: "Meituan LongCat",
+  stability_ai: "Stability AI",
+  stable_audio: "Stability AI",
+  ace_step: "ACE-Step",
+  yue: "YuE",
+  diffrhythm: "DiffRhythm",
+  magenta: "Magenta",
+  figaro: "FIGARO",
+  rule_guided_music: "Rule-Guided Music",
   mlx_soprano: "Soprano",
   mlx_melotts: "MeloTTS",
   mlx_higgs_audio: "Boson Higgs Audio",

@@ -878,6 +878,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "yue-full-song",
                 label: "YuE",
                 provider: "HKUST / M-A-P",
+                provider_id: "yue",
                 description: "Open full-song generation model for lyrics-to-song workflows with vocals and accompaniment. It needs a dedicated long-running Python runtime before Vox Jot can download or generate with it safely.",
                 source_url: "https://github.com/multimodal-art-projection/YuE",
                 license_label: "Apache-2.0",
@@ -894,6 +895,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "diffrhythm-full-song",
                 label: "DiffRhythm",
                 provider: "ASLP Lab",
+                provider_id: "diffrhythm",
                 description: "Diffusion-based full-song generator for vocals and accompaniment. It fits Studio Song generation, but needs a dedicated runtime and app-path validation.",
                 source_url: "https://github.com/ASLP-lab/DiffRhythm",
                 license_label: "Apache-2.0",
@@ -910,6 +912,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "audiocraft-musicgen",
                 label: "AudioCraft / MusicGen",
                 provider: "Meta",
+                provider_id: "meta",
                 description: "Established research stack for text-to-music and text-to-audio experiments. The code is MIT, but commonly used MusicGen weights are non-commercial, so Vox Jot keeps it blocked for general app downloads.",
                 source_url: "https://github.com/facebookresearch/audiocraft",
                 license_label: "MIT code / non-commercial weights",
@@ -926,6 +929,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "levo-2-songgeneration",
                 label: "SongGeneration / LeVo 2",
                 provider: "Tencent AI Lab",
+                provider_id: "tencent",
                 description: "High-quality song-generation research model. Its published license is limited to academic, research, and education use, so it is blocked from production Studio downloads.",
                 source_url: "https://github.com/tencent-ailab/SongGeneration",
                 license_label: "Research / education only",
@@ -942,6 +946,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "music-transformer-piano",
                 label: "Music Transformer / Piano Transformer",
                 provider: "Magenta",
+                provider_id: "magenta",
                 description: "Archived symbolic performance generator for note-level composition sketches. It belongs in a future MIDI/Composition lane, not rendered Sound Design audio.",
                 source_url: "https://github.com/magenta/listen-to-transformer",
                 license_label: "Apache-2.0",
@@ -958,6 +963,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "figaro-symbolic",
                 label: "FIGARO",
                 provider: "Dimitri von Rutte",
+                provider_id: "figaro",
                 description: "Symbolic music generator with fine-grained artistic control and pretrained models. It is the strongest future candidate for MIDI composition sketches.",
                 source_url: "https://github.com/dvruette/figaro",
                 license_label: "MIT",
@@ -974,6 +980,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "symbolic-music-diffusion",
                 label: "Symbolic Music Diffusion",
                 provider: "Magenta",
+                provider_id: "magenta",
                 description: "Archived diffusion-based symbolic music project. Useful as a reference for a future Composition lane, but not a direct rendered-audio engine.",
                 source_url: "https://github.com/magenta/symbolic-music-diffusion",
                 license_label: "Apache-2.0",
@@ -990,6 +997,7 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 id: "rule-guided-music",
                 label: "Rule-Guided Music",
                 provider: "yjhuangcd",
+                provider_id: "rule_guided_music",
                 description: "Rule-guided symbolic diffusion generator for controllable MIDI-like composition. It fits advanced Composition controls, not quick rendered SFX.",
                 source_url: "https://github.com/yjhuangcd/rule-guided-music",
                 license_label: "Research code",
@@ -1024,7 +1032,7 @@ fn stable_audio3_catalog_model(
         id: id.to_string(),
         label: label.to_string(),
         provider: "Stability AI".to_string(),
-        provider_id: "generic".to_string(),
+        provider_id: "stability_ai".to_string(),
         description: description.to_string(),
         source_kind: CreativeAudioModelSourceKind::OfficialSource,
         source_url: STABLE_AUDIO3_SOURCE_URL.to_string(),
@@ -1056,6 +1064,7 @@ fn ace_step_catalog_model() -> CreativeAudioModelDescriptor {
         id: ACE_STEP_15_MUSIC_ID,
         label: "ACE-Step 1.5",
         provider: "ACE Studio / StepFun",
+        provider_id: "ace_step",
         description: "Planned Studio engine for local prompt-to-music and full-song generation with lyrics, reference audio, long durations, and Apple Silicon MLX support. Runtime integration is not wired yet, so it is listed for fit and roadmap visibility only.",
         source_url: ACE_STEP_15_SOURCE_URL,
         license_label: "MIT",
@@ -1074,6 +1083,7 @@ struct PlannedCreativeAudioModel {
     id: &'static str,
     label: &'static str,
     provider: &'static str,
+    provider_id: &'static str,
     description: &'static str,
     source_url: &'static str,
     license_label: &'static str,
@@ -1094,7 +1104,7 @@ fn planned_creative_audio_catalog_model(
         id: model.id.to_string(),
         label: model.label.to_string(),
         provider: model.provider.to_string(),
-        provider_id: "generic".to_string(),
+        provider_id: model.provider_id.to_string(),
         description: model.description.to_string(),
         source_kind: CreativeAudioModelSourceKind::OfficialSource,
         source_url: model.source_url.to_string(),
@@ -3120,6 +3130,7 @@ mod tests {
     fn exposes_ace_step_as_future_catalog_entry() {
         let model = ace_step_catalog_model();
         assert_eq!(model.id, ACE_STEP_15_MUSIC_ID);
+        assert_eq!(model.provider_id, "ace_step");
         assert_eq!(model.availability, CreativeAudioAvailability::Future);
         assert!(model.experimental);
         assert!(!model.downloadable);
@@ -3135,6 +3146,7 @@ mod tests {
                 id: "figaro-symbolic",
                 label: "FIGARO",
                 provider: "Dimitri von Rutte",
+                provider_id: "figaro",
                 description: "Symbolic music generator with fine-grained artistic control.",
                 source_url: "https://github.com/dvruette/figaro",
                 license_label: "MIT",
@@ -3151,6 +3163,7 @@ mod tests {
                 id: "levo-2-songgeneration",
                 label: "SongGeneration / LeVo 2",
                 provider: "Tencent AI Lab",
+                provider_id: "tencent",
                 description: "Research-only song generation model.",
                 source_url: "https://github.com/tencent-ailab/SongGeneration",
                 license_label: "Research / education only",
@@ -3167,6 +3180,8 @@ mod tests {
 
         assert!(models.iter().all(|model| !model.downloadable));
         assert!(models.iter().all(|model| !model.runnable));
+        assert_eq!(models[1].provider_id, "figaro");
+        assert_eq!(models[2].provider_id, "tencent");
         assert!(models
             .iter()
             .any(|model| model.modes.contains(&StorySoundMode::Composition)));

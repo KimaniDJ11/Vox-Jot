@@ -675,6 +675,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub selected_tts_profile_id: Option<String>,
     #[serde(default)]
+    pub selected_creative_audio_model_id: Option<String>,
+    #[serde(default)]
     pub tts_active_preset_id: Option<String>,
     #[serde(default)]
     pub tts_voice_presets: Vec<TtsVoicePreset>,
@@ -1985,6 +1987,7 @@ pub fn get_default_settings() -> AppSettings {
         selected_tts_model_id: None,
         selected_tts_voice_id: None,
         selected_tts_profile_id: None,
+        selected_creative_audio_model_id: None,
         tts_active_preset_id: None,
         tts_voice_presets: Vec::new(),
         tts_rate: default_tts_rate(),
@@ -3237,6 +3240,7 @@ mod tests {
         assert_eq!(settings.selected_tts_provider_id, "");
         assert!(settings.selected_tts_model_id.is_none());
         assert!(settings.selected_tts_voice_id.is_none());
+        assert!(settings.selected_creative_audio_model_id.is_none());
         assert_eq!(
             settings.selected_llm_provider_id,
             default_selected_llm_provider_id()

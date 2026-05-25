@@ -1,5 +1,7 @@
 use crate::commands::tts::preset_from_input;
-use crate::settings::{get_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput};
+use crate::settings::{
+    get_settings, write_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput,
+};
 use crate::tts::{SpeakRequest, TtsManager};
 use hound::{WavSpec, WavWriter};
 use log::warn;
@@ -208,6 +210,8 @@ pub struct CreativeAudioModelDescriptor {
     pub size_hint_label: String,
     pub installed: bool,
     pub runnable: bool,
+    pub selected: bool,
+    pub active: bool,
     pub downloadable: bool,
     pub recommended: bool,
     pub status_label: String,
@@ -667,6 +671,28 @@ pub fn get_creative_audio_model_catalog(
 
 #[tauri::command]
 #[specta::specta]
+pub fn set_creative_audio_model_selection(
+    app: AppHandle,
+    model_id: String,
+) -> Result<CreativeAudioModelCatalog, String> {
+    let model = creative_audio_model_by_id(&app, &model_id)?;
+    if !model.runnable {
+        return Err(format!(
+            "{} is not ready yet. Download it before making it active.",
+            model.label
+        ));
+    }
+
+    let mut settings = get_settings(&app);
+    settings.selected_creative_audio_model_id = Some(model.id);
+    write_settings(&app, settings.clone());
+    let _ = app.emit("settings-changed", settings);
+    let _ = app.emit("creative-audio-selection-changed", &model_id);
+    creative_audio_model_catalog(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn download_creative_audio_model(
     app: AppHandle,
     model_id: String,
@@ -774,6 +800,7 @@ pub fn delete_creative_audio_model(
                 )
             })?;
         }
+        clear_creative_audio_selection_if_deleted(&app, &model_id);
         return creative_audio_model_by_id(&app, &model_id);
     }
 
@@ -787,6 +814,7 @@ pub fn delete_creative_audio_model(
                 )
             })?;
         }
+        clear_creative_audio_selection_if_deleted(&app, &model_id);
         return creative_audio_model_by_id(&app, &model_id);
     }
 
@@ -805,6 +833,7 @@ pub fn delete_creative_audio_model(
                 )
             })?;
         }
+        clear_creative_audio_selection_if_deleted(&app, &model_id);
         return creative_audio_model_by_id(&app, &model_id);
     }
 
@@ -821,7 +850,19 @@ pub fn delete_creative_audio_model(
             })?;
         }
     }
+    clear_creative_audio_selection_if_deleted(&app, &model_id);
     creative_audio_model_by_id(&app, &model_id)
+}
+
+fn clear_creative_audio_selection_if_deleted(app: &AppHandle, model_id: &str) {
+    let mut settings = get_settings(app);
+    if settings.selected_creative_audio_model_id.as_deref() != Some(model_id) {
+        return;
+    }
+    settings.selected_creative_audio_model_id = None;
+    write_settings(app, settings.clone());
+    let _ = app.emit("settings-changed", settings);
+    let _ = app.emit("creative-audio-selection-changed", "");
 }
 
 #[tauri::command]
@@ -1047,6 +1088,7 @@ fn stable_audio3_status(app: &AppHandle) -> Result<StableAudio3Status, String> {
 fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCatalog, String> {
     let install_root = crate::storage_paths::creative_audio_models_dir(app)
         .map_err(|err| format!("Failed to resolve creative audio model dir: {err}"))?;
+    let settings = get_settings(app);
     let active_downloads = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
         .lock()
         .unwrap_or_else(|err| err.into_inner())
@@ -1084,11 +1126,37 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
             active_downloads.contains(spec.id),
         )?);
     }
+    let selected_model_id = selected_creative_audio_model_id(&settings, &models);
+    for model in &mut models {
+        model.selected = selected_model_id.as_deref() == Some(model.id.as_str());
+        model.active = model.selected && model.runnable;
+    }
 
     Ok(CreativeAudioModelCatalog {
         install_root: install_root.to_string_lossy().to_string(),
         models,
     })
+}
+
+fn selected_creative_audio_model_id(
+    settings: &AppSettings,
+    models: &[CreativeAudioModelDescriptor],
+) -> Option<String> {
+    settings
+        .selected_creative_audio_model_id
+        .as_deref()
+        .and_then(|selected_id| {
+            models
+                .iter()
+                .any(|model| model.id == selected_id && model.runnable)
+                .then(|| selected_id.to_string())
+        })
+        .or_else(|| {
+            models
+                .iter()
+                .find(|model| model.runnable)
+                .map(|model| model.id.clone())
+        })
 }
 
 fn stable_audio3_catalog_model(
@@ -1118,6 +1186,8 @@ fn stable_audio3_catalog_model(
         size_hint_label: size_hint_label.to_string(),
         installed,
         runnable: installed && !downloading,
+        selected: false,
+        active: false,
         downloadable: true,
         recommended,
         status_label: if installed && !downloading {
@@ -1157,6 +1227,8 @@ fn hf_creative_audio_catalog_model(
         size_hint_label: spec.size_hint_label.to_string(),
         installed,
         runnable: installed && !downloading,
+        selected: false,
+        active: false,
         downloadable: true,
         recommended: spec.recommended,
         status_label: if installed && !downloading {

@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Transkript ve AI çıktı doğruluğu",
           "detail": "Transkriptler, konuşmacı etiketleri, OCR metni, çeviriler ve üretilen konuşma yanlış olabilir. Önemli çıktılara güvenmeden önce inceleyin."
+        },
+        "creativeAudio": {
+          "title": "Uretilen muzik ve ses tasarimi",
+          "detail": "Yaratici ses modelleri efekt, ortam sesi, muzik, sarki ve beste uretebilir. Uretilen sesi herkese acik, ticari veya dagitilan calismalarda kullanmadan once her modelin sartlarini inceleyin ve gerekli atiflari koruyun."
         }
       },
       "actionsTitle": "İlgili kontroller",
@@ -2859,7 +2863,8 @@
       "openNotices": "Üçüncü taraf bildirimleri",
       "ackTitle": "Yerel onay",
       "ackLabel": "Bu model ve kayıt sorumluluklarını anlıyorum.",
-      "ackDescription": "Bu onay bu cihazda yerel olarak saklanır. Kısıtlı model indirmeleri yine kendi modele özel onayını gerektirir."
+      "ackDescription": "Bu onay bu cihazda yerel olarak saklanır. Kısıtlı model indirmeleri yine kendi modele özel onayını gerektirir.",
+      "openCreativeAudioHub": "Yaratici ses modelleri"
     },
     "readiness": {
       "title": "Dikte hazırlığı",

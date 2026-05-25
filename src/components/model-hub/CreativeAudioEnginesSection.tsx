@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
@@ -20,6 +21,9 @@ import {
 import HubModelCard, {
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import LicenseAcknowledgementDialog, {
+  type LicenseAcknowledgementGate,
+} from "@/components/model-hub/LicenseAcknowledgementDialog";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import { buildHubDownloadState } from "@/components/model-hub/hubDownloadState";
@@ -51,6 +55,8 @@ interface CreativeAudioModelDescriptor {
   size_hint_label: string;
   installed: boolean;
   runnable: boolean;
+  selected: boolean;
+  active: boolean;
   downloadable: boolean;
   recommended: boolean;
   status_label: string;
@@ -122,6 +128,31 @@ const modelMatchesQuery = (
 const progressCanCancel = (phase?: string): boolean =>
   !["complete", "failed", "cancelled"].includes(phase ?? "");
 
+const creativeAudioLicenseGate = (
+  model: CreativeAudioModelDescriptor,
+): LicenseAcknowledgementGate | null => {
+  if (model.license_label.includes("CC-BY-NC")) {
+    return {
+      kind: "non_commercial",
+      licenseLabel: model.license_label,
+      termsUrl: model.source_url,
+      note: "Generated music, SFX, ambience, and song output must follow the publisher's license and any attribution or non-commercial restrictions.",
+    };
+  }
+  if (
+    model.license_label.toLowerCase().includes("community license") ||
+    model.license_label.toLowerCase().includes("custom")
+  ) {
+    return {
+      kind: "custom_review",
+      licenseLabel: model.license_label,
+      termsUrl: model.source_url,
+      note: "Review the model publisher's terms before using generated audio in commercial, distributed, or public projects.",
+    };
+  }
+  return null;
+};
+
 const CreativeAudioEnginesSection: React.FC<
   CreativeAudioEnginesSectionProps
 > = ({
@@ -139,6 +170,8 @@ const CreativeAudioEnginesSection: React.FC<
   const [deleteConfirmModelId, setDeleteConfirmModelId] = useState<
     string | null
   >(null);
+  const [licenseGateDownloadModel, setLicenseGateDownloadModel] =
+    useState<CreativeAudioModelDescriptor | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<
     Record<string, CreativeAudioDownloadProgress>
   >({});
@@ -256,8 +289,19 @@ const CreativeAudioEnginesSection: React.FC<
   }, [refreshCatalog]);
 
   const startDownload = useCallback(
-    async (model: CreativeAudioModelDescriptor) => {
+    async (
+      model: CreativeAudioModelDescriptor,
+      options: { licenseAcknowledged?: boolean } = {},
+    ) => {
       if (busyModelId || activeDownloads.has(model.id) || !model.downloadable) {
+        return;
+      }
+      if (
+        !model.installed &&
+        !options.licenseAcknowledged &&
+        creativeAudioLicenseGate(model)
+      ) {
+        setLicenseGateDownloadModel(model);
         return;
       }
       setError(null);
@@ -302,6 +346,18 @@ const CreativeAudioEnginesSection: React.FC<
     },
     [activeDownloads, busyModelId, refreshCatalog],
   );
+
+  const closeLicenseGateDownload = useCallback(() => {
+    if (busyModelId) return;
+    setLicenseGateDownloadModel(null);
+  }, [busyModelId]);
+
+  const confirmLicenseGateDownload = useCallback(() => {
+    if (!licenseGateDownloadModel || busyModelId) return;
+    const model = licenseGateDownloadModel;
+    setLicenseGateDownloadModel(null);
+    void startDownload(model, { licenseAcknowledged: true });
+  }, [busyModelId, licenseGateDownloadModel, startDownload]);
 
   const cancelDownload = useCallback(async (modelId: string) => {
     setCancellingDownloads((current) => new Set(current).add(modelId));
@@ -380,7 +436,7 @@ const CreativeAudioEnginesSection: React.FC<
   const accessors = useMemo(
     () => ({
       label: (model: CreativeAudioModelDescriptor) => model.label,
-      active: () => false,
+      active: (model: CreativeAudioModelDescriptor) => model.active,
       installed: (model: CreativeAudioModelDescriptor) => model.installed,
       runnable: (model: CreativeAudioModelDescriptor) => model.runnable,
       inProgress: (model: CreativeAudioModelDescriptor) =>
@@ -527,20 +583,37 @@ const CreativeAudioEnginesSection: React.FC<
                     }),
                   });
 
+                  const licenseGate = creativeAudioLicenseGate(model);
                   const headerBadges: CompactBadgeItem[] = [
-                    model.runnable
+                    model.active
                       ? {
-                          id: "ready",
-                          label: t("modelHub.creativeAudio.ready", {
-                            defaultValue: "Ready",
+                          id: "active",
+                          label: t("listen.engineLibrary.badges.active", {
+                            defaultValue: "Active",
                           }),
                           variant: "primary",
                           icon: (
                             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                           ),
-                          detail: t("modelHub.creativeAudio.readyDetail", {
+                          detail: t("modelHub.creativeAudio.activeDetail", {
                             defaultValue:
-                              "Installed and available in Story Studio Sound Design.",
+                              "Selected for Story Studio sound generation.",
+                          }),
+                        }
+                      : null,
+                    licenseGate
+                      ? {
+                          id: "license-gate",
+                          label: t("modelHub.licenseGate.badge", {
+                            defaultValue: "Restricted license",
+                          }),
+                          variant: "secondary",
+                          icon: (
+                            <FileMusic className="h-3.5 w-3.5" aria-hidden />
+                          ),
+                          detail: t("modelHub.licenseGate.badgeDetail", {
+                            defaultValue:
+                              "Requires acknowledging publisher license restrictions before download.",
                           }),
                         }
                       : null,
@@ -612,6 +685,27 @@ const CreativeAudioEnginesSection: React.FC<
                     isDownloading ||
                     isCancelling ||
                     (!model.installed && !model.downloadable);
+                  const selectModel = async () => {
+                    if (busyModelId || isDownloading || isCancelling) return;
+                    setError(null);
+                    setBusyModelId(model.id);
+                    try {
+                      const result = await invoke<CreativeAudioModelCatalog>(
+                        "set_creative_audio_model_selection",
+                        { modelId: model.id },
+                      );
+                      setCatalog(result);
+                    } catch (err) {
+                      setError(
+                        normalizeError(
+                          err,
+                          "Could not make this creative audio model active.",
+                        ),
+                      );
+                    } finally {
+                      setBusyModelId(null);
+                    }
+                  };
                   const trailing: HubTrailing = {
                     kind: "custom",
                     node: (
@@ -768,16 +862,23 @@ const CreativeAudioEnginesSection: React.FC<
                       footerMetaIcon={
                         <Server className="h-3.5 w-3.5" aria-hidden />
                       }
-                      active={model.runnable}
+                      active={model.active}
                       trailing={trailing}
                       downloadState={downloadState}
                       footerExtra={footerExtra}
-                      onClick={() => {
-                        if (deleteConfirmOpen || actionDisabled) return;
-                        if (!model.installed && model.downloadable) {
-                          void startDownload(model);
-                        }
-                      }}
+                      onClick={
+                        !model.installed && model.downloadable
+                          ? () => {
+                              if (deleteConfirmOpen || actionDisabled) return;
+                              void startDownload(model);
+                            }
+                          : model.runnable && !model.active
+                            ? () => {
+                                if (deleteConfirmOpen) return;
+                                void selectModel();
+                              }
+                          : undefined
+                      }
                     />
                   );
                 })}
@@ -796,6 +897,29 @@ const CreativeAudioEnginesSection: React.FC<
           })}
         />
       )}
+      <LicenseAcknowledgementDialog
+        open={Boolean(licenseGateDownloadModel)}
+        modelName={licenseGateDownloadModel?.label ?? ""}
+        acknowledgementId={
+          licenseGateDownloadModel
+            ? `creative-audio.${licenseGateDownloadModel.provider_id}.${licenseGateDownloadModel.id}`
+            : "creative-audio.unknown"
+        }
+        gate={
+          licenseGateDownloadModel
+            ? creativeAudioLicenseGate(licenseGateDownloadModel)
+            : null
+        }
+        busy={Boolean(busyModelId)}
+        onOpenTerms={async () => {
+          if (!licenseGateDownloadModel) return;
+          const gate = creativeAudioLicenseGate(licenseGateDownloadModel);
+          if (!gate) return;
+          await openUrl(gate.termsUrl);
+        }}
+        onCancel={closeLicenseGateDownload}
+        onConfirm={confirmLicenseGateDownload}
+      />
     </section>
   );
 };

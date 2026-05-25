@@ -6,16 +6,18 @@ import React, {
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
+  AlertCircle,
   Loader2,
   FileMusic,
   Pencil,
   Play,
-  RefreshCw,
   Sparkles,
+  Square,
   Trash2,
   Volume2,
   X,
@@ -25,6 +27,8 @@ import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
+import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
+import { ProviderIcon } from "@/components/ui/ProviderIcon";
 
 export type StorySoundMode =
   | "sfx"
@@ -42,14 +46,18 @@ const allStorySoundModes: StorySoundMode[] = [
   "song",
   "composition",
 ];
+const projectSoundPreviewStartedEvent = "vox-jot:project-sound-preview-started";
 
 interface CreativeAudioModelDescriptor {
   id: string;
   label: string;
   provider: string;
+  provider_id: string;
   status_label: string;
   installed: boolean;
   runnable: boolean;
+  selected: boolean;
+  active: boolean;
   downloadable: boolean;
   modes: StorySoundMode[];
 }
@@ -75,6 +83,26 @@ interface SoundDesignPanelProps {
   projectId: string;
   sounds: StorySoundItem[];
   onSoundsChanged: () => void;
+}
+
+type ProjectSoundGenerationStatus =
+  | "queued"
+  | "generating"
+  | "failed"
+  | "cancelled";
+
+interface ProjectSoundGenerationJob {
+  renderId: string;
+  title: string;
+  prompt: string;
+  mode: StorySoundMode;
+  durationSeconds: number;
+  modelId: string;
+  modelLabel: string;
+  status: ProjectSoundGenerationStatus;
+  queuedAtMs: number;
+  startedAtMs?: number;
+  error?: string;
 }
 
 const modeDefaults: Record<
@@ -128,13 +156,15 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   );
   const [selectedModelId, setSelectedModelId] = useState("");
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const activeRenderIdRef = useRef<string | null>(null);
+  const [soundJobs, setSoundJobs] = useState<ProjectSoundGenerationJob[]>([]);
+  const soundJobsRef = useRef<ProjectSoundGenerationJob[]>([]);
+  const soundGenerationWorkerRunningRef = useRef(false);
 
   const selectedModel = useMemo(() => {
     const models = catalog?.models ?? [];
     return (
       models.find((model) => model.id === selectedModelId) ??
+      models.find((model) => model.active) ??
       models.find((model) => model.runnable) ??
       models[0] ??
       null
@@ -178,22 +208,24 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
         : { min: 5, max: 60 };
   const setupActionAvailable = Boolean(selectedModel?.downloadable);
 
-  const refreshCatalog = useCallback(async () => {
+  const refreshCatalog = useCallback(async (showError = true) => {
     setIsLoadingCatalog(true);
     try {
       const next = await invoke<CreativeAudioModelCatalog>(
         "get_creative_audio_model_catalog",
       );
       setCatalog(next);
-      setSelectedModelId((current) =>
-        next.models.some((model) => model.id === current)
-          ? current
-          : ((next.models.find((model) => model.runnable) ?? next.models[0])
-              ?.id ?? ""),
+      setSelectedModelId(
+        (next.models.find((model) => model.active) ??
+          next.models.find((model) => model.runnable) ??
+          next.models[0])
+          ?.id ?? "",
       );
     } catch (error) {
       console.error("Failed to load creative audio catalog:", error);
-      toast.error("Could not check creative audio models.");
+      if (showError) {
+        toast.error("Could not check creative audio models.");
+      }
     } finally {
       setIsLoadingCatalog(false);
     }
@@ -202,6 +234,22 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   useEffect(() => {
     void refreshCatalog();
   }, [refreshCatalog]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      unlisten = await listen("creative-audio-selection-changed", () => {
+        void refreshCatalog(false);
+      });
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, [refreshCatalog]);
+
+  useRefreshOnWindowFocus(() => refreshCatalog(false), {
+    minIntervalMs: 5000,
+  });
 
   const applyMode = useCallback((nextMode: StorySoundMode) => {
     setMode(nextMode);
@@ -216,67 +264,153 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
     applyMode(availableModes[0] ?? "sfx");
   }, [applyMode, availableModes, mode]);
 
+  useEffect(() => {
+    soundJobsRef.current = soundJobs;
+  }, [soundJobs]);
+
+  const startNextSoundJob = useCallback(() => {
+    if (soundGenerationWorkerRunningRef.current) return;
+    const nextJob = soundJobsRef.current.find((job) => job.status === "queued");
+    if (!nextJob) return;
+
+    soundGenerationWorkerRunningRef.current = true;
+    const markGenerating = (
+      jobs: ProjectSoundGenerationJob[],
+    ): ProjectSoundGenerationJob[] =>
+      jobs.map((job) =>
+        job.renderId === nextJob.renderId
+          ? { ...job, status: "generating", startedAtMs: Date.now() }
+          : job,
+      );
+    soundJobsRef.current = markGenerating(soundJobsRef.current);
+    setSoundJobs(markGenerating);
+
+    void (async () => {
+      try {
+        await invoke<StorySoundItem>("generate_story_sound", {
+          request: {
+            render_id: nextJob.renderId,
+            project_id: projectId,
+            title: nextJob.title,
+            prompt: nextJob.prompt,
+            model_id: nextJob.modelId,
+            mode: nextJob.mode,
+            duration_seconds: nextJob.durationSeconds,
+            seed: null,
+          },
+        });
+        const removeCompleted = (jobs: ProjectSoundGenerationJob[]) =>
+          jobs.filter((job) => job.renderId !== nextJob.renderId);
+        soundJobsRef.current = removeCompleted(soundJobsRef.current);
+        setSoundJobs(removeCompleted);
+        onSoundsChanged();
+        toast.success("Sound saved to this project.");
+      } catch (error) {
+        const message = normalizeError(error, "Could not generate sound.");
+        const wasCancelled = message.toLowerCase().includes("cancelled");
+        const markFinished = (
+          jobs: ProjectSoundGenerationJob[],
+        ): ProjectSoundGenerationJob[] =>
+          jobs.map((job) =>
+            job.renderId === nextJob.renderId
+              ? {
+                  ...job,
+                  status: wasCancelled ? "cancelled" : "failed",
+                  error: wasCancelled ? undefined : message,
+                }
+              : job,
+          );
+        soundJobsRef.current = markFinished(soundJobsRef.current);
+        setSoundJobs(markFinished);
+        if (!wasCancelled) {
+          toast.error(message);
+        }
+      } finally {
+        soundGenerationWorkerRunningRef.current = false;
+        window.setTimeout(() => startNextSoundJob(), 0);
+      }
+    })();
+  }, [onSoundsChanged, projectId]);
+
+  useEffect(() => {
+    startNextSoundJob();
+  }, [soundJobs, startNextSoundJob]);
+
   const generate = useCallback(async () => {
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt || !modeReady || !selectedModel) return;
 
     const renderId = crypto.randomUUID();
-    activeRenderIdRef.current = renderId;
-    setIsGenerating(true);
-    try {
-      await invoke<StorySoundItem>("generate_story_sound", {
-        request: {
-          render_id: renderId,
-          project_id: projectId,
-          title: title.trim(),
-          prompt: trimmedPrompt,
-          model_id: selectedModel.id,
-          mode,
-          duration_seconds: clampDuration(
-            duration,
-            durationBounds.min,
-            durationBounds.max,
-          ),
-          seed: null,
-        },
-      });
-      onSoundsChanged();
-      toast.success("Sound saved to this project.");
-    } catch (error) {
-      const message = normalizeError(error, "Could not generate sound.");
-      if (!message.toLowerCase().includes("cancelled")) {
-        toast.error(message);
-      }
-    } finally {
-      activeRenderIdRef.current = null;
-      setIsGenerating(false);
-    }
+    const durationSeconds = clampDuration(
+      duration,
+      durationBounds.min,
+      durationBounds.max,
+    );
+    const nextJob: ProjectSoundGenerationJob = {
+      renderId,
+      title: title.trim(),
+      prompt: trimmedPrompt,
+      mode,
+      durationSeconds,
+      modelId: selectedModel.id,
+      modelLabel: selectedModel.label,
+      status: "queued",
+      queuedAtMs: Date.now(),
+    };
+    setSoundJobs((current) => {
+      const next = [...current, nextJob];
+      soundJobsRef.current = next;
+      return next;
+    });
+    toast.message("Project sound queued.");
   }, [
     duration,
     durationBounds.max,
     durationBounds.min,
     mode,
     modeReady,
-    onSoundsChanged,
     prompt,
-    projectId,
     selectedModel,
     title,
   ]);
 
-  const cancel = useCallback(async () => {
-    const renderId = activeRenderIdRef.current;
-    if (!renderId) return;
+  const cancelSoundJob = useCallback(async (job: ProjectSoundGenerationJob) => {
+    if (job.status === "queued") {
+      const removeQueued = (jobs: ProjectSoundGenerationJob[]) =>
+        jobs.filter((currentJob) => currentJob.renderId !== job.renderId);
+      soundJobsRef.current = removeQueued(soundJobsRef.current);
+      setSoundJobs(removeQueued);
+      return;
+    }
+    const markCancelled = (
+      jobs: ProjectSoundGenerationJob[],
+    ): ProjectSoundGenerationJob[] =>
+      jobs.map((currentJob) =>
+        currentJob.renderId === job.renderId
+          ? { ...currentJob, status: "cancelled", error: undefined }
+          : currentJob,
+      );
+    soundJobsRef.current = markCancelled(soundJobsRef.current);
+    setSoundJobs(markCancelled);
     try {
-      await invoke("cancel_story_sound_generation", { renderId });
+      await invoke("cancel_story_sound_generation", { renderId: job.renderId });
     } catch (error) {
       console.error("Failed to cancel sound generation:", error);
     }
   }, []);
 
+  const dismissSoundJob = useCallback((job: ProjectSoundGenerationJob) => {
+    const removeJob = (jobs: ProjectSoundGenerationJob[]) =>
+      jobs.filter((currentJob) => currentJob.renderId !== job.renderId);
+    soundJobsRef.current = removeJob(soundJobsRef.current);
+    setSoundJobs(removeJob);
+  }, []);
+
   const openCreativeAudioModels = useCallback(async () => {
     await openModelHub("creative_audio", { scope: "creative_audio" });
   }, []);
+  const visibleSoundJobs = soundJobs;
+  const totalProjectSoundCount = sounds.length + visibleSoundJobs.length;
 
   return (
     <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
@@ -295,19 +429,36 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
             })}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => void refreshCatalog()}
-          disabled={isLoadingCatalog || isGenerating}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {t("common.refresh")}
-        </Button>
+        {selectedModel ? (
+          <button
+            type="button"
+            className="inline-flex max-w-full shrink-0 items-center gap-2 px-1 py-1 text-left text-sm font-semibold text-[var(--text)] transition-colors hover:text-[var(--accent)] focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            onClick={() => void openCreativeAudioModels()}
+            title={`${selectedModel.provider} - ${selectedModel.label}`}
+            aria-label={t("storyStudio.sound.selectedModelAriaLabel", {
+              defaultValue: "Selected creative audio model: {{model}}",
+              model: selectedModel.label,
+            })}
+          >
+            <ProviderIcon providerId={selectedModel.provider_id} size="sm" />
+            <span className="min-w-0 truncate">{selectedModel.label}</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="primary-soft"
+          size="sm"
+          onClick={() => void generate()}
+          disabled={!modeReady || !prompt.trim()}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          {t("storyStudio.sound.generate", {
+            defaultValue: "Generate Sound",
+          })}
+        </Button>
         <SegmentedControl<StorySoundMode>
           value={mode}
           onChange={applyMode}
@@ -317,24 +468,18 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
           })}
           items={modeItems}
         />
-        <span
-          className={`inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-semibold ${
-            modeReady
-              ? "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
-              : "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--muted)]"
-          }`}
-        >
-          {isLoadingCatalog
-            ? t("storyStudio.sound.loadingModels", {
-                defaultValue: "Loading models",
-              })
-            : modeReady
-              ? t("storyStudio.sound.ready", { defaultValue: "Ready" })
+        {!modeReady ? (
+          <span className="inline-flex min-h-9 items-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-xs font-semibold text-[var(--muted)]">
+            {isLoadingCatalog
+              ? t("storyStudio.sound.loadingModels", {
+                  defaultValue: "Loading models",
+                })
               : (selectedModel?.status_label ??
                 t("storyStudio.sound.needsSetup", {
                   defaultValue: "Model needed",
                 }))}
-        </span>
+          </span>
+        ) : null}
       </div>
 
       {!modeReady ? (
@@ -365,7 +510,6 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
               variant="primary-soft"
               size="sm"
               onClick={() => void openCreativeAudioModels()}
-              disabled={isGenerating}
             >
               {setupActionAvailable ? (
                 <Sparkles className="h-3.5 w-3.5" />
@@ -428,51 +572,6 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
         />
       </label>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs leading-5 text-[var(--muted)]">
-          <span aria-live="polite">
-            {selectedModel
-              ? `${selectedModel.provider} - ${selectedModel.label} - ${selectedModel.status_label}`
-              : t("storyStudio.sound.noModelSelected", {
-                  defaultValue: "No model selected",
-                })}
-          </span>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          {isGenerating ? (
-            <Button
-              type="button"
-              variant="danger-ghost"
-              size="sm"
-              onClick={() => void cancel()}
-            >
-              <X className="h-3.5 w-3.5" />
-              {t("common.cancel")}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="primary-soft"
-            size="sm"
-            onClick={() => void generate()}
-            disabled={!modeReady || !prompt.trim() || isGenerating}
-          >
-            {isGenerating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {isGenerating
-              ? t("storyStudio.sound.generating", {
-                  defaultValue: "Generating",
-                })
-              : t("storyStudio.sound.generate", {
-                  defaultValue: "Generate Sound",
-                })}
-          </Button>
-        </div>
-      </div>
-
       <div className="border-t border-[var(--border)] pt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -489,11 +588,24 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
             </p>
           </div>
           <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
-            {sounds.length}
+            {totalProjectSoundCount}
           </span>
         </div>
-        {sounds.length > 0 ? (
+        {visibleSoundJobs.length > 0 || sounds.length > 0 ? (
           <div className="space-y-2">
+            {visibleSoundJobs.map((job) => (
+              <ProjectSoundJobRow
+                key={job.renderId}
+                job={job}
+                t={t}
+                queuePosition={queuePositionForProjectSoundJob(
+                  visibleSoundJobs,
+                  job,
+                )}
+                onCancel={cancelSoundJob}
+                onDismiss={dismissSoundJob}
+              />
+            ))}
             {sounds.map((sound) => (
               <ProjectSoundRow
                 key={sound.id}
@@ -516,21 +628,188 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   );
 };
 
+const ProjectSoundJobRow: React.FC<{
+  job: ProjectSoundGenerationJob;
+  t: TFunction;
+  queuePosition: number | null;
+  onCancel: (job: ProjectSoundGenerationJob) => void | Promise<void>;
+  onDismiss: (job: ProjectSoundGenerationJob) => void;
+}> = ({ job, t, queuePosition, onCancel, onDismiss }) => {
+  const isLive = job.status === "queued" || job.status === "generating";
+  const isFailed = job.status === "failed";
+  const isCancelled = job.status === "cancelled";
+  const progress = projectSoundJobProgress(job);
+  const statusLabel = projectSoundJobStatusLabel(job, queuePosition, t);
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2 ${
+        isFailed
+          ? "border-[var(--danger)] bg-[var(--danger-soft)]"
+          : "border-[var(--border)] bg-[var(--panel-bg)]"
+      }`}
+    >
+      <div
+        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
+          isFailed
+            ? "border-[var(--danger)] text-[var(--danger)]"
+            : isCancelled
+              ? "border-[var(--border)] text-[var(--muted)]"
+              : "border-[var(--accent)] text-[var(--accent)]"
+        }`}
+        aria-hidden
+      >
+        {isFailed ? (
+          <AlertCircle className="h-4 w-4" />
+        ) : isLive ? (
+          <Loader2 className="h-4 w-4 animate-[spin_1s_linear_infinite]" />
+        ) : (
+          <X className="h-4 w-4" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-semibold text-[var(--text)]">
+            {soundModeLabel(job.mode, t)} - {job.title || job.prompt}
+          </p>
+          <span className="ml-auto shrink-0 text-[11px] font-semibold tabular-nums text-[var(--muted)]">
+            {Math.round(progress)}%
+          </span>
+        </div>
+        <div
+          className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--muted),transparent_80%)]"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        >
+          <div
+            className={`h-full rounded-full bg-[var(--accent)] transition-[width] duration-200 ${
+              job.status === "generating" ? "animate-pulse" : ""
+            }`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p
+          className={`mt-1 truncate text-xs leading-5 ${
+            isFailed ? "text-[var(--danger)]" : "text-[var(--muted)]"
+          }`}
+        >
+          <span className="font-semibold text-[var(--text)]">
+            {statusLabel}
+          </span>
+          <span aria-hidden> · </span>
+          <span>{job.modelLabel}</span>
+          {job.error ? (
+            <>
+              <span aria-hidden> · </span>
+              <span>{job.error}</span>
+            </>
+          ) : null}
+        </p>
+      </div>
+      {isLive ? (
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => void onCancel(job)}
+          aria-label={t("common.cancel")}
+          title={t("common.cancel")}
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => onDismiss(job)}
+          aria-label={t("common.dismiss", { defaultValue: "Dismiss" })}
+          title={t("common.dismiss", { defaultValue: "Dismiss" })}
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      )}
+    </div>
+  );
+};
+
 const ProjectSoundRow: React.FC<{
   sound: StorySoundItem;
   t: TFunction;
   onSoundsChanged: () => void;
 }> = ({ sound, t, onSoundsChanged }) => {
   const [isBusy, setIsBusy] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playbackRunIdRef = useRef(0);
+  const expectedStopRef = useRef(false);
 
-  const preview = useCallback(async () => {
+  useEffect(() => {
+    const stopIfDifferentSoundStarted = (event: Event) => {
+      const startedSoundId = (event as CustomEvent<string>).detail;
+      if (startedSoundId === sound.id) return;
+      expectedStopRef.current = true;
+      playbackRunIdRef.current += 1;
+      setIsLoadingPreview(false);
+      setIsPlaying(false);
+    };
+    window.addEventListener(
+      projectSoundPreviewStartedEvent,
+      stopIfDifferentSoundStarted,
+    );
+    return () => {
+      window.removeEventListener(
+        projectSoundPreviewStartedEvent,
+        stopIfDifferentSoundStarted,
+      );
+    };
+  }, [sound.id]);
+
+  useEffect(() => {
+    return () => {
+      expectedStopRef.current = true;
+      playbackRunIdRef.current += 1;
+    };
+  }, []);
+
+  const togglePreview = useCallback(async () => {
+    if (isLoadingPreview) return;
+    if (isPlaying) {
+      expectedStopRef.current = true;
+      playbackRunIdRef.current += 1;
+      setIsPlaying(false);
+      try {
+        await invoke("stop_story_audio");
+      } catch (error) {
+        console.error("Failed to stop project sound preview:", error);
+      }
+      return;
+    }
+
+    const runId = playbackRunIdRef.current + 1;
+    playbackRunIdRef.current = runId;
+    expectedStopRef.current = false;
+    window.dispatchEvent(
+      new CustomEvent(projectSoundPreviewStartedEvent, { detail: sound.id }),
+    );
+    setIsLoadingPreview(true);
+    setIsPlaying(true);
     try {
+      setIsLoadingPreview(false);
       await invoke("play_story_audio", { path: sound.output_path });
     } catch (error) {
-      console.error("Failed to preview project sound:", error);
-      toast.error("Could not preview sound.");
+      if (!expectedStopRef.current) {
+        console.error("Failed to preview project sound:", error);
+        toast.error("Could not preview sound.");
+      }
+    } finally {
+      if (playbackRunIdRef.current === runId) {
+        setIsLoadingPreview(false);
+        setIsPlaying(false);
+        expectedStopRef.current = false;
+      }
     }
-  }, [sound.output_path]);
+  }, [isLoadingPreview, isPlaying, sound.id, sound.output_path]);
 
   const rename = useCallback(async () => {
     const nextTitle = window.prompt("Rename sound", sound.title)?.trim();
@@ -567,10 +846,20 @@ const ProjectSoundRow: React.FC<{
       <button
         type="button"
         className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-        onClick={() => void preview()}
-        aria-label={t("common.play")}
+        onClick={() => void togglePreview()}
+        aria-label={isPlaying ? t("common.stop") : t("common.play")}
+        title={isPlaying ? t("common.stop") : t("common.play")}
       >
-        <Play className="h-4 w-4" aria-hidden />
+        {isLoadingPreview ? (
+          <Loader2
+            className="h-4 w-4 animate-[spin_1s_linear_infinite]"
+            aria-hidden
+          />
+        ) : isPlaying ? (
+          <Square className="h-3.5 w-3.5" fill="currentColor" aria-hidden />
+        ) : (
+          <Play className="h-4 w-4" aria-hidden />
+        )}
       </button>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-[var(--text)]">
@@ -589,6 +878,7 @@ const ProjectSoundRow: React.FC<{
           onClick={() => void rename()}
           disabled={isBusy}
           aria-label="Rename sound"
+          title="Rename sound"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -608,6 +898,46 @@ const ProjectSoundRow: React.FC<{
 
 function clampDuration(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
+}
+
+function queuePositionForProjectSoundJob(
+  jobs: ProjectSoundGenerationJob[],
+  job: ProjectSoundGenerationJob,
+): number | null {
+  if (job.status !== "queued") return null;
+  const index = jobs
+    .filter((current) => current.status === "queued")
+    .findIndex((current) => current.renderId === job.renderId);
+  return index >= 0 ? index + 1 : null;
+}
+
+function projectSoundJobProgress(job: ProjectSoundGenerationJob): number {
+  if (job.status === "queued") return 8;
+  if (job.status === "generating") return 55;
+  if (job.status === "cancelled") return 8;
+  return 12;
+}
+
+function projectSoundJobStatusLabel(
+  job: ProjectSoundGenerationJob,
+  queuePosition: number | null,
+  t: TFunction,
+): string {
+  if (job.status === "queued") {
+    return queuePosition && queuePosition > 1
+      ? t("storyStudio.sound.queuedAtPosition", {
+          defaultValue: "Queued at position {{position}}",
+          position: queuePosition,
+        })
+      : t("storyStudio.sound.queued", { defaultValue: "Queued" });
+  }
+  if (job.status === "failed") {
+    return t("storyStudio.sound.failed", { defaultValue: "Failed" });
+  }
+  if (job.status === "cancelled") {
+    return t("storyStudio.sound.cancelled", { defaultValue: "Cancelled" });
+  }
+  return t("storyStudio.sound.generating", { defaultValue: "Generating" });
 }
 
 function soundModeLabel(mode: StorySoundMode, t: TFunction) {

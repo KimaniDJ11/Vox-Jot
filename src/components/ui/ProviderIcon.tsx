@@ -1310,6 +1310,30 @@ function AceStepMark({ size, color }: { size: number; color: string }) {
   );
 }
 
+function AudioLdmMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 16.5c1.9-4.4 4.2-4.4 6.9 0s5 4.4 7.1 0"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 11.8c1.6-3.3 3.6-3.3 5.8 0s4 3.3 5.9 0"
+        fill="none"
+        stroke="#BAE6FD"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <circle cx={8.2} cy={7.5} r={2} fill={color} />
+      <circle cx={15.8} cy={7.5} r={2} fill="#BAE6FD" />
+    </svg>
+  );
+}
+
 function YueMark({ size, color }: { size: number; color: string }) {
   const s = size * 0.7;
   return (
@@ -1461,6 +1485,12 @@ const BRANDS: Record<string, BrandConfig> = {
     fg: "#FFFFFF",
     letter: "AS",
     mark: AceStepMark,
+  },
+  audioldm2: {
+    bg: "#0F766E",
+    fg: "#FFFFFF",
+    letter: "AL",
+    mark: AudioLdmMark,
   },
   yue: { bg: "#2563EB", fg: "#FFFFFF", letter: "Y", mark: YueMark },
   diffrhythm: {
@@ -1675,6 +1705,9 @@ const PROVIDER_BRAND: Record<string, string> = {
   qwen: "qwen",
   stability_ai: "stability_ai",
   stable_audio: "stability_ai",
+  musicgen: "meta",
+  audioldm2: "audioldm2",
+  audioldm2_music: "audioldm2",
   ace_step: "ace_step",
   yue: "yue",
   diffrhythm: "diffrhythm",
@@ -1920,6 +1953,10 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "smollm", providerId: "huggingface" },
   { keyword: "smol lm", providerId: "huggingface" },
   { keyword: "vibevoice", providerId: "microsoft" },
+  { keyword: "musicgen", providerId: "musicgen" },
+  { keyword: "music gen", providerId: "musicgen" },
+  { keyword: "audioldm2", providerId: "audioldm2" },
+  { keyword: "audioldm 2", providerId: "audioldm2" },
   { keyword: "openvoice", providerId: "openvoice" },
   { keyword: "chatterbox", providerId: "chatterbox" },
   { keyword: "supertonic", providerId: "supertonic" },
@@ -2046,6 +2083,9 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   mlx_longcat_audiodit: "Meituan LongCat",
   stability_ai: "Stability AI",
   stable_audio: "Stability AI",
+  musicgen: "Meta MusicGen",
+  audioldm2: "AudioLDM 2",
+  audioldm2_music: "AudioLDM 2 Music",
   ace_step: "ACE-Step",
   yue: "YuE",
   diffrhythm: "DiffRhythm",

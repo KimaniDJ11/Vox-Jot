@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Точность транскриптов и вывода ИИ",
           "detail": "Транскрипты, метки говорящих, OCR-текст, переводы и сгенерированная речь могут быть неверными. Проверяйте важные результаты перед использованием."
+        },
+        "creativeAudio": {
+          "title": "Sgenerirovannaya muzyka i saund-dizain",
+          "detail": "Modeli kreativnogo audio mogut sozdavat effekty, atmosferu, muzyku, pesni i kompozitsii. Izuchite usloviya kazhdoi modeli pered ispolzovaniem sgenirovannogo audio v publichnyh, kommercheskih ili rasprostranyaemyh rabotah i sohranyajte obyazatelnuyu atributsiyu."
         }
       },
       "actionsTitle": "Связанные элементы управления",
@@ -2859,7 +2863,8 @@
       "openNotices": "Уведомления третьих сторон",
       "ackTitle": "Локальное подтверждение",
       "ackLabel": "Я понимаю эти обязанности по моделям и записи.",
-      "ackDescription": "Это подтверждение хранится локально на этом устройстве. Загрузка ограниченных моделей все равно требует отдельного подтверждения для конкретной модели."
+      "ackDescription": "Это подтверждение хранится локально на этом устройстве. Загрузка ограниченных моделей все равно требует отдельного подтверждения для конкретной модели.",
+      "openCreativeAudioHub": "Modeli kreativnogo audio"
     },
     "readiness": {
       "title": "Готовность диктовки",

@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Přesnost přepisů a výstupů AI",
           "detail": "Přepisy, označení mluvčích, text OCR, překlady a generovaná řeč mohou být chybné. Důležité výstupy před použitím zkontrolujte."
+        },
+        "creativeAudio": {
+          "title": "Generovana hudba a zvukovy design",
+          "detail": "Modely kreativniho audia mohou vytvaret efekty, atmosferu, hudbu, pisne a kompozice. Pred pouzitim generovaneho audia ve verejne, komercni nebo distribuovane praci si projdete podminky kazdeho modelu a zachovejte pozadovane uvedeni autorstvi."
         }
       },
       "actionsTitle": "Související ovládací prvky",
@@ -2859,7 +2863,8 @@
       "openNotices": "Oznámení třetích stran",
       "ackTitle": "Místní potvrzení",
       "ackLabel": "Rozumím těmto odpovědnostem za modely a nahrávání.",
-      "ackDescription": "Toto potvrzení je uloženo místně na tomto zařízení. Stažení omezených modelů stále vyžaduje vlastní potvrzení konkrétního modelu."
+      "ackDescription": "Toto potvrzení je uloženo místně na tomto zařízení. Stažení omezených modelů stále vyžaduje vlastní potvrzení konkrétního modelu.",
+      "openCreativeAudioHub": "Modely kreativniho audia"
     },
     "readiness": {
       "title": "Připravenost diktování",

@@ -955,6 +955,7 @@ pub fn run(cli_args: CliArgs) {
         commands::story_studio::get_stable_audio3_status,
         commands::story_studio::prepare_stable_audio3,
         commands::story_studio::get_creative_audio_model_catalog,
+        commands::story_studio::set_creative_audio_model_selection,
         commands::story_studio::download_creative_audio_model,
         commands::story_studio::cancel_creative_audio_model_download,
         commands::story_studio::delete_creative_audio_model,

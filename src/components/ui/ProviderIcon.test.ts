@@ -47,6 +47,16 @@ describe("resolveModelProviderId", () => {
     ).toBe("vox_jot");
   });
 
+  it("resolves creative audio model families to branded icons", () => {
+    expect(resolveModelProviderId("MusicGen Small", "musicgen")).toBe(
+      "musicgen",
+    );
+    expect(resolveModelProviderId("AudioLDM 2", "audioldm2")).toBe("audioldm2");
+    expect(resolveModelProviderId("AudioLDM 2 Music", "audioldm2_music")).toBe(
+      "audioldm2_music",
+    );
+  });
+
   it("covers every built-in model family with a company/provider icon id", () => {
     const cases: Array<{
       title: string;
@@ -526,6 +536,9 @@ describe("resolveModelProviderId", () => {
       "stt_moonshine",
       "stt_sensevoice",
       "stt_gigaam",
+      "musicgen",
+      "audioldm2",
+      "audioldm2_music",
       "liquid_ai",
       "tencent",
       "falcon",

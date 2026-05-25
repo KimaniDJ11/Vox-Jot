@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Exactitude des transcriptions et sorties IA",
           "detail": "Les transcriptions, étiquettes de locuteurs, textes OCR, traductions et voix générées peuvent être incorrects. Vérifiez les sorties importantes avant de vous y fier."
+        },
+        "creativeAudio": {
+          "title": "Musique generee et design sonore",
+          "detail": "Les modeles audio creatifs peuvent produire des effets, des ambiances, de la musique, des chansons et des compositions. Consultez les conditions de chaque modele avant d utiliser l audio genere dans un projet public, commercial ou distribue, et conservez les attributions requises."
         }
       },
       "actionsTitle": "Contrôles associés",
@@ -2859,7 +2863,8 @@
       "openNotices": "Avis de tiers",
       "ackTitle": "Reconnaissance locale",
       "ackLabel": "Je comprends ces responsabilités liées aux modèles et à l’enregistrement.",
-      "ackDescription": "Cette reconnaissance est stockée localement sur cet appareil. Les téléchargements de modèles restreints exigent toujours leur propre reconnaissance spécifique."
+      "ackDescription": "Cette reconnaissance est stockée localement sur cet appareil. Les téléchargements de modèles restreints exigent toujours leur propre reconnaissance spécifique.",
+      "openCreativeAudioHub": "Modeles audio creatifs"
     },
     "readiness": {
       "title": "Préparation de la dictée",

@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Độ chính xác của phiên âm và đầu ra AI",
           "detail": "Phiên âm, nhãn người nói, văn bản OCR, bản dịch và giọng nói tạo ra có thể sai. Hãy xem lại đầu ra quan trọng trước khi tin dùng."
+        },
+        "creativeAudio": {
+          "title": "Nhac tao sinh va thiet ke am thanh",
+          "detail": "Cac mo hinh am thanh sang tao co the tao hieu ung, khong gian am thanh, nhac, bai hat va ban phoi. Hay xem dieu khoan cua tung mo hinh truoc khi dung am thanh tao sinh trong cong viec cong khai, thuong mai hoac phan phoi, va giu lai ghi cong bat buoc."
         }
       },
       "actionsTitle": "Điều khiển liên quan",
@@ -2859,7 +2863,8 @@
       "openNotices": "Thông báo bên thứ ba",
       "ackTitle": "Xác nhận cục bộ",
       "ackLabel": "Tôi hiểu các trách nhiệm về mô hình và ghi âm này.",
-      "ackDescription": "Xác nhận này được lưu cục bộ trên thiết bị này. Tải xuống mô hình bị hạn chế vẫn yêu cầu xác nhận riêng theo từng mô hình."
+      "ackDescription": "Xác nhận này được lưu cục bộ trên thiết bị này. Tải xuống mô hình bị hạn chế vẫn yêu cầu xác nhận riêng theo từng mô hình.",
+      "openCreativeAudioHub": "Mo hinh am thanh sang tao"
     },
     "readiness": {
       "title": "Mức sẵn sàng đọc chính tả",

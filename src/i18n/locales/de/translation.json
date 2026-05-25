@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Genauigkeit von Transkripten und KI-Ausgaben",
           "detail": "Transkripte, Sprecherlabels, OCR-Text, Übersetzungen und generierte Sprache können falsch sein. Prüfe wichtige Ausgaben, bevor du dich darauf verlässt."
+        },
+        "creativeAudio": {
+          "title": "Generierte Musik und Sounddesign",
+          "detail": "Kreative Audiomodelle koennen Effekte, Atmosphaeren, Musik, Songs und Kompositionen erzeugen. Pruefe die Bedingungen jedes Modells, bevor du generiertes Audio in oeffentlichen, kommerziellen oder verteilten Arbeiten nutzt, und bewahre erforderliche Namensnennungen auf."
         }
       },
       "actionsTitle": "Zugehörige Steuerelemente",
@@ -2859,7 +2863,8 @@
       "openNotices": "Drittanbieterhinweise",
       "ackTitle": "Lokale Bestätigung",
       "ackLabel": "Ich verstehe diese Modell- und Aufnahmeverantwortung.",
-      "ackDescription": "Diese Bestätigung wird lokal auf diesem Gerät gespeichert. Eingeschränkte Modelldownloads benötigen weiterhin ihre eigene modellspezifische Bestätigung."
+      "ackDescription": "Diese Bestätigung wird lokal auf diesem Gerät gespeichert. Eingeschränkte Modelldownloads benötigen weiterhin ihre eigene modellspezifische Bestätigung.",
+      "openCreativeAudioHub": "Kreative Audiomodelle"
     },
     "readiness": {
       "title": "Diktierbereitschaft",

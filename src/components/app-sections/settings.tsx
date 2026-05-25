@@ -1871,6 +1871,10 @@ const LegalTermsList: React.FC = () => {
       detail: t("appSections.legal.terms.modelLicenses.detail"),
     },
     {
+      title: t("appSections.legal.terms.creativeAudio.title"),
+      detail: t("appSections.legal.terms.creativeAudio.detail"),
+    },
+    {
       title: t("appSections.legal.terms.restrictedModels.title"),
       detail: t("appSections.legal.terms.restrictedModels.detail"),
     },
@@ -1917,6 +1921,17 @@ const LegalActions: React.FC = () => {
         >
           <Cpu className="h-3.5 w-3.5" aria-hidden />
           {t("appSections.legal.openModelHub")}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            void openModelHub("creative_audio", { scope: "creative_audio" })
+          }
+        >
+          <FileAudio className="h-3.5 w-3.5" aria-hidden />
+          {t("appSections.legal.openCreativeAudioHub")}
         </Button>
         <Button
           type="button"

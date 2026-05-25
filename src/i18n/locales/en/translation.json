@@ -2830,6 +2830,10 @@
         "accuracy": {
           "title": "Transcript and AI output accuracy",
           "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+        },
+        "creativeAudio": {
+          "title": "Generated music and sound design",
+          "detail": "Creative audio models can produce SFX, ambience, music, songs, and compositions. Review each model's terms before using generated audio in public, commercial, or distributed work, and keep required attribution."
         }
       },
       "actionsTitle": "Related controls",
@@ -2838,7 +2842,8 @@
       "openNotices": "Third-party notices",
       "ackTitle": "Local acknowledgement",
       "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement.",
+      "openCreativeAudioHub": "Creative Audio models"
     },
     "diagnostics": {
       "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.",

@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
-  CheckCircle2,
   Layers,
   Loader2,
   Music2,
@@ -631,23 +630,16 @@ export const StoryStudioSection: React.FC = () => {
   const visibleValidationErrors = validation.errors.slice(0, 4);
   const hiddenValidationErrorCount =
     validation.errors.length - visibleValidationErrors.length;
-  const renderReadinessPill = (
+  const renderReadinessPill =
+    validation.errors.length > 0 ? (
     <div
-      className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
-        validation.errors.length > 0
-          ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--text)]"
-          : "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
-      }`}
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-xs font-semibold text-[var(--text)]"
       aria-live="polite"
     >
-      {validation.errors.length > 0 ? (
-        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
-      ) : (
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
-      )}
+      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
       <span className="truncate">{readySummary}</span>
     </div>
-  );
+  ) : null;
   const expressionTagControl = (
     <div ref={expressionAnchorRef} className="relative w-[20rem] max-w-full">
       <label
@@ -740,24 +732,22 @@ export const StoryStudioSection: React.FC = () => {
       <div className="flex w-full flex-col gap-4 pb-4">
         <div className="story-studio-toolbar flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            {activeTool !== "sound" ? (
-              <Button
-                type="button"
-                variant="primary-soft"
-                size="sm"
-                onClick={() => void handleRender()}
-                disabled={!canRender}
-              >
-                {isQueueingRender || showQueuedAck ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-                ) : (
-                  <WandSparkles className="h-3.5 w-3.5" />
-                )}
-                {isQueueingRender || showQueuedAck
-                  ? t("storyStudio.queued")
-                  : t("storyStudio.generate")}
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="primary-soft"
+              size="sm"
+              onClick={() => void handleRender()}
+              disabled={!canRender}
+            >
+              {isQueueingRender || showQueuedAck ? (
+                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+              ) : (
+                <WandSparkles className="h-3.5 w-3.5" />
+              )}
+              {isQueueingRender || showQueuedAck
+                ? t("storyStudio.queued")
+                : t("storyStudio.generate")}
+            </Button>
 
             <SegmentedControl<StudioTool>
               value={activeTool}

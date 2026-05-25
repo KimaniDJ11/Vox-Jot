@@ -2843,6 +2843,10 @@
         "accuracy": {
           "title": "转写和 AI 输出准确性",
           "detail": "转写、说话人标签、OCR 文本、翻译和生成语音可能有误。依赖重要输出前请先审阅。"
+        },
+        "creativeAudio": {
+          "title": "生成音乐和声音设计",
+          "detail": "创意音频模型可以生成音效、环境声、音乐、歌曲和作品。在公开、商业或分发的作品中使用生成音频前，请查看每个模型的条款，并保留所需署名。"
         }
       },
       "actionsTitle": "相关控制",
@@ -2851,7 +2855,8 @@
       "openNotices": "第三方通知",
       "ackTitle": "本地确认",
       "ackLabel": "我理解这些模型和录音责任。",
-      "ackDescription": "此确认存储在本设备本地。受限模型下载仍需要其特定模型确认。"
+      "ackDescription": "此确认存储在本设备本地。受限模型下载仍需要其特定模型确认。",
+      "openCreativeAudioHub": "创意音频模型"
     },
     "readiness": {
       "title": "听写就绪状态",

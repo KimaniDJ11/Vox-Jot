@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Precisão de transcrições e saídas de IA",
           "detail": "Transcrições, rótulos de locutor, texto OCR, traduções e fala gerada podem estar errados. Revise saídas importantes antes de confiar nelas."
+        },
+        "creativeAudio": {
+          "title": "Musica gerada e design de som",
+          "detail": "Modelos de audio criativo podem produzir efeitos, ambientes, musica, cancoes e composicoes. Revise os termos de cada modelo antes de usar audio gerado em trabalhos publicos, comerciais ou distribuidos, e mantenha a atribuicao exigida."
         }
       },
       "actionsTitle": "Controles relacionados",
@@ -2859,7 +2863,8 @@
       "openNotices": "Avisos de terceiros",
       "ackTitle": "Reconhecimento local",
       "ackLabel": "Entendo estas responsabilidades sobre modelos e gravação.",
-      "ackDescription": "Este reconhecimento é armazenado localmente neste dispositivo. Downloads de modelos restritos ainda exigem reconhecimento específico do modelo."
+      "ackDescription": "Este reconhecimento é armazenado localmente neste dispositivo. Downloads de modelos restritos ainda exigem reconhecimento específico do modelo.",
+      "openCreativeAudioHub": "Modelos de audio criativo"
     },
     "readiness": {
       "title": "Prontidão do ditado",

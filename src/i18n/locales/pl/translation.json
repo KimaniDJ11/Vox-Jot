@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Dokładność transkrypcji i wyników AI",
           "detail": "Transkrypcje, etykiety mówców, tekst OCR, tłumaczenia i generowana mowa mogą być błędne. Sprawdź ważne wyniki przed użyciem."
+        },
+        "creativeAudio": {
+          "title": "Generowana muzyka i projektowanie dzwieku",
+          "detail": "Modele kreatywnego audio moga tworzyc efekty, tlo, muzyke, utwory i kompozycje. Sprawdz warunki kazdego modelu przed uzyciem wygenerowanego audio w pracach publicznych, komercyjnych lub dystrybuowanych i zachowaj wymagana atrybucje."
         }
       },
       "actionsTitle": "Powiązane kontrolki",
@@ -2859,7 +2863,8 @@
       "openNotices": "Powiadomienia firm trzecich",
       "ackTitle": "Lokalne potwierdzenie",
       "ackLabel": "Rozumiem te obowiązki dotyczące modeli i nagrywania.",
-      "ackDescription": "To potwierdzenie jest przechowywane lokalnie na tym urządzeniu. Pobieranie modeli ograniczonych nadal wymaga osobnego potwierdzenia dla danego modelu."
+      "ackDescription": "To potwierdzenie jest przechowywane lokalnie na tym urządzeniu. Pobieranie modeli ograniczonych nadal wymaga osobnego potwierdzenia dla danego modelu.",
+      "openCreativeAudioHub": "Modele kreatywnego audio"
     },
     "readiness": {
       "title": "Gotowość dyktowania",

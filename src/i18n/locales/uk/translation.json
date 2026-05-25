@@ -2851,6 +2851,10 @@
         "accuracy": {
           "title": "Точність транскриптів і результатів AI",
           "detail": "Транскрипти, мітки мовців, OCR-текст, переклади та згенероване мовлення можуть бути помилковими. Перевіряйте важливі результати перед використанням."
+        },
+        "creativeAudio": {
+          "title": "Zghenerovana muzyka ta saund-dyzain",
+          "detail": "Modeli kreatyvnoho audio mozhut stvoriuvaty efekty, atmosferu, muzyku, pisni ta kompozytsii. Perehlian te umovy kozhnoi modeli pered vykorystanniam zghenerovanoho audio u publichnykh, komertsiinykh abo rozpovsiudzhuvanykh robotakh i zberihai te potribnu atrybutsiiu."
         }
       },
       "actionsTitle": "Пов’язані елементи керування",
@@ -2859,7 +2863,8 @@
       "openNotices": "Повідомлення третіх сторін",
       "ackTitle": "Локальне підтвердження",
       "ackLabel": "Я розумію ці обов’язки щодо моделей і запису.",
-      "ackDescription": "Це підтвердження зберігається локально на цьому пристрої. Завантаження обмежених моделей усе одно потребує окремого підтвердження для конкретної моделі."
+      "ackDescription": "Це підтвердження зберігається локально на цьому пристрої. Завантаження обмежених моделей усе одно потребує окремого підтвердження для конкретної моделі.",
+      "openCreativeAudioHub": "Modeli kreatyvnoho audio"
     },
     "readiness": {
       "title": "Готовність диктування",

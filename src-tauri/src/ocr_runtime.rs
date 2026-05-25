@@ -348,6 +348,7 @@ async fn download_and_extract_runtime_archive(
             final_path: archive_path.clone(),
             expected_sha256: Some(expected_sha256),
             expected_size: None,
+            bearer_token: None,
             cancel_flag: None,
             progress: Some(progress),
         })
@@ -1036,8 +1037,8 @@ fn locate_python() -> Option<PathBuf> {
         }
     }
 
-    // Fallback: any python3 on PATH. Sufficient for the stub server (no
-    // third-party deps) and lets dev iteration work without a venv.
+    // Last-resort development fallback. Production model rows still need the
+    // dependency probe above to pass before they are marked runnable.
     let bin = if cfg!(target_os = "windows") {
         "python.exe"
     } else {

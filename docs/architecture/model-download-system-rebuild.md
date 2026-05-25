@@ -66,15 +66,15 @@ Existing domain events are still emitted as compatibility bridges while frontend
 - Speech-analysis model downloads emit unified artifact progress.
 - Refine/LLM GGUF imports use the shared file downloader.
 
-## Next Steps
+## Blocked Improvements
 
-The next durable improvement is a manifest layer:
+The manifest layer remains blocked until it is implemented end to end:
 
 - pin Hugging Face downloads to immutable revisions
 - store per-file SHA-256 or source digest metadata
 - persist job state across app restarts
 - add bounded parallelism by file size and domain
 - introduce a content-addressed blob cache so equivalent STT/TTS/speech-analysis MLX assets deduplicate on disk
-- eventually sign manifests using a TUF-like metadata model
+- sign manifests using a TUF-like metadata model
 
-Those are additive on top of the new core and do not need to block the current rebuild.
+Do not expose manifest-backed behavior in the app until these items are implemented and verified.

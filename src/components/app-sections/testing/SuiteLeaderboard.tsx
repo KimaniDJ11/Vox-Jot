@@ -59,13 +59,13 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">
               {t("testing.notRanked.title", {
-                defaultValue: "Not yet ranked",
+                defaultValue: "Blocked / unranked",
               })}
             </h4>
             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
               {t("testing.notRanked.description", {
                 defaultValue:
-                  "Models awaiting benchmark, blocked, or pending download.",
+                  "Rows stay out of rankings until full benchmark results exist. Blocked rows need runtime or download validation.",
               })}
             </p>
           </div>

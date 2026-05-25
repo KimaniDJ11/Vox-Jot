@@ -63,8 +63,7 @@
     "supports_audio_editing": true,
     "supports_cover_generation": true,
     "supports_vocal_to_bgm": true,
-    "supports_lora_training": true,
-    "coming_soon": true
+    "supports_lora_training": true
   },
 
   "languages": ["50+ lyric languages per upstream README"],
@@ -96,13 +95,11 @@
 
   "verdict": {
     "score": 39,
-    "decision": "prototype_next",
+    "decision": "ship_experimental",
     "blockers": [
-      "Needs a separate app-managed ACE-Step runtime; it must not reuse the Stable Audio 3 MLX runtime or MLX-Audio TTS bridge",
       "No Vox Jot Creative Audio benchmark suite exists yet",
-      "Mac latency, memory pressure, output format, cancellation, and export behavior are unmeasured",
-      "Visible generation must stay disabled until model/runtime downloads are resumable, cancellable, and stored in app-managed model locations"
+      "Mac latency, memory pressure, output format, cancellation, and export behavior need full-suite measurement before ranking"
     ],
-    "notes": "Recommended path: expose as a non-runnable future/experimental Studio catalog entry, add Song/full-track UI mode, then prototype ACE-Step through a dedicated creative-audio runtime with the 2B turbo path first. Existing dictation, transcription, readback, overlay, and paste hot paths should not load or initialize this runtime."
+    "notes": "ACE-Step is app-managed through its dedicated creative-audio runtime and model snapshot. Keep it unranked in Testing until the full Creative Audio benchmark exists. Existing dictation, transcription, readback, overlay, and paste hot paths must not load or initialize this runtime."
   }
 }

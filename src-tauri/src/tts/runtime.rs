@@ -79,7 +79,7 @@ pub fn sherpa_runtime_definition() -> Option<SherpaRuntimeDefinition> {
             source_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-osx-universal2-shared.tar.bz2",
         });
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         return Some(SherpaRuntimeDefinition {
             platform_id: "linux-x64",
@@ -87,7 +87,7 @@ pub fn sherpa_runtime_definition() -> Option<SherpaRuntimeDefinition> {
             source_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-linux-x64-shared.tar.bz2",
         });
     }
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     {
         return Some(SherpaRuntimeDefinition {
             platform_id: "windows-x64",
@@ -180,7 +180,7 @@ pub fn qwen3_runtime_definition() -> Option<(&'static str, &'static str, &'stati
             "https://github.com/second-state/qwen3_tts_rs/releases/download/v0.1.5/qwen3-tts-macos-aarch64.zip",
         ));
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         return Some((
             "linux-x64",
@@ -188,7 +188,7 @@ pub fn qwen3_runtime_definition() -> Option<(&'static str, &'static str, &'stati
             "https://github.com/second-state/qwen3_tts_rs/releases/download/v0.1.5/qwen3-tts-linux-x86_64.zip",
         ));
     }
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     {
         return Some((
             "windows-x64",

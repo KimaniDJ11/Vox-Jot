@@ -26,6 +26,8 @@ interface ScriptEditorProps {
   value: string;
   disabled?: boolean;
   headerAction?: React.ReactNode;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   onChange: (value: string) => void;
   onCursorChange?: (selection: ScriptTextSelection) => void;
 }
@@ -37,10 +39,19 @@ interface HistorySnapshot {
 
 const HISTORY_LIMIT = 150;
 const HISTORY_DEBOUNCE_MS = 400;
+const TOKEN_SELECTOR = "[data-expression-token], [data-sound-token]";
 
 export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
   (
-    { value, disabled = false, headerAction, onChange, onCursorChange },
+    {
+      value,
+      disabled = false,
+      headerAction,
+      ariaInvalid,
+      ariaDescribedBy,
+      onChange,
+      onCursorChange,
+    },
     ref,
   ) => {
     const { t } = useTranslation();
@@ -440,13 +451,17 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       const editor = editorRef.current;
       const target =
         event.target instanceof Element
-          ? event.target.closest<HTMLElement>("[data-expression-token]")
+          ? event.target.closest<HTMLElement>(TOKEN_SELECTOR)
           : null;
       if (!editor || !target || !editor.contains(target)) {
         return;
       }
 
-      const token = target.dataset.expressionToken ?? target.textContent ?? "";
+      const token =
+        target.dataset.expressionToken ??
+        target.dataset.soundToken ??
+        target.textContent ??
+        "";
       if (!token) {
         return;
       }
@@ -466,7 +481,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       const editor = editorRef.current;
       const target =
         event.target instanceof Element
-          ? event.target.closest<HTMLElement>("[data-expression-token]")
+          ? event.target.closest<HTMLElement>(TOKEN_SELECTOR)
           : null;
       if (
         !editor ||
@@ -477,7 +492,11 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
         return;
       }
 
-      const token = target.dataset.expressionToken ?? target.textContent ?? "";
+      const token =
+        target.dataset.expressionToken ??
+        target.dataset.soundToken ??
+        target.textContent ??
+        "";
       if (!token) {
         return;
       }
@@ -605,6 +624,8 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
           role="textbox"
           aria-multiline="true"
           aria-label={scriptTitle}
+          aria-invalid={ariaInvalid || undefined}
+          aria-describedby={ariaDescribedBy}
           contentEditable={!disabled}
           suppressContentEditableWarning
           spellCheck={true}
@@ -648,7 +669,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
 
 ScriptEditor.displayName = "ScriptEditor";
 
-const EXPRESSION_TOKEN_PATTERN = /(\[[^\]\n]{1,80}\]|\([^()\n]{1,80}\))/g;
+const EXPRESSION_TOKEN_PATTERN = /(\[[^\]\n]{1,220}\]|\([^()\n]{1,80}\))/g;
 
 function renderDecoratedText(editor: HTMLDivElement, text: string) {
   editor.replaceChildren();
@@ -677,10 +698,16 @@ function appendDecoratedLine(line: HTMLDivElement, text: string) {
     span.textContent = token;
     span.draggable = false;
     span.contentEditable = "false";
-    span.dataset.expressionToken = token;
+    const isSoundToken = token.startsWith("[sound ");
+    if (isSoundToken) {
+      span.dataset.soundToken = token;
+    } else {
+      span.dataset.expressionToken = token;
+    }
     span.dataset.offset = String(index);
-    span.className =
-      "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 font-sans text-[12px] font-semibold text-[var(--accent)] active:cursor-grabbing";
+    span.className = isSoundToken
+      ? "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[color-mix(in_srgb,var(--success),transparent_45%)] bg-[var(--success-soft)] px-1.5 py-0.5 font-sans text-[12px] font-semibold text-[var(--text)] active:cursor-grabbing"
+      : "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 font-sans text-[12px] font-semibold text-[var(--accent)] active:cursor-grabbing";
     line.append(span);
     cursor = index + token.length;
   }

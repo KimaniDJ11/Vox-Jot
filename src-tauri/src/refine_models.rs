@@ -1402,6 +1402,7 @@ async fn ensure_hf_gguf_downloaded(
             final_path: target_path.to_path_buf(),
             expected_sha256: None,
             expected_size: (expected_size > 0).then_some(expected_size),
+            bearer_token: None,
             cancel_flag: None,
             progress: Some(progress),
         },

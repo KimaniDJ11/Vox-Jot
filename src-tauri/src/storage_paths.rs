@@ -23,7 +23,17 @@ const OCR_MODELS_DIR: &str = "ocr";
 const OCR_RUNTIME_DIR: &str = "ocr-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 const CREATIVE_AUDIO_MODELS_DIR: &str = "creative-audio";
+const CREATIVE_AUDIO_RUNTIME_DIR: &str = "runtime";
+const CREATIVE_AUDIO_DOWNLOADS_DIR: &str = "downloads";
 const STABLE_AUDIO3_MLX_DIR: &str = "stable-audio-3-mlx";
+const ACE_STEP_RUNTIME_DIR: &str = "ace-step-runtime";
+const ACE_STEP_MODEL_DIR: &str = "ace-step-1.5";
+const DIFFRHYTHM_RUNTIME_DIR: &str = "diffrhythm-runtime";
+const DIFFRHYTHM_MODEL_DIR: &str = "diffrhythm-1.2-full";
+const YUE_RUNTIME_DIR: &str = "yue-runtime";
+const YUE_MODEL_DIR: &str = "yue-full-song";
+const FIGARO_RUNTIME_DIR: &str = "figaro-runtime";
+const FIGARO_MODEL_DIR: &str = "figaro-symbolic";
 
 // LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
 // while remaining production-quality for dictation readback).
@@ -160,9 +170,53 @@ pub fn creative_audio_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Erro
     Ok(model_root_dir(app)?.join(CREATIVE_AUDIO_MODELS_DIR))
 }
 
+/// Root for creative-audio runtime bundles managed by the app.
+pub fn creative_audio_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(CREATIVE_AUDIO_RUNTIME_DIR))
+}
+
+/// Root for resumable creative-audio runtime/model downloads.
+pub fn creative_audio_downloads_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(CREATIVE_AUDIO_DOWNLOADS_DIR))
+}
+
 /// Official Stable Audio 3 MLX runtime checkout.
 pub fn stable_audio3_mlx_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
-    Ok(creative_audio_models_dir(app)?.join(STABLE_AUDIO3_MLX_DIR))
+    Ok(creative_audio_runtime_dir(app)?.join(STABLE_AUDIO3_MLX_DIR))
+}
+
+/// Managed ACE-Step runtime checkout.
+pub fn ace_step_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_runtime_dir(app)?.join(ACE_STEP_RUNTIME_DIR))
+}
+
+/// ACE-Step model snapshot managed by the app.
+pub fn ace_step_model_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(ACE_STEP_MODEL_DIR))
+}
+
+pub fn diffrhythm_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_runtime_dir(app)?.join(DIFFRHYTHM_RUNTIME_DIR))
+}
+
+pub fn diffrhythm_model_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(DIFFRHYTHM_MODEL_DIR))
+}
+
+pub fn yue_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_runtime_dir(app)?.join(YUE_RUNTIME_DIR))
+}
+
+pub fn yue_model_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(YUE_MODEL_DIR))
+}
+
+pub fn figaro_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_runtime_dir(app)?.join(FIGARO_RUNTIME_DIR))
+}
+
+pub fn figaro_model_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(FIGARO_MODEL_DIR))
 }
 
 /// Per-repo install root for TTS models pulled in from the verified HF
@@ -365,6 +419,24 @@ fn migrate_local_model_snapshots(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn migrate_legacy_creative_audio_layout(app: &AppHandle) -> Result<(), String> {
+    let creative_root = creative_audio_models_dir(app)
+        .map_err(|err| format!("Failed to resolve creative audio dir: {err}"))?;
+    let legacy_stable_audio3 = creative_root.join(STABLE_AUDIO3_MLX_DIR);
+    let managed_stable_audio3 = stable_audio3_mlx_dir(app)
+        .map_err(|err| format!("Failed to resolve Stable Audio 3 runtime dir: {err}"))?;
+
+    if legacy_stable_audio3.exists() && !managed_stable_audio3.exists() {
+        copy_dir_if_missing(
+            &legacy_stable_audio3,
+            &managed_stable_audio3,
+            "Stable Audio 3 creative-audio runtime",
+        )?;
+    }
+
+    Ok(())
+}
+
 pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
     for dir in [
         model_root_dir(app).map_err(|err| format!("Failed to resolve model root: {err}"))?,
@@ -394,10 +466,19 @@ pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
         &creative_audio_models_dir(app)
             .map_err(|err| format!("Failed to resolve creative audio dir: {err}"))?,
     )?;
+    ensure_dir(
+        &creative_audio_runtime_dir(app)
+            .map_err(|err| format!("Failed to resolve creative audio runtime dir: {err}"))?,
+    )?;
+    ensure_dir(
+        &creative_audio_downloads_dir(app)
+            .map_err(|err| format!("Failed to resolve creative audio downloads dir: {err}"))?,
+    )?;
 
     migrate_legacy_stt_layout(app)?;
     migrate_legacy_llm_layout(app)?;
     migrate_local_model_snapshots(app)?;
+    migrate_legacy_creative_audio_layout(app)?;
     crate::ocr_models::migrate_local_ocr_snapshots(app);
 
     Ok(())

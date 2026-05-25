@@ -5,6 +5,7 @@ use crate::settings::{get_settings, AutoSubmitKey, ClipboardHandling, PasteMetho
 use enigo::{Direction, Enigo, Key, Keyboard};
 use log::{info, warn};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -92,6 +93,7 @@ fn pasteboard_change_count() -> Option<i64> {
 const SCRATCHPAD_WINDOW_LABEL: &str = "scratchpad";
 const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
 const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
+static CLIPBOARD_RESTORE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Result<bool, String> {
     // First: honor the snapshot taken at dictation start.
@@ -143,14 +145,25 @@ fn schedule_clipboard_restore(
     restore_text: String,
     delay_ms: u64,
     expected_change_count: Option<i64>,
+    expected_current_text: String,
+    restore_generation: u64,
 ) {
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(delay_ms));
+        if CLIPBOARD_RESTORE_GENERATION.load(Ordering::SeqCst) != restore_generation {
+            info!("Skipping clipboard restore because a newer Vox Jot paste superseded it");
+            return;
+        }
         if let Some(expected) = expected_change_count {
             if pasteboard_change_count() != Some(expected) {
                 info!("Skipping clipboard restore because the clipboard changed after paste");
                 return;
             }
+        } else if app_handle.clipboard().read_text().ok().as_deref()
+            != Some(expected_current_text.as_str())
+        {
+            info!("Skipping clipboard restore because the clipboard changed after paste");
+            return;
         }
 
         let clipboard = app_handle.clipboard();
@@ -240,6 +253,7 @@ fn paste_via_clipboard(
         .map_err(|e| format!("Failed to write to clipboard: {}", e));
 
     write_result?;
+    let restore_generation = CLIPBOARD_RESTORE_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
 
     // Mark the pasteboard as transient so clipboard-history managers skip
     // logging the dictated text. No-op on non-macOS.
@@ -276,6 +290,8 @@ fn paste_via_clipboard(
         restore_text,
         clipboard_restore_delay_ms(app_handle),
         restore_change_count,
+        text.to_string(),
+        restore_generation,
     );
 
     Ok(())

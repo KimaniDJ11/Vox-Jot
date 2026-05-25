@@ -11,6 +11,88 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+fn query_mute() -> Option<bool> {
+    #[cfg(target_os = "windows")]
+    {
+        unsafe {
+            use windows::Win32::{
+                Media::Audio::{
+                    eMultimedia, eRender, Endpoints::IAudioEndpointVolume, IMMDeviceEnumerator,
+                    MMDeviceEnumerator,
+                },
+                System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED},
+            };
+
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+            let all_devices: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+            let default_device = all_devices
+                .GetDefaultAudioEndpoint(eRender, eMultimedia)
+                .ok()?;
+            let volume_interface = default_device
+                .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
+                .ok()?;
+            let mut muted = windows::Win32::Foundation::BOOL(0);
+            volume_interface.GetMute(&mut muted).ok()?;
+            Some(muted.as_bool())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+
+        if let Ok(output) = Command::new("wpctl")
+            .args(["get-volume", "@DEFAULT_AUDIO_SINK@"])
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+                return Some(text.contains("[muted]"));
+            }
+        }
+
+        if let Ok(output) = Command::new("pactl")
+            .args(["get-sink-mute", "@DEFAULT_SINK@"])
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+                return Some(text.contains("yes"));
+            }
+        }
+
+        if let Ok(output) = Command::new("amixer").args(["get", "Master"]).output() {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+                return Some(text.contains("[off]"));
+            }
+        }
+
+        None
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        let output = Command::new("osascript")
+            .args(["-e", "output muted of (get volume settings)"])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let value = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .to_ascii_lowercase();
+        match value.as_str() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    }
+}
+
 fn set_mute(mute: bool) {
     // Expected behavior:
     // - Windows: works on most systems using standard audio drivers.
@@ -166,6 +248,7 @@ pub struct AudioRecordingManager {
     stream_epoch: Arc<AtomicU64>,
     audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
+    mute_restore_state: Arc<Mutex<Option<bool>>>,
     temporary_mute_override: Arc<Mutex<Option<bool>>>,
 }
 
@@ -192,6 +275,7 @@ impl AudioRecordingManager {
             stream_epoch: Arc::new(AtomicU64::new(0)),
             audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
+            mute_restore_state: Arc::new(Mutex::new(None)),
             temporary_mute_override: Arc::new(Mutex::new(None)),
         };
 
@@ -274,8 +358,24 @@ impl AudioRecordingManager {
             && self.is_recording()
             && !self.did_mute.swap(true, Ordering::SeqCst)
         {
+            *self
+                .mute_restore_state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = query_mute();
             set_mute(true);
             debug!("Mute applied");
+        }
+    }
+
+    fn restore_recording_mute(&self) {
+        if self.did_mute.swap(false, Ordering::SeqCst) {
+            let previous = self
+                .mute_restore_state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+            set_mute(previous.unwrap_or(false));
+            debug!("Mute restored to previous state");
         }
     }
 
@@ -287,10 +387,7 @@ impl AudioRecordingManager {
             .unwrap_or_else(|e| e.into_inner()) = None;
         self.audio_ducker.restore_async();
 
-        if self.did_mute.swap(false, Ordering::SeqCst) {
-            set_mute(false);
-            debug!("Mute removed");
-        }
+        self.restore_recording_mute();
     }
 
     pub fn set_temporary_mute_override(&self, enabled: Option<bool>) {
@@ -312,6 +409,10 @@ impl AudioRecordingManager {
 
         // Don't mute immediately - caller will handle muting after audio feedback.
         self.did_mute.store(false, Ordering::SeqCst);
+        *self
+            .mute_restore_state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = None;
 
         if recorder_opt.is_none() {
             let vad_model_path = self.get_vad_model_path()?;
@@ -349,9 +450,7 @@ impl AudioRecordingManager {
 
         self.audio_ducker.restore_async();
 
-        if self.did_mute.swap(false, Ordering::SeqCst) {
-            set_mute(false);
-        }
+        self.restore_recording_mute();
 
         if let Some(rec) = recorder_guard.as_mut() {
             // If still recording, stop first.
@@ -385,9 +484,7 @@ impl AudioRecordingManager {
 
         self.audio_ducker.restore_async();
 
-        if self.did_mute.swap(false, Ordering::SeqCst) {
-            set_mute(false);
-        }
+        self.restore_recording_mute();
 
         if let Some(rec) = recorder_guard.as_mut() {
             let _ = rec.close();

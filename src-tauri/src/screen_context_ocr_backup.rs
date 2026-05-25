@@ -136,7 +136,7 @@ static BUNDLED: OnceLock<Option<BundledPaths>> = OnceLock::new();
 /// Register bundled tesseract resources for this process. Called once at app
 /// startup with paths resolved through `portable::resolve_resource`.
 ///
-/// The runtime accepts a `Some(_)` even if the files do not yet exist on disk —
+/// The runtime accepts a `Some(_)` before the files exist on disk -
 /// the executable check happens lazily so a partial dev tree (e.g. tessdata
 /// fetched but binary still missing) does not panic the app.
 pub(crate) fn set_bundled_paths(paths: Option<BundledPaths>) {
@@ -212,7 +212,7 @@ pub(crate) fn prewarm() {
             );
         }
         (None, _) => {
-            debug!("Backup OCR not yet available — tesseract binary not found");
+            debug!("Backup OCR blocked: tesseract binary not found");
         }
     }
 }

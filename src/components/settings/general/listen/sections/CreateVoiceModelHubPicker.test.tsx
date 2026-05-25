@@ -55,7 +55,6 @@ const model = (
     supports_voice_cloning: false,
     supports_instruction_prompt: false,
     supports_inline_tags: false,
-    coming_soon: false,
   },
   delivery_support: {
     expressiveness_mode: "unsupported",
@@ -143,7 +142,6 @@ const render = async (
             runtime: sourceModel.runtime,
             available: true,
             local_only: true,
-            coming_soon: false,
             license_label: null,
             capabilities: sourceModel.capabilities,
           },

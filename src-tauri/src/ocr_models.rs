@@ -81,15 +81,14 @@ struct NeuralRouteCache {
     route: Option<crate::ocr_backend::NeuralRoute>,
 }
 
-/// How the catalog entry expects to be imported. Phase 1 only supports
-/// `LocalDirectory` (user-picked folder).
+/// How the catalog entry expects to be imported.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OcrCatalogSourceKind {
     /// Copied from a folder the user picks (or auto-migrated from a known
     /// developer staging path on first launch).
     LocalDirectory,
-    /// Reserved for Phase 2 in-app HuggingFace download.
+    /// Downloaded by the app from Hugging Face.
     HuggingFace,
 }
 

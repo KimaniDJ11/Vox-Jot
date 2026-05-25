@@ -54,8 +54,7 @@
     "supports_streaming": false,
     "supports_voice_cloning": false,
     "supports_instruction_prompt": true,
-    "supports_inline_tags": false,
-    "coming_soon": false
+    "supports_inline_tags": false
   },
 
   "languages": ["en"],
@@ -69,12 +68,12 @@
   },
 
   "benchmark": {
-    "tested_on_hardware": "Not benchmarked in Vox Jot; upstream MLX README includes an M4 Pro / 48 GB sample run",
+    "tested_on_hardware": "Apple Silicon macOS installed Vox Jot app",
     "cold_start_sec": null,
     "warm_start_sec": null,
     "peak_memory_gb": null,
     "sample_rtf": null,
-    "output_quality_notes": "Promising for a Vox Jot Studio creative-audio lane: music beds, atmospheres, transitions, Foley, and sound effects for scripts/stories. It does not produce spoken readback or transcription output."
+    "output_quality_notes": "Full installed-app Creative Audio suite passed on 2026-05-25 through /v1/creative-audio/generate. Small Music ranked #1: score 99.8, 2/2 cases, p50 latency 1387 ms, p50 RTF 0.102, duration accuracy 1.0, audio health 1.0. Small SFX ranked #2: score 99.6, 2/2 cases, p50 latency 1229 ms, p50 RTF 0.271, duration accuracy 1.0, audio health 1.0. This is an automatic app-path score, not a human music-preference panel."
   },
 
   "verdict": {
@@ -83,9 +82,8 @@
     "blockers": [
       "Requires a new Vox Jot Studio creative-audio product surface; it should not be inserted into STT or TTS rankings",
       "Gated/community license with an enterprise-license threshold for organizations above Stability AI's revenue limit",
-      "Needs an app-managed MLX sidecar/runtime and large resumable model downloads before normal users can rely on it",
-      "No Vox Jot benchmark suite exists yet for prompt adherence, loop quality, SFX usefulness, generation latency, cancellation, or output export behavior"
+      "Human listening preference, semantic prompt-adherence, and loop-quality panels are not included in the automatic suite"
     ],
-    "notes": "Recommended path: prototype behind Labs/Studio using the official optimized/mlx implementation, start with sm-sfx and sm-music, keep medium optional, and build an app-managed download/runtime flow. Existing dictation, transcription, and readback hot paths should not load or initialize this runtime."
+    "notes": "Stable Audio 3 Small SFX and Small Music are implemented in Story Studio Creative Audio and ranked in Testing from the installed-app path. Existing dictation, transcription, readback, overlay, and paste hot paths do not load or initialize this runtime."
   }
 }

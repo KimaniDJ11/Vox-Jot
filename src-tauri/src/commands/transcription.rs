@@ -91,6 +91,38 @@ pub struct ModelLoadStatus {
     current_model: Option<String>,
 }
 
+#[derive(Serialize, Type)]
+pub struct RuntimeMemoryStatus {
+    app_rss_mb: Option<f64>,
+    sidecar_rss_mb: Option<f64>,
+    sidecar_running: bool,
+    sidecar_pid: Option<u32>,
+}
+
+fn process_rss_mb(pid: u32) -> Option<f64> {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let output = Command::new("ps")
+            .args(["-o", "rss=", "-p", &pid.to_string()])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let rss_kb = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse::<f64>()
+            .ok()?;
+        Some(rss_kb / 1024.0)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        let _ = pid;
+        None
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn set_model_unload_timeout(app: AppHandle, timeout: ModelUnloadTimeout) {
@@ -107,6 +139,20 @@ pub fn get_model_load_status(
     Ok(ModelLoadStatus {
         is_loaded: transcription_manager.is_model_loaded(),
         current_model: transcription_manager.get_current_model(),
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_runtime_memory_status(
+    sidecar_manager: State<'_, Arc<SidecarManager>>,
+) -> Result<RuntimeMemoryStatus, String> {
+    let sidecar_pid = sidecar_manager.process_id();
+    Ok(RuntimeMemoryStatus {
+        app_rss_mb: process_rss_mb(std::process::id()),
+        sidecar_rss_mb: sidecar_pid.and_then(process_rss_mb),
+        sidecar_running: sidecar_manager.is_running(),
+        sidecar_pid,
     })
 }
 

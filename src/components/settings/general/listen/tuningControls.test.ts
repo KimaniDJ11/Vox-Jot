@@ -15,7 +15,6 @@ const defaultCapabilities = {
   supports_voice_cloning: false,
   supports_instruction_prompt: false,
   supports_inline_tags: false,
-  coming_soon: false,
 };
 
 const styleInstructionsControl: TtsAdvancedControlDescriptor = {

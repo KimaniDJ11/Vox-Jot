@@ -891,7 +891,7 @@ export const EngineLibraryPanel: React.FC<{
           gated: (model) =>
             ttsModelRequiresHfAccess(model) ||
             Boolean(ttsModelLicenseGate(model)),
-          blocked: (model) => model.capabilities.coming_soon,
+          blocked: (model) => !model.downloadable && !model.runnable,
           rank: (model) => getTtsEvaluationResult(model.id)?.rank,
           latencyMs: (model) => getTtsEvaluationResult(model.id)?.latencyP50Ms,
           providerRank: (model) => providerRankById.get(model.provider_id),

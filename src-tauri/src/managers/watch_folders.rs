@@ -199,7 +199,7 @@ impl WatchFolderManager {
             for cfg in &folders {
                 if let Err(err) = debouncer
                     .watcher()
-                    .watch(Path::new(&cfg.path), RecursiveMode::NonRecursive)
+                    .watch(Path::new(&cfg.path), RecursiveMode::Recursive)
                 {
                     warn!("watch-folders: failed to watch '{}': {}", cfg.path, err);
                 }
@@ -249,17 +249,14 @@ impl WatchFolderManager {
         let manager = Arc::clone(self);
         // The transcription call is sync; offload to a blocking task so
         // the supervisor thread can keep dispatching events.
-        thread::Builder::new()
-            .name("watch-folders-transcribe".into())
-            .spawn(move || {
-                manager.process_file(path.clone(), cfg);
-                manager
-                    .in_flight
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .remove(&path);
-            })
-            .ok();
+        tauri::async_runtime::spawn_blocking(move || {
+            manager.process_file(path.clone(), cfg);
+            manager
+                .in_flight
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .remove(&path);
+        });
     }
 
     fn process_file(&self, path: PathBuf, cfg: WatchFolderConfig) {

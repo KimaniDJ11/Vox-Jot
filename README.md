@@ -239,35 +239,11 @@ The following are recommendations for running Vox Jot on your own machine. If yo
 - **Performance**: ~5x real-time speed on mid-range hardware (tested on i5)
 - **Automatic language detection** - no manual language selection required
 
-## Roadmap & Active Development
+## Working Feature Policy
 
-We're actively working on several features and improvements. Contributions and feedback are welcome!
+Vox Jot does not maintain planning-only sections for partially implemented user-facing work. If a feature is visible in the app, it should be fully implemented and runnable through the normal app flow.
 
-### In Progress
-
-**Debug Logging:**
-
-- Adding debug logging to a file to help diagnose issues
-
-**macOS Keyboard Improvements:**
-
-- Support for Globe key as transcription trigger
-- A rewrite of global shortcut handling for MacOS, and potentially other OS's too.
-
-**Opt-in Analytics:**
-
-- Collect anonymous usage data to help improve Vox Jot
-- Privacy-first approach with clear opt-in
-
-**Settings Refactoring:**
-
-- Cleanup and refactor settings system which is becoming bloated and messy
-- Implement better abstractions for settings management
-
-**Tauri Commands Cleanup:**
-
-- Abstract and organize Tauri command patterns
-- Investigate tauri-specta for improved type safety and organization
+Contributions should avoid promise-only surfaces, disabled placeholders, mock-only flows, and planning-only entries. If a feature cannot be completed because an artifact, credential, runtime, platform API, or upstream dependency is unavailable, keep it out of usable surfaces or mark it clearly as blocked until the full path can be implemented and verified.
 
 ## Troubleshooting
 

@@ -5,6 +5,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## No Deferred Placeholder Work Policy
+
+There is no accepted product plan that justifies leaving requested functionality unfinished. Agents must treat every requested task as a request for a fully working implementation unless the user explicitly narrows the scope.
+
+- Do not leave promise-only, empty, placeholder, mock-only, disabled, hidden, or manually wired functionality as the final state of a task.
+- If a feature is visible in the app, it must be runnable through the normal app path with required runtime, model, dependency, credential, and error-handling flows implemented or app-managed.
+- If implementation is blocked by missing credentials, unavailable artifacts, platform limitations, or an upstream defect, mark the feature honestly as blocked/failed, keep it out of usable surfaces, and report the blocker with the exact validation performed.
+- Do not add ranked benchmarks, catalog availability, download buttons, settings controls, menu items, or UI affordances that imply a feature works until the full path has been implemented and verified.
+- Existing docs that describe staged plans or incomplete ideas are historical context only. They must not be used to justify partial implementation.
+- When completing work, report what was implemented, how it was validated, and whether any visible path remains incomplete.
+
 ## Frontend UX Heuristics Policy
 
 For any frontend design or UI change, agents and AI coding tools must use the UX heuristics guardrails before changing code. In Codex, use the `ux-ai-guardrails` / Heuristics skill; in other tools, apply the same Nielsen usability heuristics, WCAG accessibility checks, and project-specific UI constraints from this file.

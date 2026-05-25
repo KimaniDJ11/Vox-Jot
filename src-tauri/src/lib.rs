@@ -234,7 +234,7 @@ fn warm_selected_stt_engine(
         }
         Some(_) => {
             log::debug!(
-                "Skipping startup STT pre-warm because selected model '{}' is not available yet",
+                "Skipping startup STT pre-warm because selected model '{}' is blocked or unavailable",
                 selected_model
             );
         }
@@ -863,6 +863,7 @@ pub fn run(cli_args: CliArgs) {
         commands::audio::is_recording,
         commands::transcription::set_model_unload_timeout,
         commands::transcription::get_model_load_status,
+        commands::transcription::get_runtime_memory_status,
         commands::transcription::unload_model_manually,
         commands::transcription::transcribe_file,
         commands::transcription::export_subtitles_srt,

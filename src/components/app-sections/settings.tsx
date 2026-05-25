@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
@@ -39,7 +39,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { commands } from "@/bindings";
+import { commands, type ConvoActionSuggestion } from "@/bindings";
 import { useDictationReadiness } from "@/hooks/useDictationReadiness";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { isMacAppStoreBuild } from "@/lib/distribution";
@@ -230,6 +230,226 @@ const GeneralHeroVisual: React.FC = () => {
   );
 };
 
+const SettingsCoachPanel: React.FC = () => {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [actions, setActions] = useState<ConvoActionSuggestion[]>([]);
+  const [error, setError] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  const openSettingAction = useCallback((sectionId: string) => {
+    const listenSections = new Set([
+      "create-voices",
+      "voice-cloning",
+      "voice-changer",
+      "story-studio",
+      "story-audio-history",
+    ]);
+    const refineSections = new Set([
+      "write-profiles",
+      "phrase-keys",
+      "translation",
+    ]);
+    const view = listenSections.has(sectionId)
+      ? "listen"
+      : refineSections.has(sectionId)
+        ? "refine"
+        : "settings";
+    window.dispatchEvent(
+      new CustomEvent("vox-jot:navigate", {
+        detail: { view, section: sectionId },
+      }),
+    );
+  }, []);
+
+  const askCoach = useCallback(async () => {
+    const text = question.trim();
+    if (!text || isSending) return;
+    setIsSending(true);
+    setError("");
+    try {
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        const prepared = await commands.convoPrepareSession(
+          "settings_coach",
+          null,
+          null,
+        );
+        if (prepared.status === "error") {
+          throw new Error(prepared.error);
+        }
+        activeSessionId = prepared.data.session_id;
+        setSessionId(activeSessionId);
+      }
+
+      const response = await commands.convoSendTextTurn(
+        activeSessionId,
+        text,
+        null,
+      );
+      if (response.status === "error") {
+        throw new Error(response.error);
+      }
+      setAnswer(response.data.assistant_text);
+      setActions(response.data.suggested_actions);
+      setQuestion("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Settings Coach failed.");
+    } finally {
+      setIsSending(false);
+    }
+  }, [isSending, question, sessionId]);
+
+  return (
+    <SettingsGroup
+      title="Settings Coach"
+      description="Ask where a Vox Jot setting lives, then jump directly to the recommended panel."
+    >
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void askCoach();
+              }
+            }}
+            placeholder="How do I turn on push to talk?"
+            aria-label="Ask Settings Coach"
+            disabled={isSending}
+            className="min-w-0 flex-1"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void askCoach()}
+            disabled={!question.trim() || isSending}
+          >
+            {isSending ? "Asking..." : "Ask"}
+          </Button>
+        </div>
+
+        {error ? (
+          <div
+            className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--text)]"
+            role="alert"
+          >
+            {error}
+          </div>
+        ) : null}
+
+        {answer ? (
+          <div
+            className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3 text-sm text-[var(--text)]"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="leading-6">{answer}</p>
+            {actions.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {actions
+                  .filter((action) => action.action_type === "open_setting")
+                  .map((action) => (
+                    <Button
+                      key={`${action.action_type}:${action.payload}`}
+                      type="button"
+                      variant="primary-soft"
+                      size="sm"
+                      onClick={() => openSettingAction(action.payload)}
+                    >
+                      {action.label}
+                    </Button>
+                  ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </SettingsGroup>
+  );
+};
+
+const RuntimeMemoryPanel: React.FC = () => {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<{
+    app_rss_mb: number | null;
+    sidecar_rss_mb: number | null;
+    sidecar_running: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const result = await commands.getRuntimeMemoryStatus();
+      if (!cancelled && result.status === "ok") {
+        setStatus(result.data);
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const appMb = status?.app_rss_mb ?? 0;
+  const sidecarMb = status?.sidecar_rss_mb ?? 0;
+  const totalMb = appMb + sidecarMb;
+  const memoryPercent = Math.min(100, Math.round((totalMb / 8192) * 100));
+
+  return (
+    <SettingContainer
+      title="Runtime memory"
+      description="Shows current Vox Jot process memory plus the local audio sidecar when it is running."
+      grouped
+    >
+      <div className="min-w-[220px] space-y-2" role="status" aria-live="polite">
+        <div className="flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
+          <span>
+            {t("settings.runtimeMemory.active", {
+              count: Math.round(totalMb),
+              defaultValue: "{{count}} MB active",
+            })}
+          </span>
+          <span>
+            {status?.sidecar_running
+              ? t("settings.runtimeMemory.sidecarRunning", {
+                  defaultValue: "Sidecar running",
+                })
+              : t("settings.runtimeMemory.sidecarIdle", {
+                  defaultValue: "Sidecar idle",
+                })}
+          </span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-[var(--input)]">
+          <div
+            className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-200"
+            style={{ width: `${memoryPercent}%` }}
+          />
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--muted)]">
+          <span>
+            {t("settings.runtimeMemory.app", {
+              count: Math.round(appMb),
+              defaultValue: "App {{count}} MB",
+            })}
+          </span>
+          <span>
+            {t("settings.runtimeMemory.sidecar", {
+              count: Math.round(sidecarMb),
+              defaultValue: "Sidecar {{count}} MB",
+            })}
+          </span>
+        </div>
+      </div>
+    </SettingContainer>
+  );
+};
+
 export const GeneralAppSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
@@ -253,7 +473,10 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <AppLanguageSelector descriptionMode="tooltip" grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="inline" grouped={true} />
+        <RuntimeMemoryPanel />
       </SettingsGroup>
+
+      <SettingsCoachPanel />
 
       <SettingsGroup title={t("appSections.groups.featureToggles")}>
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />

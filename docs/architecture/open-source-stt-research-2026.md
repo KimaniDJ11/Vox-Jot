@@ -20,13 +20,13 @@ This audit looked at popular and current speech systems that overlap with Vox Jo
 - Use streaming results as UI feedback, not as a reason to slow final paste. Apple SpeechAnalyzer and streaming Whisper projects show the value of volatile/partial results that later finalize.
 - Keep lab features opt-in. Automation agents, model testing, and experimental speech-analysis views should stay discoverable for development but hidden for normal use until they are benchmarked and production-packaged.
 
-## Vox Jot Phase Mapping
+## Vox Jot Architecture Conclusions
 
-- Phase 1: latency guardrails and hot-path instrumentation.
-- Phase 2: shared artifact download layer for HF repos and standalone runtime archives.
-- Phase 3: runtime/provider contracts that define artifact domain, execution mode, and whether the provider can run on the dictation path.
-- Phase 4: product module boundaries in frontend navigation.
-- Phase 5: lab gating, docs, and tests so experiments do not leak into default UX.
+- Latency guardrails and hot-path instrumentation protect dictation.
+- Shared artifact download code handles HF repos and standalone runtime archives.
+- Runtime/provider contracts define artifact domain, execution mode, and whether the provider can run on the dictation path.
+- Product module boundaries keep frontend navigation deterministic.
+- Lab gating, docs, and tests keep experiments out of default UX until they are benchmarked and production-packaged.
 
 ## Sources
 

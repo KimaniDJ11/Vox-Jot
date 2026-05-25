@@ -49,6 +49,8 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
 - FireRedASR2 and Qwen ASR 0.6B are real File ASR/STT candidates; keep their IDs and result notes aligned across scripts, sidecar mappings, and Testing view data.
 - Sortformer MLX v1/v2.1 are valid speaker-isolation results and remain the only user-facing downloadable speaker-isolation rows. The app now routes them through the managed `mlx-audio` runtime instead of the repo `.venv`.
 - DiariZen is removed from the user-facing app catalog and Testing view. Granite, Cohere Transcribe, PyAnnote, NeMo Sortformer, Reverb, WhisperX, MLX Sortformer, and Polyvoice stay in the user-facing speech-analysis hub and route through the managed speech-analysis runtime group at `IrieDinamik/vox-jot-speech-analysis-runtime`.
+- May 25, 2026 Creative Audio installed-app suite: `scripts/run-creative-audio-model-eval.ts` drives `/v1/creative-audio/generate` through the installed local API and writes `src/lib/creativeAudioEvaluationResults.ts`. Stable Audio 3 Small Music ranked #1 with score 99.8, 2/2 cases, p50 1387 ms, p50 RTF 0.102. Stable Audio 3 Small SFX ranked #2 with score 99.6, 2/2 cases, p50 1229 ms, p50 RTF 0.271. ACE-Step, DiffRhythm, YuE, and FIGARO stay blocked in the catalog and Testing until their app-managed macOS runtime/checkpoint artifacts validate.
+- Story Studio WAV duration uses `hound::WavReader::duration()` as frame count. Do not divide it by channel count; doing so halves stereo Creative Audio durations and causes false benchmark failures.
 
 ## Download Queue Notes
 
@@ -64,6 +66,7 @@ After every benchmark/download session, update all applicable places:
 - Rust app catalog and availability gates in `src-tauri/src/tts/catalog.rs` or the matching STT/speech-analysis catalog.
 - Benchmark runner model specs under `scripts/`.
 - Testing view data in `src/lib/*EvaluationResults.ts`.
+- Creative Audio benchmark rows in `src/lib/creativeAudioEvaluationResults.ts`.
 - Planning docs such as `docs/mlx-audio-model-hub-audit.md`.
 - This runbook and `AGENTS.md` when a new rule or failure mode should guide future agents.
 

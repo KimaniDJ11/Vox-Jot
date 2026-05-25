@@ -202,7 +202,7 @@ export function useListenSpeechState() {
   const allProviders = useMemo(
     () =>
       (platformOverview?.tts.providers ?? []).filter(
-        (provider) => provider.available && !provider.coming_soon,
+        (provider) => provider.available,
       ),
     [platformOverview],
   );
@@ -216,10 +216,8 @@ export function useListenSpeechState() {
   const allModels = useMemo(
     () =>
       dedupeCatalogModels(
-        (platformOverview?.tts.models ?? []).filter(
-          (model) =>
-            !model.capabilities.coming_soon &&
-            allProviders.some((provider) => provider.id === model.provider_id),
+        (platformOverview?.tts.models ?? []).filter((model) =>
+          allProviders.some((provider) => provider.id === model.provider_id),
         ),
       ),
     [allProviders, platformOverview],

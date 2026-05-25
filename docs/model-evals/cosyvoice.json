@@ -60,8 +60,7 @@
     "supports_streaming": true,
     "supports_voice_cloning": true,
     "supports_instruction_prompt": true,
-    "supports_inline_tags": false,
-    "coming_soon": false
+    "supports_inline_tags": false
   },
 
   "languages": ["zh", "en", "ja", "ko", "de", "es", "fr", "it", "ru"],

@@ -495,7 +495,7 @@ impl ConvoController {
             "Hold the shortcut key to record instead of toggle.",
             settings.push_to_talk,
             "Dictation",
-            "general_app_settings"
+            "shortcuts"
         );
         entry!(
             "audio_feedback",
@@ -503,7 +503,7 @@ impl ConvoController {
             "Play sounds when recording starts and stops.",
             settings.audio_feedback,
             "Dictation",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "paste_method",
@@ -511,7 +511,7 @@ impl ConvoController {
             "How transcribed text is inserted into the active application.",
             format!("{:?}", settings.paste_method),
             "Output",
-            "output_paste_settings"
+            "output-paste"
         );
         entry!(
             "clipboard_handling",
@@ -519,7 +519,7 @@ impl ConvoController {
             "Whether to copy transcription to clipboard.",
             format!("{:?}", settings.clipboard_handling),
             "Output",
-            "output_paste_settings"
+            "output-paste"
         );
         entry!(
             "post_process_enabled",
@@ -527,7 +527,7 @@ impl ConvoController {
             "Enable LLM-based text improvement after transcription.",
             settings.post_process_enabled,
             "AI",
-            "ai_setup_settings"
+            "ai-setup"
         );
         entry!(
             "post_process_provider_id",
@@ -535,7 +535,7 @@ impl ConvoController {
             "The LLM provider used for post-processing.",
             settings.post_process_provider_id,
             "AI",
-            "ai_setup_settings"
+            "ai-setup"
         );
         entry!(
             "overlay_position",
@@ -543,7 +543,7 @@ impl ConvoController {
             "Where the recording overlay appears on screen.",
             format!("{:?}", settings.overlay_position),
             "Appearance",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "recording_overlay_style",
@@ -551,7 +551,7 @@ impl ConvoController {
             "Compact (minimal) or detailed (full level meters + partial text).",
             format!("{:?}", settings.recording_overlay_style),
             "Appearance",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "translate_to_english",
@@ -559,7 +559,7 @@ impl ConvoController {
             "Automatically translate speech to English.",
             settings.translate_to_english,
             "Translation",
-            "general_app_settings"
+            "translation"
         );
         entry!(
             "tts_enabled",
@@ -567,7 +567,7 @@ impl ConvoController {
             "Enable text-to-speech playback.",
             settings.tts_enabled,
             "Listen",
-            "listen_sound_tuning"
+            "create-voices"
         );
         entry!(
             "tts_auto_readback_mode",
@@ -575,7 +575,7 @@ impl ConvoController {
             "When to automatically read back transcriptions.",
             format!("{:?}", settings.tts_auto_readback_mode),
             "Listen",
-            "listen_auto_readback"
+            "create-voices"
         );
         entry!(
             "auto_submit",
@@ -583,7 +583,7 @@ impl ConvoController {
             "Automatically press Enter after pasting transcription.",
             settings.auto_submit,
             "Output",
-            "output_paste_settings"
+            "output-paste"
         );
         entry!(
             "mute_while_recording",
@@ -591,7 +591,7 @@ impl ConvoController {
             "Mute system audio during recording.",
             settings.mute_while_recording,
             "Recording",
-            "recording_devices_settings"
+            "recording-devices"
         );
         entry!(
             "audio_ducking_enabled",
@@ -599,7 +599,7 @@ impl ConvoController {
             "Lower other apps' volume while recording.",
             settings.audio_ducking_enabled,
             "Recording",
-            "recording_devices_settings"
+            "recording-devices"
         );
         entry!(
             "start_hidden",
@@ -607,7 +607,7 @@ impl ConvoController {
             "Launch the app without showing the main window.",
             settings.start_hidden,
             "App",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "autostart_enabled",
@@ -615,7 +615,7 @@ impl ConvoController {
             "Automatically start Vox Jot when you log in.",
             settings.autostart_enabled,
             "App",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "show_tray_icon",
@@ -623,7 +623,7 @@ impl ConvoController {
             "Display the Vox Jot icon in the system tray.",
             settings.show_tray_icon,
             "App",
-            "general_app_settings"
+            "general"
         );
         entry!(
             "snippets_enabled",
@@ -631,7 +631,7 @@ impl ConvoController {
             "Enable text expansion with phrase key shortcuts.",
             settings.snippets_enabled,
             "Refine",
-            "refine_phrase_keys"
+            "phrase-keys"
         );
         entry!(
             "correction_tracking_enabled",
@@ -639,7 +639,7 @@ impl ConvoController {
             "Track corrections you make to improve future transcriptions.",
             settings.correction_tracking_enabled,
             "Corrections",
-            "corrections"
+            "corrections-settings"
         );
         entry!(
             "local_privacy_mode",
@@ -647,7 +647,7 @@ impl ConvoController {
             "Force all AI processing to use local-only providers.",
             settings.local_privacy_mode,
             "Privacy",
-            "privacy_storage_settings"
+            "privacy"
         );
         entry!(
             "debug_mode",
@@ -655,7 +655,7 @@ impl ConvoController {
             "Show additional diagnostic information.",
             settings.debug_mode,
             "Diagnostics",
-            "diagnostics_settings"
+            "diagnostics"
         );
 
         Ok(catalog)

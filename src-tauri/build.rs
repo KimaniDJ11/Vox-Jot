@@ -126,20 +126,21 @@ fn build_apple_intelligence_bridge() {
     use std::process::Command;
 
     const REAL_SWIFT_FILE: &str = "swift/apple_intelligence.swift";
-    const STUB_SWIFT_FILE: &str = "swift/apple_intelligence_stub.swift";
+    const UNAVAILABLE_SWIFT_FILE: &str = "swift/apple_intelligence_unavailable.swift";
     const APPLE_SPEECH_SWIFT_FILE: &str = "swift/apple_speech.swift";
-    const APPLE_SPEECH_STUB_SWIFT_FILE: &str = "swift/apple_speech_stub.swift";
+    const APPLE_SPEECH_UNAVAILABLE_SWIFT_FILE: &str = "swift/apple_speech_unavailable.swift";
     const ACTIVE_BROWSER_URL_SWIFT_FILE: &str = "swift/active_browser_url.swift";
-    const ACTIVE_BROWSER_URL_STUB_SWIFT_FILE: &str = "swift/active_browser_url_stub.swift";
+    const ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE: &str =
+        "swift/active_browser_url_unavailable.swift";
     const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
     const BRIDGE_HEADER: &str = "swift/apple_intelligence_bridge.h";
 
     println!("cargo:rerun-if-changed={REAL_SWIFT_FILE}");
-    println!("cargo:rerun-if-changed={STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={UNAVAILABLE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={APPLE_SPEECH_SWIFT_FILE}");
-    println!("cargo:rerun-if-changed={APPLE_SPEECH_STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={APPLE_SPEECH_UNAVAILABLE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_SWIFT_FILE}");
-    println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
@@ -186,15 +187,27 @@ fn build_apple_intelligence_bridge() {
     let has_foundation_models = framework_path.exists();
     let has_speech_analyzer = sdk_supports_speech_analyzer(Path::new(&sdk_path));
 
+    let profile = std::env::var("PROFILE").unwrap_or_default();
+    let allow_dev_swift_fallbacks = profile != "release"
+        && std::env::var("VOX_JOT_ALLOW_SWIFT_DEV_FALLBACKS").as_deref() == Ok("1");
+
     let source_file = if has_foundation_models {
         REAL_SWIFT_FILE
+    } else if allow_dev_swift_fallbacks {
+        UNAVAILABLE_SWIFT_FILE
     } else {
-        STUB_SWIFT_FILE
+        panic!(
+            "FoundationModels.framework is missing from the macOS SDK. Install an SDK with FoundationModels support or set VOX_JOT_ALLOW_SWIFT_DEV_FALLBACKS=1 for local debug-only builds."
+        );
     };
     let speech_source_file = if has_speech_analyzer {
         APPLE_SPEECH_SWIFT_FILE
+    } else if allow_dev_swift_fallbacks {
+        APPLE_SPEECH_UNAVAILABLE_SWIFT_FILE
     } else {
-        APPLE_SPEECH_STUB_SWIFT_FILE
+        panic!(
+            "SpeechAnalyzer is missing from the macOS SDK. Install an SDK with SpeechAnalyzer support or set VOX_JOT_ALLOW_SWIFT_DEV_FALLBACKS=1 for local debug-only builds."
+        );
     };
     let browser_url_source_file = ACTIVE_BROWSER_URL_SWIFT_FILE;
 
@@ -258,22 +271,23 @@ fn build_apple_intelligence_bridge() {
             .expect("Failed to invoke swiftc for Apple Intelligence bridge")
     };
 
-    // Apple Intelligence source can use Swift macros. Some sandboxed build
-    // environments disallow swift-plugin-server, so fall back to the stub if
-    // the real implementation fails to compile.
+    // Apple Intelligence source can use Swift macros. Production builds must
+    // compile the real implementation; local debug builds may opt into the
+    // unavailable-response implementation when the Swift toolchain cannot run
+    // swift-plugin-server.
     let mut apple_intelligence_source_file = source_file;
     let ai_output = compile_swift_source(apple_intelligence_source_file, &object_paths[0]);
     if !ai_output.status.success() {
         let stderr = String::from_utf8_lossy(&ai_output.stderr);
-        if apple_intelligence_source_file == REAL_SWIFT_FILE {
+        if apple_intelligence_source_file == REAL_SWIFT_FILE && allow_dev_swift_fallbacks {
             println!(
-                "cargo:warning=Apple Intelligence Swift macros unavailable; falling back to stub implementation"
+                "cargo:warning=Apple Intelligence Swift macros unavailable; using debug-only unavailable-response implementation"
             );
-            apple_intelligence_source_file = STUB_SWIFT_FILE;
-            let stub_output =
+            apple_intelligence_source_file = UNAVAILABLE_SWIFT_FILE;
+            let unavailable_output =
                 compile_swift_source(apple_intelligence_source_file, &object_paths[0]);
-            if !stub_output.status.success() {
-                eprintln!("{}", String::from_utf8_lossy(&stub_output.stderr));
+            if !unavailable_output.status.success() {
+                eprintln!("{}", String::from_utf8_lossy(&unavailable_output.stderr));
                 panic!("swiftc failed to compile {apple_intelligence_source_file}");
             }
         } else {

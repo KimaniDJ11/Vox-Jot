@@ -1135,6 +1135,14 @@ impl SidecarManager {
         Ok(true)
     }
 
+    pub fn process_id(&self) -> Option<u32> {
+        self.child
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(std::process::Child::id)
+    }
+
     pub fn stop(&self) {
         let mut guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(mut child) = guard.take() {

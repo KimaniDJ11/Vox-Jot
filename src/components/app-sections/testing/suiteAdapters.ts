@@ -33,8 +33,13 @@ import type {
   TtsVoiceCloneEvaluationStatus,
 } from "@/lib/ttsVoiceCloneEvaluationResults";
 import type { LeaderboardRowProps } from "@/components/app-sections/testing/types";
+import type {
+  CreativeAudioEvaluationResult,
+  CreativeAudioEvaluationStatus,
+} from "@/lib/creativeAudioEvaluationResults";
 
 type EvaluationStatus =
+  | CreativeAudioEvaluationStatus
   | FileAsrEvaluationStatus
   | LlmEvaluationStatus
   | SttEvaluationStatus
@@ -357,6 +362,66 @@ export function buildScreenOcrRow(
           ]
         : [],
     footer: categoryFooter(result.strongestCategory, result.weakestCategory, t),
+  };
+}
+
+export function buildCreativeAudioRow(
+  result: CreativeAudioEvaluationResult,
+  t: TFunction,
+): LeaderboardRowProps {
+  return {
+    rank: result.rank,
+    label: result.label,
+    modelId: result.modelId,
+    providerId: result.providerId,
+    status: result.status,
+    statusLabel: statusLabel(result.status, t),
+    notes: result.notes,
+    metrics:
+      result.status === "tested"
+        ? [
+            {
+              label: t("testing.metrics.score", { defaultValue: "Score" }),
+              value:
+                result.score !== undefined ? result.score.toFixed(1) : "n/a",
+            },
+            {
+              label: t("testing.metrics.pass", { defaultValue: "Pass" }),
+              value:
+                result.passedCases !== undefined &&
+                result.sampleCount !== undefined
+                  ? `${result.passedCases}/${result.sampleCount}`
+                  : "n/a",
+            },
+            {
+              label: t("testing.metrics.p50", { defaultValue: "p50" }),
+              value: formatMs(result.latencyP50Ms),
+            },
+            {
+              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
+              value: formatNumber(result.realTimeFactorP50),
+            },
+            {
+              label: t("testing.metrics.duration", {
+                defaultValue: "Duration",
+              }),
+              value: formatPercent(result.durationAccuracy),
+            },
+            {
+              label: t("testing.metrics.audio", { defaultValue: "Audio" }),
+              value: formatPercent(result.audioHealth),
+            },
+          ]
+        : [
+            {
+              label: t("testing.metrics.pass", { defaultValue: "Pass" }),
+              value:
+                result.passedCases !== undefined &&
+                result.sampleCount !== undefined
+                  ? `${result.passedCases}/${result.sampleCount}`
+                  : "n/a",
+            },
+          ],
   };
 }
 

@@ -300,8 +300,8 @@
     },
     {
       "id": "tone-code-02",
-      "raw_stt": "add a comment that says TODO fix the race condition in the worker pool",
-      "expected_output": "// TODO: fix the race condition in the worker pool",
+      "raw_stt": "add a comment that says investigate the race condition in the worker pool",
+      "expected_output": "// Investigate the race condition in the worker pool",
       "category": "tone-coding",
       "tone": "coding",
       "notes": "Coding tone — should format as a code comment"
@@ -332,8 +332,8 @@
     },
     {
       "id": "tone-neu-02",
-      "raw_stt": "the meeting went well we covered the roadmap and agreed on the timeline for the next milestone",
-      "expected_output": "The meeting went well. We covered the roadmap and agreed on the timeline for the next milestone.",
+      "raw_stt": "the meeting went well we covered the launch plan and agreed on the timeline for the next milestone",
+      "expected_output": "The meeting went well. We covered the launch plan and agreed on the timeline for the next milestone.",
       "category": "tone-neutral",
       "tone": "neutral",
       "notes": "Neutral tone — light punctuation fix only, no formalization"

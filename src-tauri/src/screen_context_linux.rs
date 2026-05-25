@@ -99,7 +99,7 @@ pub(crate) fn native_capture_screen_context(
             }
             Err(crate::ocr_backend::OcrError::NotImplemented(_)) => {
                 debug!(
-                    "Neural OCR backend not yet wired for {} — using backup",
+                    "Neural OCR backend blocked for {} — using backup",
                     route.catalog_id
                 );
             }

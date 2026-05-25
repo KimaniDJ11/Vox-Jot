@@ -1419,7 +1419,7 @@ mod tests {
     fn repeated_bonus_prefers_repeated_entities() {
         let counts = repeated_token_counts(&[
             NativeScreenContextSnippet {
-                text: "Project Atlas roadmap".to_string(),
+                text: "Project Atlas launch plan".to_string(),
                 x: 0.5,
                 y: 0.5,
                 width: 0.2,

@@ -70,8 +70,7 @@ Copy this JSON, fill in the fields, and save it as
     "supports_streaming": null,
     "supports_voice_cloning": null,
     "supports_instruction_prompt": null,
-    "supports_inline_tags": null,
-    "coming_soon": false
+    "supports_inline_tags": null
   },
 
   "languages": [],
@@ -198,8 +197,9 @@ Matches: `TtsEngineKind::Sidecar`, `SidecarBackend::LegacyPythonRuntime`
 ### Lane D — Experimental / Labs
 
 - Behind the Labs feature toggle
-- May require manual setup steps
-- Provider registered with `coming_soon: true` until validated
+- May require manual setup steps during local development only
+- Must not be exposed as usable catalog functionality until the provider and model path are implemented, app-managed, and validated
+- If validation fails, mark the model blocked/failed and keep it out of runnable surfaces instead of exposing a promise-only catalog row
 
 ---
 

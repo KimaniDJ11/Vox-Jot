@@ -45,14 +45,14 @@ pub fn is_laptop() -> Result<bool, String> {
     Ok(stdout.contains("InternalBattery"))
 }
 
-/// Stub implementation for non-macOS platforms
+/// No-op implementation for non-macOS platforms
 /// Always returns false since clamshell mode is macOS-specific
 #[cfg(not(target_os = "macos"))]
 pub fn is_clamshell() -> Result<bool, String> {
     Ok(false)
 }
 
-/// Stub implementation for non-macOS platforms
+/// No-op implementation for non-macOS platforms
 /// Always returns false since laptop detection is macOS-specific
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]

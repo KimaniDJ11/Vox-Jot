@@ -106,6 +106,7 @@ pub struct FileDownloadOptions {
     pub final_path: PathBuf,
     pub expected_sha256: Option<String>,
     pub expected_size: Option<u64>,
+    pub bearer_token: Option<String>,
     pub cancel_flag: Option<Arc<AtomicBool>>,
     pub progress: Option<ProgressCallback>,
 }
@@ -677,21 +678,17 @@ pub async fn download_file(options: FileDownloadOptions) -> Result<FileDownloadR
         ),
     );
 
-    let mut response = crate::github_release::get_with_optional_github_auth(
-        &client,
-        &options.url,
-        Some(resume_from),
-    )
-    .await
-    .map_err(|err| format!("Failed to download {}: {err}", options.url))?;
+    let mut response =
+        get_file_with_optional_auth(&client, &options.url, Some(resume_from), &options)
+            .await
+            .map_err(|err| format!("Failed to download {}: {err}", options.url))?;
     let status = response.status();
     if resume_from > 0 && status == reqwest::StatusCode::OK {
         let _ = tokio_fs::remove_file(&options.partial_path).await;
         resume_from = 0;
-        response =
-            crate::github_release::get_with_optional_github_auth(&client, &options.url, None)
-                .await
-                .map_err(|err| format!("Failed to restart {}: {err}", options.url))?;
+        response = get_file_with_optional_auth(&client, &options.url, None, &options)
+            .await
+            .map_err(|err| format!("Failed to restart {}: {err}", options.url))?;
     }
     let status = response.status();
     let is_resuming = resume_from > 0 && status == reqwest::StatusCode::PARTIAL_CONTENT;
@@ -815,6 +812,33 @@ pub async fn download_file(options: FileDownloadOptions) -> Result<FileDownloadR
         downloaded_bytes: downloaded,
         total_bytes: response_total,
     })
+}
+
+async fn get_file_with_optional_auth(
+    client: &reqwest::Client,
+    url: &str,
+    range_start: Option<u64>,
+    options: &FileDownloadOptions,
+) -> Result<reqwest::Response, String> {
+    if let Some(token) = options
+        .bearer_token
+        .as_deref()
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+    {
+        let mut request = client.get(url).bearer_auth(token);
+        if let Some(start) = range_start.filter(|start| *start > 0) {
+            request = request.header(reqwest::header::RANGE, format!("bytes={start}-"));
+        }
+        return request
+            .send()
+            .await
+            .map_err(|err| format!("authenticated request failed: {err}"));
+    }
+
+    crate::github_release::get_with_optional_github_auth(client, url, range_start)
+        .await
+        .map_err(|err| err.to_string())
 }
 
 async fn sha256_file(path: &Path) -> Result<String, String> {

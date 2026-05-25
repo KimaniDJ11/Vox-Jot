@@ -1,10 +1,10 @@
-//! Phase 0 of the neural OCR runtime.
+//! Neural OCR runtime router.
 //!
 //! `screen_context::capture_now` resolves a `NeuralRoute` from settings +
 //! catalog and hands it to the platform capture function alongside the
 //! captured frame. That platform function calls `run` here; on empty result
 //! or any backend failure it falls through to the existing
-//! `ScreenContextOcrEngine` policy, so today's behaviour is preserved when no
+//! `ScreenContextOcrEngine` policy, so current behaviour is preserved when no
 //! neural model is selected.
 //!
 //! macOS uses a capture-only Swift bridge when a selected OCR backend needs
@@ -33,8 +33,8 @@ pub struct NeuralRoute {
 
 #[derive(Debug)]
 pub enum OcrError {
-    /// Backend not yet wired in this build. Caller should fall through to
-    /// the existing native/backup path. Phase 1+ removes most of these.
+    /// Backend is blocked in this build. Caller should fall through to
+    /// the existing native/backup path.
     NotImplemented(OcrBackendKind),
     /// Backend ran but failed (timeout, missing files, malformed output).
     Backend(String),
@@ -44,7 +44,7 @@ impl std::fmt::Display for OcrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             OcrError::NotImplemented(kind) => {
-                write!(f, "neural OCR backend not yet wired: {:?}", kind)
+                write!(f, "neural OCR backend blocked: {:?}", kind)
             }
             OcrError::Backend(msg) => write!(f, "{}", msg),
         }

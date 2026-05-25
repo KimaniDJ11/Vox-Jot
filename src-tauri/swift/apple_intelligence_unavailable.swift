@@ -1,6 +1,6 @@
 import Foundation
 
-// Stub implementation when FoundationModels is not available
+// Unavailable-response implementation when FoundationModels is not available
 // This file is compiled via Cargo build script when the build environment
 // does not support Apple Intelligence (e.g. older Xcode/SDK).
 
@@ -80,4 +80,3 @@ public func freeFrontmostAppResponse(_ response: UnsafeMutablePointer<FrontmostA
 
     response.deallocate()
 }
-

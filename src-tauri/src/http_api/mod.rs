@@ -28,6 +28,11 @@
 //! through the same `TranscriptionManager.transcribe_with_segments`
 //! method the GUI uses, which already serializes via `transcribe_lock`.
 
+use crate::commands::story_studio::{
+    download_creative_audio_model, generate_story_sound, get_creative_audio_model_catalog,
+    CreativeAudioModelCatalog, CreativeAudioModelDescriptor, GenerateStorySoundRequest,
+    StoryAudioItem, StorySoundMode,
+};
 use crate::commands::tts::preset_from_input;
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
@@ -50,6 +55,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use uuid::Uuid;
 
 const MAX_TRANSCRIBE_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
 const API_TOKEN_HEADER: &str = "x-vox-jot-api-token";
@@ -107,6 +113,23 @@ struct TtsSynthesizeApiRequest {
     preferred_voice_id: Option<String>,
     preset_id: Option<String>,
     inline_preset: Option<TtsVoicePresetInput>,
+}
+
+#[derive(Deserialize)]
+struct CreativeAudioDownloadApiRequest {
+    model_id: String,
+}
+
+#[derive(Deserialize)]
+struct CreativeAudioGenerateApiRequest {
+    prompt: String,
+    model_id: String,
+    mode: StorySoundMode,
+    duration_seconds: u32,
+    title: Option<String>,
+    project_id: Option<String>,
+    seed: Option<u32>,
+    render_id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -171,6 +194,18 @@ impl HttpApiManager {
             .route("/v1/speak", post(handle_speak))
             .route("/v1/tts/synthesize", post(handle_tts_synthesize))
             .route("/v1/tts/profiles", get(handle_tts_profiles))
+            .route(
+                "/v1/creative-audio/models",
+                get(handle_creative_audio_models),
+            )
+            .route(
+                "/v1/creative-audio/download",
+                post(handle_creative_audio_download),
+            )
+            .route(
+                "/v1/creative-audio/generate",
+                post(handle_creative_audio_generate),
+            )
             .route("/v1/transcribe", post(handle_transcribe))
             .route("/mcp", post(crate::mcp::handle_mcp))
             .layer(DefaultBodyLimit::max(MAX_TRANSCRIBE_UPLOAD_BYTES))
@@ -569,6 +604,95 @@ async fn handle_tts_synthesize(
                 .collect(),
         })
         .into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_creative_audio_models(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    match get_creative_audio_model_catalog(state.app) {
+        Ok(catalog) => Json::<CreativeAudioModelCatalog>(catalog).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_creative_audio_download(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CreativeAudioDownloadApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    match download_creative_audio_model(state.app, request.model_id).await {
+        Ok(model) => Json::<CreativeAudioModelDescriptor>(model).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_creative_audio_generate(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CreativeAudioGenerateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    let prompt = request.prompt.trim();
+    if prompt.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Prompt is required.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+    if prompt.chars().count() > 4_000 {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(ErrorResponse {
+                error: "Prompt is too large for /v1/creative-audio/generate.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    let generate_request = GenerateStorySoundRequest {
+        render_id: request
+            .render_id
+            .filter(|id| !id.trim().is_empty())
+            .unwrap_or_else(|| Uuid::new_v4().to_string()),
+        project_id: request.project_id,
+        title: request
+            .title
+            .unwrap_or_else(|| "Creative Audio Benchmark".to_string()),
+        prompt: prompt.to_string(),
+        model_id: request.model_id,
+        mode: request.mode,
+        duration_seconds: request.duration_seconds,
+        seed: request.seed,
+    };
+
+    match generate_story_sound(state.app, generate_request).await {
+        Ok(item) => Json::<StoryAudioItem>(item).into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse { error }),

@@ -1404,7 +1404,7 @@
       "status": {
         "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
         "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
-        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "appleUnavailable": "Apple Intelligence is blocked on this device. It requires an Apple Silicon Mac running macOS 26 or later with Apple Intelligence enabled in System Settings.",
         "missingBaseUrl": "Set a base URL for your custom provider.",
         "missingApiKey": "Add an API key for the selected provider.",
         "missingModel": "Choose or enter a model for the selected provider.",
@@ -2948,8 +2948,8 @@
       "ariaLabel": "Benchmark suites"
     },
     "notRanked": {
-      "title": "Not yet ranked",
-      "description": "Models awaiting benchmark, blocked, or pending download."
+      "title": "Blocked / unranked",
+      "description": "Rows stay out of rankings until full benchmark results exist. Blocked rows need runtime or download validation."
     },
     "empty": {
       "title": "No ranked results",

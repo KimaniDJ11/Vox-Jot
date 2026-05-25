@@ -11,7 +11,7 @@ The router only routes here when:
 
 - a neural OCR model is selected on the OCR card,
 - the catalog row's `runnable` flag is `true` (files exist + probe passed),
-- the entry's `OcrBackendKind` is `TransformersVl` (Phase 1 scope).
+- the entry's `OcrBackendKind` has a concrete loader in `ocr_runtime/loaders/`.
 
 ## IPC contract
 
@@ -70,17 +70,15 @@ Coordinates are normalised to 0..1, top-left origin matches Vision's
 `VNRecognizedTextObservation.boundingBox` (we flip y to bottom-left in the
 Rust side, just like the Win/Linux Tesseract path).
 
-## Dev bootstrap
+## Dev Bootstrap
 
-For the **stub server** (no inference; returns empty snippets) only the
-Python stdlib is required — any system Python 3.10+ works.
+Install the backend dependencies for the model family being tested before
+probing the runtime. Unknown backend names fail startup instead of returning
+empty OCR snippets.
 
 ```sh
 python3 -m ocr_runtime --probe   # reads one probe request from stdin, writes one response
 ```
-
-For **real model inference** (Phase 1 follow-up work in
-`ocr_runtime/loaders/`), bootstrap a uv venv:
 
 ```sh
 cd ocr-runtime
@@ -105,8 +103,7 @@ ocr-runtime/
     └── loaders/
         ├── __init__.py
         ├── base.py            # OcrLoader protocol
-        └── stub.py            # returns empty snippets
-        # dots_ocr.py, qwen_vl.py, paddle.py … add per-family loaders here
+        └── generic.py         # Transformers/VL and Paddle loaders
 ```
 
 Each loader takes `(model_root: Path)` at init and exposes

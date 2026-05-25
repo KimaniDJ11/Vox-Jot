@@ -50,6 +50,16 @@ static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     )
 });
 
+struct FinalTranscriptionPendingGuard {
+    flag: Arc<AtomicBool>,
+}
+
+impl Drop for FinalTranscriptionPendingGuard {
+    fn drop(&mut self) {
+        self.flag.store(false, Ordering::SeqCst);
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct MlxAudioTranscriptionResponse {
     text: String,
@@ -366,6 +376,7 @@ pub struct TranscriptionManager {
     partial_generation: Arc<AtomicU64>,
     processing_generation: Arc<AtomicU64>,
     canceled_processing_generation: Arc<AtomicU64>,
+    final_transcription_pending: Arc<AtomicBool>,
     shutdown_on_drop: bool,
 }
 
@@ -388,6 +399,7 @@ impl Clone for TranscriptionManager {
             partial_generation: Arc::clone(&self.partial_generation),
             processing_generation: Arc::clone(&self.processing_generation),
             canceled_processing_generation: Arc::clone(&self.canceled_processing_generation),
+            final_transcription_pending: Arc::clone(&self.final_transcription_pending),
             shutdown_on_drop: false,
         }
     }
@@ -417,6 +429,7 @@ impl TranscriptionManager {
             partial_generation: Arc::new(AtomicU64::new(0)),
             processing_generation: Arc::new(AtomicU64::new(0)),
             canceled_processing_generation: Arc::new(AtomicU64::new(0)),
+            final_transcription_pending: Arc::new(AtomicBool::new(false)),
             shutdown_on_drop: true,
         };
 
@@ -962,6 +975,7 @@ impl TranscriptionManager {
             if cancel.load(Ordering::Relaxed)
                 || self.shutdown_signal.load(Ordering::Relaxed)
                 || !self.partial_generation_is_current(generation)
+                || self.final_transcription_pending.load(Ordering::Relaxed)
             {
                 break;
             }
@@ -979,17 +993,17 @@ impl TranscriptionManager {
             let settings = get_settings(&self.app_handle);
             let partial_audio = trim_partial_audio(snapshot, config.max_samples);
 
-            // Reuse the already-warmed main engine instead of spawning a second
-            // loaded instance per recording. Serialize with final transcribe via
-            // `transcribe_lock` so a long-running partial cannot race the final
-            // stop-triggered transcription for the engine.
+            // Reuse the already-warmed main engine. Partials only proceed when
+            // the engine is immediately available; a pending final transcription
+            // must never queue behind fresh partial work.
             let partial_text = {
-                let _transcribe_guard = self
-                    .transcribe_lock
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                let Ok(_transcribe_guard) = self.transcribe_lock.try_lock() else {
+                    continue;
+                };
 
-                if cancel.load(Ordering::Relaxed) || !self.partial_generation_is_current(generation)
+                if cancel.load(Ordering::Relaxed)
+                    || !self.partial_generation_is_current(generation)
+                    || self.final_transcription_pending.load(Ordering::Relaxed)
                 {
                     break;
                 }
@@ -1483,6 +1497,11 @@ impl TranscriptionManager {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
         // and cause the final full transcription to fail or return nothing.
+        self.final_transcription_pending
+            .store(true, Ordering::SeqCst);
+        let _final_pending_guard = FinalTranscriptionPendingGuard {
+            flag: Arc::clone(&self.final_transcription_pending),
+        };
         let _transcribe_guard = self
             .transcribe_lock
             .lock()

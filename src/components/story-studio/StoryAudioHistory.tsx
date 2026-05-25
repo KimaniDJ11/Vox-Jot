@@ -34,6 +34,7 @@ import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 export interface StoryAudioItem {
   id: string;
+  kind?: StoryAudioKind;
   project_id?: string | null;
   title: string;
   script_text: string;
@@ -48,9 +49,13 @@ export interface StoryAudioItem {
   expression_tags_used?: boolean;
   inline_prompt_used?: boolean;
   audio_effect?: StoryAudioEffectPreset;
+  sound_mode?: StorySoundMode | null;
+  source_model_id?: string | null;
   starred: boolean;
 }
 
+type StoryAudioKind = "story_render" | "sound";
+type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room";
 
 interface StoryClipMetadata {
@@ -146,7 +151,7 @@ const storyAudioEffectOptions: StoryAudioEffectPreset[] = [
   "radio",
   "warm_room",
 ];
-const storyExpressionTokenPattern = /(\[[^\]\n]{1,80}\]|\([^()\n]{1,80}\))/g;
+const storyExpressionTokenPattern = /(\[[^\]\n]{1,220}\]|\([^()\n]{1,80}\))/g;
 
 export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
   items,
@@ -304,7 +309,9 @@ export const StoryAudioSidebar: React.FC = () => {
     }
     try {
       const nextItems = await invoke<StoryAudioItem[]>("list_story_audio");
-      const sortedItems = sortStoryAudioItems(nextItems);
+      const sortedItems = sortStoryAudioItems(
+        nextItems.filter((item) => item.kind !== "sound"),
+      );
       setItems(sortedItems);
       setSelectedAudioId((current) =>
         current && sortedItems.some((item) => item.id === current)
@@ -1897,6 +1904,9 @@ function renderStoryScriptTagSegments(
 function storyScriptTagClassName(token: string): string {
   const baseClass =
     "inline rounded-md border px-1.5 py-0.5 align-baseline font-semibold";
+  if (token.startsWith("[sound ")) {
+    return `${baseClass} border-[color-mix(in_srgb,var(--success),transparent_45%)] bg-[var(--success-soft)] text-[var(--text)]`;
+  }
   if (token.startsWith("(")) {
     return `${baseClass} border-[color-mix(in_srgb,var(--accent-gold),transparent_45%)] bg-[var(--accent-gold-soft)] text-[color-mix(in_srgb,var(--accent-gold),var(--text)_18%)]`;
   }

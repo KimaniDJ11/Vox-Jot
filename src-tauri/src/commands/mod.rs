@@ -205,7 +205,7 @@ pub fn get_frontmost_app_for_exclusion() -> Result<ActiveAppContext, String> {
     }
     #[cfg(target_os = "linux")]
     {
-        Err("Frontmost app detection is not yet supported on Linux.".to_string())
+        Err("Frontmost app detection is blocked on Linux until the active-window detector is implemented.".to_string())
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {

@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Layers,
   Loader2,
+  Music2,
   RefreshCw,
   Sparkles,
   Volume2,
@@ -58,7 +60,7 @@ import {
   type ScriptEditorHandle,
   type ScriptTextSelection,
 } from "./ScriptEditor";
-import { SoundDesignPanel } from "./SoundDesignPanel";
+import { SoundDesignPanel, type StorySoundItem } from "./SoundDesignPanel";
 import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
 
 interface StoryRenderEnqueueResult {
@@ -81,6 +83,7 @@ const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
 type StudioTool = "script" | "cast" | "sound";
 type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room";
+type StorySoundCueMode = "insert" | "overlay";
 
 interface StoryStudioDraft {
   projectId: string;
@@ -168,6 +171,9 @@ export const StoryStudioSection: React.FC = () => {
   const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
   const [isQueueingRender, setIsQueueingRender] = useState(false);
   const [showQueuedAck, setShowQueuedAck] = useState(false);
+  const [projectSounds, setProjectSounds] = useState<StorySoundItem[]>([]);
+  const [isLoadingProjectSounds, setIsLoadingProjectSounds] = useState(true);
+  const [soundPopoverOpen, setSoundPopoverOpen] = useState(false);
   const queuedAckTimerRef = useRef<number | null>(null);
 
   const refreshPresets = useCallback(async () => {
@@ -226,8 +232,48 @@ export const StoryStudioSection: React.FC = () => {
   useEffect(() => {
     if (activeTool !== "script") {
       setExpressionPopoverOpen(false);
+      setSoundPopoverOpen(false);
     }
   }, [activeTool]);
+
+  const loadProjectSounds = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoadingProjectSounds(true);
+      }
+      try {
+        const items = await invoke<StorySoundItem[]>("list_story_audio");
+        setProjectSounds(
+          items
+            .filter(
+              (item) => item.kind === "sound" && item.project_id === projectId,
+            )
+            .sort((left, right) => right.created_at_ms - left.created_at_ms),
+        );
+      } catch (error) {
+        console.error("Failed to load project sounds:", error);
+        toast.error("Could not load project sounds.");
+      } finally {
+        if (showLoading) {
+          setIsLoadingProjectSounds(false);
+        }
+      }
+    },
+    [projectId],
+  );
+
+  useEffect(() => {
+    void loadProjectSounds();
+  }, [loadProjectSounds]);
+
+  useEffect(() => {
+    const unlisten = listen("story-audio-updated", () => {
+      void loadProjectSounds(false);
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, [loadProjectSounds]);
 
   useEffect(() => {
     void refreshPresets();
@@ -333,8 +379,8 @@ export const StoryStudioSection: React.FC = () => {
   }, []);
 
   const validation = useMemo(
-    () => validateStoryDraft(cast, scriptText, presets),
-    [cast, presets, scriptText],
+    () => validateStoryDraft(cast, scriptText, presets, projectSounds),
+    [cast, presets, projectSounds, scriptText],
   );
   const canRender =
     !isLoadingPresets &&
@@ -364,7 +410,64 @@ export const StoryStudioSection: React.FC = () => {
   const currentInstruction = currentInstructionKey
     ? (lineInstructions[currentInstructionKey] ?? "")
     : "";
-
+  const soundTagControl = (
+    <div className="relative">
+      <button
+        type="button"
+        className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={() => setSoundPopoverOpen((current) => !current)}
+        disabled={isLoadingProjectSounds || projectSounds.length === 0}
+        aria-haspopup="dialog"
+        aria-expanded={soundPopoverOpen}
+      >
+        <Music2 className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+        {t("storyStudio.soundTags", { defaultValue: "Sounds" })}
+      </button>
+      {soundPopoverOpen ? (
+        <div
+          className="absolute right-0 top-full z-40 mt-2 w-[24rem] max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+          role="dialog"
+          aria-label={t("storyStudio.soundTags", { defaultValue: "Sounds" })}
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-[var(--text)]">
+                {t("storyStudio.soundTags", { defaultValue: "Sounds" })}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                {t("storyStudio.soundTagsDescription", {
+                  defaultValue:
+                    "Insert cues from this project's generated sounds.",
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              onClick={() => setSoundPopoverOpen(false)}
+              aria-label={t("common.close", { defaultValue: "Close" })}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            {projectSounds.map((sound) => (
+              <SoundTagPickerRow
+                key={sound.id}
+                sound={sound}
+                onInsert={(mode) => {
+                  scriptEditorRef.current?.insertText(
+                    `${formatSoundCueTag(sound, mode)} `,
+                  );
+                  setSoundPopoverOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
   useLayoutEffect(() => {
     if (!expressionPopoverOpen || !expressionEnabled) return;
 
@@ -625,6 +728,12 @@ export const StoryStudioSection: React.FC = () => {
       ) : null}
     </div>
   );
+  const scriptEditorHeaderAction = (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {expressionTagControl}
+      {soundTagControl}
+    </div>
+  );
 
   return (
     <div className="px-6 pb-5">
@@ -732,6 +841,7 @@ export const StoryStudioSection: React.FC = () => {
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
           {activeTool !== "sound" && validation.errors.length > 0 ? (
             <div
+              id="story-studio-validation-errors"
               className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
               role="alert"
             >
@@ -787,9 +897,15 @@ export const StoryStudioSection: React.FC = () => {
               <ScriptEditor
                 ref={scriptEditorRef}
                 value={scriptText}
-                headerAction={expressionTagControl}
+                headerAction={scriptEditorHeaderAction}
                 onChange={setScriptText}
                 onCursorChange={setScriptSelection}
+                ariaInvalid={validation.errors.length > 0}
+                ariaDescribedBy={
+                  validation.errors.length > 0
+                    ? "story-studio-validation-errors"
+                    : undefined
+                }
               />
             </div>
           ) : activeTool === "cast" ? (
@@ -830,7 +946,11 @@ export const StoryStudioSection: React.FC = () => {
               </label>
             </div>
           ) : (
-            <SoundDesignPanel />
+            <SoundDesignPanel
+              projectId={projectId}
+              sounds={projectSounds}
+              onSoundsChanged={() => void loadProjectSounds(false)}
+            />
           )}
         </div>
       </div>
@@ -862,6 +982,41 @@ const EmptyStoryVoices: React.FC<{
             {t("common.refresh")}
           </Button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const SoundTagPickerRow: React.FC<{
+  sound: StorySoundItem;
+  onInsert: (mode: StorySoundCueMode) => void;
+}> = ({ sound, onInsert }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2">
+      <p className="truncate text-sm font-semibold text-[var(--text)]">
+        {sound.title}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => onInsert("insert")}
+        >
+          {t("storyStudio.insertSoundTimeline", {
+            defaultValue: "Insert in timeline",
+          })}
+        </button>
+        <button
+          type="button"
+          className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => onInsert("overlay")}
+        >
+          {t("storyStudio.overlaySoundUnderVoice", {
+            defaultValue: "Overlay under voice",
+          })}
+        </button>
       </div>
     </div>
   );
@@ -1130,7 +1285,6 @@ function fallbackExpressionModel(
       supports_voice_cloning: false,
       supports_instruction_prompt: supportsInstructionPrompt,
       supports_inline_tags: supportsInlineTags,
-      coming_soon: false,
     },
   };
 }
@@ -1283,6 +1437,20 @@ function nextCharacterName(index: number): string {
 
 function formatHiddenIssueCount(count: number): string {
   return `${count} more issue${count === 1 ? "" : "s"}.`;
+}
+
+function formatSoundCueTag(
+  sound: StorySoundItem,
+  mode: StorySoundCueMode,
+): string {
+  return `[sound id="${escapeSoundTagAttribute(sound.id)}" mode="${mode}" title="${escapeSoundTagAttribute(sound.title)}"]`;
+}
+
+function escapeSoundTagAttribute(value: string): string {
+  return value
+    .replace(/"/g, "'")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
 }
 
 function normalizeError(error: unknown, fallback: string): string {

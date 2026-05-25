@@ -6,9 +6,7 @@ requires-python = ">=3.10"
 license = { text = "Proprietary" }
 authors = [{ name = "Vox Jot" }]
 
-# Stub-only build needs nothing more than the stdlib. Real model loaders
-# pull their deps via the optional groups below.
-dependencies = []
+dependencies = ["pillow>=10.4"]
 
 [project.optional-dependencies]
 dots-ocr = [

@@ -34,8 +34,13 @@ import {
   TTS_VOICE_CLONE_EVALUATION_RESULTS,
   TTS_VOICE_CLONE_EVALUATION_RUN,
 } from "@/lib/ttsVoiceCloneEvaluationResults";
+import {
+  CREATIVE_AUDIO_EVALUATION_RESULTS,
+  CREATIVE_AUDIO_EVALUATION_RUN,
+} from "@/lib/creativeAudioEvaluationResults";
 import { SuiteLeaderboard } from "@/components/app-sections/testing/SuiteLeaderboard";
 import {
+  buildCreativeAudioRow,
   buildFileAsrRow,
   buildLlmRow,
   buildScreenOcrRow,
@@ -60,6 +65,7 @@ type TestingTabId =
   | "tts"
   | "tts-style"
   | "tts-voice-clone"
+  | "creative-audio"
   | "llm"
   | "stt"
   | "screen-ocr";
@@ -123,6 +129,12 @@ const TABS: Array<{
     labelKey: "testing.tabs.ttsVoiceClone",
     defaultLabel: "Voice Cloning",
     run: TTS_VOICE_CLONE_EVALUATION_RUN,
+  },
+  {
+    id: "creative-audio",
+    labelKey: "testing.tabs.creativeAudio",
+    defaultLabel: "Creative Audio",
+    run: CREATIVE_AUDIO_EVALUATION_RUN,
   },
 ];
 
@@ -236,6 +248,7 @@ export const ModelTestingSection: React.FC = () => {
   const tts = splitRanked(TTS_EVALUATION_RESULTS);
   const ttsStyle = splitRanked(TTS_STYLE_EVALUATION_RESULTS);
   const ttsVoiceClone = splitRanked(TTS_VOICE_CLONE_EVALUATION_RESULTS);
+  const creativeAudio = splitRanked(CREATIVE_AUDIO_EVALUATION_RESULTS);
   const screenOcr = splitRanked(SCREEN_OCR_EVALUATION_RESULTS);
   const activePanelId = `model-testing-panel-${activeTab}`;
   const activeTabId = `model-testing-tab-${activeTab}`;
@@ -344,6 +357,16 @@ export const ModelTestingSection: React.FC = () => {
             ranked={ttsVoiceClone.ranked}
             unranked={ttsVoiceClone.unranked}
             renderRow={buildTtsVoiceCloneRow}
+            t={t}
+          />
+        ) : null}
+
+        {activeTab === "creative-audio" ? (
+          <SuiteLeaderboard
+            run={CREATIVE_AUDIO_EVALUATION_RUN}
+            ranked={creativeAudio.ranked}
+            unranked={creativeAudio.unranked}
+            renderRow={buildCreativeAudioRow}
             t={t}
           />
         ) : null}

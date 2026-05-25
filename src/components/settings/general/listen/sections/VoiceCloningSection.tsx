@@ -39,7 +39,9 @@ import { modal } from "@/motion/springs";
 
 import {
   createTtsVoiceProfile,
+  clearProfileCollectedData,
   importTtsVoiceProfileSample,
+  setActiveImprovementProfile,
 } from "@/lib/ttsVoiceProfiles";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import { LANGUAGES } from "@/lib/constants/languages";
@@ -483,6 +485,9 @@ export const VoiceCloningSection: React.FC<{
         modelProviderRankById.get(model.provider_id),
     },
   );
+  const activeImprovementProfile =
+    visibleProfiles.find((profile) => profile.continuous_improvement_enabled) ??
+    null;
 
   if (!speech.settings) return null;
 
@@ -552,6 +557,47 @@ export const VoiceCloningSection: React.FC<{
         error instanceof Error
           ? error.message
           : "Failed to generate cloned voice.",
+      );
+    } finally {
+      speech.setBusyProfileAction(null);
+    }
+  };
+
+  const toggleProfileImprovement = async (
+    profileId: string,
+    enabled: boolean,
+  ) => {
+    speech.setBusyProfileAction("improvement");
+    try {
+      const updated = await setActiveImprovementProfile(profileId, enabled);
+      await speech.refreshProfiles();
+      speech.setStatusMessage(
+        enabled
+          ? `Continuous improvement is collecting qualified dictations for "${updated.label}".`
+          : "Continuous improvement is off.",
+      );
+    } catch (error) {
+      speech.setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to update continuous improvement.",
+      );
+    } finally {
+      speech.setBusyProfileAction(null);
+    }
+  };
+
+  const clearCollectedProfileAudio = async (profileId: string) => {
+    speech.setBusyProfileAction("improvement");
+    try {
+      await clearProfileCollectedData(profileId);
+      await speech.refreshProfiles();
+      speech.setStatusMessage("Collected improvement audio was cleared.");
+    } catch (error) {
+      speech.setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to clear collected improvement audio.",
       );
     } finally {
       speech.setBusyProfileAction(null);
@@ -926,6 +972,92 @@ export const VoiceCloningSection: React.FC<{
             aria-live="polite"
           >
             {speech.statusMessage}
+          </div>
+        ) : null}
+
+        {visibleProfiles.length > 0 ? (
+          <div
+            className={`${whiteWorkflowCardClassName} space-y-3`}
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--text)]">
+                  {t("listen.voiceCloning.improveFromDictationsTitle", {
+                    defaultValue: "Improve from dictations",
+                  })}
+                </h3>
+                <p className="text-xs leading-5 text-[var(--muted)]">
+                  {t("listen.voiceCloning.improveFromDictationsDescription", {
+                    defaultValue:
+                      "Use successful dictations that pass quality checks to tune one voice profile in the background.",
+                  })}
+                </p>
+              </div>
+              <Badge
+                variant={activeImprovementProfile ? "success" : "secondary"}
+              >
+                {activeImprovementProfile
+                  ? t("common.on", { defaultValue: "On" })
+                  : t("common.off", { defaultValue: "Off" })}
+              </Badge>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {visibleProfiles.map((profile) => {
+                const collectedSeconds = Math.round(
+                  profile.collected_audio_duration_secs ?? 0,
+                );
+                const isActive = profile.continuous_improvement_enabled;
+                return (
+                  <div
+                    key={profile.id}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--text)]">
+                          {profile.label}
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {t("listen.voiceCloning.collectedAudioDuration", {
+                            count: collectedSeconds,
+                            defaultValue: "{{count}}s collected",
+                          })}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={isActive ? "secondary" : "primary-soft"}
+                        size="sm"
+                        disabled={speech.busyProfileAction === "improvement"}
+                        onClick={() =>
+                          void toggleProfileImprovement(profile.id, !isActive)
+                        }
+                      >
+                        {isActive ? "Turn off" : "Use profile"}
+                      </Button>
+                    </div>
+                    {collectedSeconds > 0 ? (
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={speech.busyProfileAction === "improvement"}
+                          onClick={() =>
+                            void clearCollectedProfileAudio(profile.id)
+                          }
+                        >
+                          {t("listen.voiceCloning.clearCollectedAudio", {
+                            defaultValue: "Clear collected audio",
+                          })}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 

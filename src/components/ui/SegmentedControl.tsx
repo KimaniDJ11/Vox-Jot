@@ -11,6 +11,8 @@ import { press, track } from "@/motion/springs";
 export type SegmentedControlItem<Value extends string> = {
   value: Value;
   label: string;
+  disabled?: boolean;
+  title?: string;
 };
 
 type SegmentedControlProps<Value extends string> = {
@@ -50,22 +52,31 @@ export function SegmentedControl<Value extends string>({
       >
         {items.map((item) => {
           const selected = item.value === value;
+          const disabled = Boolean(item.disabled);
           return (
             <motion.button
               key={item.value}
               type="button"
               aria-pressed={selected}
+              aria-disabled={disabled}
+              disabled={disabled}
+              title={item.title}
               data-segmented-control-item="true"
-              whileTap={{ scale: 0.97 }}
+              whileTap={disabled ? undefined : { scale: 0.97 }}
               transition={press}
-              onClick={() => onChange(item.value)}
+              onClick={() => {
+                if (disabled) return;
+                onChange(item.value);
+              }}
               className={[
                 "relative isolate inline-flex items-center justify-center rounded-full border border-transparent px-3 py-2 text-xs font-medium",
                 minTapTargetHeightClass,
                 interactiveFocusRingClass,
                 selected
                   ? "text-[var(--accent)]"
-                  : "text-[var(--text)] hover:text-[var(--accent)]",
+                  : disabled
+                    ? "cursor-not-allowed text-[var(--muted)] opacity-45"
+                    : "text-[var(--text)] hover:text-[var(--accent)]",
               ].join(" ")}
             >
               {selected ? (

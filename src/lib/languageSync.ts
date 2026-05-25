@@ -170,7 +170,6 @@ export function pickTtsModelForLanguage(
   if (
     trigger === "auto" &&
     currentModel &&
-    !currentModel.capabilities.coming_soon &&
     currentModel.runnable &&
     modelSupportsLanguage(currentModel, targetLanguage)
   ) {
@@ -181,7 +180,6 @@ export function pickTtsModelForLanguage(
     .filter(
       (model) =>
         model.runnable &&
-        !model.capabilities.coming_soon &&
         !EXCLUDED_AUTO_TTS_PROVIDER_IDS.has(model.provider_id) &&
         providerPreference(model.provider_id) > 0,
     )

@@ -193,7 +193,7 @@ CASES = [
         "id": "meeting_room",
         "label": "Long Meeting Room Talk",
         "text": (
-            "For today's meeting, please summarize the roadmap, blockers, owners, "
+            "For today's meeting, please summarize the launch plan, blockers, owners, "
             "and follow-up dates. Then call out any decision that needs approval "
             "before Friday afternoon."
         ),

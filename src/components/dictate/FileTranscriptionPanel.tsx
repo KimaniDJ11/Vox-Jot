@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
@@ -770,6 +776,15 @@ const WatchedFoldersGroup: React.FC = () => {
     },
     [refresh],
   );
+  const latestActivityByFolder = useMemo(() => {
+    const map = new Map<string, WatchProgressPayload>();
+    for (const event of activity) {
+      if (!map.has(event.folder_id)) {
+        map.set(event.folder_id, event);
+      }
+    }
+    return map;
+  }, [activity]);
 
   return (
     <div className="space-y-4">
@@ -811,20 +826,34 @@ const WatchedFoldersGroup: React.FC = () => {
         />
       ) : (
         <ul className="flex flex-wrap gap-2">
-          {folders.map((f) => (
-            <li
-              key={f.id}
-              className="group flex min-h-[104px] w-32 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
-            >
-              <NativeFolderIcon path={f.path} name={basename(f.path)} />
-              <div className="relative mt-2 flex h-8 w-full min-w-0 items-center justify-center">
+          {folders.map((f) => {
+            const latest = latestActivityByFolder.get(f.id);
+            const statusLabel = latest
+              ? `${latest.stage}: ${basename(latest.source_path)}`
+              : f.enabled
+                ? "Watching recursively"
+                : "Paused";
+            return (
+              <li
+                key={f.id}
+                className="group flex min-h-[136px] w-36 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
+              >
+                <NativeFolderIcon path={f.path} name={basename(f.path)} />
                 <h3
-                  className="max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)] transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0"
+                  className="mt-2 max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)]"
                   title={basename(f.path)}
                 >
                   {basename(f.path)}
                 </h3>
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                <p
+                  className="mt-1 max-w-full truncate text-center text-[11px] text-[var(--muted)]"
+                  role="status"
+                  aria-live="polite"
+                  title={statusLabel}
+                >
+                  {statusLabel}
+                </p>
+                <div className="mt-2 flex items-center justify-center gap-1">
                   <select
                     value={f.output_format}
                     onChange={(e) =>
@@ -869,14 +898,18 @@ const WatchedFoldersGroup: React.FC = () => {
                     <Trash2 />
                   </Button>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
       {activity.length > 0 && (
-        <div className={subtleCardClassName + " text-xs text-[var(--muted)]"}>
+        <div
+          className={subtleCardClassName + " text-xs text-[var(--muted)]"}
+          role="status"
+          aria-live="polite"
+        >
           <div className="mb-1 font-medium text-[var(--text)]">
             {t("dictate.watchFolders.recentActivity", {
               defaultValue: "Recent activity",

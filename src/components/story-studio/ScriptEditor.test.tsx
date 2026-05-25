@@ -171,6 +171,22 @@ describe("ScriptEditor custom history", () => {
     expect(editor.querySelector("[data-expression-token]")).not.toBeNull();
   });
 
+  it("decorates sound cue tags separately from expression tags", async () => {
+    const soundTag = '[sound id="sound-1" mode="overlay" title="Rain outside"]';
+
+    await render(
+      <ScriptEditor
+        value={`Narrator: Hello ${soundTag}`}
+        onChange={() => {}}
+      />,
+    );
+    const editor = editorElement();
+
+    expect(editor.textContent).toBe(`Narrator: Hello ${soundTag}`);
+    expect(editor.querySelector("[data-sound-token]")).not.toBeNull();
+    expect(editor.querySelector("[data-expression-token]")).toBeNull();
+  });
+
   it("clears stale history when the controlled value changes externally", async () => {
     let setExternalValue: React.Dispatch<
       React.SetStateAction<string>

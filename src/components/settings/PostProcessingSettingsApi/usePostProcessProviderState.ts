@@ -144,8 +144,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
         const available = await commands.checkAppleIntelligenceAvailable();
         if (!available) {
           setAppleIntelligenceUnavailable(true);
-          // Don't return - still set the provider so dropdown shows the selection
-          // The backend gracefully handles unavailable Apple Intelligence
+          return;
         }
       }
 

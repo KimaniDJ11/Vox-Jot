@@ -27,7 +27,6 @@ pub struct CapabilityFlags {
     pub supports_voice_cloning: bool,
     pub supports_instruction_prompt: bool,
     pub supports_inline_tags: bool,
-    pub coming_soon: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -105,7 +104,6 @@ pub struct ProviderDescriptor {
     pub runtime: RuntimeRequirement,
     pub available: bool,
     pub local_only: bool,
-    pub coming_soon: bool,
     pub license_label: Option<String>,
     pub capabilities: CapabilityFlags,
 }

@@ -47,6 +47,24 @@ describe("storyScript", () => {
     expect(result.lines).toEqual([]);
   });
 
+  it("allows cue-only sound tag lines", () => {
+    const result = parseStoryScript(
+      '[sound id="sound-1" mode="insert" title="Door slam"]',
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("strips sound tags from parsed spoken text", () => {
+    const result = parseStoryScript(
+      'Narrator: Wait here [sound id="sound-1" mode="overlay" title="Rain"] quietly.',
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.lines).toEqual([
+      { speaker: "Narrator", text: "Wait here quietly.", lineNumber: 1 },
+    ]);
+  });
+
   it("validates unknown speakers", () => {
     const result = validateStoryDraft(cast, "Hero: Hello", [preset]);
     expect(result.errors).toContain(

@@ -8,12 +8,15 @@ import React, {
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Loader2,
   FileMusic,
-  Music2,
+  Pencil,
+  Play,
   RefreshCw,
   Sparkles,
+  Trash2,
   Volume2,
   X,
 } from "lucide-react";
@@ -23,7 +26,14 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 
-type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
+export type StorySoundMode =
+  | "sfx"
+  | "ambience"
+  | "music"
+  | "song"
+  | "composition";
+
+export type StoryAudioKind = "story_render" | "sound";
 
 const allStorySoundModes: StorySoundMode[] = [
   "sfx",
@@ -49,10 +59,22 @@ interface CreativeAudioModelCatalog {
   models: CreativeAudioModelDescriptor[];
 }
 
-interface StoryAudioItem {
+export interface StorySoundItem {
   id: string;
+  kind?: StoryAudioKind;
+  project_id?: string | null;
   title: string;
   output_path: string;
+  duration_ms: number;
+  created_at_ms: number;
+  sound_mode?: StorySoundMode | null;
+  source_model_id?: string | null;
+}
+
+interface SoundDesignPanelProps {
+  projectId: string;
+  sounds: StorySoundItem[];
+  onSoundsChanged: () => void;
 }
 
 const modeDefaults: Record<
@@ -91,7 +113,11 @@ const modeDefaults: Record<
   },
 };
 
-export const SoundDesignPanel: React.FC = () => {
+export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
+  projectId,
+  sounds,
+  onSoundsChanged,
+}) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<StorySoundMode>("sfx");
   const [title, setTitle] = useState(modeDefaults.sfx.title);
@@ -103,44 +129,45 @@ export const SoundDesignPanel: React.FC = () => {
   const [selectedModelId, setSelectedModelId] = useState("");
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [lastGenerated, setLastGenerated] = useState<StoryAudioItem | null>(
-    null,
-  );
   const activeRenderIdRef = useRef<string | null>(null);
 
-  const compatibleModels = useMemo(
-    () => (catalog?.models ?? []).filter((model) => model.modes.includes(mode)),
-    [catalog?.models, mode],
-  );
   const selectedModel = useMemo(() => {
+    const models = catalog?.models ?? [];
     return (
-      compatibleModels.find((model) => model.id === selectedModelId) ??
-      compatibleModels.find((model) => model.runnable) ??
-      compatibleModels[0] ??
+      models.find((model) => model.id === selectedModelId) ??
+      models.find((model) => model.runnable) ??
+      models[0] ??
       null
     );
-  }, [compatibleModels, selectedModelId]);
-  const modeReady = Boolean(selectedModel?.runnable);
+  }, [catalog?.models, selectedModelId]);
+  const selectedModelSupportsMode =
+    selectedModel?.modes.includes(mode) ?? false;
+  const modeReady = Boolean(
+    selectedModel?.runnable && selectedModelSupportsMode,
+  );
   const availableModes = useMemo(() => {
-    const modes = new Set<StorySoundMode>();
-    for (const model of catalog?.models ?? []) {
-      for (const modelMode of model.modes) {
-        modes.add(modelMode);
-      }
-    }
-
-    const catalogModes = allStorySoundModes.filter((modelMode) =>
-      modes.has(modelMode),
-    );
-    return catalogModes.length > 0 ? catalogModes : allStorySoundModes;
-  }, [catalog]);
+    return selectedModel?.modes.length
+      ? selectedModel.modes
+      : allStorySoundModes;
+  }, [selectedModel]);
+  const unsupportedModeTitle = selectedModel
+    ? t("storyStudio.sound.unsupportedModeForModel", {
+        defaultValue: "{{model}} does not support this sound type.",
+        model: selectedModel.label,
+      })
+    : undefined;
   const modeItems = useMemo(
     () =>
-      availableModes.map((value) => ({
+      allStorySoundModes.map((value) => ({
         value,
         label: soundModeLabel(value, t),
+        disabled: selectedModel ? !selectedModel.modes.includes(value) : false,
+        title:
+          selectedModel && !selectedModel.modes.includes(value)
+            ? unsupportedModeTitle
+            : undefined,
       })),
-    [availableModes, t],
+    [selectedModel, t, unsupportedModeTitle],
   );
 
   const durationBounds =
@@ -158,16 +185,11 @@ export const SoundDesignPanel: React.FC = () => {
         "get_creative_audio_model_catalog",
       );
       setCatalog(next);
-      const nextCompatible = next.models.filter((model) =>
-        model.modes.includes(mode),
-      );
       setSelectedModelId((current) =>
-        nextCompatible.some((model) => model.id === current)
+        next.models.some((model) => model.id === current)
           ? current
-          : ((
-              nextCompatible.find((model) => model.runnable) ??
-              nextCompatible[0]
-            )?.id ?? ""),
+          : ((next.models.find((model) => model.runnable) ?? next.models[0])
+              ?.id ?? ""),
       );
     } catch (error) {
       console.error("Failed to load creative audio catalog:", error);
@@ -175,7 +197,7 @@ export const SoundDesignPanel: React.FC = () => {
     } finally {
       setIsLoadingCatalog(false);
     }
-  }, [mode]);
+  }, []);
 
   useEffect(() => {
     void refreshCatalog();
@@ -187,7 +209,6 @@ export const SoundDesignPanel: React.FC = () => {
     setTitle(nextDefaults.title);
     setPrompt(nextDefaults.prompt);
     setDuration(nextDefaults.duration);
-    setLastGenerated(null);
   }, []);
 
   useEffect(() => {
@@ -203,9 +224,10 @@ export const SoundDesignPanel: React.FC = () => {
     activeRenderIdRef.current = renderId;
     setIsGenerating(true);
     try {
-      const item = await invoke<StoryAudioItem>("generate_story_sound", {
+      await invoke<StorySoundItem>("generate_story_sound", {
         request: {
           render_id: renderId,
+          project_id: projectId,
           title: title.trim(),
           prompt: trimmedPrompt,
           model_id: selectedModel.id,
@@ -218,8 +240,8 @@ export const SoundDesignPanel: React.FC = () => {
           seed: null,
         },
       });
-      setLastGenerated(item);
-      toast.success("Sound saved to Generated Audio.");
+      onSoundsChanged();
+      toast.success("Sound saved to this project.");
     } catch (error) {
       const message = normalizeError(error, "Could not generate sound.");
       if (!message.toLowerCase().includes("cancelled")) {
@@ -235,7 +257,9 @@ export const SoundDesignPanel: React.FC = () => {
     durationBounds.min,
     mode,
     modeReady,
+    onSoundsChanged,
     prompt,
+    projectId,
     selectedModel,
     title,
   ]);
@@ -252,14 +276,6 @@ export const SoundDesignPanel: React.FC = () => {
 
   const openCreativeAudioModels = useCallback(async () => {
     await openModelHub("creative_audio", { scope: "creative_audio" });
-  }, []);
-
-  const openGeneratedAudio = useCallback(() => {
-    window.dispatchEvent(
-      new CustomEvent("vox-jot:navigate", {
-        detail: { view: "listen", section: "story-audio-history" },
-      }),
-    );
   }, []);
 
   return (
@@ -329,7 +345,7 @@ export const SoundDesignPanel: React.FC = () => {
                   defaultValue: "Download a creative audio model",
                 })
               : t("storyStudio.sound.runtimePendingTitle", {
-                  defaultValue: "Runtime pending",
+                  defaultValue: "Download required",
                 })}
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
@@ -340,7 +356,7 @@ export const SoundDesignPanel: React.FC = () => {
                 })
               : t("storyStudio.sound.runtimePendingDescription", {
                   defaultValue:
-                    "This engine is tracked for Studio, but its app-managed runtime is not available in Vox Jot yet.",
+                    "Open Model Hub to install the app-managed runtime and model files before generating audio.",
                 })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -423,19 +439,6 @@ export const SoundDesignPanel: React.FC = () => {
           </span>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {lastGenerated ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={openGeneratedAudio}
-            >
-              <Music2 className="h-3.5 w-3.5" />
-              {t("storyStudio.sound.openGenerated", {
-                defaultValue: "Open Generated Audio",
-              })}
-            </Button>
-          ) : null}
           {isGenerating ? (
             <Button
               type="button"
@@ -469,6 +472,136 @@ export const SoundDesignPanel: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold text-[var(--text)]">
+              {t("storyStudio.sound.libraryTitle", {
+                defaultValue: "Project sounds",
+              })}
+            </h4>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {t("storyStudio.sound.libraryDescription", {
+                defaultValue:
+                  "Generated sounds stay here so the script can reference them as cues.",
+              })}
+            </p>
+          </div>
+          <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
+            {sounds.length}
+          </span>
+        </div>
+        {sounds.length > 0 ? (
+          <div className="space-y-2">
+            {sounds.map((sound) => (
+              <ProjectSoundRow
+                key={sound.id}
+                sound={sound}
+                t={t}
+                onSoundsChanged={onSoundsChanged}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-4 py-6 text-center text-sm text-[var(--muted)]">
+            {t("storyStudio.sound.emptyLibrary", {
+              defaultValue:
+                "Generate a sound to add it to this project's sound list.",
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ProjectSoundRow: React.FC<{
+  sound: StorySoundItem;
+  t: TFunction;
+  onSoundsChanged: () => void;
+}> = ({ sound, t, onSoundsChanged }) => {
+  const [isBusy, setIsBusy] = useState(false);
+
+  const preview = useCallback(async () => {
+    try {
+      await invoke("play_story_audio", { path: sound.output_path });
+    } catch (error) {
+      console.error("Failed to preview project sound:", error);
+      toast.error("Could not preview sound.");
+    }
+  }, [sound.output_path]);
+
+  const rename = useCallback(async () => {
+    const nextTitle = window.prompt("Rename sound", sound.title)?.trim();
+    if (!nextTitle || nextTitle === sound.title) return;
+    setIsBusy(true);
+    try {
+      await invoke("rename_story_audio", { id: sound.id, title: nextTitle });
+      onSoundsChanged();
+    } catch (error) {
+      console.error("Failed to rename project sound:", error);
+      toast.error("Could not rename sound.");
+    } finally {
+      setIsBusy(false);
+    }
+  }, [onSoundsChanged, sound.id, sound.title]);
+
+  const remove = useCallback(async () => {
+    if (!window.confirm(`Delete "${sound.title}" from this project?`)) return;
+    setIsBusy(true);
+    try {
+      await invoke("delete_story_audio", { id: sound.id });
+      onSoundsChanged();
+      toast.message("Sound deleted.");
+    } catch (error) {
+      console.error("Failed to delete project sound:", error);
+      toast.error("Could not delete sound.");
+    } finally {
+      setIsBusy(false);
+    }
+  }, [onSoundsChanged, sound.id, sound.title]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+      <button
+        type="button"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        onClick={() => void preview()}
+        aria-label={t("common.play")}
+      >
+        <Play className="h-4 w-4" aria-hidden />
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-[var(--text)]">
+          {sound.title}
+        </p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--muted)]">
+          <span>{soundModeLabel(sound.sound_mode ?? "sfx", t)}</span>
+          <span aria-hidden>·</span>
+          <span>{formatDuration(sound.duration_ms)}</span>
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void rename()}
+          disabled={isBusy}
+          aria-label="Rename sound"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void remove()}
+          disabled={isBusy}
+          aria-label="Delete sound"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </div>
     </div>
   );
 };
@@ -477,10 +610,7 @@ function clampDuration(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
 }
 
-function soundModeLabel(
-  mode: StorySoundMode,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
+function soundModeLabel(mode: StorySoundMode, t: TFunction) {
   if (mode === "sfx") {
     return t("storyStudio.sound.modes.sfx", { defaultValue: "SFX" });
   }
@@ -498,6 +628,16 @@ function soundModeLabel(
   return t("storyStudio.sound.modes.composition", {
     defaultValue: "Composition",
   });
+}
+
+function formatDuration(durationMs: number): string {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function normalizeError(error: unknown, fallback: string): string {

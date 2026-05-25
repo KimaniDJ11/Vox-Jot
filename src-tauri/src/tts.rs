@@ -154,6 +154,22 @@ fn hf_access_error(repo_id: &str) -> String {
     )
 }
 
+pub(crate) fn managed_speech_runtime_archive_for_app() -> Option<(&'static str, &'static str)> {
+    managed_speech_runtime_definition()
+        .map(|definition| (definition.platform_id, definition.archive_name))
+}
+
+pub(crate) fn resolve_speech_runtime_root_for_app(base_dir: &Path) -> Option<PathBuf> {
+    resolve_extracted_root(base_dir)
+}
+
+pub(crate) fn extract_speech_runtime_archive_for_app(
+    archive_path: &Path,
+    install_dir: &Path,
+) -> Result<(), String> {
+    extract_archive(archive_path, install_dir)
+}
+
 fn managed_speech_runtime_is_current(root: &Path) -> bool {
     if managed_speech_runtime_entrypoint(root).is_none() {
         return false;
@@ -2187,7 +2203,6 @@ impl TtsManager {
                 },
                 available: managed_speech_runtime_definition().is_some(),
                 local_only: true,
-                coming_soon: false,
                 license_label: definition.license_label.map(str::to_string),
                 capabilities: CapabilityFlags {
                     downloadable: true,
@@ -2204,7 +2219,6 @@ impl TtsManager {
                     supports_inline_tags: provider_definitions
                         .iter()
                         .any(|candidate| candidate.supports_inline_tags),
-                    coming_soon: false,
                 },
             });
         }
@@ -2212,7 +2226,7 @@ impl TtsManager {
         providers
     }
 
-    fn managed_runtime_placeholder_models(
+    fn managed_runtime_catalog_models(
         &self,
         selected_provider_id: &str,
         selected_model_id: Option<&str>,
@@ -2283,7 +2297,6 @@ impl TtsManager {
                         supports_voice_cloning: definition.supports_voice_cloning,
                         supports_instruction_prompt: definition.supports_instruction_prompt,
                         supports_inline_tags: definition.supports_inline_tags,
-                        coming_soon: false,
                     },
                     delivery_support: self.managed_runtime_definition_delivery_support(definition),
                 }
@@ -2303,7 +2316,6 @@ impl TtsManager {
             supports_voice_cloning: false,
             supports_instruction_prompt: false,
             supports_inline_tags: false,
-            coming_soon: false,
         };
         let lfm_runtime = RuntimeRequirement {
             id: "lfm_audio_gguf".to_string(),
@@ -2324,7 +2336,6 @@ impl TtsManager {
             runtime: lfm_runtime,
             available: self.ensure_lfm_audio_gguf_supported().is_ok(),
             local_only: true,
-            coming_soon: false,
             license_label: Some("LFM Open License v1.0".to_string()),
             capabilities: lfm_capabilities,
         });
@@ -2338,7 +2349,6 @@ impl TtsManager {
             supports_voice_cloning: false,
             supports_instruction_prompt: false,
             supports_inline_tags: false,
-            coming_soon: false,
         };
         let vv_runtime = RuntimeRequirement {
             id: "vibevoice".to_string(),
@@ -2360,7 +2370,6 @@ impl TtsManager {
             available: settings.experimental_enabled
                 && self.ensure_vibevoice_supported(settings).is_ok(),
             local_only: true,
-            coming_soon: false,
             license_label: Some("Research-only".to_string()),
             capabilities: vv_capabilities,
         });
@@ -2426,7 +2435,6 @@ impl TtsManager {
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_LFM_AUDIO_GGUF_ID),
         });
@@ -2435,7 +2443,7 @@ impl TtsManager {
             .ok()
             .map(|dir| dir.join("model.safetensors").exists())
             .unwrap_or(false);
-        let vv_installed = vv_dir_ok && settings.experimental_enabled;
+        let vv_supported = self.ensure_vibevoice_supported(settings).is_ok();
         let vv_selected = selected_provider_id == TTS_PROVIDER_VIBEVOICE_ID
             && selected_model_id == Some(TTS_MODEL_VIBEVOICE_DEFAULT_ID);
         models.push(CatalogModelDescriptor {
@@ -2447,11 +2455,11 @@ impl TtsManager {
             description:
                 "Research-only VibeVoice. Requires Labs flag and a Python venv with torch + transformers + soundfile."
                     .to_string(),
-            installed: vv_installed,
+            installed: vv_dir_ok,
             selected: vv_selected,
-            active: vv_selected && vv_installed,
-            runnable: vv_installed,
-            downloadable: true,
+            active: vv_selected && vv_supported,
+            runnable: vv_supported,
+            downloadable: !vv_dir_ok,
             source_label: "Research-licensed model".to_string(),
             source_url: Some("https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B".to_string()),
             runtime: RuntimeRequirement {
@@ -2464,30 +2472,35 @@ impl TtsManager {
             locale: None,
             supported_languages: Vec::new(),
             readiness_status: Some(
-                if vv_installed {
+                if vv_supported {
                     "ready"
-                } else if !settings.experimental_enabled {
-                    "experimental"
+                } else if vv_dir_ok {
+                    "blocked"
                 } else {
                     "missing"
                 }
                 .to_string(),
             ),
-            readiness_issues: if vv_installed {
+            readiness_issues: if vv_supported {
                 Vec::new()
             } else if !settings.experimental_enabled {
                 vec![
                     "Enable experimental features in Settings → Labs to use VibeVoice."
                         .to_string(),
                 ]
+            } else if vv_dir_ok {
+                vec![
+                    "VibeVoice model files are present, but the managed speech runtime is missing the VibeVoice bridge, Python environment, or voice preset files."
+                        .to_string(),
+                ]
             } else {
                 vec![
-                    "Download the VibeVoice files from Hugging Face, then run speech-runtime/install_vibevoice_deps.sh if the Python runtime is not prepared yet."
+                    "Download the VibeVoice model files. Vox Jot will keep the model blocked until the managed runtime validates."
                         .to_string(),
                 ]
             },
             capabilities: CapabilityFlags {
-                downloadable: true,
+                downloadable: !vv_dir_ok,
                 loadable: true,
                 local_only: true,
                 supports_translation: false,
@@ -2495,7 +2508,6 @@ impl TtsManager {
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_VIBEVOICE_ID),
         });
@@ -2649,10 +2661,10 @@ impl TtsManager {
             supports_voice_cloning: true,
             supports_instruction_prompt: true,
             supports_inline_tags: false,
-            coming_soon: false,
         };
         let qwen3_models = QWEN3_PACK_DEFINITIONS.iter().collect::<Vec<_>>();
 
+        let system_engine_supported = self.ensure_system_engine_supported().is_ok();
         let mut providers = vec![
             ProviderDescriptor {
                 id: TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string(),
@@ -2665,9 +2677,8 @@ impl TtsManager {
                 source_label: "Platform runtime".to_string(),
                 source_url: None,
                 runtime: system_runtime.clone(),
-                available: self.ensure_system_engine_supported().is_ok(),
+                available: system_engine_supported,
                 local_only: true,
-                coming_soon: false,
                 license_label: None,
                 capabilities: CapabilityFlags {
                     downloadable: false,
@@ -2678,7 +2689,6 @@ impl TtsManager {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
             },
             ProviderDescriptor {
@@ -2696,7 +2706,6 @@ impl TtsManager {
                 runtime: sherpa_runtime.clone(),
                 available: true,
                 local_only: true,
-                coming_soon: false,
                 license_label: Some("Sherpa ONNX model assets".to_string()),
                 capabilities: CapabilityFlags {
                     downloadable: true,
@@ -2707,7 +2716,6 @@ impl TtsManager {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
             },
         ];
@@ -2726,7 +2734,6 @@ impl TtsManager {
                 runtime: sidecar_runtime.clone(),
                 available: self.ensure_sidecar_supported(settings).is_ok(),
                 local_only: true,
-                coming_soon: false,
                 license_label: None,
                 capabilities: CapabilityFlags {
                     downloadable: false,
@@ -2737,7 +2744,6 @@ impl TtsManager {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
             });
         }
@@ -2760,7 +2766,6 @@ impl TtsManager {
             },
             available: qwen3_runtime_definition().is_some(),
             local_only: true,
-            coming_soon: false,
             license_label: Some("Apache-2.0".to_string()),
             capabilities: qwen3_capabilities.clone(),
         });
@@ -2780,7 +2785,7 @@ impl TtsManager {
                 && selected_model_id.as_deref() == Some(TTS_MODEL_SYSTEM_DEFAULT_ID),
             active: selected_provider_id == TTS_PROVIDER_SYSTEM_BUILTIN_ID
                 && selected_model_id.as_deref() == Some(TTS_MODEL_SYSTEM_DEFAULT_ID),
-            runnable: true,
+            runnable: system_engine_supported,
             downloadable: false,
             source_label: "Platform runtime".to_string(),
             source_url: None,
@@ -2788,8 +2793,19 @@ impl TtsManager {
             license_label: None,
             locale: None,
             supported_languages: Vec::new(),
-            readiness_status: Some("ready".to_string()),
-            readiness_issues: Vec::new(),
+            readiness_status: Some(
+                if system_engine_supported {
+                    "ready"
+                } else {
+                    "blocked"
+                }
+                .to_string(),
+            ),
+            readiness_issues: if system_engine_supported {
+                Vec::new()
+            } else {
+                vec!["System TTS is not available on this platform.".to_string()]
+            },
             capabilities: CapabilityFlags {
                 downloadable: false,
                 loadable: true,
@@ -2799,7 +2815,6 @@ impl TtsManager {
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_SYSTEM_BUILTIN_ID),
         }];
@@ -2837,16 +2852,17 @@ impl TtsManager {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
                 delivery_support: self.builtin_delivery_support(TTS_PROVIDER_LOCAL_SIDECAR_API_ID),
             });
         }
 
-        models.extend(self.managed_runtime_placeholder_models(
-            &selected_provider_id,
-            selected_model_id.as_deref(),
-        ));
+        models.extend(
+            self.managed_runtime_catalog_models(
+                &selected_provider_id,
+                selected_model_id.as_deref(),
+            ),
+        );
         models.extend(self.local_binary_catalog_models(
             settings,
             &selected_provider_id,
@@ -2945,7 +2961,6 @@ impl TtsManager {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
                 delivery_support: self.builtin_delivery_support(TTS_PROVIDER_SHERPA_PACK_ID),
             }
@@ -2994,7 +3009,6 @@ impl TtsManager {
                     },
                     available: true,
                     local_only: true,
-                    coming_soon: false,
                     license_label: provider.provider.license_label.clone(),
                     capabilities: CapabilityFlags {
                         downloadable: provider_is_mlx_audio(&provider.id),
@@ -3013,7 +3027,6 @@ impl TtsManager {
                         supports_inline_tags: provider_models
                             .iter()
                             .any(|model| model.capabilities.supports_inline_tags),
-                        coming_soon: false,
                     },
                 };
 
@@ -3073,7 +3086,6 @@ impl TtsManager {
                         supports_voice_cloning: model.capabilities.supports_voice_cloning,
                         supports_instruction_prompt: model.capabilities.supports_instruction_prompt,
                         supports_inline_tags: model.capabilities.supports_inline_tags,
-                        coming_soon: false,
                     },
                     delivery_support: self.runtime_delivery_support(&model),
                 })
@@ -4153,6 +4165,7 @@ impl TtsManager {
                 ));
             }
         }
+        self.prepare_vibevoice_context()?;
         Ok(TtsEngineKind::VibeVoice)
     }
 
@@ -4618,6 +4631,7 @@ impl TtsManager {
             final_path: archive_path.clone(),
             expected_sha256: None,
             expected_size: None,
+            bearer_token: None,
             cancel_flag,
             progress: Some(progress),
         })

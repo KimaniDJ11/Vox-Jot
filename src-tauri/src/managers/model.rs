@@ -40,6 +40,13 @@ pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
 }
 
 pub fn model_is_available(model: &ModelInfo) -> bool {
+    if matches!(
+        model.engine_type,
+        EngineType::AppleSpeech | EngineType::AppleSpeechStreaming
+    ) {
+        return crate::apple_intelligence::check_apple_speech_analyzer_availability();
+    }
+
     model.is_downloaded || (engine_uses_remote_runtime(&model.engine_type) && model.url.is_none())
 }
 
@@ -387,6 +394,9 @@ impl ModelManager {
         .map(String::from)
         .collect();
 
+        let apple_speech_available =
+            crate::apple_intelligence::check_apple_speech_analyzer_availability();
+
         available_models.insert(
             "apple-speech-analyzer".to_string(),
             ModelInfo {
@@ -399,7 +409,7 @@ impl ModelManager {
                 url: None,
                 sha256: None,
                 size_mb: 0,
-                is_downloaded: cfg!(target_os = "macos"),
+                is_downloaded: apple_speech_available,
                 is_downloading: false,
                 partial_size: 0,
                 is_directory: false,
@@ -425,7 +435,7 @@ impl ModelManager {
                 url: None,
                 sha256: None,
                 size_mb: 0,
-                is_downloaded: cfg!(target_os = "macos"),
+                is_downloaded: apple_speech_available,
                 is_downloading: false,
                 partial_size: 0,
                 is_directory: false,
@@ -439,7 +449,7 @@ impl ModelManager {
             },
         );
 
-        // TODO this should be read from a JSON file or something..
+        // Static built-in catalog. Keep custom/imported models in persisted settings.
         available_models.insert(
             "tiny".to_string(),
             ModelInfo {

@@ -35,11 +35,7 @@ import { usePortalTarget } from "@/hooks/usePortalTarget";
 
 type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 type CreativeAudioSourceKind = "official_source";
-type CreativeAudioAvailability =
-  | "ready"
-  | "downloadable"
-  | "future"
-  | "blocked";
+type CreativeAudioAvailability = "ready" | "downloadable" | "blocked";
 type CreativeAudioModeFilter = "all" | StorySoundMode;
 
 interface CreativeAudioModelDescriptor {
@@ -409,21 +405,6 @@ const CreativeAudioEnginesSection: React.FC<
       ),
     [accessors, activeDownloads, filteredModels, sortMode],
   );
-  const futureModels = useMemo(
-    () =>
-      orderModelList(
-        filteredModels.filter(
-          (model) =>
-            model.availability === "future" ||
-            model.availability === "blocked" ||
-            (!model.downloadable && !model.installed),
-        ),
-        "available",
-        sortMode,
-        accessors,
-      ),
-    [accessors, filteredModels, sortMode],
-  );
   const availableModels = useMemo(
     () =>
       orderModelList(
@@ -482,13 +463,6 @@ const CreativeAudioEnginesSection: React.FC<
         defaultValue: "Available to Download",
       }),
       models: availableModels,
-      showHeader: true,
-    },
-    {
-      title: t("modelHub.sections.futureExperimental", {
-        defaultValue: "Future / Experimental",
-      }),
-      models: futureModels,
       showHeader: true,
     },
   ].filter((section) => section.models.length > 0);
@@ -589,25 +563,6 @@ const CreativeAudioEnginesSection: React.FC<
                           ),
                         }
                       : null,
-                    model.experimental || model.availability === "future"
-                      ? {
-                          id: "experimental",
-                          label: t("modelHub.creativeAudio.experimental", {
-                            defaultValue: "Experimental",
-                          }),
-                          variant: "secondary",
-                          icon: (
-                            <FileMusic className="h-3.5 w-3.5" aria-hidden />
-                          ),
-                          detail: t(
-                            "modelHub.creativeAudio.experimentalDetail",
-                            {
-                              defaultValue:
-                                "Tracked for Studio, but not runnable in this build.",
-                            },
-                          ),
-                        }
-                      : null,
                   ].filter(Boolean) as CompactBadgeItem[];
                   const capabilityChips: CompactBadgeItem[] = [
                     ...model.modes.map((mode) => ({
@@ -702,7 +657,7 @@ const CreativeAudioEnginesSection: React.FC<
                           >
                             {model.status_label ||
                               t("modelHub.creativeAudio.notRunnable", {
-                                defaultValue: "Not runnable",
+                                defaultValue: "Blocked",
                               })}
                           </span>
                         ) : (
@@ -849,6 +804,11 @@ function labelForProgressPhase(
   phase: string | undefined,
   t: TFunction,
 ): string {
+  if (phase === "downloading-runtime") {
+    return t("modelHub.creativeAudio.progress.downloadingRuntime", {
+      defaultValue: "Downloading required runtime...",
+    });
+  }
   if (phase === "installing-runtime") {
     return t("modelHub.creativeAudio.progress.installingRuntime", {
       defaultValue: "Installing MLX runtime...",

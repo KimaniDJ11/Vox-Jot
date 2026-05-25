@@ -547,7 +547,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 },
                 available: true,
                 local_only: true,
-                coming_soon: false,
                 license_label: stt_model_license_label(model).map(str::to_string),
                 capabilities: CapabilityFlags {
                     downloadable,
@@ -561,7 +560,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
             })
         })
@@ -619,7 +617,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
                 delivery_support: unsupported_delivery_support(),
                 readiness_status: Some(if available {
@@ -662,7 +659,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             },
             available: true,
             local_only: true,
-            coming_soon: false,
             license_label: Some("Apache-2.0".to_string()),
             capabilities: CapabilityFlags {
                 downloadable: true,
@@ -673,7 +669,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
         });
     }
@@ -724,7 +719,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                         supports_voice_cloning: false,
                         supports_instruction_prompt: false,
                         supports_inline_tags: false,
-                        coming_soon: false,
                     },
                     delivery_support: unsupported_delivery_support(),
                     readiness_status: Some(if available {
@@ -763,7 +757,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             },
             available: true,
             local_only: true,
-            coming_soon: false,
             license_label: None,
             capabilities: CapabilityFlags {
                 downloadable: true,
@@ -774,7 +767,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
         });
             catalog_models.extend(alias_models);
@@ -844,7 +836,6 @@ fn augment_tts_catalog_with_hf_verified(
             },
             available: true,
             local_only: true,
-            coming_soon: false,
             license_label: None,
             capabilities: CapabilityFlags {
                 downloadable: true,
@@ -855,7 +846,6 @@ fn augment_tts_catalog_with_hf_verified(
                 supports_voice_cloning: true,
                 supports_instruction_prompt: true,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
         });
     }
@@ -881,15 +871,14 @@ fn augment_tts_catalog_with_hf_verified(
         let supports_instructions = lower.contains("parler") || lower.contains("qwen");
 
         let installed = tts_hf_repo_is_installed(app, &repo_id);
-        let downloadable = !installed;
         let readiness_status = if installed { "downloaded" } else { "missing" };
         let readiness_issues = if installed {
             vec![format!(
-                "{repo_id} is downloaded, but Vox Jot does not have a runnable local TTS adapter for this generic Hugging Face repo yet."
+                "{repo_id} is downloaded, but Vox Jot does not have a runnable local TTS adapter for this generic Hugging Face repo."
             )]
         } else {
             vec![format!(
-                "Tap Download to pull {repo_id} into Vox Jot's local TTS store."
+                "{repo_id} is blocked until a runnable local TTS adapter is implemented."
             )]
         };
 
@@ -904,7 +893,7 @@ fn augment_tts_catalog_with_hf_verified(
             selected: false,
             active: false,
             runnable: false,
-            downloadable,
+            downloadable: false,
             source_label: "Hugging Face collection".to_string(),
             source_url: Some(format!("https://huggingface.co/{repo_id}")),
             runtime: RuntimeRequirement {
@@ -919,7 +908,7 @@ fn augment_tts_catalog_with_hf_verified(
             readiness_status: Some(readiness_status.to_string()),
             readiness_issues,
             capabilities: CapabilityFlags {
-                downloadable,
+                downloadable: false,
                 loadable: false,
                 local_only: true,
                 supports_translation: false,
@@ -927,7 +916,6 @@ fn augment_tts_catalog_with_hf_verified(
                 supports_voice_cloning: supports_cloning,
                 supports_instruction_prompt: supports_instructions,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
             delivery_support: unsupported_delivery_support(),
         });
@@ -1132,7 +1120,6 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
             },
             available: true,
             local_only: crate::settings::post_process_provider_is_local(provider),
-            coming_soon: false,
             license_label: None,
             capabilities: CapabilityFlags {
                 downloadable: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
@@ -1143,7 +1130,6 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                 supports_voice_cloning: false,
                 supports_instruction_prompt: true,
                 supports_inline_tags: false,
-                coming_soon: false,
             },
         })
         .collect();
@@ -1219,7 +1205,6 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     supports_voice_cloning: false,
                     supports_instruction_prompt: true,
                     supports_inline_tags: false,
-                    coming_soon: false,
                 },
                 delivery_support: unsupported_delivery_support(),
                 readiness_status: Some(readiness_status.to_string()),
@@ -1630,7 +1615,7 @@ async fn set_tts_platform_selection_impl(
         .find(|provider| provider.id == provider_id)
         .ok_or_else(|| format!("Unknown TTS provider '{}'", provider_id))?;
 
-    if provider.coming_soon || !provider.available {
+    if !provider.available {
         return Err(format!(
             "TTS provider '{}' is not available in this build",
             provider.label
@@ -1658,12 +1643,15 @@ async fn set_tts_platform_selection_impl(
         .find(|model| model.provider_id == provider_id && model.id == resolved_model_id)
         .ok_or_else(|| format!("Unknown TTS model '{}'", resolved_model_id))?;
 
-    if model.capabilities.coming_soon {
-        return Err(format!(
-            "TTS model '{}' is not available in this build",
-            model.label
-        ));
+    if !model.runnable && !model.downloadable {
+        let issue = model
+            .readiness_issues
+            .first()
+            .cloned()
+            .unwrap_or_else(|| format!("TTS model '{}' is blocked.", model.label));
+        return Err(issue);
     }
+
     if !model.installed && model.downloadable {
         if model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
             download_hf_tts_repo_impl(&app_handle, &resolved_model_id).await?;

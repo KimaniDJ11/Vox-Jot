@@ -11,7 +11,6 @@ export interface CapabilityFlags {
   supports_voice_cloning: boolean;
   supports_instruction_prompt: boolean;
   supports_inline_tags: boolean;
-  coming_soon: boolean;
 }
 
 export interface RuntimeRequirement {
@@ -71,7 +70,6 @@ export interface ProviderDescriptor {
   runtime: RuntimeRequirement;
   available: boolean;
   local_only: boolean;
-  coming_soon: boolean;
   license_label?: string | null;
   capabilities: CapabilityFlags;
 }

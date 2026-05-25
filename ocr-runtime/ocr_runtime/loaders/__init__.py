@@ -7,7 +7,6 @@ from typing import Optional
 
 from .base import OcrLoader
 from .generic import PaddleOcrLoader, TransformersVlLoader
-from .stub import StubLoader
 
 
 def resolve(model_root: Path, backend: str, catalog_id: str) -> Optional[OcrLoader]:
@@ -32,4 +31,4 @@ def resolve(model_root: Path, backend: str, catalog_id: str) -> Optional[OcrLoad
             backend=backend,
         )
 
-    return StubLoader(model_root=model_root, catalog_id=catalog_id, backend=backend)
+    return None

@@ -17,17 +17,10 @@ impl LinuxFieldTextReader {
 
 impl FieldTextReader for LinuxFieldTextReader {
     fn read_focused_field_text(&self) -> Result<Option<String>> {
-        // AT-SPI requires an async runtime and D-Bus connection.
-        // For now, this is a best-effort implementation that logs when AT-SPI
-        // is unavailable. Full AT-SPI integration requires the zbus event loop.
         warn!(
-            "Linux AT-SPI field text reading is experimental and may not work in all environments"
+            "Linux AT-SPI field text reading is blocked until the D-Bus text reader is implemented"
         );
-
-        // Attempt to connect to AT-SPI via atspi crate
-        // This is a simplified approach — full implementation would use
-        // atspi::connection::AccessibilityConnection and TextProxy
-        debug!("AT-SPI text reading not yet fully implemented on Linux");
+        debug!("AT-SPI text reading returned no field text on Linux");
         Ok(None)
     }
 

@@ -46,7 +46,6 @@ const capabilities = {
   supports_voice_cloning: true,
   supports_instruction_prompt: false,
   supports_inline_tags: false,
-  coming_soon: false,
 };
 
 const provider: ProviderDescriptor = {
@@ -60,7 +59,6 @@ const provider: ProviderDescriptor = {
   runtime,
   available: true,
   local_only: true,
-  coming_soon: false,
   license_label: null,
   capabilities,
 };

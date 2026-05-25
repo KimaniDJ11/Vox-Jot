@@ -10,7 +10,48 @@
 //! setting and can be changed at runtime.
 
 mod handler;
+#[cfg(not(vox_jot_app_store))]
 pub mod handy_keys;
+#[cfg(vox_jot_app_store)]
+pub mod handy_keys {
+    use tauri::AppHandle;
+
+    use crate::settings::ShortcutBinding;
+
+    pub struct HandyKeysState;
+
+    pub fn validate_shortcut(_raw: &str) -> Result<(), String> {
+        Err("HandyKeys is not available in Mac App Store builds.".to_string())
+    }
+
+    pub fn init_shortcuts(_app: &AppHandle) -> Result<(), String> {
+        Err("HandyKeys is not available in Mac App Store builds.".to_string())
+    }
+
+    pub fn register_cancel_shortcut(_app: &AppHandle) {}
+
+    pub fn unregister_cancel_shortcut(_app: &AppHandle) {}
+
+    pub fn register_shortcut(_app: &AppHandle, _binding: ShortcutBinding) -> Result<(), String> {
+        Err("HandyKeys is not available in Mac App Store builds.".to_string())
+    }
+
+    pub fn unregister_shortcut(_app: &AppHandle, _binding: ShortcutBinding) -> Result<(), String> {
+        Ok(())
+    }
+
+    #[tauri::command]
+    #[specta::specta]
+    pub fn start_handy_keys_recording(_app: AppHandle, _binding_id: String) -> Result<(), String> {
+        Err("HandyKeys recording is not available in Mac App Store builds.".to_string())
+    }
+
+    #[tauri::command]
+    #[specta::specta]
+    pub fn stop_handy_keys_recording(_app: AppHandle) -> Result<(), String> {
+        Ok(())
+    }
+}
 mod tauri_impl;
 
 use log::{error, info, warn};

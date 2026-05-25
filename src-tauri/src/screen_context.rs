@@ -19,7 +19,10 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    all(target_os = "macos", not(vox_jot_app_store)),
+    target_os = "windows"
+))]
 use crate::correction_tracker::field_monitor::FieldTextReader;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, Default)]
@@ -1343,12 +1346,17 @@ fn current_frontmost_bundle() -> Option<String> {
     current_frontmost_app_context().map(|context| context.bundle_id)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(vox_jot_app_store)))]
 fn read_ax_field_text(active_app_context: Option<&ActiveAppContext>) -> Option<String> {
     let reader = crate::correction_tracker::field_monitor_macos::MacosFieldTextReader::new(
         active_app_context.map(|context| context.bundle_id.clone()),
     );
     reader.read_focused_field_text().ok().flatten()
+}
+
+#[cfg(all(target_os = "macos", vox_jot_app_store))]
+fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<String> {
+    None
 }
 
 #[cfg(target_os = "windows")]

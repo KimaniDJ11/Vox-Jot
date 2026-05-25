@@ -169,7 +169,9 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 
   const permissionOrder = useMemo<PermissionId[]>(() => {
     if (isMacOS) {
-      return isMacAppStoreBuild ? macAppStorePermissionOrder : macPermissionOrder;
+      return isMacAppStoreBuild
+        ? macAppStorePermissionOrder
+        : macPermissionOrder;
     }
     if (isWindows) return windowsPermissionOrder;
     return [];
@@ -216,6 +218,20 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           setPermissions((prev) => ({
             ...prev,
             microphone: microphoneGranted ? "granted" : prev.microphone,
+          }));
+          if (microphoneGranted) stopPolling();
+          errorCountRef.current = 0;
+          return;
+        }
+
+        if (isMacAppStoreBuild) {
+          const microphoneGranted = await checkMicrophonePermission();
+          setPermissions((prev) => ({
+            ...prev,
+            microphone: microphoneGranted ? "granted" : prev.microphone,
+            accessibility: "granted",
+            inputMonitoring: "granted",
+            screenRecording: "granted",
           }));
           if (microphoneGranted) stopPolling();
           errorCountRef.current = 0;
@@ -295,6 +311,18 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     const checkInitial = async () => {
       if (nextPlatform === "macos") {
         try {
+          if (isMacAppStoreBuild) {
+            const microphoneGranted = await checkMicrophonePermission();
+
+            setPermissions({
+              accessibility: "granted",
+              microphone: microphoneGranted ? "granted" : "needed",
+              inputMonitoring: "granted",
+              screenRecording: "granted",
+            });
+            return;
+          }
+
           const [
             accessibilityGranted,
             microphoneGranted,
@@ -513,9 +541,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             <span>{t(permissionsPrivacyBadgeKey)}</span>
           </div>
           <h1 className="ob-heading">{t("onboarding.permissions.heading")}</h1>
-          <p className="ob-subtext">
-            {t(permissionsVisualDescriptionKey)}
-          </p>
+          <p className="ob-subtext">{t(permissionsVisualDescriptionKey)}</p>
         </header>
 
         <div className="ob-permission-grid">

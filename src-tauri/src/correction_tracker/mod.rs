@@ -15,11 +15,43 @@ pub mod diff;
 pub mod field_monitor;
 #[cfg(target_os = "linux")]
 pub mod field_monitor_linux;
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(vox_jot_app_store)))]
 pub mod field_monitor_macos;
 #[cfg(target_os = "windows")]
 pub mod field_monitor_windows;
+#[cfg(not(vox_jot_app_store))]
 pub mod recent_input;
+#[cfg(vox_jot_app_store)]
+pub mod recent_input {
+    use std::time::Instant;
+
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct RecentInputSignals {
+        pub saw_submit: bool,
+        pub saw_destructive_edit: bool,
+        pub destructive_after_submit: bool,
+    }
+
+    pub struct RecentInputTracker;
+
+    impl Default for RecentInputTracker {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl RecentInputTracker {
+        pub fn new() -> Self {
+            Self
+        }
+
+        pub fn start_listener(&self) {}
+
+        pub fn signals_since(&self, _since: Instant) -> RecentInputSignals {
+            RecentInputSignals::default()
+        }
+    }
+}
 pub mod span;
 pub mod store;
 
@@ -87,7 +119,7 @@ impl InsertedSpanTracker {
         );
 
         // Retry listener startup here in case app boot happened before macOS
-        // Input Monitoring was granted.
+        // Input Monitoring was granted. In App Store builds this is a no-op.
         recent_input.start_listener();
 
         // Store the span
@@ -262,11 +294,16 @@ pub async fn observe_field_snapshot(
 fn create_platform_reader(
     _app_identifier: Option<String>,
 ) -> Arc<dyn field_monitor::FieldTextReader> {
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(vox_jot_app_store)))]
     {
         Arc::new(field_monitor_macos::MacosFieldTextReader::new(
             _app_identifier,
         ))
+    }
+
+    #[cfg(all(target_os = "macos", vox_jot_app_store))]
+    {
+        Arc::new(NoopFieldTextReader)
     }
 
     #[cfg(target_os = "windows")]
@@ -297,10 +334,16 @@ fn create_platform_reader(
 }
 
 /// No-op field text reader for unsupported platforms.
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+#[cfg(any(
+    all(target_os = "macos", vox_jot_app_store),
+    not(any(target_os = "macos", target_os = "windows", target_os = "linux"))
+))]
 struct NoopFieldTextReader;
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+#[cfg(any(
+    all(target_os = "macos", vox_jot_app_store),
+    not(any(target_os = "macos", target_os = "windows", target_os = "linux"))
+))]
 impl field_monitor::FieldTextReader for NoopFieldTextReader {
     fn read_focused_field_text(&self) -> anyhow::Result<Option<String>> {
         Ok(None)

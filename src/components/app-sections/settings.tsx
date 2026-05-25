@@ -761,12 +761,18 @@ export const OutputPasteSettingsSection: React.FC = () => {
 
       <SettingsGroup title={t("appSections.groups.insertionBehavior")}>
         <PasteMethodSetting descriptionMode="inline" grouped={true} />
-        <TypingToolSetting descriptionMode="inline" grouped={true} />
-        <ClipboardHandlingSetting descriptionMode="inline" grouped={true} />
+        {!isMacAppStoreBuild && (
+          <>
+            <TypingToolSetting descriptionMode="inline" grouped={true} />
+            <ClipboardHandlingSetting descriptionMode="inline" grouped={true} />
+          </>
+        )}
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.groups.textShaping")}>
-        <AutoSubmit descriptionMode="inline" grouped={true} />
+        {!isMacAppStoreBuild && (
+          <AutoSubmit descriptionMode="inline" grouped={true} />
+        )}
         <AppendTrailingSpace descriptionMode="inline" grouped={true} />
       </SettingsGroup>
     </div>
@@ -1332,150 +1338,171 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
     );
   };
 
-  const accessRows = [
-    {
-      icon: <Keyboard className="h-4 w-4" aria-hidden />,
-      label: t("appSections.privacy.assistiveAccess.accessibilityLabel", {
-        defaultValue: "Accessibility",
-      }),
-      detail: t("appSections.privacy.assistiveAccess.accessibilityDetail", {
-        defaultValue:
-          "Used for user-started assistive insertion so dictated text can land in the focused field.",
-      }),
-      status:
-        pasteMethod === "none"
-          ? t("appSections.privacy.assistiveAccess.clipboardOnlyStatus", {
-              defaultValue: "Clipboard only",
-            })
-          : t("appSections.privacy.assistiveAccess.enabledStatus", {
-              defaultValue: "Enabled for insertion",
-            }),
-      active: pasteMethod !== "none",
-      destination: "output-paste",
-    },
-    {
-      icon: <SpellCheck className="h-4 w-4" aria-hidden />,
-      label: t("appSections.privacy.assistiveAccess.correctionsLabel", {
-        defaultValue: "Correction learning",
-      }),
-      detail: t("appSections.privacy.assistiveAccess.correctionsDetail", {
-        defaultValue:
-          "Monitors the inserted text after paste to learn user edits and reduce repeated manual fixes.",
-      }),
-      status: correctionTrackingEnabled
-        ? t("appSections.privacy.assistiveAccess.onStatus", {
-            defaultValue: "On",
-          })
-        : t("appSections.privacy.assistiveAccess.offStatus", {
-            defaultValue: "Off",
+  const accessRows = !isMacAppStoreBuild
+    ? [
+        {
+          icon: <Keyboard className="h-4 w-4" aria-hidden />,
+          label: t("appSections.privacy.assistiveAccess.accessibilityLabel", {
+            defaultValue: "Accessibility",
           }),
-      active: correctionTrackingEnabled,
-      destination: "corrections-settings",
-    },
-    {
-      icon: <Monitor className="h-4 w-4" aria-hidden />,
-      label: t("appSections.privacy.assistiveAccess.screenContextLabel", {
-        defaultValue: "Screen Context",
-      }),
-      detail: t("appSections.privacy.assistiveAccess.screenContextDetail", {
-        defaultValue:
-          "Uses optional Screen Recording permission for local OCR context that helps with visible names, jargon, and phrase keys.",
-      }),
-      status: screenContextEnabled
-        ? t("appSections.privacy.assistiveAccess.onStatus", {
-            defaultValue: "On",
-          })
-        : t("appSections.privacy.assistiveAccess.offStatus", {
-            defaultValue: "Off",
+          detail: t("appSections.privacy.assistiveAccess.accessibilityDetail", {
+            defaultValue:
+              "Used for user-started assistive insertion so dictated text can land in the focused field.",
           }),
-      active: screenContextEnabled,
-      destination: "screen-context",
-    },
-    {
-      icon: <ArrowRight className="h-4 w-4" aria-hidden />,
-      label: t("appSections.privacy.assistiveAccess.autoSubmitLabel", {
-        defaultValue: "Hands-free submit",
-      }),
-      detail: t("appSections.privacy.assistiveAccess.autoSubmitDetail", {
-        defaultValue:
-          "Optional Return/Command-Return output for users who cannot comfortably press the submit key.",
-      }),
-      status: autoSubmitEnabled
-        ? t("appSections.privacy.assistiveAccess.onStatus", {
-            defaultValue: "On",
-          })
-        : t("appSections.privacy.assistiveAccess.offStatus", {
-            defaultValue: "Off",
+          status:
+            pasteMethod === "none"
+              ? t("appSections.privacy.assistiveAccess.clipboardOnlyStatus", {
+                  defaultValue: "Clipboard only",
+                })
+              : t("appSections.privacy.assistiveAccess.enabledStatus", {
+                  defaultValue: "Enabled for insertion",
+                }),
+          active: pasteMethod !== "none",
+          destination: "output-paste",
+        },
+        {
+          icon: <SpellCheck className="h-4 w-4" aria-hidden />,
+          label: t("appSections.privacy.assistiveAccess.correctionsLabel", {
+            defaultValue: "Correction learning",
           }),
-      active: autoSubmitEnabled,
-      destination: "output-paste",
-    },
-  ];
+          detail: t("appSections.privacy.assistiveAccess.correctionsDetail", {
+            defaultValue:
+              "Monitors the inserted text after paste to learn user edits and reduce repeated manual fixes.",
+          }),
+          status: correctionTrackingEnabled
+            ? t("appSections.privacy.assistiveAccess.onStatus", {
+                defaultValue: "On",
+              })
+            : t("appSections.privacy.assistiveAccess.offStatus", {
+                defaultValue: "Off",
+              }),
+          active: correctionTrackingEnabled,
+          destination: "corrections-settings",
+        },
+        {
+          icon: <Monitor className="h-4 w-4" aria-hidden />,
+          label: t("appSections.privacy.assistiveAccess.screenContextLabel", {
+            defaultValue: "Screen Context",
+          }),
+          detail: t("appSections.privacy.assistiveAccess.screenContextDetail", {
+            defaultValue:
+              "Uses optional Screen Recording permission for local OCR context that helps with visible names, jargon, and phrase keys.",
+          }),
+          status: screenContextEnabled
+            ? t("appSections.privacy.assistiveAccess.onStatus", {
+                defaultValue: "On",
+              })
+            : t("appSections.privacy.assistiveAccess.offStatus", {
+                defaultValue: "Off",
+              }),
+          active: screenContextEnabled,
+          destination: "screen-context",
+        },
+        {
+          icon: <ArrowRight className="h-4 w-4" aria-hidden />,
+          label: t("appSections.privacy.assistiveAccess.autoSubmitLabel", {
+            defaultValue: "Hands-free submit",
+          }),
+          detail: t("appSections.privacy.assistiveAccess.autoSubmitDetail", {
+            defaultValue:
+              "Optional Return/Command-Return output for users who cannot comfortably press the submit key.",
+          }),
+          status: autoSubmitEnabled
+            ? t("appSections.privacy.assistiveAccess.onStatus", {
+                defaultValue: "On",
+              })
+            : t("appSections.privacy.assistiveAccess.offStatus", {
+                defaultValue: "Off",
+              }),
+          active: autoSubmitEnabled,
+          destination: "output-paste",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
       <PrivacyHero localPrivacyMode={localPrivacyMode} />
 
-      <SettingsGroup
-        title={t("appSections.privacy.assistiveAccess.title", {
-          defaultValue: "Assistive access & privacy",
-        })}
-      >
-        <div className="space-y-3 px-5 py-4">
-          <p className="text-sm leading-6 text-[var(--muted)]">
-            {t("appSections.privacy.assistiveAccess.description", {
-              defaultValue:
-                "Vox Jot is designed for people who cannot comfortably type because of disability, motor limitations, repetitive strain, temporary injury, fatigue, or pain. These controls show which assistive features can insert text, observe corrections, record screen context, or submit text on your behalf.",
-            })}
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {accessRows.map((row) => (
-              <div
-                key={row.label}
-                className="rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-3"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
-                    {row.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-[var(--text)]">
-                        {row.label}
+      {!isMacAppStoreBuild ? (
+        <SettingsGroup
+          title={t("appSections.privacy.assistiveAccess.title", {
+            defaultValue: "Assistive access & privacy",
+          })}
+        >
+          <div className="space-y-3 px-5 py-4">
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              {t("appSections.privacy.assistiveAccess.description", {
+                defaultValue:
+                  "Vox Jot is designed for people who cannot comfortably type because of disability, motor limitations, repetitive strain, temporary injury, fatigue, or pain. These controls show which assistive features can insert text, observe corrections, record screen context, or submit text on your behalf.",
+              })}
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {accessRows.map((row) => (
+                <div
+                  key={row.label}
+                  className="rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
+                      {row.icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-[var(--text)]">
+                          {row.label}
+                        </p>
+                        <MiniStatusPill
+                          icon={
+                            row.active ? (
+                              <CheckCircle2 className="h-3 w-3" aria-hidden />
+                            ) : (
+                              <XCircle className="h-3 w-3" aria-hidden />
+                            )
+                          }
+                          label={row.status}
+                          tone={row.active ? "info" : "default"}
+                        />
+                      </div>
+                      <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                        {row.detail}
                       </p>
-                      <MiniStatusPill
-                        icon={
-                          row.active ? (
-                            <CheckCircle2 className="h-3 w-3" aria-hidden />
-                          ) : (
-                            <XCircle className="h-3 w-3" aria-hidden />
-                          )
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() =>
+                          navigateToSettingsSection(row.destination)
                         }
-                        label={row.status}
-                        tone={row.active ? "info" : "default"}
-                      />
+                      >
+                        {t("appSections.privacy.assistiveAccess.manageButton", {
+                          defaultValue: "Manage",
+                        })}
+                      </Button>
                     </div>
-                    <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
-                      {row.detail}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => navigateToSettingsSection(row.destination)}
-                    >
-                      {t("appSections.privacy.assistiveAccess.manageButton", {
-                        defaultValue: "Manage",
-                      })}
-                    </Button>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </SettingsGroup>
+        </SettingsGroup>
+      ) : (
+        <SettingsGroup
+          title={t("appSections.privacy.appStorePrivacy.title", {
+            defaultValue: "Mac App Store privacy",
+          })}
+        >
+          <div className="space-y-2 px-5 py-4">
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              {t("appSections.privacy.appStorePrivacy.description", {
+                defaultValue:
+                  "This Mac App Store build asks only for Microphone access and uses clipboard-only delivery. It does not request Accessibility or Input Monitoring.",
+              })}
+            </p>
+          </div>
+        </SettingsGroup>
+      )}
 
       <SettingsGroup title={t("appSections.groups.privacyControls")}>
         <ToggleSwitch

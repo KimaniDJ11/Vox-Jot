@@ -8,6 +8,7 @@ import {
   minTapTargetHeightClass,
   titleBarOverlayWarningFocusClass,
 } from "@/lib/interactiveFocus";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -89,7 +90,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
 
   // On app boot - check permissions (only on macOS)
   useEffect(() => {
-    if (!isMacOS) return;
+    if (!isMacOS || isMacAppStoreBuild) return;
 
     const initialSetup = async (): Promise<void> => {
       await refreshPermissions();
@@ -132,7 +133,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     permissions.inputMonitoring &&
     permissions.screenRecording;
 
-  if (!isMacOS || hasAllPermissions) {
+  if (isMacAppStoreBuild || !isMacOS || hasAllPermissions) {
     return null;
   }
 

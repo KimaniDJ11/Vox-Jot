@@ -72,6 +72,7 @@ import {
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import { isProductSectionVisible } from "@/lib/productArchitecture";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
@@ -643,14 +644,18 @@ function App() {
           "teal",
           settingsBasics,
         ),
-        makeSection(
-          "corrections-settings",
-          "appSections.nav.settings.correctionsSettings",
-          SpellCheck,
-          <CorrectionsSettingsSection />,
-          "green",
-          settingsIntelligence,
-        ),
+        ...(!isMacAppStoreBuild
+          ? [
+              makeSection(
+                "corrections-settings",
+                "appSections.nav.settings.correctionsSettings",
+                SpellCheck,
+                <CorrectionsSettingsSection />,
+                "green",
+                settingsIntelligence,
+              ),
+            ]
+          : []),
         makeSection(
           "ai-setup",
           "appSections.nav.settings.aiSetup",
@@ -667,14 +672,18 @@ function App() {
           "violet",
           settingsIntelligence,
         ),
-        makeSection(
-          "screen-context",
-          "appSections.nav.settings.screenContext",
-          Monitor,
-          <ScreenContextSettingsSection />,
-          "blue",
-          settingsIntelligence,
-        ),
+        ...(!isMacAppStoreBuild
+          ? [
+              makeSection(
+                "screen-context",
+                "appSections.nav.settings.screenContext",
+                Monitor,
+                <ScreenContextSettingsSection />,
+                "blue",
+                settingsIntelligence,
+              ),
+            ]
+          : []),
         makeSection(
           "privacy",
           "appSections.nav.settings.privacy",
@@ -1009,6 +1018,16 @@ function App() {
 
         if (currentPlatform === "macos") {
           try {
+            if (isMacAppStoreBuild) {
+              const hasMicrophone = await checkMicrophonePermission();
+              if (!hasMicrophone) {
+                await revealMainWindowForPermissions();
+                setOnboardingStep("onboarding");
+                return;
+              }
+              return;
+            }
+
             const [
               hasAccessibility,
               hasMicrophone,
@@ -1259,7 +1278,9 @@ function App() {
           </div>
           <div className="app-macos-titlebar-overlay__drag" aria-hidden />
           <div className="app-macos-titlebar-overlay__trailing flex items-center gap-4">
-            <AccessibilityPermissions presentation="titleBar" />
+            {!isMacAppStoreBuild && (
+              <AccessibilityPermissions presentation="titleBar" />
+            )}
           </div>
         </header>
       ) : (
@@ -1301,7 +1322,9 @@ function App() {
           </div>
           <div className="app-window-toolbar__drag" aria-hidden />
           <div className="flex items-center gap-4 pe-2">
-            <AccessibilityPermissions presentation="titleBar" />
+            {!isMacAppStoreBuild && (
+              <AccessibilityPermissions presentation="titleBar" />
+            )}
           </div>
         </header>
       )}

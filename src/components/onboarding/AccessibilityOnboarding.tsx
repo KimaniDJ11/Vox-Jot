@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import { useSettingsStore } from "@/stores/settingsStore";
 import VoxJotTextLogo from "../icons/VoxJotTextLogo";
 import { Keyboard, Mic, Check, Loader2 } from "lucide-react";
@@ -54,16 +55,17 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
   const isMacOS = permissionPlatform === "macos";
   const isWindows = permissionPlatform === "windows";
   const showMicrophonePermission = isMacOS || isWindows;
-  const showAccessibilityPermission = isMacOS;
-  const showInputMonitoringPermission = isMacOS;
+  const showAccessibilityPermission = isMacOS && !isMacAppStoreBuild;
+  const showInputMonitoringPermission = isMacOS && !isMacAppStoreBuild;
 
-  const allGranted = isMacOS
-    ? permissions.accessibility === "granted" &&
-      permissions.microphone === "granted" &&
-      permissions.inputMonitoring === "granted"
-    : isWindows
-      ? permissions.microphone === "granted"
-      : true;
+  const allGranted =
+    isMacOS && !isMacAppStoreBuild
+      ? permissions.accessibility === "granted" &&
+        permissions.microphone === "granted" &&
+        permissions.inputMonitoring === "granted"
+      : isWindows
+        ? permissions.microphone === "granted"
+        : true;
 
   const completeOnboarding = useCallback(async () => {
     await Promise.all([refreshAudioDevices(), refreshOutputDevices()]);
@@ -102,6 +104,16 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
     const checkInitial = async () => {
       if (nextPlatform === "macos") {
         try {
+          if (isMacAppStoreBuild) {
+            const microphoneGranted = await checkMicrophonePermission();
+            setPermissions({
+              accessibility: "granted",
+              microphone: microphoneGranted ? "granted" : "needed",
+              inputMonitoring: "granted",
+            });
+            return;
+          }
+
           const [
             accessibilityGranted,
             microphoneGranted,
@@ -195,6 +207,26 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
             await completeOnboarding();
           }
 
+          errorCountRef.current = 0;
+          return;
+        }
+
+        if (isMacAppStoreBuild) {
+          const microphoneGranted = await checkMicrophonePermission();
+          setPermissions((prev) => ({
+            ...prev,
+            accessibility: "granted",
+            microphone: microphoneGranted ? "granted" : prev.microphone,
+            inputMonitoring: "granted",
+          }));
+          if (microphoneGranted) {
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+
+            await completeOnboarding();
+          }
           errorCountRef.current = 0;
           return;
         }

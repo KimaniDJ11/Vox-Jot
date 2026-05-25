@@ -138,8 +138,35 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
       onBack={onBack}
       leftContent={
         <>
+          <p className="ob-eyebrow">
+            {t("onboarding.setup.eyebrow", {
+              defaultValue: "Local speech model",
+            })}
+          </p>
           <h1 className="ob-heading">{t("onboarding.setup.title")}</h1>
           <p className="ob-subtext">{t("onboarding.setup.description")}</p>
+          <div
+            className="ob-setup-hint-row"
+            aria-label={t("onboarding.setup.hintsLabel", {
+              defaultValue: "Model setup notes",
+            })}
+          >
+            <span>
+              {t("onboarding.setup.hints.recommended", {
+                defaultValue: "Recommended first",
+              })}
+            </span>
+            <span>
+              {t("onboarding.setup.hints.downloadOnce", {
+                defaultValue: "One-time download",
+              })}
+            </span>
+            <span>
+              {t("onboarding.setup.hints.changeLater", {
+                defaultValue: "Change later",
+              })}
+            </span>
+          </div>
 
           {/* Recommended models */}
           {recommendedModels.length > 0 ? (
@@ -205,6 +232,12 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
 
               {showAdvanced && (
                 <div className="mt-3 flex flex-col gap-3">
+                  <p className="ob-advanced-note">
+                    {t("onboarding.setup.advanced.note", {
+                      defaultValue:
+                        "Extra models are useful for specific languages, lower latency, or larger accuracy tradeoffs. The recommended model is the fastest path to a successful first dictation.",
+                    })}
+                  </p>
                   {otherModels.map((model: ModelInfo) => (
                     <ModelCard
                       key={model.id}

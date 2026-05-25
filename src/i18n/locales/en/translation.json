@@ -417,7 +417,7 @@
           "Use your selected microphone during dictation."
         ],
         "privacy": "Not used for background listening.",
-        "cta": "Continue"
+        "cta": "Grant Microphone Access"
       },
       "accessibility": {
         "title": "Accessibility Access",
@@ -433,7 +433,7 @@
           "Support optional correction learning after insertion so repeated fixes do not have to be typed again."
         ],
         "privacy": "Used for user-started assistive insertion; not for inspecting unrelated app content.",
-        "cta": "Continue"
+        "cta": "Open Accessibility Settings"
       },
       "inputMonitoring": {
         "title": "Input Monitoring",
@@ -450,7 +450,7 @@
           "Keep correction tracking local to this device."
         ],
         "privacy": "Used for shortcut and send-versus-delete signals; it does not save what you type.",
-        "cta": "Continue"
+        "cta": "Open Input Monitoring Settings"
       },
       "screenRecording": {
         "title": "Screen Recording",
@@ -466,7 +466,7 @@
           "Improve phrase keys and app-aware writing."
         ],
         "privacy": "Optional and controlled separately; Screen Context can be turned off from settings.",
-        "cta": "Continue"
+        "cta": "Enable Screen Context"
       },
       "grant": "Continue",
       "granted": "Granted",
@@ -500,10 +500,10 @@
     },
     "refine": {
       "title": "Want a local Refine engine?",
-      "description": "Refine polishes dictated text after transcription — cleanup, formatting, or rewriting. For fully local Refine, Vox Jot can install Ollama and a small model now. You can skip this and set it up later.",
+      "description": "Refine turns rough speech into cleaner text after transcription. Install a small local model now, or skip it and start dictating first.",
       "bullets": {
         "local": "Runs entirely on this device once installed — no cloud calls.",
-        "tiny": "Installs Ollama plus a small ~0.4 GB Qwen 2.5 0.5B model.",
+        "tiny": "Installs Ollama plus a small recommended local cleanup model.",
         "optional": "Optional. You can skip now and configure any Refine provider later."
       },
       "installCta": "Install local Refine engine",
@@ -533,15 +533,15 @@
       }
     },
     "welcome": {
-      "title": "Set up private assistive voice dictation",
-      "description": "Vox Jot helps people who cannot comfortably type speak text into the active field, keeps transcription local on your device, and can optionally polish the final text before it is entered.",
-      "cta": "Set Up Vox Jot",
+      "title": "Talk once. Text appears where your cursor is.",
+      "description": "Vox Jot gives your Mac a fast voice input layer for messages, documents, notes, forms, and AI prompts. Speech recognition runs locally by default, with optional cleanup only when you choose it.",
+      "cta": "Set up dictation",
       "cardTitle": "Built for voice-first text entry",
       "cardDescription": "Get assistive dictation working first, then tailor the output once you know how you want Vox Jot to behave.",
       "features": [
-        "Download a local speech model that matches your speed and accuracy needs.",
-        "Set up the permissions Vox Jot uses to listen and enter dictated text for you.",
-        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+        "Choose a local speech model for your language, speed, and accuracy needs.",
+        "Grant the exact permissions needed to listen and place text into the active app.",
+        "Finish with one clear shortcut so your first dictation succeeds immediately."
       ],
       "highlights": {
         "local": {
@@ -559,8 +559,8 @@
       }
     },
     "setup": {
-      "title": "Choose the transcription model you want to start with",
-      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "title": "Pick the model that turns speech into text",
+      "description": "Start with a recommended model. Vox Jot downloads it once, stores it on this Mac, and uses it for dictation without sending audio away by default.",
       "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
       "cardTitle": "Everything stays on your device",
       "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
@@ -579,8 +579,8 @@
       }
     },
     "firstDictation": {
-      "title": "You are ready for your first dictation",
-      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot enter the result where your cursor is focused.",
+      "title": "Try your first dictation in any text field",
+      "description": "Put the cursor where you want words to land, use the regular dictation shortcut, speak naturally, then stop. Vox Jot will enter the text into the focused app.",
       "cta": "Open Vox Jot",
       "steps": [
         "Place your cursor in any text field where you want the transcript to go.",

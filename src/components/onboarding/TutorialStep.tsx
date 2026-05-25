@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard, Mic, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Keyboard, Mic, Sparkles } from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
 import { useSettings } from "../../hooks/useSettings";
 
@@ -62,6 +62,11 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
       onBack={onBack}
       leftContent={
         <>
+          <p className="ob-eyebrow">
+            {t("onboarding.firstDictation.eyebrow", {
+              defaultValue: "First success",
+            })}
+          </p>
           <h1 className="ob-heading">{t("onboarding.firstDictation.title")}</h1>
           <p className="ob-subtext">
             {t("onboarding.firstDictation.description")}
@@ -96,30 +101,48 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
           <div className="ob-bottom-actions">
             <button className="ob-btn-primary" onClick={onComplete}>
               {t("onboarding.firstDictation.cta")}
+              <ArrowRight size={18} aria-hidden />
             </button>
           </div>
         </>
       }
       rightContent={
-        <div className="ob-visual-card ob-visual-stack">
-          <div className="ob-card-row">
-            <div className="ob-card-icon">
-              <Mic size={18} color="var(--ob-primary)" />
+        <div className="ob-first-run-panel">
+          <div className="ob-first-run-card ob-first-run-card-primary">
+            <div className="ob-first-run-header">
+              <div className="ob-card-icon">
+                <Mic size={18} aria-hidden />
+              </div>
+              <div>
+                <div className="ob-stat-title">
+                  {t("onboarding.firstDictation.shortcuts.dictation.label")}
+                </div>
+                <div className="ob-card-copy">
+                  {t(
+                    "onboarding.firstDictation.shortcuts.dictation.description",
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="ob-stat-title">
-                {t("onboarding.firstDictation.shortcuts.dictation.label")}
-              </div>
-              <div className="ob-card-copy">
-                {t("onboarding.firstDictation.shortcuts.dictation.description")}
-              </div>
-              <kbd className="ob-kbd">{dictationShortcut}</kbd>
+            <kbd className="ob-kbd ob-kbd-large">{dictationShortcut}</kbd>
+            <div className="ob-try-saying">
+              <span>
+                {t("onboarding.firstDictation.trySayingLabel", {
+                  defaultValue: "Try saying",
+                })}
+              </span>
+              <p>
+                {t("onboarding.firstDictation.trySayingText", {
+                  defaultValue:
+                    "Write a quick note that says I am testing Vox Jot and the first dictation is working.",
+                })}
+              </p>
             </div>
           </div>
 
-          <div className="ob-card-row">
+          <div className="ob-card-row ob-first-run-card">
             <div className="ob-card-icon">
-              <Sparkles size={18} color="var(--ob-primary)" />
+              <Sparkles size={18} aria-hidden />
             </div>
             <div>
               <div className="ob-stat-title">
@@ -138,9 +161,9 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
             </div>
           </div>
 
-          <div className="ob-card-row">
+          <div className="ob-card-row ob-first-run-card">
             <div className="ob-card-icon">
-              <Keyboard size={18} color="var(--ob-primary)" />
+              <Keyboard size={18} aria-hidden />
             </div>
             <div>
               <div className="ob-stat-title">
@@ -150,6 +173,24 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                 {t("onboarding.firstDictation.tip.description")}
               </div>
             </div>
+          </div>
+
+          <div className="ob-first-run-checklist">
+            {(
+              t("onboarding.firstDictation.readyChecks", {
+                returnObjects: true,
+                defaultValue: [
+                  "Microphone and text insertion are ready.",
+                  "The shortcut works from other Mac apps.",
+                  "You can tune models and cleanup later.",
+                ],
+              }) as string[]
+            ).map((item) => (
+              <div key={item}>
+                <Check size={15} aria-hidden />
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         </div>
       }

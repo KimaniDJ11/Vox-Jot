@@ -38,6 +38,9 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const autoFinishedRef = useRef(false);
   const installInFlightRef = useRef(false);
+  const refineEyebrow = t("onboarding.refine.eyebrow", {
+    defaultValue: "Optional text cleanup",
+  });
 
   useEffect(() => {
     checkStatus().then(() => loadRecommendedModels());
@@ -145,6 +148,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   if (phase === "checking") {
     leftContent = (
       <>
+        <p className="ob-eyebrow">{refineEyebrow}</p>
         <h1 className="ob-heading">{t("onboarding.refine.title")}</h1>
         <p className="ob-subtext" role="status" aria-live="polite">
           {t("onboarding.refine.checking")}
@@ -154,6 +158,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   } else if (phase === "installing") {
     leftContent = (
       <>
+        <p className="ob-eyebrow">{refineEyebrow}</p>
         <h1 className="ob-heading">
           {t("onboarding.refine.installing.title")}
         </h1>
@@ -165,6 +170,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   } else if (phase === "pulling") {
     leftContent = (
       <>
+        <p className="ob-eyebrow">{refineEyebrow}</p>
         <h1 className="ob-heading">{t("onboarding.refine.pulling.title")}</h1>
         <p className="ob-subtext">
           {t("onboarding.refine.pulling.description", {
@@ -196,6 +202,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   } else {
     leftContent = (
       <>
+        <p className="ob-eyebrow">{refineEyebrow}</p>
         <h1 className="ob-heading">{t("onboarding.refine.title")}</h1>
         <p className="ob-subtext">{t("onboarding.refine.description")}</p>
 
@@ -224,20 +231,16 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         )}
 
         <div className="ob-bottom-actions">
-          <button
-            type="button"
-            className="ob-btn-primary"
-            onClick={handleInstall}
-            disabled={isInstalling}
-          >
-            {t("onboarding.refine.installCta")}
+          <button type="button" className="ob-btn-primary" onClick={handleSkip}>
+            {t("onboarding.refine.skipCta")}
           </button>
           <button
             type="button"
-            onClick={handleSkip}
-            className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-transparent px-2 py-1 text-sm text-[var(--ob-text-muted)] transition-colors hover:text-[var(--ob-text)] ${interactiveFocusRingClass}`}
+            onClick={handleInstall}
+            disabled={isInstalling}
+            className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--ob-border)] bg-transparent px-3 py-2 text-sm font-semibold text-[var(--ob-text)] transition-colors hover:bg-[var(--ob-primary-light)] ${interactiveFocusRingClass}`}
           >
-            {t("onboarding.refine.skipCta")}
+            {t("onboarding.refine.installCta")}
           </button>
         </div>
 

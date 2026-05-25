@@ -73,7 +73,7 @@
     "warm_start_sec": null,
     "peak_memory_gb": null,
     "sample_rtf": null,
-    "output_quality_notes": "Full installed-app Creative Audio suite passed on 2026-05-25 through /v1/creative-audio/generate. Small Music ranked #1: score 99.8, 2/2 cases, p50 latency 1387 ms, p50 RTF 0.102, duration accuracy 1.0, audio health 1.0. Small SFX ranked #2: score 99.6, 2/2 cases, p50 latency 1229 ms, p50 RTF 0.271, duration accuracy 1.0, audio health 1.0. This is an automatic app-path score, not a human music-preference panel."
+    "output_quality_notes": "Full installed-app Creative Audio suite passed on 2026-05-25 through /v1/creative-audio/generate. Small Music ranked #1: score 99.8, 2/2 cases, p50 latency 1538 ms, p50 RTF 0.103, duration accuracy 1.0, audio health 1.0. Small SFX ranked #2: score 99.6, 2/2 cases, p50 latency 1384 ms, p50 RTF 0.346, duration accuracy 1.0, audio health 1.0. This is an automatic app-path score, not a human music-preference panel."
   },
 
   "verdict": {

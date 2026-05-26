@@ -102,7 +102,7 @@
     "permissions": {
       "title": "الأذونات المطلوبة",
       "description": "منح الأذونات المطلوبة للمتابعة. يعد تسجيل الشاشة اختياريًا للسياق المرئي المحلي.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "قم بإعداد الوصول إلى الميكروفون للإملاء الصوتي. يستطيع Vox Jot نسخ النصوص إلى الحافظة دون الحاجة إلى تسهيلات الاستخدام أو مراقبة الإدخال.",
       "microphone": {
         "title": "الوصول إلى الميكروفون",
         "description": "مطلوب لسماع صوتك للنسخ.",
@@ -148,7 +148,7 @@
       "moreInfo": "مزيد من المعلومات",
       "visualPath": "إعدادات النظام -> الخصوصية والأمان",
       "visualDescription": "امنح الميكروفون وإمكانية الوصول ومراقبة الإدخال حتى تتمكن Vox Jot من التقاط صوتك ووضع النص في التطبيق الصحيح وفهم تغييرات الإرسال مقابل الحذف السريعة. يضيف تسجيل الشاشة الاختياري سياق OCR المحلي من الشاشة النشطة.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "يتيح الوصول إلى الميكروفون لـ Vox Jot التقاط الكلام أثناء الإملاء. يستخدم إصدار Mac App Store التسليم عبر الحافظة فقط افتراضيا ولا يتطلب تسهيلات الاستخدام أو مراقبة الإدخال.",
       "inputMonitoring": {
         "title": "مراقبة المدخلات",
         "description": "مطلوب حتى يتمكن Vox Jot من معرفة الفرق بين إرسال رسالة ومسح النص يدويًا بشكل أفضل.",
@@ -183,7 +183,7 @@
         "cta": "تمكين تسجيل الشاشة"
       },
       "privacyBadge": "يقوم Vox Jot بتشغيل الإملاء على جهازك. لا نقوم مطلقًا بتحميل صوتك أو ضغطات المفاتيح أو سياق الشاشة.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "يسجل Vox Jot فقط عندما تبدأ الإملاء. يمكن نسخ النصوص إلى الحافظة للصقها يدويا.",
       "checking": "جارٍ التحقق من الأذونات...",
       "required": "مطلوب",
       "optional": "اختياري",
@@ -497,7 +497,7 @@
       "pasteMethod": {
         "title": "طريقة اللصق",
         "description": "اختر كيفية إدراج النص. أنواع النص المباشر مباشرة. لا شيء يحفظ النتائج دون لصق.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "ينسخ إصدار Mac App Store النص المملى إلى الحافظة للصق اليدوي، لذلك يعمل الإملاء دون تسهيلات الاستخدام أو مراقبة الإدخال.",
         "options": {
           "clipboard": "الحافظة ({{modifier}}+V)",
           "clipboardCtrlShiftV": "الحافظة (Ctrl+Shift+V)",
@@ -511,7 +511,7 @@
         "clipboardDescription": "ينسخ النص، ويرسل اختصار اللصق إلى النظام، ثم يستعيد الحافظة.",
         "clipboardOnly": "الحافظة فقط",
         "clipboardOnlyDescription": "نسخ النص وتخطي إجراء اللصق التلقائي.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "ينسخ النص إلى الحافظة ويترك اللصق تحت تحكمك.",
         "platformMethods": "أساليب المنصة"
       },
       "typingTool": {

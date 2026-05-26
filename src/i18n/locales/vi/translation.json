@@ -102,7 +102,7 @@
     "permissions": {
       "title": "Yêu cầu quyền",
       "description": "Cấp các quyền cần thiết để tiếp tục. Ghi màn hình là tùy chọn cho bối cảnh hình ảnh cục bộ.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "Thiết lập quyền truy cập micrô cho đọc chính tả bằng giọng nói. Vox Jot có thể sao chép bản chép lời vào bảng nhớ tạm mà không cần Trợ năng hoặc Giám sát đầu vào.",
       "microphone": {
         "title": "Truy cập micrô",
         "description": "Cần phải nghe giọng nói của bạn để phiên âm.",
@@ -148,7 +148,7 @@
       "moreInfo": "Thêm thông tin",
       "visualPath": "Cài đặt hệ thống -> Quyền riêng tư & bảo mật",
       "visualDescription": "Cấp micrô, khả năng truy cập và giám sát đầu vào để Vox Jot có thể ghi lại giọng nói của bạn, đặt văn bản vào ứng dụng phù hợp và hiểu các thay đổi gửi và xóa nhanh chóng. Ghi màn hình tùy chọn thêm bối cảnh OCR cục bộ từ màn hình đang hoạt động.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "Quyền truy cập micrô cho phép Vox Jot thu giọng nói khi bạn đọc chính tả. Bản dựng Mac App Store mặc định chỉ chuyển qua bảng nhớ tạm và không yêu cầu Trợ năng hoặc Giám sát đầu vào.",
       "inputMonitoring": {
         "title": "Giám sát đầu vào",
         "description": "Cần thiết để Vox Jot có thể phân biệt rõ hơn sự khác biệt giữa gửi tin nhắn và xóa văn bản theo cách thủ công.",
@@ -183,7 +183,7 @@
         "cta": "Bật ghi màn hình"
       },
       "privacyBadge": "Vox Jot chạy chính tả trên thiết bị của bạn. Chúng tôi không bao giờ tải lên giọng nói, tổ hợp phím hoặc ngữ cảnh màn hình của bạn.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot chỉ ghi âm khi bạn bắt đầu đọc chính tả. Bản chép lời có thể được sao chép vào bảng nhớ tạm để dán thủ công.",
       "checking": "Đang kiểm tra quyền...",
       "required": "Bắt buộc",
       "optional": "Tùy chọn",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "Phương pháp dán",
         "description": "Chọn cách chèn văn bản. Trực tiếp gõ văn bản trực tiếp. Không có gì lưu kết quả mà không dán.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Bản dựng Mac App Store sao chép văn bản đã đọc chính tả vào bảng nhớ tạm để dán thủ công, nên tính năng đọc chính tả hoạt động mà không cần Trợ năng hoặc Giám sát đầu vào.",
         "options": {
           "clipboard": "Bảng nhớ tạm ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Bảng nhớ tạm (Ctrl+Shift+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "Sao chép văn bản, gửi phím tắt dán hệ thống, sau đó khôi phục bảng nhớ tạm.",
         "clipboardOnly": "Chỉ bảng nhớ tạm",
         "clipboardOnlyDescription": "Sao chép văn bản và bỏ qua thao tác dán tự động.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "Sao chép bản chép lời vào bảng nhớ tạm và để bạn kiểm soát việc dán.",
         "platformMethods": "Phương pháp nền tảng"
       },
       "typingTool": {

@@ -1025,34 +1025,33 @@ function App() {
                 setOnboardingStep("onboarding");
                 return;
               }
-              return;
-            }
-
-            const [
-              hasAccessibility,
-              hasMicrophone,
-              hasInputMonitoring,
-              hasScreenRecording,
-            ] = await Promise.all([
-              checkAccessibilityPermission(),
-              checkMicrophonePermission(),
-              checkInputMonitoringPermission(),
-              checkScreenRecordingPermission(),
-            ]);
-            const settingsResult = await commands.getAppSettings();
-            const screenContextEnabled =
-              settingsResult.status === "ok"
-                ? (settingsResult.data.screen_context_enabled ?? true)
-                : true;
-            if (
-              !hasAccessibility ||
-              !hasMicrophone ||
-              !hasInputMonitoring ||
-              (screenContextEnabled && !hasScreenRecording)
-            ) {
-              await revealMainWindowForPermissions();
-              setOnboardingStep("onboarding");
-              return;
+            } else {
+              const [
+                hasAccessibility,
+                hasMicrophone,
+                hasInputMonitoring,
+                hasScreenRecording,
+              ] = await Promise.all([
+                checkAccessibilityPermission(),
+                checkMicrophonePermission(),
+                checkInputMonitoringPermission(),
+                checkScreenRecordingPermission(),
+              ]);
+              const settingsResult = await commands.getAppSettings();
+              const screenContextEnabled =
+                settingsResult.status === "ok"
+                  ? (settingsResult.data.screen_context_enabled ?? true)
+                  : true;
+              if (
+                !hasAccessibility ||
+                !hasMicrophone ||
+                !hasInputMonitoring ||
+                (screenContextEnabled && !hasScreenRecording)
+              ) {
+                await revealMainWindowForPermissions();
+                setOnboardingStep("onboarding");
+                return;
+              }
             }
           } catch (error) {
             console.warn("Failed to check macOS permissions:", error);

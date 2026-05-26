@@ -102,7 +102,7 @@
     "permissions": {
       "title": "Vyžadována oprávnění",
       "description": "Chcete-li pokračovat, udělte požadovaná oprávnění. Nahrávání obrazovky je volitelné pro místní vizuální kontext.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "Nastavte přístup k mikrofonu pro hlasové diktování. Vox Jot může kopírovat přepisy do schránky bez Zpřístupnění nebo Sledování vstupu.",
       "microphone": {
         "title": "Přístup k mikrofonu",
         "description": "K přepisu je vyžadováno slyšet váš hlas.",
@@ -148,7 +148,7 @@
       "moreInfo": "Více informací",
       "visualPath": "Nastavení systému -> Soukromí a zabezpečení",
       "visualDescription": "Poskytněte monitorování mikrofonu, usnadnění a vstupu, aby Vox Jot mohl zachytit váš hlas, umístit text do správné aplikace a porozumět rychlým změnám odesílání a mazání. Volitelné nahrávání obrazovky přidává místní kontext OCR z aktivního displeje.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "Přístup k mikrofonu umožňuje Vox Jot zachytit řeč při diktování. Sestavení pro Mac App Store ve výchozím stavu používá pouze doručení přes schránku a nevyžaduje Zpřístupnění ani Sledování vstupu.",
       "inputMonitoring": {
         "title": "Sledování vstupu",
         "description": "Požadováno, aby Vox Jot lépe poznal rozdíl mezi odesláním zprávy a ručním vymazáním textu.",
@@ -183,7 +183,7 @@
         "cta": "Povolit nahrávání obrazovky"
       },
       "privacyBadge": "Vox Jot spouští diktování na vašem zařízení. Nikdy nenahráváme váš hlas, stisknutí kláves nebo kontext obrazovky.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot nahrává jen tehdy, když spustíte diktování. Přepisy lze zkopírovat do schránky pro ruční vložení.",
       "checking": "Kontrola oprávnění...",
       "required": "Povinné",
       "optional": "Volitelné",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "Metoda pasty",
         "description": "Vyberte způsob vkládání textu. Přímé zadává text přímo. None uloží výsledky bez vložení.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Sestavení pro Mac App Store kopíruje diktovaný text do schránky pro ruční vložení, takže diktování funguje bez Zpřístupnění nebo Sledování vstupu.",
         "options": {
           "clipboard": "Schránka ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Schránka (Ctrl+Shift+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "Zkopíruje text, odešle systémovou zkratku pro vložení a poté obnoví schránku.",
         "clipboardOnly": "Pouze schránka",
         "clipboardOnlyDescription": "Zkopíruje text a přeskočí akci automatického vložení.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "Zkopíruje přepis do schránky a ponechá vložení pod vaší kontrolou.",
         "platformMethods": "Platformové metody"
       },
       "typingTool": {

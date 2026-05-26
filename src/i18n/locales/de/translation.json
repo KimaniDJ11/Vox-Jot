@@ -102,7 +102,7 @@
     "permissions": {
       "title": "Berechtigungen erforderlich",
       "description": "Erteilen Sie die erforderlichen Berechtigungen, um fortzufahren. Die Bildschirmaufzeichnung ist für den lokalen visuellen Kontext optional.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "Richten Sie den Mikrofonzugriff für die Sprachdiktatfunktion ein. Vox Jot kann Transkripte ohne Bedienungshilfen oder Eingabeüberwachung in die Zwischenablage kopieren.",
       "microphone": {
         "title": "Mikrofonzugriff",
         "description": "Für die Transkription ist es erforderlich, dass Sie Ihre Stimme hören.",
@@ -148,7 +148,7 @@
       "moreInfo": "Weitere Informationen",
       "visualPath": "Systemeinstellungen -> Datenschutz und Sicherheit",
       "visualDescription": "Gewähren Sie Mikrofon, Barrierefreiheit und Eingabeüberwachung, damit Vox Jot Ihre Stimme erfassen, Text in der richtigen App platzieren und schnelle Änderungen beim Senden oder Löschen verstehen kann. Die optionale Bildschirmaufzeichnung fügt lokalen OCR-Kontext aus der aktiven Anzeige hinzu.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "Der Mikrofonzugriff ermöglicht Vox Jot, Sprache während des Diktierens zu erfassen. Die Mac App Store-Version verwendet standardmäßig nur die Zwischenablage und benötigt keine Bedienungshilfen oder Eingabeüberwachung.",
       "inputMonitoring": {
         "title": "Eingabeüberwachung",
         "description": "Erforderlich, damit Vox Jot den Unterschied zwischen dem Senden einer Nachricht und dem manuellen Löschen von Text besser erkennen kann.",
@@ -183,7 +183,7 @@
         "cta": "Aktivieren Sie die Bildschirmaufzeichnung"
       },
       "privacyBadge": "Vox Jot führt das Diktat auf Ihrem Gerät aus. Wir laden niemals Ihre Stimme, Tastenanschläge oder Ihren Bildschirmkontext hoch.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot nimmt nur auf, wenn Sie die Diktatfunktion starten. Transkripte können zum manuellen Einfügen in die Zwischenablage kopiert werden.",
       "checking": "Berechtigungen werden überprüft...",
       "required": "Erforderlich",
       "optional": "Optional",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "Einfügemethode",
         "description": "Wählen Sie aus, wie Text eingefügt wird. Direct gibt Text direkt ein. Keine speichert Ergebnisse ohne Einfügen.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Die Mac App Store-Version kopiert diktierten Text zum manuellen Einfügen in die Zwischenablage, sodass die Diktatfunktion ohne Bedienungshilfen oder Eingabeüberwachung funktioniert.",
         "options": {
           "clipboard": "Zwischenablage ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Zwischenablage (Strg+Umschalt+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "Kopiert den Text, sendet die Systemverknüpfung zum Einfügen und stellt dann die Zwischenablage wieder her.",
         "clipboardOnly": "Nur Zwischenablage",
         "clipboardOnlyDescription": "Kopiert den Text und überspringt die automatische Einfügeaktion.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "Kopiert das Transkript in die Zwischenablage und überlässt Ihnen das Einfügen.",
         "platformMethods": "Plattformmethoden"
       },
       "typingTool": {

@@ -102,7 +102,7 @@
     "permissions": {
       "title": "Gerekli İzinler",
       "description": "Devam etmek için gerekli izinleri verin. Yerel görsel bağlam için Ekran Kaydı isteğe bağlıdır.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "Sesli dikte için mikrofon erişimini ayarlayın. Vox Jot, Erişilebilirlik veya Giriş İzleme olmadan dökümleri panoya kopyalayabilir.",
       "microphone": {
         "title": "Mikrofon Erişimi",
         "description": "Transkripsiyon için sesinizi duymak gerekir.",
@@ -148,7 +148,7 @@
       "moreInfo": "Daha fazla bilgi",
       "visualPath": "Sistem Ayarları -> Gizlilik ve Güvenlik",
       "visualDescription": "Vox Jot'nun sesinizi yakalayabilmesi, metni doğru uygulamaya yerleştirebilmesi ve hızlı gönderme ve silme değişikliklerini anlayabilmesi için mikrofon, Erişilebilirlik ve Giriş İzleme özelliklerini verin. İsteğe Bağlı Ekran Kaydı, etkin ekrandan yerel OCR bağlamını ekler.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "Mikrofon erişimi, Vox Jot’un dikte sırasında konuşmayı yakalamasını sağlar. Mac App Store derlemesi varsayılan olarak yalnızca pano teslimini kullanır ve Erişilebilirlik veya Giriş İzleme gerektirmez.",
       "inputMonitoring": {
         "title": "Giriş İzleme",
         "description": "Vox Jot'nun mesaj gönderme ile metni manuel olarak temizleme arasındaki farkı daha iyi anlayabilmesi için gereklidir.",
@@ -183,7 +183,7 @@
         "cta": "Ekran Kaydını Etkinleştir"
       },
       "privacyBadge": "Vox Jot cihazınızda dikte işlemini çalıştırır. Sesinizi, tuş vuruşlarınızı veya ekran bağlamınızı asla yüklemeyiz.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot yalnızca dikteyi başlattığınızda kayıt yapar. Dökümler, elle yapıştırma için panoya kopyalanabilir.",
       "checking": "İzinler kontrol ediliyor...",
       "required": "Gerekli",
       "optional": "İsteğe bağlı",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "Yapıştırma Yöntemi",
         "description": "Metnin nasıl ekleneceğini seçin. Doğrudan metni doğrudan yazar. Hiçbiri sonuçları yapıştırmadan kaydetmez.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Mac App Store derlemesi, dikte edilen metni elle yapıştırmanız için panoya kopyalar; böylece dikte Erişilebilirlik veya Giriş İzleme olmadan çalışır.",
         "options": {
           "clipboard": "Pano ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Pano (Ctrl+Üst Karakter+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "Metni kopyalar, sisteme yapıştırma kısayolunu gönderir ve ardından panoyu geri yükler.",
         "clipboardOnly": "Yalnızca pano",
         "clipboardOnlyDescription": "Metni kopyalar ve otomatik yapıştırma işlemini atlar.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "Dökümü panoya kopyalar ve yapıştırmayı sizin kontrolünüze bırakır.",
         "platformMethods": "Platform yöntemleri"
       },
       "typingTool": {

@@ -102,7 +102,7 @@
     "permissions": {
       "title": "必要な権限",
       "description": "続行するには必要な権限を付与してください。画面録画は、ローカルのビジュアルコンテキストではオプションです。",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "音声入力用にマイクへのアクセスを設定します。Vox Jot は、アクセシビリティや入力監視を使わずに文字起こしをクリップボードへコピーできます。",
       "microphone": {
         "title": "マイクアクセス",
         "description": "文字起こしのためにあなたの声を聞くために必要です。",
@@ -148,7 +148,7 @@
       "moreInfo": "詳細情報",
       "visualPath": "システム設定 -> プライバシーとセキュリティ",
       "visualDescription": "マイク、アクセシビリティ、および入力モニタリングを許可すると、Vox Jot があなたの音声をキャプチャし、適切なアプリにテキストを配置し、送信と削除の変更を迅速に理解できるようになります。オプションの画面録画では、アクティブなディスプレイからローカル OCR コンテキストを追加します。",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "マイクアクセスにより、Vox Jot は音声入力中の発話を取り込めます。Mac App Store 版は標準でクリップボードのみへの出力になっており、アクセシビリティや入力監視は必要ありません。",
       "inputMonitoring": {
         "title": "入力モニタリング",
         "description": "Vox Jot がメッセージの送信とテキストの手動クリアの違いをよりよく区別できるようにするために必要です。",
@@ -183,7 +183,7 @@
         "cta": "画面録画を有効にする"
       },
       "privacyBadge": "Vox Jot はデバイス上でディクテーションを実行します。私たちがあなたの音声、キーストローク、画面のコンテキストをアップロードすることはありません。",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot は、あなたが音声入力を開始したときだけ録音します。文字起こしは手動で貼り付けられるようにクリップボードへコピーできます。",
       "checking": "権限を確認しています...",
       "required": "必須",
       "optional": "オプション",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "貼り付け方法",
         "description": "テキストの挿入方法を選択します。ダイレクトはテキストを直接入力します。 [なし] では、結果を貼り付けずに保存します。",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Mac App Store 版は、手動で貼り付けられるように音声入力したテキストをクリップボードへコピーするため、アクセシビリティや入力監視なしで音声入力を利用できます。",
         "options": {
           "clipboard": "クリップボード ({{modifier}}+V)",
           "clipboardCtrlShiftV": "クリップボード (Ctrl+Shift+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "テキストをコピーし、システムの貼り付けショートカットを送信して、クリップボードを復元します。",
         "clipboardOnly": "クリップボードのみ",
         "clipboardOnlyDescription": "テキストをコピーし、自動貼り付けアクションをスキップします。",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "文字起こしをクリップボードへコピーし、貼り付けはあなたの操作に任せます。",
         "platformMethods": "プラットフォームメソッド"
       },
       "typingTool": {

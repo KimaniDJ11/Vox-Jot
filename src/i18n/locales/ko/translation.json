@@ -102,7 +102,7 @@
     "permissions": {
       "title": "필요한 권한",
       "description": "계속하려면 필요한 권한을 부여하세요. 화면 녹화는 로컬 시각적 컨텍스트에 대한 선택 사항입니다.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "음성 받아쓰기를 위해 마이크 접근을 설정하세요. Vox Jot은 손쉬운 사용이나 입력 모니터링 없이도 기록문을 클립보드에 복사할 수 있습니다.",
       "microphone": {
         "title": "마이크 액세스",
         "description": "전사를 위해 음성을 듣는 데 필요합니다.",
@@ -148,7 +148,7 @@
       "moreInfo": "추가 정보",
       "visualPath": "시스템 설정 -> 개인 정보 보호 및 보안",
       "visualDescription": "Vox Jot가 음성을 캡처하고, 올바른 앱에 텍스트를 배치하고, 빠른 보내기-삭제 변경 사항을 이해할 수 있도록 마이크, 접근성 및 입력 모니터링을 부여하세요. 선택적 화면 녹화는 활성 디스플레이에서 로컬 OCR 컨텍스트를 추가합니다.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "마이크 접근을 허용하면 Vox Jot이 받아쓰기 중 음성을 캡처할 수 있습니다. Mac App Store 빌드는 기본적으로 클립보드 전용 전달을 사용하며 손쉬운 사용이나 입력 모니터링이 필요하지 않습니다.",
       "inputMonitoring": {
         "title": "입력 모니터링",
         "description": "Vox Jot가 메시지 보내기와 수동으로 텍스트 지우기 간의 차이를 더 잘 구분할 수 있도록 필요합니다.",
@@ -183,7 +183,7 @@
         "cta": "화면 녹화 활성화"
       },
       "privacyBadge": "Vox Jot는 장치에서 받아쓰기를 실행합니다. 우리는 귀하의 음성, 키 입력 또는 화면 컨텍스트를 절대 업로드하지 않습니다.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot은 사용자가 받아쓰기를 시작할 때만 녹음합니다. 기록문은 수동으로 붙여넣을 수 있도록 클립보드에 복사할 수 있습니다.",
       "checking": "권한 확인 중...",
       "required": "필수",
       "optional": "선택사항",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "붙여넣기 방법",
         "description": "텍스트 삽입 방법을 선택합니다. 직접 텍스트를 직접 입력합니다. 없음은 붙여넣지 않고 결과를 저장합니다.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Mac App Store 빌드는 받아쓴 텍스트를 수동 붙여넣기용으로 클립보드에 복사하므로, 받아쓰기가 손쉬운 사용이나 입력 모니터링 없이 작동합니다.",
         "options": {
           "clipboard": "클립보드({{modifier}}+V)",
           "clipboardCtrlShiftV": "클립보드(Ctrl+Shift+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "텍스트를 복사하고 시스템 붙여넣기 바로가기를 보낸 다음 클립보드를 복원합니다.",
         "clipboardOnly": "클립보드만",
         "clipboardOnlyDescription": "텍스트를 복사하고 자동 붙여넣기 작업을 건너뜁니다.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "기록문을 클립보드에 복사하고 붙여넣기는 사용자가 직접 제어합니다.",
         "platformMethods": "플랫폼 방식"
       },
       "typingTool": {

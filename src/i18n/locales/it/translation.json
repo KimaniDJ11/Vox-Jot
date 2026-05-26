@@ -102,7 +102,7 @@
     "permissions": {
       "title": "Autorizzazioni richieste",
       "description": "Concedere le autorizzazioni necessarie per continuare. La registrazione dello schermo è facoltativa per il contesto visivo locale.",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "Configura l’accesso al microfono per la dettatura vocale. Vox Jot può copiare le trascrizioni negli appunti senza Accessibilità o Monitoraggio input.",
       "microphone": {
         "title": "Accesso al microfono",
         "description": "Necessario per ascoltare la tua voce per la trascrizione.",
@@ -148,7 +148,7 @@
       "moreInfo": "Maggiori informazioni",
       "visualPath": "Impostazioni di sistema -> Privacy e sicurezza",
       "visualDescription": "Concedi microfono, accessibilità e monitoraggio dell'input in modo che Vox Jot possa acquisire la tua voce, inserire il testo nell'app giusta e comprendere le modifiche rapide di invio/eliminazione. La registrazione dello schermo opzionale aggiunge il contesto locale OCR dal display attivo.",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "L’accesso al microfono consente a Vox Jot di acquisire la voce mentre detti. La build per Mac App Store usa per impostazione predefinita solo la consegna negli appunti e non richiede Accessibilità o Monitoraggio input.",
       "inputMonitoring": {
         "title": "Monitoraggio degli ingressi",
         "description": "Necessario affinché Vox Jot possa distinguere meglio la differenza tra l'invio di un messaggio e la cancellazione manuale del testo.",
@@ -183,7 +183,7 @@
         "cta": "Abilita la registrazione dello schermo"
       },
       "privacyBadge": "Vox Jot esegue la dettatura sul tuo dispositivo. Non carichiamo mai la tua voce, i tasti premuti o il contesto dello schermo.",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot registra solo quando avvii la dettatura. Le trascrizioni possono essere copiate negli appunti per l’incolla manuale.",
       "checking": "Verifica dei permessi...",
       "required": "Obbligatorio",
       "optional": "Facoltativo",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "Metodo Incolla",
         "description": "Scegli come inserire il testo. Diretto digita direttamente il testo. Nessuno salva i risultati senza incollarli.",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "La build per Mac App Store copia il testo dettato negli appunti per l’incolla manuale, quindi la dettatura funziona senza Accessibilità o Monitoraggio input.",
         "options": {
           "clipboard": "Appunti ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Appunti (Ctrl+Maiusc+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "Copia il testo, invia il collegamento di sistema per incollare, quindi ripristina gli appunti.",
         "clipboardOnly": "Solo appunti",
         "clipboardOnlyDescription": "Copia il testo e salta l'azione di incollamento automatico.",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "Copia la trascrizione negli appunti e lascia a te il controllo dell’incolla.",
         "platformMethods": "Metodi della piattaforma"
       },
       "typingTool": {

@@ -102,7 +102,7 @@
     "permissions": {
       "title": "所需权限",
       "description": "授予所需的权限以继续。对于本地视觉上下文，屏幕录制是可选的。",
-      "descriptionAppStore": "Set up microphone access for voice dictation. Vox Jot can copy transcripts to the clipboard without Accessibility or Input Monitoring.",
+      "descriptionAppStore": "设置麦克风访问权限以进行语音听写。Vox Jot 可以将转写内容复制到剪贴板，而不需要辅助功能或输入监控。",
       "microphone": {
         "title": "麦克风访问",
         "description": "需要听到您的声音才能进行转录。",
@@ -148,7 +148,7 @@
       "moreInfo": "更多信息",
       "visualPath": "系统设置 -> 隐私和安全",
       "visualDescription": "授予麦克风、辅助功能和输入监控功能，以便 Vox Jot 可以捕获您的声音、将文本放置在正确的应用程序中，并了解快速发送与删除的更改。可选屏幕录制从活动显示中添加本地 OCR 上下文。",
-      "visualDescriptionAppStore": "Microphone access lets Vox Jot capture speech while you dictate. The Mac App Store build defaults to clipboard-only delivery and does not require Accessibility or Input Monitoring.",
+      "visualDescriptionAppStore": "麦克风访问权限让 Vox Jot 能在你听写时捕捉语音。Mac App Store 版本默认仅通过剪贴板交付，不需要辅助功能或输入监控。",
       "inputMonitoring": {
         "title": "输入监控",
         "description": "必需的，以便 Vox Jot 可以更好地区分发送消息和手动清除文本之间的区别。",
@@ -183,7 +183,7 @@
         "cta": "启用屏幕录制"
       },
       "privacyBadge": "Vox Jot 在您的设备上运行听写。我们绝不会上传您的语音、击键或屏幕上下文。",
-      "privacyBadgeAppStore": "Vox Jot records only when you start dictation. Transcripts can be copied to the clipboard for manual paste.",
+      "privacyBadgeAppStore": "Vox Jot 只会在你开始听写时录音。转写内容可以复制到剪贴板，供你手动粘贴。",
       "checking": "正在检查权限...",
       "required": "必填",
       "optional": "可选",
@@ -613,7 +613,7 @@
       "pasteMethod": {
         "title": "粘贴法",
         "description": "选择文本的插入方式。直接直接键入文本。 None 不保存结果而不粘贴。",
-        "appStoreDescription": "The Mac App Store build copies dictated text to the clipboard for manual paste, so dictation works without Accessibility or Input Monitoring.",
+        "appStoreDescription": "Mac App Store 版本会将听写文本复制到剪贴板以便手动粘贴，因此听写无需辅助功能或输入监控即可使用。",
         "options": {
           "clipboard": "剪贴板({{modifier}}+V)",
           "clipboardCtrlShiftV": "剪贴板 (Ctrl+Shift+V)",
@@ -627,7 +627,7 @@
         "clipboardDescription": "复制文本，发送系统粘贴快捷方式，然后恢复剪贴板。",
         "clipboardOnly": "仅剪贴板",
         "clipboardOnlyDescription": "复制文本并跳过自动粘贴操作。",
-        "appStoreClipboardOnlyDescription": "Copies the transcript to the clipboard and leaves paste under your control.",
+        "appStoreClipboardOnlyDescription": "将转写内容复制到剪贴板，并由你控制粘贴。",
         "platformMethods": "平台方法"
       },
       "typingTool": {
@@ -1595,7 +1595,11 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
+      "starterPrompts": [
+        "总结所选文本",
+        "重写一下更清楚",
+        "拉出行动项目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1609,7 +1613,11 @@
       "noteAppended": "将草稿附加到说明中。",
       "noteAppendFailed": "无法附加到注释。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把这张纸条变成干净的草稿", "找到要点", "建议后续步骤"]
+      "starterPrompts": [
+        "把这张纸条变成干净的草稿",
+        "找到要点",
+        "建议后续步骤"
+      ]
     },
     "settingsCoach": {
       "label": "设置教练",

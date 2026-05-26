@@ -2687,7 +2687,15 @@ unique_app_count: number;
 /**
  * Total number of transcriptions (lifetime).
  */
-total_sessions: number }
+total_sessions: number;
+/**
+ * Display name of the most-used app (by session count), if any.
+ */
+top_app_name: string | null;
+/**
+ * Bundle ID of the most-used app, for icon resolution.
+ */
+top_app_bundle_id: string | null }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"

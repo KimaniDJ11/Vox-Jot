@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "từ",
     "todayLabel": "hôm nay",
     "appsLabel": "Ứng dụng",
-    "appsUsed": "Các ứng dụng {{count}} đã được sử dụng"
+    "appsUsed": "Các ứng dụng {{count}} đã được sử dụng",
+    "recentActivity": "Hoat dong gan day"
   },
   "ollama": {
     "title": "Ollama — Công cụ LLM cục bộ",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Lịch sử",
+        "history": "Trang chủ",
         "corrections": "từ điển",
         "jotPad": "Jot Pad",
         "fileTranscription": "Phiên âm tập tin"
@@ -2926,6 +2927,25 @@
       "authValue": "Mã thông báo",
       "localApiTitle": "API cục bộ",
       "localApiDescription": "Truy cập loopback có mã thông báo cho tự động hóa cục bộ. Mã được lưu trong kho thông tin xác thực của hệ thống và chỉ hiển thị khi bạn sao chép."
+    },
+    "homeStats": {
+      "mostActiveDay": "Hoat dong nhieu nhat: {{day}}",
+      "favoriteWord": "Tu yeu thich: {{word}}",
+      "mostActiveTime": "Hoat dong nhieu nhat: {{time}}",
+      "mostUsedApp": "Dung nhieu nhat: {{app}}",
+      "mostUsedAppLabel": "Dung nhieu nhat:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "San sang khi ban san sang",
+        "bigVoiceDay": "Hom nay ban dang di rat nhanh",
+        "streakStrong": "Chuoi ngay cua ban van rat vung",
+        "acrossApps": "Vox Jot dang hoat dong tren cac ung dung cua ban",
+        "wordsFlowing": "Loi noi cua ban dang that su tich luy",
+        "inYourFlow": "Doc chinh ta da la mot phan trong quy trinh cua ban",
+        "niceMomentum": "Hom nay ban dang co da tot",
+        "welcomeBack": "Tiep tuc tu noi ban da dung lai"
+      }
     }
   },
   "testing": {

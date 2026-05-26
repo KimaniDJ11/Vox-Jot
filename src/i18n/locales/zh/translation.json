@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "话",
     "todayLabel": "今天",
     "appsLabel": "应用程序",
-    "appsUsed": "{{count}} 使用的应用程序"
+    "appsUsed": "{{count}} 使用的应用程序",
+    "recentActivity": "最近活动"
   },
   "ollama": {
     "title": "Ollama — 本地 LLM 引擎",
@@ -1590,7 +1591,11 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
+      "starterPrompts": [
+        "总结所选文本",
+        "重写一下更清楚",
+        "拉出行动项目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1604,7 +1609,11 @@
       "noteAppended": "将草稿附加到说明中。",
       "noteAppendFailed": "无法附加到注释。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把这张纸条变成干净的草稿", "找到要点", "建议后续步骤"]
+      "starterPrompts": [
+        "把这张纸条变成干净的草稿",
+        "找到要点",
+        "建议后续步骤"
+      ]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -2749,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "历史记录",
+        "history": "首页",
         "corrections": "词典",
         "jotPad": "Jot Pad",
         "fileTranscription": "文件转录"
@@ -2918,6 +2927,25 @@
       "authValue": "令牌",
       "localApiTitle": "本地 API",
       "localApiDescription": "用于本地自动化的令牌保护回环访问。令牌存储在系统凭据存储中，只有复制时才会显示。"
+    },
+    "homeStats": {
+      "mostActiveDay": "最常活动：{{day}}",
+      "favoriteWord": "常用词：{{word}}",
+      "mostActiveTime": "最常活动：{{time}}",
+      "mostUsedApp": "最常使用：{{app}}",
+      "mostUsedAppLabel": "最常使用："
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "准备好就可以开始",
+        "bigVoiceDay": "你今天进展很快",
+        "streakStrong": "你的连续记录保持得很稳",
+        "acrossApps": "Vox Jot 正在你的应用间工作",
+        "wordsFlowing": "你的文字正在稳步累积",
+        "inYourFlow": "听写已成为你工作流程的一部分",
+        "niceMomentum": "你今天很有节奏",
+        "welcomeBack": "从上次停下的地方继续"
+      }
     }
   },
   "testing": {

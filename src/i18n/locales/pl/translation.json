@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "Słowa",
     "todayLabel": "Dzisiaj",
     "appsLabel": "Aplikacje",
-    "appsUsed": "Używane aplikacje {{count}}"
+    "appsUsed": "Używane aplikacje {{count}}",
+    "recentActivity": "Ostatnia aktywnosc"
   },
   "ollama": {
     "title": "Ollama — lokalny silnik LLM",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Historia",
+        "history": "Start",
         "corrections": "Słownik",
         "jotPad": "Jot Pad",
         "fileTranscription": "Transkrypcja pliku"
@@ -2926,6 +2927,25 @@
       "authValue": "Token dostępu",
       "localApiTitle": "Lokalny API",
       "localApiDescription": "Dostęp przez pętlę zwrotną chroniony tokenem do lokalnej automatyzacji. Token jest przechowywany w magazynie poświadczeń systemu i ujawniany tylko podczas kopiowania."
+    },
+    "homeStats": {
+      "mostActiveDay": "Najwieksza aktywnosc: {{day}}",
+      "favoriteWord": "Ulubione slowo: {{word}}",
+      "mostActiveTime": "Najwieksza aktywnosc: {{time}}",
+      "mostUsedApp": "Najczesciej uzywane: {{app}}",
+      "mostUsedAppLabel": "Najczesciej uzywane:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "Gotowe, gdy tylko bedziesz",
+        "bigVoiceDay": "Dzisiaj idziesz szybko do przodu",
+        "streakStrong": "Twoja seria trzyma sie mocno",
+        "acrossApps": "Vox Jot dziala w Twoich aplikacjach",
+        "wordsFlowing": "Twoje slowa naprawde sie sumuja",
+        "inYourFlow": "Dyktowanie jest czescia Twojego rytmu",
+        "niceMomentum": "Masz dzisiaj dobre tempo",
+        "welcomeBack": "Wroc do miejsca, w ktorym przerwano"
+      }
     }
   },
   "testing": {

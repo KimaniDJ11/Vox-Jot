@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "言葉",
     "todayLabel": "今日",
     "appsLabel": "アプリ",
-    "appsUsed": "使用した{{count}}アプリ"
+    "appsUsed": "使用した{{count}}アプリ",
+    "recentActivity": "最近のアクティビティ"
   },
   "ollama": {
     "title": "Ollama — ローカル LLM エンジン",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "履歴",
+        "history": "ホーム",
         "corrections": "辞書",
         "jotPad": "Jot Pad",
         "fileTranscription": "ファイルの転写"
@@ -2926,6 +2927,25 @@
       "authValue": "トークン",
       "localApiTitle": "ローカル API",
       "localApiDescription": "ローカル自動化向けのトークン保護付きループバックアクセスです。トークンはシステムの資格情報ストアに保存され、コピー時だけ表示されます。"
+    },
+    "homeStats": {
+      "mostActiveDay": "最も活発: {{day}}",
+      "favoriteWord": "よく使う言葉: {{word}}",
+      "mostActiveTime": "最も活発: {{time}}",
+      "mostUsedApp": "よく使うアプリ: {{app}}",
+      "mostUsedAppLabel": "よく使うアプリ:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "準備ができたら始めましょう",
+        "bigVoiceDay": "今日はとても速く進んでいます",
+        "streakStrong": "連続記録がしっかり続いています",
+        "acrossApps": "Vox Jot が複数のアプリで働いています",
+        "wordsFlowing": "言葉が着実に積み上がっています",
+        "inYourFlow": "音声入力があなたの流れに入っています",
+        "niceMomentum": "今日は良い勢いがあります",
+        "welcomeBack": "前回の続きから始めましょう"
+      }
     }
   },
   "testing": {

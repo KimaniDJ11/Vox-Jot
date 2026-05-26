@@ -1454,12 +1454,11 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .sidebar__nav-icon-shell {
-    width: 1.75rem;
-    height: 1.75rem;
-    background: var(--sidebar-icon-bg);
+    width: 1rem;
+    height: 1rem;
+    background: transparent;
     color: var(--sidebar-icon-color);
     transition:
-      background var(--transition-smooth),
       color var(--transition-smooth),
       transform var(--transition-fast);
   }
@@ -1477,13 +1476,11 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .sidebar__nav-button:hover .sidebar__nav-icon-shell {
-    background: color-mix(in srgb, var(--sidebar-icon-color) 20%, transparent);
     color: color-mix(in srgb, var(--sidebar-icon-color) 82%, var(--text) 18%);
     transform: none;
   }
 
   .sidebar__nav-button[aria-current="page"] .sidebar__nav-icon-shell {
-    background: color-mix(in srgb, var(--sidebar-icon-color) 24%, transparent);
     color: var(--sidebar-icon-color);
   }
 

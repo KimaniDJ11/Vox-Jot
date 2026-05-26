@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "Slova",
     "todayLabel": "dnes",
     "appsLabel": "Aplikace",
-    "appsUsed": "Použité aplikace {{count}}"
+    "appsUsed": "Použité aplikace {{count}}",
+    "recentActivity": "Nedavna aktivita"
   },
   "ollama": {
     "title": "Ollama — Místní motor LLM",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Historie",
+        "history": "Domu",
         "corrections": "Slovník",
         "jotPad": "Jot Pad",
         "fileTranscription": "Přepis souboru"
@@ -2926,6 +2927,25 @@
       "authValue": "Přístupový token",
       "localApiTitle": "Místní API",
       "localApiDescription": "Přístup přes loopback chráněný tokenem pro místní automatizaci. Token je uložen v úložišti přihlašovacích údajů systému a zobrazí se jen při kopírování."
+    },
+    "homeStats": {
+      "mostActiveDay": "Nejaktivnejsi: {{day}}",
+      "favoriteWord": "Oblibene slovo: {{word}}",
+      "mostActiveTime": "Nejaktivnejsi: {{time}}",
+      "mostUsedApp": "Nejpouzivanejsi: {{app}}",
+      "mostUsedAppLabel": "Nejpouzivanejsi:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "Pripraveno, az budete vy",
+        "bigVoiceDay": "Dnes postupujete rychle",
+        "streakStrong": "Vase serie drzi pevne",
+        "acrossApps": "Vox Jot pracuje napric vasimi aplikacemi",
+        "wordsFlowing": "Vase slova opravdu pribyvaji",
+        "inYourFlow": "Diktovani je soucasti vaseho toku prace",
+        "niceMomentum": "Dnes mate dobry tah",
+        "welcomeBack": "Navazte tam, kde jste skoncili"
+      }
     }
   },
   "testing": {

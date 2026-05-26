@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "話",
     "todayLabel": "今天",
     "appsLabel": "應用程式",
-    "appsUsed": "{{count}} 使用的應用程式"
+    "appsUsed": "{{count}} 使用的應用程式",
+    "recentActivity": "最近活動"
   },
   "ollama": {
     "title": "Ollama — 本地 LLM 引擎",
@@ -1590,7 +1591,11 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
+      "starterPrompts": [
+        "總結所選文本",
+        "重寫一下更清楚",
+        "拉出行動項目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1604,7 +1609,11 @@
       "noteAppended": "將草稿附加到說明中。",
       "noteAppendFailed": "無法附加到註釋。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把這張紙條變成乾淨的草稿", "找到重點", "建議後續步驟"]
+      "starterPrompts": [
+        "把這張紙條變成乾淨的草稿",
+        "找到重點",
+        "建議後續步驟"
+      ]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2749,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "歷史記錄",
+        "history": "首頁",
         "corrections": "字典",
         "jotPad": "Jot Pad",
         "fileTranscription": "檔案轉錄"
@@ -2918,6 +2927,25 @@
       "authValue": "權杖",
       "localApiTitle": "本地 API",
       "localApiDescription": "用於本機自動化的權杖保護回環存取。權杖儲存在系統憑證儲存中，只有複製時才會顯示。"
+    },
+    "homeStats": {
+      "mostActiveDay": "最常活動：{{day}}",
+      "favoriteWord": "常用字詞：{{word}}",
+      "mostActiveTime": "最常活動：{{time}}",
+      "mostUsedApp": "最常使用：{{app}}",
+      "mostUsedAppLabel": "最常使用："
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "準備好就可以開始",
+        "bigVoiceDay": "你今天進展很快",
+        "streakStrong": "你的連續紀錄保持得很穩",
+        "acrossApps": "Vox Jot 正在你的 App 間運作",
+        "wordsFlowing": "你的文字正在穩定累積",
+        "inYourFlow": "聽寫已成為你工作流程的一部分",
+        "niceMomentum": "你今天很有節奏",
+        "welcomeBack": "從上次停下的地方繼續"
+      }
     }
   },
   "testing": {

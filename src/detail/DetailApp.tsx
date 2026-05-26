@@ -6,6 +6,7 @@ import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
 import { SectionLoading } from "@/components/app-sections/shared";
 import ModelHubSection from "@/components/model-hub/ModelHubSection";
+import { useDictationEncouragementTitle } from "@/hooks/useDictationEncouragementTitle";
 
 const DictateHistorySection = lazy(() =>
   import("@/components/app-sections/dictate").then((module) => ({
@@ -47,6 +48,11 @@ const FileTranscriptionSection = lazy(() =>
     default: module.FileTranscriptionSection,
   })),
 );
+
+const HistoryEncouragementTitle: React.FC = () => {
+  const title = useDictationEncouragementTitle();
+  return <span className="font-bold">{title}</span>;
+};
 
 /** Map of section IDs to their title + component. */
 const SECTION_MAP: Record<
@@ -199,7 +205,11 @@ const DetailApp: React.FC = () => {
                 className="text-sm font-bold text-[var(--text)]"
                 data-tauri-drag-region=""
               >
-                {entryTitle}
+                {sectionId === "history" ? (
+                  <HistoryEncouragementTitle />
+                ) : (
+                  entryTitle
+                )}
               </h1>
             ) : null}
             <div

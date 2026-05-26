@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "Слова",
     "todayLabel": "Сегодня",
     "appsLabel": "Приложения",
-    "appsUsed": "{{count}} используемые приложения"
+    "appsUsed": "{{count}} используемые приложения",
+    "recentActivity": "Недавняя активность"
   },
   "ollama": {
     "title": "Ollama — Локальный движок LLM",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "История",
+        "history": "Главная",
         "corrections": "Словарь",
         "jotPad": "Jot Pad",
         "fileTranscription": "Транскрипция файлов"
@@ -2926,6 +2927,25 @@
       "authValue": "Токен",
       "localApiTitle": "Локальный API",
       "localApiDescription": "Защищенный токеном loopback-доступ для локальной автоматизации. Токен хранится в системном хранилище учетных данных и раскрывается только при копировании."
+    },
+    "homeStats": {
+      "mostActiveDay": "Самая высокая активность: {{day}}",
+      "favoriteWord": "Любимое слово: {{word}}",
+      "mostActiveTime": "Самая высокая активность: {{time}}",
+      "mostUsedApp": "Чаще всего используется: {{app}}",
+      "mostUsedAppLabel": "Чаще всего используется:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "Готово, когда вы готовы",
+        "bigVoiceDay": "Сегодня вы быстро продвигаетесь",
+        "streakStrong": "Ваша серия уверенно держится",
+        "acrossApps": "Vox Jot работает в ваших приложениях",
+        "wordsFlowing": "Ваши слова заметно накапливаются",
+        "inYourFlow": "Диктовка стала частью вашего процесса",
+        "niceMomentum": "Сегодня у вас хороший темп",
+        "welcomeBack": "Продолжайте с того места, где остановились"
+      }
     }
   },
   "testing": {

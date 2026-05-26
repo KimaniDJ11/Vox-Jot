@@ -2,7 +2,7 @@ use crate::managers::history::HistoryManager;
 use chrono::{Local, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -19,6 +19,10 @@ pub struct DictationStats {
     pub unique_app_count: u64,
     /// Total number of transcriptions (lifetime).
     pub total_sessions: u64,
+    /// Display name of the most-used app (by session count), if any.
+    pub top_app_name: Option<String>,
+    /// Bundle ID of the most-used app, for icon resolution.
+    pub top_app_bundle_id: Option<String>,
 }
 
 fn count_words(text: &str) -> u64 {
@@ -63,6 +67,9 @@ pub async fn get_dictation_stats(
     // Collect unique days (local time) that have transcriptions for streak calc
     let mut unique_days = BTreeSet::new();
     let mut unique_apps = BTreeSet::new();
+    // Track per-app session counts so we can find the most-used app.
+    // Key: normalized app key, Value: (count, display_name, bundle_id)
+    let mut app_counts: HashMap<String, (u64, Option<String>, Option<String>)> = HashMap::new();
 
     for entry in &entries {
         // Use the best available text for word count
@@ -88,7 +95,13 @@ pub async fn get_dictation_stats(
                 metadata.active_app_bundle_id.as_deref(),
                 metadata.active_app_name.as_deref(),
             ) {
-                unique_apps.insert(app_key);
+                unique_apps.insert(app_key.clone());
+                let entry = app_counts.entry(app_key).or_insert((
+                    0,
+                    metadata.active_app_name.clone(),
+                    metadata.active_app_bundle_id.clone(),
+                ));
+                entry.0 += 1;
             }
         }
     }
@@ -107,12 +120,21 @@ pub async fn get_dictation_stats(
         }
     }
 
+    // Find the app with the highest session count.
+    let top_app = app_counts
+        .values()
+        .max_by_key(|(count, _, _)| *count);
+    let top_app_name = top_app.and_then(|(_, name, _)| name.clone());
+    let top_app_bundle_id = top_app.and_then(|(_, _, bid)| bid.clone());
+
     Ok(DictationStats {
         total_words,
         today_words,
         streak_days,
         unique_app_count: unique_apps.len() as u64,
         total_sessions,
+        top_app_name,
+        top_app_bundle_id,
     })
 }
 

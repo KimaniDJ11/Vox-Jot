@@ -21,7 +21,7 @@ import {
   Dna,
   FileAudio,
   FlaskConical,
-  History,
+  House,
   Info,
   Keyboard,
   Languages,
@@ -78,6 +78,7 @@ import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
+import { useDictationEncouragementTitle } from "@/hooks/useDictationEncouragementTitle";
 
 type OnboardingStep = "onboarding" | "done";
 
@@ -298,6 +299,11 @@ const AboutSection = lazy(() =>
 
 const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
 
+const HistoryEncouragementTitle: React.FC = () => {
+  const title = useDictationEncouragementTitle();
+  return <span className="font-bold">{title}</span>;
+};
+
 const SectionHeader: React.FC<{ id: string; title: string }> = ({
   id,
   title,
@@ -305,7 +311,7 @@ const SectionHeader: React.FC<{ id: string; title: string }> = ({
   <div className="px-1">
     <div className="flex items-center justify-between gap-4">
       <h2 className="heading-display text-2xl font-semibold tracking-tight text-[var(--text)]">
-        {title}
+        {id === "history" ? <HistoryEncouragementTitle /> : title}
       </h2>
       <div
         id={`${id}-section-actions`}
@@ -524,7 +530,7 @@ function App() {
         makeSection(
           "history",
           "appSections.nav.dictate.history",
-          History,
+          House,
           <DictateHistorySection />,
           "blue",
         ),

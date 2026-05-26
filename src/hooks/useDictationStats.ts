@@ -8,6 +8,8 @@ export interface DictationStats {
   streak_days: number;
   unique_app_count: number;
   total_sessions: number;
+  top_app_name: string | null;
+  top_app_bundle_id: string | null;
 }
 
 export function useDictationStats() {

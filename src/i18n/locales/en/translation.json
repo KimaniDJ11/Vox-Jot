@@ -1876,7 +1876,8 @@
     "totalWordsLabel": "Words",
     "todayLabel": "Today",
     "appsLabel": "Apps",
-    "appsUsed": "{{count}} apps used"
+    "appsUsed": "{{count}} apps used",
+    "recentActivity": "Recent activity"
   },
   "footer": {
     "modelNotSet": "Model not set",
@@ -2432,6 +2433,25 @@
       "errorAnalysisFailed": "Analysis failed.",
       "groupTitle": "Route debugger"
     },
+    "homeStats": {
+      "mostActiveDay": "Most active: {{day}}",
+      "favoriteWord": "Fav word: {{word}}",
+      "mostActiveTime": "Most active: {{time}}",
+      "mostUsedAppLabel": "Most used:",
+      "mostUsedApp": "Most used: {{app}}"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "Ready when you are",
+        "bigVoiceDay": "You are moving fast today",
+        "streakStrong": "Your streak is holding strong",
+        "acrossApps": "Vox Jot is working across your apps",
+        "wordsFlowing": "Your words are really adding up",
+        "inYourFlow": "Dictation is part of your flow",
+        "niceMomentum": "You have momentum today",
+        "welcomeBack": "Pick up where you left off"
+      }
+    },
     "sections": {
       "recentHistoryTitle": "History",
       "recentHistoryDescription": "Review transcripts, playback recordings, and reuse or save past dictations.",
@@ -2585,7 +2605,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "History",
+        "history": "Home",
         "corrections": "Dictionary",
         "jotPad": "Jot Pad",
         "fileTranscription": "File Transcription"

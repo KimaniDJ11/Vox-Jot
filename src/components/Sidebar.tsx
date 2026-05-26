@@ -11,7 +11,6 @@ import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
-import SidebarStatsGrid from "@/components/sidebar/SidebarStatsGrid";
 import SidebarModelLaunchers from "@/components/sidebar/SidebarModelLaunchers";
 
 type SidebarIcon = React.ComponentType<{
@@ -61,37 +60,29 @@ const SETTINGS_ROW_ID = "__settings__";
 
 type SidebarIconToneStyle = React.CSSProperties & {
   "--sidebar-icon-color"?: string;
-  "--sidebar-icon-bg"?: string;
 };
 
 const sidebarIconToneStyles: Record<SidebarIconTone, SidebarIconToneStyle> = {
   accent: {
     "--sidebar-icon-color": "var(--accent)",
-    "--sidebar-icon-bg": "color-mix(in srgb, var(--accent) 14%, transparent)",
   },
   blue: {
     "--sidebar-icon-color": "var(--info)",
-    "--sidebar-icon-bg": "var(--info-soft)",
   },
   gold: {
     "--sidebar-icon-color": "var(--voice)",
-    "--sidebar-icon-bg": "var(--voice-soft)",
   },
   green: {
     "--sidebar-icon-color": "var(--success)",
-    "--sidebar-icon-bg": "var(--success-soft)",
   },
   red: {
     "--sidebar-icon-color": "var(--danger)",
-    "--sidebar-icon-bg": "var(--danger-soft)",
   },
   teal: {
     "--sidebar-icon-color": "var(--accent-teal)",
-    "--sidebar-icon-bg": "var(--accent-teal-soft)",
   },
   violet: {
     "--sidebar-icon-color": "var(--accent-2)",
-    "--sidebar-icon-bg": "color-mix(in srgb, var(--accent-2) 14%, transparent)",
   },
 };
 
@@ -151,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const itemLayoutClass = collapsed
     ? "justify-center px-0 py-2"
-    : "gap-2.5 px-3 py-2 text-left";
+    : "px-1.5 py-0 text-left";
 
   const clearHover = () => setHoveredId(null);
 
@@ -185,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         transition={press}
         onPointerEnter={() => setHoveredId(id)}
         onFocus={() => setHoveredId(id)}
-        className={`sidebar__nav-button group relative flex w-full items-center rounded-2xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
+        className={`sidebar__nav-button group relative flex w-full items-center rounded-xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
         style={sidebarIconToneStyles[iconTone]}
         aria-current={isActive ? "page" : undefined}
         aria-label={collapsed || activityLabel ? accessibleLabel : undefined}
@@ -196,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <motion.span
             layoutId="sidebar-active"
             transition={crisp}
-            className="pointer-events-none absolute inset-0 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] ring-1 ring-[var(--ring-hairline)]"
+            className="pointer-events-none absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] ring-1 ring-[var(--ring-hairline)]"
             aria-hidden
           />
         )}
@@ -209,17 +200,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             layoutId="sidebar-hover"
             variant="surface"
             insetClass="inset-0"
-            radiusClass="rounded-2xl"
+            radiusClass="rounded-xl"
           />
         )}
 
         <span
-          className={`relative z-10 flex w-full items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}
+          className={`relative z-10 flex w-full items-center ${collapsed ? "justify-center" : "gap-1.5"}`}
         >
           <span className="sidebar__nav-icon-shell flex shrink-0 items-center justify-center rounded-full">
             <Icon
-              width={collapsed ? 18 : 17}
-              height={collapsed ? 18 : 17}
+              width={collapsed ? 18 : 16}
+              height={collapsed ? 18 : 16}
               strokeWidth={1.85}
               className="sidebar__nav-icon shrink-0"
             />
@@ -263,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onBlur={clearHover}
     >
       <div
-        className={`sidebar__panel flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-2.5" : "px-2.5 py-2.5"}`}
+        className={`sidebar__panel flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-2.5" : "px-1.5 py-2.5"}`}
       >
         <LayoutGroup id="sidebar-rows">
           <nav
@@ -272,7 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
             className="sidebar__nav min-h-0 flex-1 overflow-y-auto"
           >
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               {items.map((item, index) => {
                 const previousGroup = items[index - 1]?.groupLabel;
                 const showGroupLabel =
@@ -304,7 +295,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="sidebar__lower-stack">
             {showStatusCards && !collapsed && (
               <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
-                <SidebarStatsGrid />
                 <SidebarModelLaunchers variant="stats" />
               </div>
             )}

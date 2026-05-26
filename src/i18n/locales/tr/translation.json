@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "kelimeler",
     "todayLabel": "Bugün",
     "appsLabel": "Uygulamalar",
-    "appsUsed": "Kullanılan {{count}} uygulamaları"
+    "appsUsed": "Kullanılan {{count}} uygulamaları",
+    "recentActivity": "Son etkinlik"
   },
   "ollama": {
     "title": "Ollama — Yerel LLM Motoru",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Geçmiş",
+        "history": "Ana sayfa",
         "corrections": "Sözlük",
         "jotPad": "Jot Pad",
         "fileTranscription": "Dosya Transkripsiyonu"
@@ -2926,6 +2927,25 @@
       "authValue": "Belirteç",
       "localApiTitle": "Yerel API",
       "localApiDescription": "Yerel otomasyon için belirteç korumalı geri döngü erişimi. Belirteç sistem kimlik bilgisi deposunda saklanır ve yalnızca kopyaladığınızda gösterilir."
+    },
+    "homeStats": {
+      "mostActiveDay": "En aktif: {{day}}",
+      "favoriteWord": "Favori kelime: {{word}}",
+      "mostActiveTime": "En aktif: {{time}}",
+      "mostUsedApp": "En cok kullanilan: {{app}}",
+      "mostUsedAppLabel": "En cok kullanilan:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "Hazir oldugunda baslayabiliriz",
+        "bigVoiceDay": "Bugun hizli ilerliyorsun",
+        "streakStrong": "Serin guclu sekilde devam ediyor",
+        "acrossApps": "Vox Jot uygulamalarinda calisiyor",
+        "wordsFlowing": "Kelimelerin gercekten birikiyor",
+        "inYourFlow": "Dikte artik akisinin bir parcasi",
+        "niceMomentum": "Bugun iyi bir ivmen var",
+        "welcomeBack": "Kaldigin yerden devam et"
+      }
     }
   },
   "testing": {

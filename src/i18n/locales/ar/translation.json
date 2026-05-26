@@ -1524,7 +1524,8 @@
     "totalWordsLabel": "كلمات",
     "todayLabel": "اليوم",
     "appsLabel": "تطبيقات",
-    "appsUsed": "تطبيقات {{count}} المستخدمة"
+    "appsUsed": "تطبيقات {{count}} المستخدمة",
+    "recentActivity": "النشاط الأخير"
   },
   "ollama": {
     "title": "Ollama - محرك LLM المحلي",
@@ -2757,7 +2758,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "السجل",
+        "history": "الرئيسية",
         "corrections": "قاموس",
         "jotPad": "Jot Pad",
         "fileTranscription": "نسخ الملف"
@@ -2926,6 +2927,25 @@
       "authValue": "الرمز",
       "localApiTitle": "API المحلي",
       "localApiDescription": "وصول حلقة محلية محمي برمز للأتمتة المحلية. يتم تخزين الرمز في مخزن بيانات اعتماد النظام ولا يظهر إلا عند نسخه."
+    },
+    "homeStats": {
+      "mostActiveDay": "الأكثر نشاطا: {{day}}",
+      "favoriteWord": "الكلمة المفضلة: {{word}}",
+      "mostActiveTime": "الأكثر نشاطا: {{time}}",
+      "mostUsedApp": "الأكثر استخداما: {{app}}",
+      "mostUsedAppLabel": "الأكثر استخداما:"
+    },
+    "homeHeader": {
+      "encouragement": {
+        "ready": "جاهز عندما تكون جاهزا",
+        "bigVoiceDay": "أنت تتحرك بسرعة اليوم",
+        "streakStrong": "سلسلتك ما زالت قوية",
+        "acrossApps": "Vox Jot يعمل عبر تطبيقاتك",
+        "wordsFlowing": "كلماتك تتراكم فعلا",
+        "inYourFlow": "الإملاء أصبح جزءا من سير عملك",
+        "niceMomentum": "لديك زخم اليوم",
+        "welcomeBack": "تابع من حيث توقفت"
+      }
     }
   },
   "testing": {

@@ -27,8 +27,6 @@ import {
   Languages,
   Monitor,
   NotebookPen,
-  PanelLeft,
-  PanelLeftClose,
   Play,
   Scale,
   Shield,
@@ -50,6 +48,7 @@ import { press } from "./motion/springs";
 import { ModelStateEvent } from "./lib/types/events";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
+import SidebarToggleIcon from "./components/icons/SidebarToggleIcon";
 import Footer from "./components/footer";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { useMinWidth769 } from "@/hooks/useMinWidth769";
@@ -1250,11 +1249,10 @@ function App() {
                   : t("sidebar.collapsePanel")
               }
             >
-              {sidebarCollapsed ? (
-                <PanelLeft className="shrink-0" aria-hidden />
-              ) : (
-                <PanelLeftClose className="shrink-0" aria-hidden />
-              )}
+              <SidebarToggleIcon
+                collapsed={sidebarCollapsed}
+                className="shrink-0"
+              />
             </Button>
           </div>
           <div className="app-macos-titlebar-overlay__center">
@@ -1292,11 +1290,10 @@ function App() {
                   : t("sidebar.collapsePanel")
               }
             >
-              {sidebarCollapsed ? (
-                <PanelLeft className="h-5 w-5 shrink-0" aria-hidden />
-              ) : (
-                <PanelLeftClose className="h-5 w-5 shrink-0" aria-hidden />
-              )}
+              <SidebarToggleIcon
+                collapsed={sidebarCollapsed}
+                className="h-5 w-5 shrink-0"
+              />
             </Button>
           </div>
           <div className="app-window-toolbar__center">

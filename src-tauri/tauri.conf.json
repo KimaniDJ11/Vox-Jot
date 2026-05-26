@@ -50,6 +50,21 @@
       "icons/icon.ico"
     ],
     "macOS": {
+      "dmg": {
+        "background": "dmg/vox-jot-dmg-background.png",
+        "windowSize": {
+          "width": 760,
+          "height": 520
+        },
+        "appPosition": {
+          "x": 217,
+          "y": 348
+        },
+        "applicationFolderPosition": {
+          "x": 580,
+          "y": 348
+        }
+      },
       "files": {},
       "hardenedRuntime": true,
       "minimumSystemVersion": "10.15",

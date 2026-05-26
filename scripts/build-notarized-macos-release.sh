@@ -15,7 +15,16 @@ if [[ "${TARGET_ARCH}" == "arm64" ]]; then
   TARGET_ARCH="aarch64"
 fi
 DMG_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}.dmg"
+DMG_RW_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}-rw.dmg"
 DMG_STAGE_DIR="${DMG_DIR}/${APP_NAME}-dmg-stage"
+DMG_BACKGROUND_SOURCE="${REPO_ROOT}/src-tauri/dmg/vox-jot-dmg-background.png"
+DMG_BACKGROUND_NAME="vox-jot-dmg-background.png"
+DMG_WINDOW_WIDTH=760
+DMG_WINDOW_HEIGHT=520
+DMG_APP_ICON_X=217
+DMG_APP_ICON_Y=348
+DMG_APPLICATIONS_ICON_X=580
+DMG_APPLICATIONS_ICON_Y=348
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-voxjot-notary}"
 APPLE_NOTARY_PASSWORD="${APPLE_PASSWORD:-${APPLE_ID_PASSWORD:-}}"
 NOTARY_CREDENTIAL_MODE=""
@@ -301,19 +310,80 @@ sign_nested_macho_files() {
 }
 
 create_signed_dmg() {
-  /bin/rm -rf "${DMG_STAGE_DIR}" "${DMG_PATH}"
+  local mount_output mount_dir
+
+  if [[ ! -f "${DMG_BACKGROUND_SOURCE}" ]]; then
+    echo "DMG background missing; generating ${DMG_BACKGROUND_SOURCE}..."
+    bash "${REPO_ROOT}/scripts/generate-dmg-background.sh"
+  fi
+
+  /bin/rm -rf "${DMG_STAGE_DIR}" "${DMG_PATH}" "${DMG_RW_PATH}"
   /bin/mkdir -p "${DMG_STAGE_DIR}" "${DMG_DIR}"
   /usr/bin/ditto "${APP_PATH}" "${DMG_STAGE_DIR}/${APP_NAME}.app"
+  /bin/mkdir -p "${DMG_STAGE_DIR}/.background"
+  /usr/bin/ditto "${DMG_BACKGROUND_SOURCE}" "${DMG_STAGE_DIR}/.background/${DMG_BACKGROUND_NAME}"
+  /usr/bin/chflags hidden "${DMG_STAGE_DIR}/.background" || true
   /bin/ln -s /Applications "${DMG_STAGE_DIR}/Applications"
 
   /usr/bin/hdiutil create \
     -volname "${APP_NAME}" \
     -srcfolder "${DMG_STAGE_DIR}" \
     -ov \
-    -format UDZO \
-    "${DMG_PATH}"
+    -format UDRW \
+    -fs HFS+ \
+    "${DMG_RW_PATH}"
 
-  /bin/rm -rf "${DMG_STAGE_DIR}"
+  mount_output="$(
+    /usr/bin/hdiutil attach \
+      -readwrite \
+      -noverify \
+      -noautoopen \
+      "${DMG_RW_PATH}"
+  )"
+  mount_dir="$(
+    /usr/bin/awk -F '\t' '/\/Volumes\// { print $NF; exit }' <<<"${mount_output}"
+  )"
+
+  if [[ -z "${mount_dir}" || ! -d "${mount_dir}" ]]; then
+    echo "Unable to locate mounted DMG volume for Finder styling." >&2
+    echo "${mount_output}" >&2
+    exit 1
+  fi
+
+  if ! /usr/bin/osascript <<OSA
+tell application "Finder"
+  tell disk "${APP_NAME}"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {120, 90, 120 + ${DMG_WINDOW_WIDTH}, 90 + ${DMG_WINDOW_HEIGHT}}
+    set viewOptions to the icon view options of container window
+    set arrangement of viewOptions to not arranged
+    set icon size of viewOptions to 128
+    set text size of viewOptions to 14
+    set background picture of viewOptions to file ".background:${DMG_BACKGROUND_NAME}"
+    set position of item "${APP_NAME}.app" of container window to {${DMG_APP_ICON_X}, ${DMG_APP_ICON_Y}}
+    set position of item "Applications" of container window to {${DMG_APPLICATIONS_ICON_X}, ${DMG_APPLICATIONS_ICON_Y}}
+    update without registering applications
+    delay 1
+    close container window
+  end tell
+end tell
+OSA
+  then
+    /usr/bin/hdiutil detach "${mount_dir}" -quiet || true
+    exit 1
+  fi
+
+  /bin/sync
+  /usr/bin/hdiutil detach "${mount_dir}" -quiet
+  /usr/bin/hdiutil convert "${DMG_RW_PATH}" \
+    -format UDZO \
+    -imagekey zlib-level=9 \
+    -o "${DMG_PATH}"
+
+  /bin/rm -rf "${DMG_STAGE_DIR}" "${DMG_RW_PATH}"
 
   /usr/bin/codesign \
     --force \

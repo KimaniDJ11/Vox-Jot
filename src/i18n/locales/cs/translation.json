@@ -689,6 +689,11 @@
           "ocean": "oceán",
           "forest": "Les",
           "rose": "Růže",
+          "aurora": "Polární záře",
+          "lagoon": "Laguna",
+          "daybreak": "Svítání",
+          "ember": "Žár",
+          "galaxy": "Galaxie",
           "slate": "Břidlice",
           "solarized": "Solarizované",
           "graphite": "Grafit"
@@ -840,7 +845,15 @@
           "spoken": "rychlé ui",
           "written": "SwiftUI"
         },
-        "add": "Přidat záznam",
+        "add": "Přidat nový",
+        "addTitle": "Přidat do slovníku",
+        "addWord": "Přidat slovo",
+        "addSpokenLabel": "Mluvená podoba",
+        "addSpokenPlaceholder": "např. open ai",
+        "addWrittenLabel": "Psaná podoba",
+        "addWrittenPlaceholder": "např. OpenAI",
+        "addExactMatchOnly": "Pouze přesná shoda",
+        "addExactMatchHelp": "Nahradit tuto frázi pouze tehdy, když se zobrazí přesně tak, jak je napsaná.",
         "remove": "Odebrat",
         "duplicateBadge": "Duplicitní mluvená fráze"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Pohled na slovník",
           "corrections": "Opravy",
-          "dictionary": "Slovník"
+          "dictionary": "Slovník",
+          "correctionsDescription": "Vox Jot se učí z úprav po diktování, aby se opakované pravopisné a frázové chyby vyskytovaly méně často.",
+          "dictionaryDescription": "Přidejte jména, žargon a preferovaná hláskování, aby diktování používalo slova, na kterých vám záleží."
         },
         "approveCorrectionAria": "Schválit opravu {{original}} až {{corrected}}",
         "approveAlways": "Schvalujte a vždy aplikujte",
@@ -2291,6 +2306,11 @@
       "sepia": "Sépie",
       "ocean": "oceán",
       "rose": "Růže",
+      "aurora": "Polární záře",
+      "lagoon": "Laguna",
+      "daybreak": "Svítání",
+      "ember": "Žár",
+      "galaxy": "Galaxie",
       "forest": "Les",
       "solarized": "Solarizované"
     },

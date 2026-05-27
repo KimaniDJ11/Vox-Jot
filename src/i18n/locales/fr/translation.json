@@ -689,6 +689,11 @@
           "ocean": "Océan",
           "forest": "Forêt",
           "rose": "Rose",
+          "aurora": "Aurore",
+          "lagoon": "Lagon",
+          "daybreak": "Aube",
+          "ember": "Braise",
+          "galaxy": "Galaxie",
           "slate": "Ardoise",
           "solarized": "Solarisé",
           "graphite": "Graphite"
@@ -819,7 +824,15 @@
           "spoken": "interface utilisateur rapide",
           "written": "SwiftUI"
         },
-        "add": "Ajouter une entrée",
+        "add": "Ajouter nouveau",
+        "addTitle": "Ajouter au dictionnaire",
+        "addWord": "Ajouter le mot",
+        "addSpokenLabel": "Forme orale",
+        "addSpokenPlaceholder": "p. ex. open ai",
+        "addWrittenLabel": "Forme écrite",
+        "addWrittenPlaceholder": "p. ex. OpenAI",
+        "addExactMatchOnly": "Correspondance exacte uniquement",
+        "addExactMatchHelp": "Remplace cette phrase uniquement lorsqu’elle apparaît exactement comme écrite.",
         "remove": "Supprimer",
         "duplicateBadge": "Phrase parlée en double"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Vue Dictionnaire",
           "corrections": "Corrections",
-          "dictionary": "Dictionnaire"
+          "dictionary": "Dictionnaire",
+          "correctionsDescription": "Vox Jot apprend des modifications après la dictée afin de réduire les fautes répétées d’orthographe et de formulation.",
+          "dictionaryDescription": "Ajoutez des noms, du jargon et des graphies préférées afin que la dictée utilise les mots qui comptent pour vous."
         },
         "approveCorrectionAria": "Approuver la correction {{original}} à {{corrected}}",
         "approveAlways": "Approuver et toujours postuler",
@@ -2291,6 +2306,11 @@
       "sepia": "Sépia",
       "ocean": "Océan",
       "rose": "Rose",
+      "aurora": "Aurore",
+      "lagoon": "Lagon",
+      "daybreak": "Aube",
+      "ember": "Braise",
+      "galaxy": "Galaxie",
       "forest": "Forêt",
       "solarized": "Solarisé"
     },

@@ -689,6 +689,11 @@
           "ocean": "바다",
           "forest": "숲",
           "rose": "장미",
+          "aurora": "오로라",
+          "lagoon": "라군",
+          "daybreak": "새벽",
+          "ember": "불씨",
+          "galaxy": "은하",
           "slate": "슬레이트",
           "solarized": "솔라라이즈드",
           "graphite": "흑연"
@@ -840,7 +845,15 @@
           "spoken": "스위프트 UI",
           "written": "SwiftUI"
         },
-        "add": "항목 추가",
+        "add": "새로 추가",
+        "addTitle": "사전에 추가",
+        "addWord": "단어 추가",
+        "addSpokenLabel": "말하는 형태",
+        "addSpokenPlaceholder": "예: 오픈에이아이",
+        "addWrittenLabel": "표기 형태",
+        "addWrittenPlaceholder": "예: OpenAI",
+        "addExactMatchOnly": "정확히 일치할 때만",
+        "addExactMatchHelp": "이 문구가 작성된 그대로 나타날 때만 바꿉니다.",
         "remove": "제거",
         "duplicateBadge": "중복된 음성 문구"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "사전 보기",
           "corrections": "수정",
-          "dictionary": "사전"
+          "dictionary": "사전",
+          "correctionsDescription": "Vox Jot는 받아쓰기 후 수정 내용에서 학습하여 반복되는 철자와 문구 오류를 줄입니다.",
+          "dictionaryDescription": "이름, 전문 용어, 선호하는 표기를 추가해 받아쓰기가 중요한 단어를 사용하도록 합니다."
         },
         "approveCorrectionAria": "{{original}}를 {{corrected}}로 수정 승인",
         "approveAlways": "승인하고 항상 적용",
@@ -2291,6 +2306,11 @@
       "sepia": "세피아",
       "ocean": "바다",
       "rose": "장미",
+      "aurora": "오로라",
+      "lagoon": "라군",
+      "daybreak": "새벽",
+      "ember": "불씨",
+      "galaxy": "은하",
       "forest": "숲",
       "solarized": "솔라라이즈드"
     },

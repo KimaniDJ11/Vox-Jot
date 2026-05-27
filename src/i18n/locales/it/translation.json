@@ -689,6 +689,11 @@
           "ocean": "Oceano",
           "forest": "Foresta",
           "rose": "Rosa",
+          "aurora": "Aurora polare",
+          "lagoon": "Laguna",
+          "daybreak": "Alba",
+          "ember": "Brace",
+          "galaxy": "Galassia",
           "slate": "Ardesia",
           "solarized": "Solarizzato",
           "graphite": "Grafite"
@@ -840,7 +845,15 @@
           "spoken": "interfaccia utente rapida",
           "written": "SwiftUI"
         },
-        "add": "Aggiungi voce",
+        "add": "Aggiungi nuovo",
+        "addTitle": "Aggiungi al dizionario",
+        "addWord": "Aggiungi parola",
+        "addSpokenLabel": "Forma parlata",
+        "addSpokenPlaceholder": "es. open ai",
+        "addWrittenLabel": "Forma scritta",
+        "addWrittenPlaceholder": "es. OpenAI",
+        "addExactMatchOnly": "Solo corrispondenza esatta",
+        "addExactMatchHelp": "Sostituisci questa frase solo quando appare esattamente come scritta.",
         "remove": "Rimuovi",
         "duplicateBadge": "Frase parlata duplicata"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Visualizzazione dizionario",
           "corrections": "Correzioni",
-          "dictionary": "Dizionario"
+          "dictionary": "Dizionario",
+          "correctionsDescription": "Vox Jot impara dalle modifiche dopo la dettatura, così gli errori ricorrenti di ortografia e frase si ripetono meno spesso.",
+          "dictionaryDescription": "Aggiungi nomi, gergo e grafie preferite in modo che la dettatura usi le parole importanti per te."
         },
         "approveCorrectionAria": "Approvare la correzione da {{original}} a {{corrected}}",
         "approveAlways": "Approvare e applicare sempre",
@@ -2291,6 +2306,11 @@
       "sepia": "Seppia",
       "ocean": "Oceano",
       "rose": "Rosa",
+      "aurora": "Aurora polare",
+      "lagoon": "Laguna",
+      "daybreak": "Alba",
+      "ember": "Brace",
+      "galaxy": "Galassia",
       "forest": "Foresta",
       "solarized": "Solarizzato"
     },

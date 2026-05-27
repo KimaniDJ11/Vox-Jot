@@ -689,6 +689,11 @@
           "ocean": "Okyanus",
           "forest": "Orman",
           "rose": "Gül",
+          "aurora": "Kutup ışığı",
+          "lagoon": "Lagün",
+          "daybreak": "Şafak",
+          "ember": "Kor",
+          "galaxy": "Galaksi",
           "slate": "Arduvaz",
           "solarized": "Solarize",
           "graphite": "Grafit"
@@ -840,7 +845,15 @@
           "spoken": "hızlı kullanıcı arayüzü",
           "written": "SwiftUI"
         },
-        "add": "Giriş ekle",
+        "add": "Yeni ekle",
+        "addTitle": "Sözlüğe ekle",
+        "addWord": "Kelime ekle",
+        "addSpokenLabel": "Söylenen biçim",
+        "addSpokenPlaceholder": "örn. open ai",
+        "addWrittenLabel": "Yazılı biçim",
+        "addWrittenPlaceholder": "örn. OpenAI",
+        "addExactMatchOnly": "Yalnızca tam eşleşme",
+        "addExactMatchHelp": "Bu ifadeyi yalnızca yazıldığı gibi göründüğünde değiştir.",
         "remove": "Kaldır",
         "duplicateBadge": "Yinelenen sözlü ifade"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Sözlük görünümü",
           "corrections": "Düzeltmeler",
-          "dictionary": "Sözlük"
+          "dictionary": "Sözlük",
+          "correctionsDescription": "Vox Jot, dikte sonrasındaki düzenlemelerden öğrenerek tekrarlanan yazım ve ifade hatalarını azaltır.",
+          "dictionaryDescription": "Dikte sırasında sizin için önemli kelimelerin kullanılması için adlar, terimler ve tercih edilen yazımları ekleyin."
         },
         "approveCorrectionAria": "{{original}} ile {{corrected}} arasındaki düzeltmeyi onaylayın",
         "approveAlways": "Onaylayın ve her zaman uygulayın",
@@ -2291,6 +2306,11 @@
       "sepia": "Sepya",
       "ocean": "Okyanus",
       "rose": "Gül",
+      "aurora": "Kutup ışığı",
+      "lagoon": "Lagün",
+      "daybreak": "Şafak",
+      "ember": "Kor",
+      "galaxy": "Galaksi",
       "forest": "Orman",
       "solarized": "Solarize"
     },

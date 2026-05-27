@@ -10,7 +10,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Ban,
   CheckCircle2,
+  FileInput,
   History,
+  Info,
   Plus,
   Search,
   SlidersHorizontal,
@@ -18,8 +20,8 @@ import {
   Undo2,
   X,
   SpellCheck,
-  FileJson,
 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { InstalledApp, StoredCorrection } from "@/bindings";
@@ -30,7 +32,7 @@ import { EmptyState } from "../../ui/EmptyState";
 import { Input } from "../../ui/Input";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { SegmentedControl } from "../../ui/SegmentedControl";
-import { pickJsonFileText } from "@/lib/fileIo";
+import { SwitchControl } from "../../ui/SwitchControl";
 import { modal } from "@/motion/springs";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import {
@@ -42,6 +44,16 @@ import {
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 
 type CorrectionViewMode = "corrections" | "dictionary";
+
+const DICTIONARY_IMPORT_EXTENSIONS = [
+  "json",
+  "csv",
+  "tsv",
+  "tab",
+  "txt",
+  "dic",
+  "plist",
+];
 
 /**
  * A group of corrections that share the same corrected word.
@@ -296,6 +308,7 @@ export const CorrectionDictionaryView: React.FC<
   const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
+  const [importing, setImporting] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const disablePopoverRef = useRef<HTMLDivElement>(null);
   const originalsPopoverRef = useRef<HTMLDivElement>(null);
@@ -629,19 +642,38 @@ export const CorrectionDictionaryView: React.FC<
   };
 
   const handleImport = useCallback(async () => {
-    const text = await pickJsonFileText();
-    if (text === null) return;
+    const path = await open({
+      multiple: false,
+      filters: [
+        {
+          name: t("settings.corrections.dictionary.importFileTypes", {
+            defaultValue: "Dictionary files",
+          }),
+          extensions: DICTIONARY_IMPORT_EXTENSIONS,
+        },
+      ],
+    });
+    if (!path || Array.isArray(path)) return;
+
     setImportError("");
     setImportMessage("");
+    setImporting(true);
     try {
-      const result = await commands.importCorrections(text);
+      const result = await commands.importDictionaryFile(path);
       if (result.status === "ok") {
         setViewMode("dictionary");
         setImportMessage(
-          t("settings.corrections.dictionary.importSuccess", {
-            count: result.data,
-            defaultValue: "Imported {{count}} corrections.",
-          }),
+          result.data.skipped > 0
+            ? t("settings.corrections.dictionary.importPartialSuccess", {
+                count: result.data.imported,
+                skipped: result.data.skipped,
+                defaultValue:
+                  "Imported {{count}} dictionary entries. Skipped {{skipped}}.",
+              })
+            : t("settings.corrections.dictionary.importSuccess", {
+                count: result.data.imported,
+                defaultValue: "Imported {{count}} dictionary entries.",
+              }),
         );
         void loadCorrections();
       } else {
@@ -656,6 +688,8 @@ export const CorrectionDictionaryView: React.FC<
               defaultValue: "Failed to import corrections.",
             }),
       );
+    } finally {
+      setImporting(false);
     }
   }, [loadCorrections, t]);
 
@@ -707,11 +741,11 @@ export const CorrectionDictionaryView: React.FC<
     viewMode === "dictionary"
       ? t("settings.corrections.dictionary.views.dictionaryDescription", {
           defaultValue:
-            "Vox Jot uses your personal dictionary for words and names you add manually or import. Add preferred spellings, company jargon, client names, and industry terms so dictation uses the language that matters to you.",
+            "Add names, jargon, and preferred spellings so dictation uses the words that matter to you.",
         })
       : t("settings.corrections.dictionary.views.correctionsDescription", {
           defaultValue:
-            "Corrections are learned automatically from edits you make after dictation. Vox Jot reads the text field after insertion, then uses those fixes to avoid repeated names, spellings, and phrase mistakes.",
+            "Vox Jot learns from edits after dictation so repeated spelling and phrase mistakes happen less often.",
         });
 
   const searchAriaLabel =
@@ -808,7 +842,7 @@ export const CorrectionDictionaryView: React.FC<
         >
           <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.postProcessing.dictionary.add", {
-            defaultValue: "Add entry",
+            defaultValue: "Add new",
           })}
         </Button>
         <SegmentedControl<CorrectionViewMode>
@@ -821,8 +855,24 @@ export const CorrectionDictionaryView: React.FC<
           items={viewItems}
         />
       </div>
-      <div className="correction-dictionary-actions__trailing ms-auto flex justify-end">
+      <div className="correction-dictionary-actions__trailing ms-auto flex items-center justify-end gap-2">
         {searchField}
+        {viewMode === "dictionary" ? (
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+            onClick={() => void handleImport()}
+            disabled={importing}
+            aria-label={t("settings.corrections.dictionary.import", {
+              defaultValue: "Import dictionary",
+            })}
+            title={t("settings.corrections.dictionary.import", {
+              defaultValue: "Import dictionary",
+            })}
+          >
+            <FileInput className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -848,7 +898,7 @@ export const CorrectionDictionaryView: React.FC<
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-correction-title"
-            className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative w-full max-w-[420px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -862,91 +912,130 @@ export const CorrectionDictionaryView: React.FC<
               )
             }
           >
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="border-b border-[var(--border)] pb-3">
               <h2
                 id="add-correction-title"
-                className="min-w-0 truncate text-base font-semibold text-[var(--text)]"
+                className="min-w-0 truncate text-lg font-bold text-[var(--text)]"
               >
-                {t("settings.postProcessing.dictionary.add", {
-                  defaultValue: "Add entry",
+                {t("settings.postProcessing.dictionary.addTitle", {
+                  defaultValue: "Add to dictionary",
                 })}
               </h2>
-              <ActionIconButton
-                type="button"
-                onClick={resetManualEditor}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </ActionIconButton>
             </div>
-            <div className="space-y-3">
+            <div className="mt-5 space-y-4">
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  {t("settings.postProcessing.dictionary.columns.spoken")}
+                  {t("settings.postProcessing.dictionary.addSpokenLabel", {
+                    defaultValue: "Spoken form",
+                  })}
                 </span>
                 <input
                   ref={manualOriginalRef}
                   data-manual-correction-original="true"
                   value={manualDraft.original}
+                  placeholder={t(
+                    "settings.postProcessing.dictionary.addSpokenPlaceholder",
+                    {
+                      defaultValue: "e.g. open ai",
+                    },
+                  )}
                   onChange={(event) =>
                     setManualDraft((current) => ({
                       ...current,
                       original: event.target.value,
                     }))
                   }
-                  className="w-full rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm font-semibold text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)]"
+                  className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-semibold text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:bg-[var(--input)] focus:ring-2 focus:ring-[var(--accent-glow)]"
                 />
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  {t("settings.postProcessing.dictionary.columns.written")}
+                  {t("settings.postProcessing.dictionary.addWrittenLabel", {
+                    defaultValue: "Written form",
+                  })}
                 </span>
-                <Input
+                <input
                   value={manualDraft.corrected}
+                  placeholder={t(
+                    "settings.postProcessing.dictionary.addWrittenPlaceholder",
+                    {
+                      defaultValue: "e.g. OpenAI",
+                    },
+                  )}
                   onChange={(event) =>
                     setManualDraft((current) => ({
                       ...current,
                       corrected: event.target.value,
                     }))
                   }
-                  className="w-full bg-[var(--input)] text-[var(--text)]"
+                  className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-semibold text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:bg-[var(--input)] focus:ring-2 focus:ring-[var(--accent-glow)]"
                 />
               </label>
-              <label className="inline-flex items-center gap-2 text-sm text-[var(--text)]">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-3">
+                <SwitchControl
                   checked={manualDraft.exactOnly}
-                  onChange={(event) =>
+                  size="compact"
+                  ariaLabel={t(
+                    "settings.postProcessing.dictionary.addExactMatchOnly",
+                    {
+                      defaultValue: "Exact match only",
+                    },
+                  )}
+                  onChange={(checked) =>
                     setManualDraft((current) => ({
                       ...current,
-                      exactOnly: event.target.checked,
+                      exactOnly: checked,
                     }))
                   }
                 />
-                <span>
-                  {t("settings.postProcessing.dictionary.columns.exactOnly")}
+                <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-semibold text-[var(--text)]">
+                  {t("settings.postProcessing.dictionary.addExactMatchOnly", {
+                    defaultValue: "Exact match only",
+                  })}
+                  <span
+                    className="inline-flex shrink-0 text-[var(--muted)]"
+                    title={t(
+                      "settings.postProcessing.dictionary.addExactMatchHelp",
+                      {
+                        defaultValue:
+                          "Only replace this phrase when it appears exactly as written.",
+                      },
+                    )}
+                    aria-label={t(
+                      "settings.postProcessing.dictionary.addExactMatchHelp",
+                      {
+                        defaultValue:
+                          "Only replace this phrase when it appears exactly as written.",
+                      },
+                    )}
+                  >
+                    <Info className="h-3.5 w-3.5" aria-hidden />
+                  </span>
                 </span>
-              </label>
+              </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-3">
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 onClick={resetManualEditor}
+                className="border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-transparent hover:text-[var(--text)]"
               >
                 {t("common.cancel")}
               </Button>
               <Button
                 type="button"
                 size="sm"
+                className="border-[color-mix(in_srgb,var(--text),transparent_8%)] bg-[color-mix(in_srgb,var(--text),black_10%)] text-[var(--bg)] hover:border-[var(--text)] hover:bg-[var(--text)]"
                 onClick={() => void handleAddManualCorrection()}
                 disabled={
                   !manualDraft.original.trim() || !manualDraft.corrected.trim()
                 }
               >
-                {t("common.save")}
+                {t("settings.postProcessing.dictionary.addWord", {
+                  defaultValue: "Add word",
+                })}
               </Button>
             </div>
           </motion.div>
@@ -1007,13 +1096,16 @@ export const CorrectionDictionaryView: React.FC<
             >
               {viewMode === "dictionary" ? (
                 <>
-                  <FileJson className="h-3.5 w-3.5" aria-hidden />
+                  <FileInput className="h-3.5 w-3.5" aria-hidden />
                   {t("settings.corrections.dictionary.import")}
                 </>
               ) : (
-                t("settings.postProcessing.dictionary.add", {
-                  defaultValue: "Add entry",
-                })
+                <>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  {t("settings.postProcessing.dictionary.add", {
+                    defaultValue: "Add new",
+                  })}
+                </>
               )}
             </Button>
           }

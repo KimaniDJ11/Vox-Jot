@@ -689,6 +689,11 @@
           "ocean": "Ocean",
           "forest": "Las",
           "rose": "Róża",
+          "aurora": "Zorza",
+          "lagoon": "Laguna",
+          "daybreak": "Świt",
+          "ember": "Żar",
+          "galaxy": "Galaktyka",
           "slate": "Łupek",
           "solarized": "Solarizowane",
           "graphite": "Grafit"
@@ -840,7 +845,15 @@
           "spoken": "szybki interfejs użytkownika",
           "written": "SwiftUI"
         },
-        "add": "Dodaj wpis",
+        "add": "Dodaj nowy",
+        "addTitle": "Dodaj do słownika",
+        "addWord": "Dodaj słowo",
+        "addSpokenLabel": "Forma mówiona",
+        "addSpokenPlaceholder": "np. open ai",
+        "addWrittenLabel": "Forma pisana",
+        "addWrittenPlaceholder": "np. OpenAI",
+        "addExactMatchOnly": "Tylko dokładne dopasowanie",
+        "addExactMatchHelp": "Zamień tę frazę tylko wtedy, gdy pojawi się dokładnie tak, jak ją wpisano.",
         "remove": "Usuń",
         "duplicateBadge": "Zduplikowane zdanie"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Widok słownika",
           "corrections": "Poprawki",
-          "dictionary": "Słownik"
+          "dictionary": "Słownik",
+          "correctionsDescription": "Vox Jot uczy się na podstawie poprawek po dyktowaniu, aby rzadziej powtarzały się błędy pisowni i fraz.",
+          "dictionaryDescription": "Dodaj nazwy, żargon i preferowaną pisownię, aby dyktowanie używało słów, które są dla Ciebie ważne."
         },
         "approveCorrectionAria": "Zatwierdź korektę {{original}} do {{corrected}}",
         "approveAlways": "Zatwierdź i zawsze stosuj",
@@ -2291,6 +2306,11 @@
       "sepia": "Sepia",
       "ocean": "Ocean",
       "rose": "Róża",
+      "aurora": "Zorza",
+      "lagoon": "Laguna",
+      "daybreak": "Świt",
+      "ember": "Żar",
+      "galaxy": "Galaktyka",
       "forest": "Las",
       "solarized": "Solarizowane"
     },

@@ -689,6 +689,11 @@
           "ocean": "đại dương",
           "forest": "rừng",
           "rose": "hoa hồng",
+          "aurora": "cực quang",
+          "lagoon": "đầm xanh",
+          "daybreak": "bình minh",
+          "ember": "than hồng",
+          "galaxy": "thiên hà",
           "slate": "Đá phiến",
           "solarized": "Năng lượng mặt trời",
           "graphite": "than chì"
@@ -819,7 +824,15 @@
           "spoken": "giao diện người dùng nhanh chóng",
           "written": "SwiftUI"
         },
-        "add": "Thêm mục",
+        "add": "Thêm mới",
+        "addTitle": "Thêm vào từ điển",
+        "addWord": "Thêm từ",
+        "addSpokenLabel": "Dạng nói",
+        "addSpokenPlaceholder": "ví dụ: open ai",
+        "addWrittenLabel": "Dạng viết",
+        "addWrittenPlaceholder": "ví dụ: OpenAI",
+        "addExactMatchOnly": "Chỉ khớp chính xác",
+        "addExactMatchHelp": "Chỉ thay thế cụm này khi nó xuất hiện đúng như đã viết.",
         "remove": "Xóa",
         "duplicateBadge": "Cụm từ nói trùng lặp"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Xem từ điển",
           "corrections": "Sửa chữa",
-          "dictionary": "từ điển"
+          "dictionary": "từ điển",
+          "correctionsDescription": "Vox Jot học từ các chỉnh sửa sau khi đọc chính tả để giảm lỗi chính tả và cụm từ lặp lại.",
+          "dictionaryDescription": "Thêm tên, thuật ngữ và cách viết ưu tiên để tính năng đọc chính tả dùng những từ quan trọng với bạn."
         },
         "approveCorrectionAria": "Phê duyệt sửa {{original}} thành {{corrected}}",
         "approveAlways": "Phê duyệt và luôn áp dụng",
@@ -2291,6 +2306,11 @@
       "sepia": "màu nâu đỏ",
       "ocean": "đại dương",
       "rose": "hoa hồng",
+      "aurora": "cực quang",
+      "lagoon": "đầm xanh",
+      "daybreak": "bình minh",
+      "ember": "than hồng",
+      "galaxy": "thiên hà",
       "forest": "rừng",
       "solarized": "Năng lượng mặt trời"
     },

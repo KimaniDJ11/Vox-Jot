@@ -555,8 +555,8 @@ mod tests {
         assert!(originals.contains(&"brwn"));
         assert!(correcteds.contains(&"brown"));
         assert!(
-            all.iter().all(|correction| correction.user_approved),
-            "Observed destination-field edits should be promoted to approved corrections"
+            all.iter().all(|correction| !correction.user_approved),
+            "Observed destination-field edits should remain learned corrections, not dictionary entries"
         );
     }
 

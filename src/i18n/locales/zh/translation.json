@@ -689,6 +689,11 @@
           "ocean": "海洋",
           "forest": "森林",
           "rose": "玫瑰",
+          "aurora": "极光",
+          "lagoon": "潟湖",
+          "daybreak": "破晓",
+          "ember": "余烬",
+          "galaxy": "银河",
           "slate": "板岩",
           "solarized": "晒伤",
           "graphite": "石墨"
@@ -840,7 +845,15 @@
           "spoken": "快速用户界面",
           "written": "SwiftUI"
         },
-        "add": "添加条目",
+        "add": "添加新项",
+        "addTitle": "添加到词典",
+        "addWord": "添加单词",
+        "addSpokenLabel": "口述形式",
+        "addSpokenPlaceholder": "例如：开放 A I",
+        "addWrittenLabel": "书写形式",
+        "addWrittenPlaceholder": "例如：OpenAI",
+        "addExactMatchOnly": "仅完全匹配",
+        "addExactMatchHelp": "仅当该短语完全按填写内容出现时才替换。",
         "remove": "删除",
         "duplicateBadge": "重复的口语短语"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "字典视图",
           "corrections": "更正",
-          "dictionary": "词典"
+          "dictionary": "词典",
+          "correctionsDescription": "Vox Jot 会从听写后的编辑中学习，减少重复出现的拼写和短语错误。",
+          "dictionaryDescription": "添加姓名、术语和偏好的拼写，让听写使用对你重要的词语。"
         },
         "approveCorrectionAria": "批准更正 {{original}} 至 {{corrected}}",
         "approveAlways": "批准并始终申请",
@@ -2291,6 +2306,11 @@
       "sepia": "棕褐色",
       "ocean": "海洋",
       "rose": "玫瑰",
+      "aurora": "极光",
+      "lagoon": "潟湖",
+      "daybreak": "破晓",
+      "ember": "余烬",
+      "galaxy": "银河",
       "forest": "森林",
       "solarized": "晒伤"
     },

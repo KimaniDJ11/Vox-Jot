@@ -573,6 +573,11 @@
           "ocean": "المحيط",
           "forest": "غابة",
           "rose": "روز",
+          "aurora": "الشفق القطبي",
+          "lagoon": "البحيرة",
+          "daybreak": "الفجر",
+          "ember": "الجمر",
+          "galaxy": "مجرة",
           "slate": "لائحة",
           "solarized": "مشمس",
           "graphite": "الجرافيت"
@@ -724,7 +729,15 @@
           "spoken": "واجهة المستخدم السريعة",
           "written": "SwiftUI"
         },
-        "add": "إضافة إدخال",
+        "add": "أضف جديدًا",
+        "addTitle": "إضافة إلى القاموس",
+        "addWord": "أضف كلمة",
+        "addSpokenLabel": "الصيغة المنطوقة",
+        "addSpokenPlaceholder": "مثال: أوبن إيه آي",
+        "addWrittenLabel": "الصيغة المكتوبة",
+        "addWrittenPlaceholder": "مثال: OpenAI",
+        "addExactMatchOnly": "مطابقة تامة فقط",
+        "addExactMatchHelp": "استبدل هذه العبارة فقط عندما تظهر تمامًا كما كُتبت.",
         "remove": "إزالة",
         "duplicateBadge": "عبارة منطوقة مكررة"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "عرض القاموس",
           "corrections": "التصحيحات",
-          "dictionary": "قاموس"
+          "dictionary": "قاموس",
+          "correctionsDescription": "يتعلّم Vox Jot من التعديلات بعد الإملاء حتى تقل أخطاء التهجئة والعبارات المتكررة.",
+          "dictionaryDescription": "أضف الأسماء والمصطلحات والتهجئات المفضلة حتى يستخدم الإملاء الكلمات التي تهمك."
         },
         "approveCorrectionAria": "الموافقة على التصحيح {{original}} إلى {{corrected}}",
         "approveAlways": "الموافقة وتطبيق دائما",
@@ -2291,6 +2306,11 @@
       "sepia": "بني داكن",
       "ocean": "المحيط",
       "rose": "روز",
+      "aurora": "الشفق القطبي",
+      "lagoon": "البحيرة",
+      "daybreak": "الفجر",
+      "ember": "الجمر",
+      "galaxy": "مجرة",
       "forest": "غابة",
       "solarized": "مشمس"
     },

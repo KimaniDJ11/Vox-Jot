@@ -689,6 +689,11 @@
           "ocean": "océano",
           "forest": "bosque",
           "rose": "rosa",
+          "aurora": "luces del norte",
+          "lagoon": "laguna",
+          "daybreak": "amanecer",
+          "ember": "brasa",
+          "galaxy": "galaxia",
           "slate": "pizarra",
           "solarized": "Solarizado",
           "graphite": "Grafito"
@@ -819,7 +824,15 @@
           "spoken": "interfaz de usuario rápida",
           "written": "SwiftUI"
         },
-        "add": "Agregar entrada",
+        "add": "Agregar nuevo",
+        "addTitle": "Agregar al diccionario",
+        "addWord": "Agregar palabra",
+        "addSpokenLabel": "Forma hablada",
+        "addSpokenPlaceholder": "p. ej., open ai",
+        "addWrittenLabel": "Forma escrita",
+        "addWrittenPlaceholder": "p. ej., OpenAI",
+        "addExactMatchOnly": "Solo coincidencia exacta",
+        "addExactMatchHelp": "Reemplaza esta frase solo cuando aparezca exactamente como está escrita.",
         "remove": "Quitar",
         "duplicateBadge": "Frase hablada duplicada"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Vista de diccionario",
           "corrections": "Correcciones",
-          "dictionary": "Diccionario"
+          "dictionary": "Diccionario",
+          "correctionsDescription": "Vox Jot aprende de las ediciones después del dictado para reducir errores repetidos de ortografía y frases.",
+          "dictionaryDescription": "Añade nombres, jerga y grafías preferidas para que el dictado use las palabras que te importan."
         },
         "approveCorrectionAria": "Aprobar corrección {{original}} a {{corrected}}",
         "approveAlways": "Aprobar y aplicar siempre",
@@ -2291,6 +2306,11 @@
       "sepia": "sepia",
       "ocean": "océano",
       "rose": "rosa",
+      "aurora": "luces del norte",
+      "lagoon": "laguna",
+      "daybreak": "amanecer",
+      "ember": "brasa",
+      "galaxy": "galaxia",
       "forest": "bosque",
       "solarized": "Solarizado"
     },

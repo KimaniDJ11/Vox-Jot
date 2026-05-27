@@ -689,6 +689,11 @@
           "ocean": "Океан",
           "forest": "Лес",
           "rose": "Роза",
+          "aurora": "Аврора",
+          "lagoon": "Лагуна",
+          "daybreak": "Рассвет",
+          "ember": "Тление",
+          "galaxy": "Галактика",
           "slate": "Шифер",
           "solarized": "Соляризованный",
           "graphite": "Графит"
@@ -840,7 +845,15 @@
           "spoken": "быстрый интерфейс",
           "written": "SwiftUI"
         },
-        "add": "Добавить запись",
+        "add": "Добавить новое",
+        "addTitle": "Добавить в словарь",
+        "addWord": "Добавить слово",
+        "addSpokenLabel": "Произносимая форма",
+        "addSpokenPlaceholder": "например, опен эй-ай",
+        "addWrittenLabel": "Письменная форма",
+        "addWrittenPlaceholder": "например, OpenAI",
+        "addExactMatchOnly": "Только точное совпадение",
+        "addExactMatchHelp": "Заменять эту фразу только когда она появляется точно в указанном виде.",
         "remove": "Удалить",
         "duplicateBadge": "Повторяющаяся произнесенная фраза"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Просмотр словаря",
           "corrections": "Исправления",
-          "dictionary": "Словарь"
+          "dictionary": "Словарь",
+          "correctionsDescription": "Vox Jot учится на правках после диктовки, чтобы повторяющиеся ошибки в написании и фразах встречались реже.",
+          "dictionaryDescription": "Добавьте имена, термины и предпочитаемые написания, чтобы диктовка использовала важные для вас слова."
         },
         "approveCorrectionAria": "Утвердить исправление {{original}} на {{corrected}}.",
         "approveAlways": "Одобрять и всегда применять",
@@ -2291,6 +2306,11 @@
       "sepia": "сепия",
       "ocean": "Океан",
       "rose": "Роза",
+      "aurora": "Аврора",
+      "lagoon": "Лагуна",
+      "daybreak": "Рассвет",
+      "ember": "Тление",
+      "galaxy": "Галактика",
       "forest": "Лес",
       "solarized": "Соляризованный"
     },

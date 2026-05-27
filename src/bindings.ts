@@ -2127,6 +2127,21 @@ async importCorrections(json: string) : Promise<Result<number, string>> {
 }
 },
 /**
+ * Import a dictionary file selected by the frontend file picker.
+ *
+ * Supported formats include Vox Jot JSON exports, JSON dictionary arrays or
+ * maps, macOS text replacement plists, CSV/TSV/TAB two-column files, Hunspell
+ * `.dic` word lists, and plain text word lists.
+ */
+async importDictionaryFile(path: string) : Promise<Result<DictionaryImportSummary, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_dictionary_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Manually add a new correction pair.
  */
 async addManualCorrection(original: string, corrected: string, exactOnly: boolean) : Promise<Result<null, string>> {
@@ -2716,6 +2731,7 @@ top_app_name: string | null;
  */
 top_app_bundle_id: string | null }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
+export type DictionaryImportSummary = { imported: number; skipped: number }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"

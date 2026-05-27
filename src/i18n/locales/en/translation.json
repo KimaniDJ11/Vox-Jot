@@ -769,8 +769,8 @@
           "ariaLabel": "Dictionary view",
           "corrections": "Corrections",
           "dictionary": "Dictionary",
-          "correctionsDescription": "Corrections are learned automatically from edits you make after dictation. Vox Jot reads the text field after insertion, then uses those fixes to avoid repeated names, spellings, and phrase mistakes.",
-          "dictionaryDescription": "Vox Jot uses your personal dictionary for words and names you add manually or import. Add preferred spellings, company jargon, client names, and industry terms so dictation uses the language that matters to you."
+          "correctionsDescription": "Vox Jot learns from edits after dictation so repeated spelling and phrase mistakes happen less often.",
+          "dictionaryDescription": "Add names, jargon, and preferred spellings so dictation uses the words that matter to you."
         },
         "search": {
           "placeholder": "Search corrections",
@@ -1065,6 +1065,11 @@
           "ocean": "Ocean",
           "forest": "Forest",
           "rose": "Rose",
+          "aurora": "Aurora",
+          "lagoon": "Lagoon",
+          "daybreak": "Daybreak",
+          "ember": "Ember",
+          "galaxy": "Galaxy",
           "slate": "Slate",
           "solarized": "Solarized",
           "graphite": "Graphite",
@@ -1304,7 +1309,15 @@
           "spoken": "swift ui",
           "written": "SwiftUI"
         },
-        "add": "Add entry",
+        "add": "Add new",
+        "addTitle": "Add to dictionary",
+        "addWord": "Add word",
+        "addSpokenLabel": "Spoken form",
+        "addSpokenPlaceholder": "e.g. open ai",
+        "addWrittenLabel": "Written form",
+        "addWrittenPlaceholder": "e.g. OpenAI",
+        "addExactMatchOnly": "Exact match only",
+        "addExactMatchHelp": "Only replace this phrase when it appears exactly as written.",
         "remove": "Remove",
         "duplicateBadge": "Duplicate spoken phrase"
       },
@@ -2309,6 +2322,11 @@
       "sepia": "Sepia",
       "ocean": "Ocean",
       "rose": "Rose",
+      "aurora": "Aurora",
+      "lagoon": "Lagoon",
+      "daybreak": "Daybreak",
+      "ember": "Ember",
+      "galaxy": "Galaxy",
       "forest": "Forest",
       "solarized": "Solarized"
     },

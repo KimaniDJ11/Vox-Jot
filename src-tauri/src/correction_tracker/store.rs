@@ -537,11 +537,66 @@ impl CorrectionStore {
         Ok(())
     }
 
+    /// Add or update a user-approved correction imported from a dictionary file.
+    pub fn add_imported_correction(
+        &self,
+        original: &str,
+        corrected: &str,
+        exact_only: bool,
+        timestamp: i64,
+    ) -> Result<()> {
+        let normalized_original = original.trim();
+        let normalized_corrected = corrected.trim();
+
+        if normalized_original.is_empty() || normalized_corrected.is_empty() {
+            anyhow::bail!("Original and corrected text must not be empty");
+        }
+
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO auto_corrections (
+                original,
+                corrected,
+                frequency,
+                confidence,
+                exact_only,
+                source_app,
+                source_kind,
+                first_seen,
+                last_seen,
+                is_active,
+                user_approved
+             )
+             VALUES (?1, ?2, 1, 1.0, ?3, ?4, 'imported', ?5, ?5, 1, 1)
+             ON CONFLICT(original, corrected) DO UPDATE SET
+                frequency = MAX(auto_corrections.frequency, excluded.frequency),
+                confidence = 1.0,
+                exact_only = excluded.exact_only,
+                source_app = excluded.source_app,
+                source_kind = excluded.source_kind,
+                last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
+                is_active = 1,
+                user_approved = 1",
+            params![
+                normalized_original,
+                normalized_corrected,
+                exact_only,
+                "imported",
+                timestamp,
+            ],
+        )?;
+
+        debug!(
+            "Imported correction '{}' → '{}' (exact_only: {})",
+            normalized_original, normalized_corrected, exact_only
+        );
+        Ok(())
+    }
+
     /// Add or update a correction directly observed from the user editing the
-    /// pasted text in another app. Unlike passive auto-learning, a plausible
-    /// observed edit is treated as user-approved because the user explicitly
-    /// made the replacement in the destination field. We still preserve the
-    /// heuristic confidence so the UI can explain why it was accepted.
+    /// pasted text in another app. Destination-field edits are still learned
+    /// corrections, not manual dictionary entries, so they remain unapproved
+    /// until the user promotes them or they satisfy auto-apply thresholds.
     pub fn add_observed_user_correction(&self, pair: &CorrectionPair) -> Result<Option<f64>> {
         let normalized_original = pair.original.trim();
         let normalized_corrected = pair.corrected.trim();
@@ -573,15 +628,20 @@ impl CorrectionStore {
                 is_active,
                 user_approved
              )
-             VALUES (?1, ?2, 1, ?3, 0, ?4, 'observed_edit', ?5, ?6, 1, 1)
+             VALUES (?1, ?2, 1, ?3, 0, ?4, 'observed_edit', ?5, ?6, 1, 0)
              ON CONFLICT(original, corrected) DO UPDATE SET
                 frequency = MAX(auto_corrections.frequency + 1, excluded.frequency),
                 confidence = MAX(auto_corrections.confidence, excluded.confidence),
-                source_app = COALESCE(excluded.source_app, auto_corrections.source_app),
-                source_kind = excluded.source_kind,
+                source_app = CASE
+                    WHEN auto_corrections.user_approved = 1 THEN auto_corrections.source_app
+                    ELSE COALESCE(excluded.source_app, auto_corrections.source_app)
+                END,
+                source_kind = CASE
+                    WHEN auto_corrections.user_approved = 1 THEN auto_corrections.source_kind
+                    ELSE excluded.source_kind
+                END,
                 last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
-                is_active = 1,
-                user_approved = 1",
+                is_active = 1",
             params![
                 normalized_original,
                 normalized_corrected,
@@ -593,7 +653,7 @@ impl CorrectionStore {
         )?;
 
         debug!(
-            "Approved observed correction '{}' → '{}' (conf: {:.2})",
+            "Learned observed correction '{}' → '{}' (conf: {:.2})",
             normalized_original, normalized_corrected, confidence
         );
         Ok(Some(confidence))
@@ -960,7 +1020,7 @@ mod tests {
     }
 
     #[test]
-    fn test_observed_user_correction_is_approved_with_confidence() {
+    fn test_observed_user_correction_is_learned_but_not_dictionary() {
         let (store, _dir) = setup_store();
         let pair = CorrectionPair {
             original: "Cheyene".to_string(),
@@ -979,18 +1039,43 @@ mod tests {
         assert_eq!(all[0].original, "Cheyene");
         assert_eq!(all[0].corrected, "Cheyenne");
         assert_eq!(all[0].frequency, 1);
-        assert!(all[0].user_approved);
+        assert!(!all[0].user_approved);
         assert_eq!(all[0].source_kind, CorrectionSourceKind::ObservedEdit);
         assert!(matches!(
             all[0].auto_apply.status,
-            CorrectionAutoApplyStatus::Manual
+            CorrectionAutoApplyStatus::Candidate
         ));
         assert!(all[0].confidence >= pair.confidence);
 
         let entries = store.get_dictionary_entries(false, 3, 0.74, None).unwrap();
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].spoken, "Cheyene");
-        assert_eq!(entries[0].written, "Cheyenne");
+        assert!(
+            entries.is_empty(),
+            "Observed field edits should appear in Corrections, not Dictionary"
+        );
+    }
+
+    #[test]
+    fn test_observed_user_correction_does_not_reclassify_manual_dictionary_entry() {
+        let (store, _dir) = setup_store();
+        store
+            .add_manual_correction("Cheyene", "Cheyenne", false, 900)
+            .unwrap();
+
+        let pair = CorrectionPair {
+            original: "Cheyene".to_string(),
+            corrected: "Cheyenne".to_string(),
+            confidence: 0.82,
+            source_app: Some("com.apple.TextEdit".to_string()),
+            first_seen: 1000,
+            last_seen: 1001,
+        };
+        assert!(store.add_observed_user_correction(&pair).unwrap().is_some());
+
+        let all = store.list_all().unwrap();
+        assert_eq!(all.len(), 1);
+        assert!(all[0].user_approved);
+        assert_eq!(all[0].source_kind, CorrectionSourceKind::Manual);
+        assert_eq!(all[0].source_app.as_deref(), Some("manual"));
     }
 
     #[test]

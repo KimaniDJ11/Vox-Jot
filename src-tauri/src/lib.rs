@@ -949,6 +949,7 @@ pub fn run(cli_args: CliArgs) {
         commands::corrections::clear_all_corrections,
         commands::corrections::export_corrections,
         commands::corrections::import_corrections,
+        commands::corrections::import_dictionary_file,
         commands::corrections::add_manual_correction,
         commands::corrections::add_transcript_word_correction,
         commands::stats::get_dictation_stats,

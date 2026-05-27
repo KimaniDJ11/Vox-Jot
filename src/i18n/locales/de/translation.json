@@ -689,6 +689,11 @@
           "ocean": "Ozean",
           "forest": "Wald",
           "rose": "Rose",
+          "aurora": "Polarlicht",
+          "lagoon": "Lagune",
+          "daybreak": "Morgengrauen",
+          "ember": "Glut",
+          "galaxy": "Galaxie",
           "slate": "Schiefer",
           "solarized": "Solarisiert",
           "graphite": "Graphit"
@@ -840,7 +845,15 @@
           "spoken": "schnelle Benutzeroberfläche",
           "written": "SwiftUI"
         },
-        "add": "Eintrag hinzufügen",
+        "add": "Neu hinzufügen",
+        "addTitle": "Zum Wörterbuch hinzufügen",
+        "addWord": "Wort hinzufügen",
+        "addSpokenLabel": "Gesprochene Form",
+        "addSpokenPlaceholder": "z. B. open ai",
+        "addWrittenLabel": "Geschriebene Form",
+        "addWrittenPlaceholder": "z. B. OpenAI",
+        "addExactMatchOnly": "Nur genaue Übereinstimmung",
+        "addExactMatchHelp": "Diese Phrase nur ersetzen, wenn sie genau wie geschrieben erscheint.",
         "remove": "Entfernen",
         "duplicateBadge": "Doppelte gesprochene Phrase"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "Wörterbuchansicht",
           "corrections": "Korrekturen",
-          "dictionary": "Wörterbuch"
+          "dictionary": "Wörterbuch",
+          "correctionsDescription": "Vox Jot lernt aus Bearbeitungen nach dem Diktat, damit wiederholte Rechtschreib- und Formulierungsfehler seltener auftreten.",
+          "dictionaryDescription": "Fügen Sie Namen, Fachbegriffe und bevorzugte Schreibweisen hinzu, damit das Diktat die Wörter verwendet, die Ihnen wichtig sind."
         },
         "approveCorrectionAria": "Korrektur {{original}} zu {{corrected}} genehmigen",
         "approveAlways": "Genehmigen Sie und bewerben Sie sich immer",
@@ -2291,6 +2306,11 @@
       "sepia": "Sepia",
       "ocean": "Ozean",
       "rose": "Rose",
+      "aurora": "Polarlicht",
+      "lagoon": "Lagune",
+      "daybreak": "Morgengrauen",
+      "ember": "Glut",
+      "galaxy": "Galaxie",
       "forest": "Wald",
       "solarized": "Solarisiert"
     },

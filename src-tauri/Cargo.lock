@@ -8019,6 +8019,7 @@ dependencies = [
  "notify-debouncer-full",
  "objc",
  "once_cell",
+ "plist",
  "png 0.17.16",
  "rdev 0.5.0-2",
  "regex",

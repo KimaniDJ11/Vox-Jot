@@ -689,6 +689,11 @@
           "ocean": "オーシャン",
           "forest": "森",
           "rose": "ローズ",
+          "aurora": "オーロラ",
+          "lagoon": "ラグーン",
+          "daybreak": "夜明け",
+          "ember": "残り火",
+          "galaxy": "銀河",
           "slate": "スレート",
           "solarized": "ソラライズド",
           "graphite": "グラファイト"
@@ -840,7 +845,15 @@
           "spoken": "迅速なUI",
           "written": "SwiftUI"
         },
-        "add": "エントリを追加",
+        "add": "新規追加",
+        "addTitle": "辞書に追加",
+        "addWord": "単語を追加",
+        "addSpokenLabel": "読み方",
+        "addSpokenPlaceholder": "例: オープンエーアイ",
+        "addWrittenLabel": "表記",
+        "addWrittenPlaceholder": "例: OpenAI",
+        "addExactMatchOnly": "完全一致のみ",
+        "addExactMatchHelp": "このフレーズが入力どおりに表示された場合のみ置換します。",
         "remove": "削除",
         "duplicateBadge": "重複した発話フレーズ"
       },
@@ -1148,7 +1161,9 @@
         "views": {
           "ariaLabel": "辞書ビュー",
           "corrections": "訂正",
-          "dictionary": "辞書"
+          "dictionary": "辞書",
+          "correctionsDescription": "Vox Jot はディクテーション後の編集から学習し、繰り返されるスペルやフレーズの誤りを減らします。",
+          "dictionaryDescription": "名前、専門用語、優先する表記を追加して、ディクテーションで重要な言葉が使われるようにします。"
         },
         "approveCorrectionAria": "修正を承認 {{original}} から {{corrected}}",
         "approveAlways": "承認して必ず申請してください",
@@ -2291,6 +2306,11 @@
       "sepia": "セピア",
       "ocean": "オーシャン",
       "rose": "ローズ",
+      "aurora": "オーロラ",
+      "lagoon": "ラグーン",
+      "daybreak": "夜明け",
+      "ember": "残り火",
+      "galaxy": "銀河",
       "forest": "森",
       "solarized": "ソラライズド"
     },

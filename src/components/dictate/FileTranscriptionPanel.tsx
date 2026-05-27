@@ -18,7 +18,6 @@ import {
   Check,
   ChevronDown,
   ClipboardCopy,
-  FileAudio,
   FileText,
   Folder,
   FolderPlus,
@@ -411,7 +410,7 @@ export const FileTranscriptionPanel: React.FC = () => {
           <div
             className={[
               subtleCardClassName,
-              "space-y-4 transition-[border-color,background-color,box-shadow] duration-150",
+              "space-y-0 overflow-hidden transition-[border-color,background-color,box-shadow] duration-150",
             ].join(" ")}
           >
             <FileTranscriptionStatusHeader
@@ -424,29 +423,24 @@ export const FileTranscriptionPanel: React.FC = () => {
 
             <div
               className={[
-                "flex min-h-[150px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-6 text-center transition-[border-color,background-color,box-shadow] duration-150",
+                "flex flex-col items-center justify-center gap-1.5 rounded-xl py-8 text-center transition-all duration-200",
                 isDragOver
-                  ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[inset_0_0_0_1px_var(--accent)]"
-                  : "border-[var(--border)] bg-[var(--bg)]",
+                  ? "bg-[var(--accent-soft,transparent)] shadow-[inset_0_0_0_2px_var(--accent)]"
+                  : "bg-[var(--surface-muted,var(--bg))]",
               ].join(" ")}
             >
-              <div
-                className="flex size-11 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
-                aria-hidden="true"
-              >
-                {isDragOver ? <Upload size={20} /> : <FileAudio size={20} />}
-              </div>
               {isDragOver ? (
-                <div className="text-sm font-semibold text-[var(--accent)]">
+                <div className="flex items-center gap-2 text-sm font-medium text-[var(--accent)]">
+                  <Upload size={16} aria-hidden="true" />
                   {t("dictate.fileTranscription.dropRelease", {
                     defaultValue: "Release to transcribe",
                   })}
                 </div>
               ) : (
                 <>
-                  <div className="text-sm font-semibold text-[var(--text)]">
+                  <div className="text-sm text-[var(--muted)]">
                     {t("dictate.fileTranscription.dropHint", {
-                      defaultValue: "Drag & drop an audio or video file here",
+                      defaultValue: "Drop audio or video file here",
                     })}
                   </div>
                   <div className="text-[11px] text-[var(--muted)]">
@@ -458,7 +452,7 @@ export const FileTranscriptionPanel: React.FC = () => {
                     type="button"
                     onClick={pickFile}
                     disabled={isRunning}
-                    className="cursor-pointer rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="cursor-pointer text-xs font-medium text-[var(--accent)] underline decoration-[var(--accent)]/40 underline-offset-2 transition-colors hover:text-[var(--accent-hover)] hover:decoration-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {isRunning
                       ? t("dictate.fileTranscription.transcribing", {
@@ -482,7 +476,7 @@ export const FileTranscriptionPanel: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 pt-5">
               <label
                 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]"
                 htmlFor="file-transcription-output"
@@ -499,7 +493,7 @@ export const FileTranscriptionPanel: React.FC = () => {
                   defaultValue: "Transcript appears here after processing.",
                 })}
                 aria-live="polite"
-                className="min-h-[170px] resize-none rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-3 text-sm font-normal shadow-none placeholder:italic placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-glow)]"
+                className="min-h-[110px] resize-none rounded-none border-none bg-transparent px-0 py-0 text-sm font-normal shadow-none placeholder:italic placeholder:text-[var(--muted)] hover:bg-transparent focus:ring-0"
               />
             </div>
 
@@ -545,7 +539,7 @@ export const FileTranscriptionPanel: React.FC = () => {
                 </button>
               </div>
               <Button
-                variant="secondary"
+                variant="primary"
                 size="sm"
                 onClick={handleCopy}
                 disabled={!transcription.trim() || isRunning}

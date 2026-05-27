@@ -26,7 +26,11 @@ import type {
   WatchFolderOutputFormat,
 } from "@/bindings";
 import { commands } from "@/bindings";
-import { SegmentedControl, SettingsGroup } from "@/components/ui";
+import {
+  ActionIconButton,
+  SegmentedControl,
+  SettingsGroup,
+} from "@/components/ui";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Textarea } from "@/components/ui/Textarea";
@@ -886,17 +890,16 @@ const WatchedFoldersGroup: React.FC = () => {
                       })}
                     </option>
                   </select>
-                  <Button
+                  <ActionIconButton
                     type="button"
-                    variant="danger-ghost"
-                    size="icon-xs"
+                    tone="danger"
                     onClick={() => void removeFolder(f)}
                     aria-label={t("dictate.watchFolders.remove", {
                       defaultValue: "Remove folder",
                     })}
                   >
-                    <Trash2 />
-                  </Button>
+                    <Trash2 aria-hidden />
+                  </ActionIconButton>
                 </div>
               </li>
             );

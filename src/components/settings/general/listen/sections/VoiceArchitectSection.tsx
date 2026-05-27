@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Layers, Loader2, WandSparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { commands, type VoiceInfo } from "@/bindings";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -892,16 +893,14 @@ export const VoiceArchitectSection: React.FC<{
                   })}
                 </p>
               </div>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={() => setSaveTunedVoiceWindowOpen(false)}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
                 <X aria-hidden />
-              </Button>
+              </ActionIconButton>
             </div>
             <div className="space-y-4 p-4">
               <label className="block space-y-2">

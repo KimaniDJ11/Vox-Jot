@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { FolderOpen, SkipBack, SkipForward } from "lucide-react";
 
 import { commands, type HistoryEntry } from "@/bindings";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { DockedAudioHud } from "@/components/ui/DockedAudioHud";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
@@ -49,8 +50,6 @@ const formatClock = (seconds: number): string => {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
-
-const dockedActionButtonClassName = `inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)] ${interactiveFocusRingClass}`;
 
 export const TranscriptView: React.FC<TranscriptViewProps> = ({
   entries,
@@ -395,39 +394,33 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
         }
         floatingControls={
           <>
-            <button
-              type="button"
+            <ActionIconButton
               onClick={() =>
                 previousEntry ? onSelectEntry(previousEntry.id) : undefined
               }
               disabled={!previousEntry}
-              className={dockedActionButtonClassName}
               title={t("settings.history.transcript.previous")}
               aria-label={t("settings.history.transcript.previous")}
             >
-              <SkipBack width={16} height={16} />
-            </button>
-            <button
-              type="button"
+              <SkipBack aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
               onClick={() =>
                 nextEntry ? onSelectEntry(nextEntry.id) : undefined
               }
               disabled={!nextEntry}
-              className={dockedActionButtonClassName}
               title={t("settings.history.transcript.next")}
               aria-label={t("settings.history.transcript.next")}
             >
-              <SkipForward width={16} height={16} />
-            </button>
-            <button
-              type="button"
+              <SkipForward aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
               onClick={() => void revealRecording()}
-              className={dockedActionButtonClassName}
               title={t("settings.history.showRecordingInFolder")}
               aria-label={t("settings.history.showRecordingInFolder")}
             >
-              <FolderOpen width={15} height={15} />
-            </button>
+              <FolderOpen aria-hidden />
+            </ActionIconButton>
           </>
         }
       />

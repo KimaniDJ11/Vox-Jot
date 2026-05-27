@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
+import { ActionIconButton } from "../../ui/ActionIconButton";
 import { Button } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
 import { SegmentedControl } from "../../ui/SegmentedControl";
@@ -475,13 +476,6 @@ const sectionLabelClassName =
 const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[var(--panel-bg)] px-3 py-3";
 
-const historyActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
-const historyDangerActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--text)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
-const historyConfirmDeleteButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
-const historyActionIconSize = 18;
 const historyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
 
@@ -722,53 +716,30 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
 
   const actions = (
     <>
-      <button
-        type="button"
+      <ActionIconButton
         onClick={onOpenTranscript}
-        className={historyActionButtonClassName}
         title={t("settings.history.transcript.openLabel")}
         aria-label={t("settings.history.transcript.openLabel")}
       >
-        <FileText
-          width={historyActionIconSize}
-          height={historyActionIconSize}
-          aria-hidden
-        />
-      </button>
-      <button
-        type="button"
+        <FileText aria-hidden />
+      </ActionIconButton>
+      <ActionIconButton
         onClick={handleCopyText}
-        className={historyActionButtonClassName}
         title={t("settings.history.copyToClipboard")}
         aria-label={t("settings.history.copyToClipboard")}
       >
-        {showCopied ? (
-          <Check width={historyActionIconSize} height={historyActionIconSize} />
-        ) : (
-          <Copy width={historyActionIconSize} height={historyActionIconSize} />
-        )}
-      </button>
-      <button
-        type="button"
+        {showCopied ? <Check aria-hidden /> : <Copy aria-hidden />}
+      </ActionIconButton>
+      <ActionIconButton
         onClick={onRevealInFolder}
-        className={historyActionButtonClassName}
         title={t("settings.history.showRecordingInFolder")}
         aria-label={t("settings.history.showRecordingInFolder")}
       >
-        <FolderOpen
-          width={historyActionIconSize}
-          height={historyActionIconSize}
-          aria-hidden
-        />
-      </button>
-      <button
-        type="button"
+        <FolderOpen aria-hidden />
+      </ActionIconButton>
+      <ActionIconButton
         onClick={onToggleSaved}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-          entry.saved
-            ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
-            : "text-[var(--text)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-        }`}
+        active={entry.saved}
         title={
           entry.saved
             ? t("settings.history.unsave")
@@ -780,49 +751,35 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             : t("settings.history.save")
         }
       >
-        <Star
-          width={historyActionIconSize}
-          height={historyActionIconSize}
-          fill={entry.saved ? "currentColor" : "none"}
-        />
-      </button>
+        <Star fill={entry.saved ? "currentColor" : "none"} />
+      </ActionIconButton>
       {showDeleteConfirm ? (
         <>
-          <button
-            type="button"
+          <ActionIconButton
             onClick={() => void handleDeleteEntry()}
-            className={historyConfirmDeleteButtonClassName}
+            tone="confirm"
             title={t("settings.history.delete")}
             aria-label={t("settings.history.delete")}
           >
-            <Trash2
-              width={historyActionIconSize}
-              height={historyActionIconSize}
-            />
-          </button>
-          <button
-            type="button"
+            <Trash2 aria-hidden />
+          </ActionIconButton>
+          <ActionIconButton
             onClick={() => setShowDeleteConfirm(false)}
-            className={historyActionButtonClassName}
             title={t("common.cancel")}
             aria-label={t("common.cancel")}
           >
-            <X width={historyActionIconSize} height={historyActionIconSize} />
-          </button>
+            <X aria-hidden />
+          </ActionIconButton>
         </>
       ) : (
-        <button
-          type="button"
+        <ActionIconButton
           onClick={() => setShowDeleteConfirm(true)}
-          className={historyDangerActionButtonClassName}
+          tone="danger"
           title={t("settings.history.delete")}
           aria-label={t("settings.history.delete")}
         >
-          <Trash2
-            width={historyActionIconSize}
-            height={historyActionIconSize}
-          />
-        </button>
+          <Trash2 aria-hidden />
+        </ActionIconButton>
       )}
     </>
   );

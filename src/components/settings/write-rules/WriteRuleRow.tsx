@@ -21,7 +21,7 @@ import type {
   ToneDefinition,
   WriteRule,
 } from "@/bindings";
-import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
@@ -219,24 +219,21 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
+          <ActionIconButton
             onClick={onEdit}
             aria-label={t("refine.writeRules.row.editProfile")}
+            title={t("refine.writeRules.row.editProfile")}
           >
-            <Pencil />
-          </Button>
-          <Button
-            type="button"
-            variant="danger-ghost"
-            size="icon-sm"
+            <Pencil aria-hidden />
+          </ActionIconButton>
+          <ActionIconButton
+            tone="danger"
             onClick={onDelete}
             aria-label={t("refine.writeRules.row.deleteProfile")}
+            title={t("refine.writeRules.row.deleteProfile")}
           >
-            <Trash2 />
-          </Button>
+            <Trash2 aria-hidden />
+          </ActionIconButton>
         </div>
       </div>
     </div>

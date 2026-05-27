@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 export type LicenseGateKind = "non_commercial" | "custom_review";
@@ -136,17 +137,15 @@ const LicenseAcknowledgementDialog: React.FC<
               })}
             </p>
           </div>
-          <Button
+          <ActionIconButton
             type="button"
-            variant="ghost"
-            size="icon-sm"
             onClick={onCancel}
             disabled={busy}
             aria-label={t("common.close", { defaultValue: "Close" })}
             title={t("common.close", { defaultValue: "Close" })}
           >
-            <X />
-          </Button>
+            <X aria-hidden />
+          </ActionIconButton>
         </div>
 
         <div className="space-y-3">

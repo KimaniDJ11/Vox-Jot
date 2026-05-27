@@ -9,6 +9,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
@@ -115,10 +116,8 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
                   onUpdate(member.id, { presetId: newId });
                 }}
               />
-              <Button
-                type="button"
-                variant="danger-ghost"
-                size="icon-sm"
+              <ActionIconButton
+                tone="danger"
                 onClick={() => {
                   if (
                     confirmDestructiveAction(
@@ -132,9 +131,10 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
                 }}
                 disabled={disabled || cast.length <= 1}
                 title={t("storyStudio.cast.removeCharacter")}
+                aria-label={t("storyStudio.cast.removeCharacter")}
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+                <Trash2 aria-hidden />
+              </ActionIconButton>
             </div>
           ))}
         </div>

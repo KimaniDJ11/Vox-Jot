@@ -45,6 +45,7 @@ import {
   type SpeechAnalysisTask,
 } from "@/bindings";
 import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -1299,9 +1300,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                         {model.downloadable &&
                         !model.installed &&
                         !isDownloading ? (
-                          <Button
-                            size="icon"
-                            variant="ghost"
+                          <ActionIconButton
                             disabled={actionDisabled}
                             aria-label={t(
                               "modelHub.analysis.actions.download",
@@ -1314,23 +1313,18 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                               defaultValue: "Download {{modelName}}",
                               modelName: model.label,
                             })}
-                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                             onClick={() => onDownload(model)}
                           >
                             {isDownloading ? (
-                              <Loader2
-                                className="h-3.5 w-3.5 animate-spin"
-                                aria-hidden
-                              />
+                              <Loader2 className="animate-spin" aria-hidden />
                             ) : (
-                              <Download className="h-3.5 w-3.5" aria-hidden />
+                              <Download aria-hidden />
                             )}
-                          </Button>
+                          </ActionIconButton>
                         ) : null}
                         {model.downloadable && model.installed ? (
-                          <Button
-                            size="icon"
-                            variant="ghost"
+                          <ActionIconButton
+                            tone="danger"
                             disabled={Boolean(busyModelId) && !isBusy}
                             onClick={() => onRequestDelete(model.id)}
                             aria-label={t("modelHub.analysis.actions.delete", {
@@ -1341,17 +1335,13 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                               defaultValue: "Delete {{modelName}}",
                               modelName: model.label,
                             })}
-                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                           >
                             {isBusy ? (
-                              <Loader2
-                                className="h-3.5 w-3.5 animate-spin"
-                                aria-hidden
-                              />
+                              <Loader2 className="animate-spin" aria-hidden />
                             ) : (
-                              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                              <Trash2 aria-hidden />
                             )}
-                          </Button>
+                          </ActionIconButton>
                         ) : null}
                       </div>
                     ),

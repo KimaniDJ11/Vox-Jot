@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Slider } from "@/components/ui/Slider";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { type CompactBadgeItem } from "@/components/ui/CompactOverflow";
@@ -535,16 +536,14 @@ export const VoiceTuningCard: React.FC<{
             </button>
           ) : null}
           {onClose ? (
-            <Button
+            <ActionIconButton
               type="button"
-              variant="ghost"
-              size="icon-sm"
               onClick={onClose}
               aria-label={t("common.close", { defaultValue: "Close" })}
               title={t("common.close", { defaultValue: "Close" })}
             >
               <X aria-hidden />
-            </Button>
+            </ActionIconButton>
           ) : null}
         </div>
       </div>

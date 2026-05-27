@@ -11,6 +11,7 @@ import {
   Loader2,
   ScanSearch,
   Trash2,
+  X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -34,6 +35,7 @@ import {
   mergeSizeWithIdentityChips,
 } from "@/components/model-hub/modelIdentityChips";
 import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
@@ -1079,9 +1081,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         footerMetaItems={footerMetaItems}
         footerMetaLeadingActions={
           !model.installed && !dl ? (
-            <Button
-              variant="ghost"
-              size="icon"
+            <ActionIconButton
               title={t("modelHub.ocr.actions.importFromDisk", {
                 defaultValue: "Import from folder",
               })}
@@ -1094,10 +1094,9 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
                 event.stopPropagation();
                 void onImportNeural(model);
               }}
-              className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
             >
-              <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-            </Button>
+              <FolderOpen aria-hidden />
+            </ActionIconButton>
           ) : undefined
         }
         footerMetaLinks={[
@@ -1168,14 +1167,13 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             aria-hidden
           />
           <p className="min-w-0 flex-1 leading-snug">{catalogError}</p>
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <ActionIconButton
             onClick={() => setCatalogError(null)}
             aria-label={t("common.dismiss", { defaultValue: "Dismiss" })}
+            title={t("common.dismiss", { defaultValue: "Dismiss" })}
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          </Button>
+            <X aria-hidden />
+          </ActionIconButton>
         </div>
       ) : null}
 

@@ -76,7 +76,7 @@ export const DockedAudioHud: React.FC<DockedAudioHudProps> = ({
 
   return (
     <div
-      className={`story-audio-waveform-hud z-20 overflow-visible rounded-[1.75rem] border border-[var(--border)] bg-[var(--panel-bg)] shadow-[0_22px_60px_-18px_rgba(0,0,0,0.32)] ${className}`}
+      className={`story-audio-waveform-hud z-20 overflow-visible rounded-[1.75rem] ${className}`}
       data-expanded={isHudInteracting ? "true" : "false"}
       onMouseEnter={() => setIsHudInteracting(true)}
       onMouseLeave={() => setIsHudInteracting(false)}

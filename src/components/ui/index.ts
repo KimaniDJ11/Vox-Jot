@@ -7,3 +7,4 @@ export { SettingsGroup } from "./SettingsGroup";
 export { SegmentedControl } from "./SegmentedControl";
 export { Textarea } from "./Textarea";
 export { EmptyState } from "./EmptyState";
+export { ActionIconButton, actionIconSize } from "./ActionIconButton";

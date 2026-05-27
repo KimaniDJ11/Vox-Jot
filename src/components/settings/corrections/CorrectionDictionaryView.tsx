@@ -23,6 +23,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { InstalledApp, StoredCorrection } from "@/bindings";
+import { ActionIconButton } from "../../ui/ActionIconButton";
 import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
@@ -870,16 +871,14 @@ export const CorrectionDictionaryView: React.FC<
                   defaultValue: "Add entry",
                 })}
               </h2>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={resetManualEditor}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
-                <X />
-              </Button>
+                <X aria-hidden />
+              </ActionIconButton>
             </div>
             <div className="space-y-3">
               <label className="block space-y-1.5">
@@ -1109,37 +1108,27 @@ export const CorrectionDictionaryView: React.FC<
               <div className="relative flex items-center justify-start md:justify-end">
                 {confirmingDelete ? (
                   <div className={actionClusterClassName}>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="icon-sm"
+                    <ActionIconButton
+                      tone="confirm"
                       onClick={() => void handleDeleteGroup(group)}
                       title={t("common.delete")}
                       aria-label={t("common.delete")}
                     >
                       <Trash2 aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
+                    </ActionIconButton>
+                    <ActionIconButton
                       onClick={() => setConfirmingDeleteGroupKey(null)}
                       title={t("common.cancel")}
                       aria-label={t("common.cancel")}
                     >
                       <X aria-hidden />
-                    </Button>
+                    </ActionIconButton>
                   </div>
                 ) : (
                   <div className={actionClusterClassName}>
-                    <button
-                      type="button"
+                    <ActionIconButton
                       data-originals-trigger
-                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
-                        originalsOpen
-                          ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                          : "text-[var(--text)]"
-                      }`}
+                      active={originalsOpen}
                       onClick={() => {
                         setOpenDisableKey(null);
                         setDisableAppQuery("");
@@ -1164,8 +1153,8 @@ export const CorrectionDictionaryView: React.FC<
                         },
                       )}
                     >
-                      <History className="h-[18px] w-[18px]" aria-hidden />
-                    </button>
+                      <History aria-hidden />
+                    </ActionIconButton>
                     {originalsOpen ? (
                       <div
                         ref={originalsPopoverRef}
@@ -1184,17 +1173,16 @@ export const CorrectionDictionaryView: React.FC<
                               "settings.corrections.dictionary.columns.original",
                             )}
                           </p>
-                          <button
+                          <ActionIconButton
                             type="button"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                             onClick={() => setOpenOriginalsKey(null)}
                             aria-label={t("common.close", {
                               defaultValue: "Close",
                             })}
                             title={t("common.close", { defaultValue: "Close" })}
                           >
-                            <X className="h-3.5 w-3.5" aria-hidden />
-                          </button>
+                            <X aria-hidden />
+                          </ActionIconButton>
                         </div>
                         <div className="flex max-h-64 min-w-0 flex-wrap gap-1.5 overflow-y-auto pr-1">
                           {group.entries.map((entry) => (
@@ -1319,9 +1307,8 @@ export const CorrectionDictionaryView: React.FC<
                               },
                             )}
                           </p>
-                          <button
+                          <ActionIconButton
                             type="button"
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                             onClick={() => {
                               setOpenDisableKey(null);
                               setDisableAppQuery("");
@@ -1331,8 +1318,8 @@ export const CorrectionDictionaryView: React.FC<
                             })}
                             title={t("common.close", { defaultValue: "Close" })}
                           >
-                            <X className="h-3.5 w-3.5" aria-hidden />
-                          </button>
+                            <X aria-hidden />
+                          </ActionIconButton>
                         </div>
 
                         <button
@@ -1481,17 +1468,14 @@ export const CorrectionDictionaryView: React.FC<
                         </div>
                       </div>
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="danger-ghost"
-                      size="icon-sm"
-                      className="text-[var(--text)] [&>svg]:h-[18px] [&>svg]:w-[18px]"
+                    <ActionIconButton
+                      tone="danger"
                       onClick={() => setConfirmingDeleteGroupKey(groupKey)}
                       title={t("common.delete")}
                       aria-label={t("common.delete")}
                     >
                       <Trash2 aria-hidden />
-                    </Button>
+                    </ActionIconButton>
                   </div>
                 )}
               </div>

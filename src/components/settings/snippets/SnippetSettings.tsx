@@ -20,6 +20,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
+import { ActionIconButton } from "../../ui/ActionIconButton";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { SwitchControl } from "../../ui/SwitchControl";
@@ -330,16 +331,13 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
               >
                 {t("settings.snippets.list.add")}
               </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
+              <ActionIconButton
                 onClick={closeAddDialog}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
-                <X />
-              </Button>
+                <X aria-hidden />
+              </ActionIconButton>
             </div>
             <div className="space-y-3">
               <label className="block space-y-1.5">
@@ -522,10 +520,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         {snippet.trigger}
                       </span>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
+                        <ActionIconButton
                           onClick={() => startEdit(snippet)}
                           title={t("common.edit", {
                             defaultValue: "Edit",
@@ -534,8 +529,8 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                             defaultValue: "Edit",
                           })}
                         >
-                          <Pencil />
-                        </Button>
+                          <Pencil aria-hidden />
+                        </ActionIconButton>
                         <SwitchControl
                           checked={snippetEnabled}
                           onChange={(checked) =>
@@ -566,16 +561,14 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                                 })
                           }
                         />
-                        <Button
-                          type="button"
-                          variant="danger-ghost"
-                          size="icon-sm"
+                        <ActionIconButton
+                          tone="danger"
                           onClick={() => void handleDelete(snippet)}
                           title={t("common.delete")}
                           aria-label={t("common.delete")}
                         >
-                          <Trash2 />
-                        </Button>
+                          <Trash2 aria-hidden />
+                        </ActionIconButton>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">

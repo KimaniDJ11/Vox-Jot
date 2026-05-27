@@ -30,6 +30,7 @@ import { buildHubDownloadState } from "@/components/model-hub/hubDownloadState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import {
   DEFAULT_MODEL_SORT_OPTIONS,
   orderModelList,
@@ -715,9 +716,7 @@ const CreativeAudioEnginesSection: React.FC<
                         onKeyDown={(event) => event.stopPropagation()}
                       >
                         {!model.installed && model.downloadable ? (
-                          <Button
-                            size="icon"
-                            variant="ghost"
+                          <ActionIconButton
                             disabled={actionDisabled}
                             aria-label={t(
                               "modelHub.creativeAudio.downloadModel",
@@ -730,18 +729,14 @@ const CreativeAudioEnginesSection: React.FC<
                               defaultValue: "Download {{modelName}}",
                               modelName: model.label,
                             })}
-                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                             onClick={() => void startDownload(model)}
                           >
                             {isBusy || isDownloading ? (
-                              <Loader2
-                                className="h-3.5 w-3.5 animate-spin"
-                                aria-hidden
-                              />
+                              <Loader2 className="animate-spin" aria-hidden />
                             ) : (
-                              <Download className="h-3.5 w-3.5" aria-hidden />
+                              <Download aria-hidden />
                             )}
-                          </Button>
+                          </ActionIconButton>
                         ) : !model.installed ? (
                           <span
                             className="inline-flex min-h-8 items-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-[11px] font-semibold text-[var(--muted)]"
@@ -755,9 +750,8 @@ const CreativeAudioEnginesSection: React.FC<
                               })}
                           </span>
                         ) : (
-                          <Button
-                            size="icon"
-                            variant="ghost"
+                          <ActionIconButton
+                            tone="danger"
                             disabled={actionDisabled && !isBusy}
                             aria-label={t(
                               "modelHub.creativeAudio.deleteModel",
@@ -770,18 +764,14 @@ const CreativeAudioEnginesSection: React.FC<
                               defaultValue: "Delete {{modelName}}",
                               modelName: model.label,
                             })}
-                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                             onClick={() => setDeleteConfirmModelId(model.id)}
                           >
                             {isBusy ? (
-                              <Loader2
-                                className="h-3.5 w-3.5 animate-spin"
-                                aria-hidden
-                              />
+                              <Loader2 className="animate-spin" aria-hidden />
                             ) : (
-                              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                              <Trash2 aria-hidden />
                             )}
-                          </Button>
+                          </ActionIconButton>
                         )}
                       </div>
                     ),
@@ -877,7 +867,7 @@ const CreativeAudioEnginesSection: React.FC<
                                 if (deleteConfirmOpen) return;
                                 void selectModel();
                               }
-                          : undefined
+                            : undefined
                       }
                     />
                   );

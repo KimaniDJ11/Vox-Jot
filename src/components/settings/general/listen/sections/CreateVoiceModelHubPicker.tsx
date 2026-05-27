@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { commands, type VoiceInfo } from "@/bindings";
 import ModelListControls from "@/components/model-hub/ModelListControls";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -864,16 +865,14 @@ export const CreateVoiceModelHubPicker: React.FC<
                         })}
                 </p>
               </div>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={onClose}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
                 <X aria-hidden />
-              </Button>
+              </ActionIconButton>
             </div>
 
             <div className="space-y-3 border-b border-[var(--border)] px-4 py-3">

@@ -25,6 +25,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { commands } from "@/bindings";
 import ModelListControls from "@/components/model-hub/ModelListControls";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -653,16 +654,14 @@ export const VoiceCloningSection: React.FC<{
                   })}
                 </p>
               </div>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={() => setModelWindowOpen(false)}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
                 <X aria-hidden />
-              </Button>
+              </ActionIconButton>
             </div>
 
             <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
@@ -841,16 +840,14 @@ export const VoiceCloningSection: React.FC<{
                   })}
                 </p>
               </div>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={() => setProfileDetailsWindowOpen(false)}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
                 <X aria-hidden />
-              </Button>
+              </ActionIconButton>
             </div>
             <div className="space-y-4 p-4">
               <WorkflowField
@@ -1220,10 +1217,8 @@ export const VoiceCloningSection: React.FC<{
                         },
                       )}
                     >
-                      <Button
+                      <ActionIconButton
                         type="button"
-                        variant="primary-soft"
-                        size="icon"
                         onClick={() => void pickReferenceAudio()}
                         disabled={!speech.ttsEnabled}
                         aria-label={t(
@@ -1237,7 +1232,7 @@ export const VoiceCloningSection: React.FC<{
                         })}
                       >
                         <FolderOpen aria-hidden />
-                      </Button>
+                      </ActionIconButton>
                       <Button
                         type="button"
                         variant="primary"
@@ -1273,10 +1268,8 @@ export const VoiceCloningSection: React.FC<{
                     defaultValue: "While recording",
                   })}
                 >
-                  <Button
+                  <ActionIconButton
                     type="button"
-                    variant="secondary"
-                    size="icon"
                     onClick={() => void pickReferenceAudio()}
                     disabled={!speech.ttsEnabled || isRecording}
                     aria-label={t("listen.voiceCloning.pickReferenceAudio", {
@@ -1287,7 +1280,7 @@ export const VoiceCloningSection: React.FC<{
                     })}
                   >
                     <FolderOpen aria-hidden />
-                  </Button>
+                  </ActionIconButton>
                   <Button
                     type="button"
                     variant="danger"

@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { DockedAudioHud } from "@/components/ui/DockedAudioHud";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -127,13 +128,6 @@ interface StoryAudioHistoryProps {
 
 type StoryAudioView = "timeline" | "player";
 
-const historyActionButtonClassName =
-  "inline-flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)]";
-
-const historyDangerActionButtonClassName =
-  "inline-flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
-const historyConfirmDeleteButtonClassName =
-  "inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const compactAudioSelectClassName =
   "h-9 max-w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--bg)] py-1.5 pe-8 ps-3 text-[12px] font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -608,10 +602,8 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
 
   const actions = (
     <>
-      <button
-        type="button"
+      <ActionIconButton
         onClick={() => void handleCopyScript()}
-        className={historyActionButtonClassName}
         disabled={!hasScript}
         title={
           hasScript
@@ -624,29 +616,18 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
             : t("storyAudio.noScriptSaved")
         }
       >
-        {showCopied ? (
-          <Check width={14} height={14} />
-        ) : (
-          <Copy width={14} height={14} />
-        )}
-      </button>
-      <button
-        type="button"
+        {showCopied ? <Check aria-hidden /> : <Copy aria-hidden />}
+      </ActionIconButton>
+      <ActionIconButton
         onClick={() => onReveal(item)}
-        className={historyActionButtonClassName}
         title={t("storyAudio.actions.showInFolder")}
         aria-label={t("storyAudio.actions.showInFolder")}
       >
-        <FolderOpen width={14} height={14} aria-hidden />
-      </button>
-      <button
-        type="button"
+        <FolderOpen aria-hidden />
+      </ActionIconButton>
+      <ActionIconButton
         onClick={() => onToggleStarred(item)}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-          item.starred
-            ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
-            : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-        }`}
+        active={item.starred}
         title={
           item.starred
             ? t("storyAudio.actions.unstar")
@@ -658,46 +639,38 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
             : t("storyAudio.actions.star")
         }
       >
-        <Star
-          width={14}
-          height={14}
-          fill={item.starred ? "currentColor" : "none"}
-        />
-      </button>
+        <Star fill={item.starred ? "currentColor" : "none"} />
+      </ActionIconButton>
       {showDeleteConfirm ? (
         <>
-          <button
-            type="button"
+          <ActionIconButton
             onClick={() => {
               onDelete(item);
               setShowDeleteConfirm(false);
             }}
-            className={historyConfirmDeleteButtonClassName}
+            tone="confirm"
             title={t("storyAudio.actions.delete")}
             aria-label={t("storyAudio.actions.delete")}
           >
-            <Trash2 width={14} height={14} />
-          </button>
-          <button
-            type="button"
+            <Trash2 aria-hidden />
+          </ActionIconButton>
+          <ActionIconButton
             onClick={() => setShowDeleteConfirm(false)}
-            className={historyActionButtonClassName}
             title={t("storyAudio.actions.cancelDelete")}
             aria-label={t("storyAudio.actions.cancelDelete")}
           >
-            <X width={14} height={14} />
-          </button>
+            <X aria-hidden />
+          </ActionIconButton>
         </>
       ) : (
-        <button
-          type="button"
+        <ActionIconButton
           onClick={() => setShowDeleteConfirm(true)}
-          className={historyDangerActionButtonClassName}
+          tone="danger"
           title={t("storyAudio.actions.delete")}
           aria-label={t("storyAudio.actions.delete")}
         >
-          <Trash2 width={14} height={14} />
-        </button>
+          <Trash2 aria-hidden />
+        </ActionIconButton>
       )}
     </>
   );
@@ -1255,81 +1228,46 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             options={sampleRateOptions}
             onChange={onChangeSampleRate}
           />
-          <button
-            type="button"
+          <ActionIconButton
             onClick={onSaveProcessed}
             disabled={isSaving}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
             title={t("storyAudio.controls.saveProcessedCopy")}
             aria-label={t("storyAudio.controls.saveProcessedCopy")}
           >
             {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loader2 className="animate-spin" aria-hidden />
             ) : (
-              <Save className="h-3.5 w-3.5" aria-hidden />
+              <Save aria-hidden />
             )}
-            {t("storyAudio.controls.saveCopy")}
-          </button>
-        </>
-      }
-      details={
-        <>
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
-            <span>{formatSampleRate(item.sample_rate_hz || 24_000)}</span>
-            {item.audio_effect && item.audio_effect !== "clean" ? (
-              <>
-                <span aria-hidden className={storyMetaSeparatorClassName}>
-                  ·
-                </span>
-                <span>{formatStoryAudioEffect(item.audio_effect)}</span>
-              </>
-            ) : null}
-            {item.line_count > 0 ? (
-              <>
-                <span aria-hidden className={storyMetaSeparatorClassName}>
-                  ·
-                </span>
-                <span>
-                  {t("storyAudio.meta.lines", { count: item.line_count })}
-                </span>
-              </>
-            ) : null}
-          </div>
-
+          </ActionIconButton>
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
+            <ActionIconButton
               onClick={() =>
                 previousItem ? onSelectAudio(previousItem, true) : undefined
               }
               disabled={!previousItem}
-              className={historyActionButtonClassName}
               title={t("storyAudio.actions.previous")}
               aria-label={t("storyAudio.actions.previous")}
             >
-              <SkipBack width={16} height={16} />
-            </button>
-            <button
-              type="button"
+              <SkipBack aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
               onClick={() =>
                 nextItem ? onSelectAudio(nextItem, true) : undefined
               }
               disabled={!nextItem}
-              className={historyActionButtonClassName}
               title={t("storyAudio.actions.next")}
               aria-label={t("storyAudio.actions.next")}
             >
-              <SkipForward width={16} height={16} />
-            </button>
-            <button
-              type="button"
+              <SkipForward aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
               onClick={() => onReveal(item)}
-              className={historyActionButtonClassName}
               title={t("storyAudio.actions.showInFolder")}
               aria-label={t("storyAudio.actions.showInFolder")}
             >
-              <FolderOpen width={15} height={15} />
-            </button>
+              <FolderOpen aria-hidden />
+            </ActionIconButton>
           </div>
         </>
       }
@@ -1626,11 +1564,9 @@ const StoryClipTimeline: React.FC<{
           })}
         </p>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <ActionIconButton
             onClick={() => nudgeSelected(-100)}
             disabled={!selectedClip}
-            className={historyActionButtonClassName}
             title={t("storyAudio.controls.nudgeEarlier", {
               defaultValue: "Nudge earlier",
             })}
@@ -1638,13 +1574,11 @@ const StoryClipTimeline: React.FC<{
               defaultValue: "Nudge earlier",
             })}
           >
-            <Rewind width={14} height={14} />
-          </button>
-          <button
-            type="button"
+            <Rewind aria-hidden />
+          </ActionIconButton>
+          <ActionIconButton
             onClick={() => nudgeSelected(100)}
             disabled={!selectedClip}
-            className={historyActionButtonClassName}
             title={t("storyAudio.controls.nudgeLater", {
               defaultValue: "Nudge later",
             })}
@@ -1652,13 +1586,13 @@ const StoryClipTimeline: React.FC<{
               defaultValue: "Nudge later",
             })}
           >
-            <Forward width={14} height={14} />
-          </button>
+            <Forward aria-hidden />
+          </ActionIconButton>
           <button
             type="button"
             onClick={() => resizeSelected(-100)}
             disabled={!selectedClip}
-            className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
             title={t("storyAudio.controls.shortenClip", {
               defaultValue: "Shorten clip preview",
             })}
@@ -1672,7 +1606,7 @@ const StoryClipTimeline: React.FC<{
             type="button"
             onClick={() => resizeSelected(100)}
             disabled={!selectedClip}
-            className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
             title={t("storyAudio.controls.lengthenClip", {
               defaultValue: "Lengthen clip preview",
             })}
@@ -1963,15 +1897,14 @@ const StoryRenderJobCard: React.FC<{
               {Math.round(progress)}%
             </span>
             {isLive ? (
-              <button
-                type="button"
+              <ActionIconButton
                 onClick={() => onCancel(job)}
-                className={historyDangerActionButtonClassName}
+                tone="danger"
                 title={t("storyAudio.actions.cancelRender")}
                 aria-label={t("storyAudio.actions.cancelRender")}
               >
-                <X width={14} height={14} />
-              </button>
+                <X aria-hidden />
+              </ActionIconButton>
             ) : null}
           </div>
 

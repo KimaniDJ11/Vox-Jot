@@ -9,7 +9,7 @@ import type {
   WriteRule,
   WriteRuleOverrides,
 } from "@/bindings";
-import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
@@ -218,24 +218,21 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
                       {t("refine.writeRules.disabled")}
                     </span>
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
+                  <ActionIconButton
                     onClick={() => onEdit(rule)}
                     aria-label={`Edit ${rule.name}`}
+                    title={`Edit ${rule.name}`}
                   >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger-ghost"
-                    size="icon-xs"
+                    <Pencil aria-hidden />
+                  </ActionIconButton>
+                  <ActionIconButton
+                    tone="danger"
                     onClick={() => onDelete(rule.id)}
                     aria-label={`Delete ${rule.name}`}
+                    title={`Delete ${rule.name}`}
                   >
-                    <Trash2 />
-                  </Button>
+                    <Trash2 aria-hidden />
+                  </ActionIconButton>
                 </div>
               );
             })}

@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import Badge from "@/components/ui/Badge";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
@@ -1806,17 +1807,15 @@ const RefineApiKeyDialog: React.FC<{
               })}
             </p>
           </div>
-          <Button
+          <ActionIconButton
             type="button"
-            variant="ghost"
-            size="icon-sm"
             onClick={onCancel}
             disabled={busy}
             aria-label={t("common.close", { defaultValue: "Close" })}
             title={t("common.close", { defaultValue: "Close" })}
           >
-            <X />
-          </Button>
+            <X aria-hidden />
+          </ActionIconButton>
         </div>
 
         <label className="block space-y-1.5">

@@ -23,6 +23,7 @@ import {
 
 import { commands, type TtsPackInfo } from "@/bindings";
 import { convertVoiceRecording, convertVoiceSample } from "@/lib/voiceChanger";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
@@ -707,16 +708,14 @@ export const VoiceChangerSection: React.FC<{
                   })}
                 </p>
               </div>
-              <Button
+              <ActionIconButton
                 type="button"
-                variant="ghost"
-                size="icon-sm"
                 onClick={() => setModelPickerOpen(false)}
                 aria-label={t("common.close", { defaultValue: "Close" })}
                 title={t("common.close", { defaultValue: "Close" })}
               >
                 <X aria-hidden />
-              </Button>
+              </ActionIconButton>
             </div>
 
             <div className="overflow-y-auto p-4">

@@ -28,6 +28,7 @@ import {
   type ToneDefinition,
   type WriteRule,
 } from "@/bindings";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SwitchControl } from "@/components/ui/SwitchControl";
@@ -258,16 +259,13 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
               {newProfileSubtitle}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
+          <ActionIconButton
             onClick={onCancel}
             aria-label={cancelLabel}
             title={cancelLabel}
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <X aria-hidden />
+          </ActionIconButton>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{body}</div>

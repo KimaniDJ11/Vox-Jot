@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
@@ -440,14 +441,13 @@ export const StoryStudioSection: React.FC = () => {
                 })}
               </p>
             </div>
-            <button
+            <ActionIconButton
               type="button"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
               onClick={() => setSoundPopoverOpen(false)}
               aria-label={t("common.close", { defaultValue: "Close" })}
             >
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </button>
+              <X aria-hidden />
+            </ActionIconButton>
           </div>
           <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
             {projectSounds.map((sound) => (
@@ -632,14 +632,14 @@ export const StoryStudioSection: React.FC = () => {
     validation.errors.length - visibleValidationErrors.length;
   const renderReadinessPill =
     validation.errors.length > 0 ? (
-    <div
-      className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-xs font-semibold text-[var(--text)]"
-      aria-live="polite"
-    >
-      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
-      <span className="truncate">{readySummary}</span>
-    </div>
-  ) : null;
+      <div
+        className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-xs font-semibold text-[var(--text)]"
+        aria-live="polite"
+      >
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
+        <span className="truncate">{readySummary}</span>
+      </div>
+    ) : null;
   const expressionTagControl = (
     <div ref={expressionAnchorRef} className="relative w-[20rem] max-w-full">
       <label
@@ -1103,14 +1103,13 @@ const ExpressionPopover: React.FC<{
             {contextLabel}
           </p>
         </div>
-        <button
+        <ActionIconButton
           type="button"
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           onClick={onClose}
           aria-label={t("storyStudio.closeExpressionControls")}
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
-        </button>
+          <X aria-hidden />
+        </ActionIconButton>
       </div>
 
       <div className="min-h-0 overflow-y-auto pr-1">

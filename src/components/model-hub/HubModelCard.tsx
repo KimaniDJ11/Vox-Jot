@@ -18,6 +18,7 @@ import {
   CompactMetaRow,
   type CompactBadgeItem,
 } from "@/components/ui/CompactOverflow";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
 import { dedupeCapabilityChips } from "@/components/model-hub/modelIdentityChips";
 
@@ -324,11 +325,9 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
           {footerMetaLinks && footerMetaLinks.length > 0 ? (
             <div className="flex shrink-0 items-center gap-1">
               {footerMetaLinks.slice(0, 2).map((link) => (
-                <Button
+                <ActionIconButton
                   key={`${link.label}:${link.url}`}
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -337,12 +336,11 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
                     });
                   }}
                   onKeyDown={(event) => event.stopPropagation()}
-                  className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                   title={link.url}
                   aria-label={link.label}
                 >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </Button>
+                  <ExternalLink aria-hidden />
+                </ActionIconButton>
               ))}
             </div>
           ) : null}
@@ -573,10 +571,9 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
         </Button>
       ) : null}
       {!failed && state.onCancel ? (
-        <Button
+        <ActionIconButton
           type="button"
-          variant="danger-ghost"
-          size="icon-sm"
+          tone="danger"
           title={cancelLabel}
           aria-label={cancelLabel}
           disabled={state.cancelling}
@@ -593,7 +590,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           ) : (
             <X aria-hidden />
           )}
-        </Button>
+        </ActionIconButton>
       ) : null}
     </div>
   );
@@ -618,10 +615,8 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
             {sizeLabel}
           </span>
         ) : null}
-        <Button
+        <ActionIconButton
           type="button"
-          variant="ghost"
-          size="icon"
           title={label}
           aria-label={label}
           disabled={itemDisabled || busy}
@@ -631,14 +626,13 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
             onClick?.();
           }}
           onKeyDown={(event) => event.stopPropagation()}
-          className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
         >
           {busy ? (
             <Loader2 className="animate-spin" />
           ) : (
-            <Download className="w-3.5 h-3.5" />
+            <Download aria-hidden />
           )}
-        </Button>
+        </ActionIconButton>
       </div>
     );
   }
@@ -646,10 +640,9 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
   // remove
   const { onClick, disabled: itemDisabled, busy, label } = trailing;
   return (
-    <Button
+    <ActionIconButton
       type="button"
-      variant="ghost"
-      size="icon"
+      tone="danger"
       title={label}
       aria-label={label}
       disabled={itemDisabled || busy}
@@ -659,14 +652,10 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
         onClick?.();
       }}
       onKeyDown={(event) => event.stopPropagation()}
-      className="shrink-0 text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+      className="shrink-0"
     >
-      {busy ? (
-        <Loader2 className="animate-spin" />
-      ) : (
-        <Trash2 className="w-3.5 h-3.5" />
-      )}
-    </Button>
+      {busy ? <Loader2 className="animate-spin" /> : <Trash2 aria-hidden />}
+    </ActionIconButton>
   );
 }
 

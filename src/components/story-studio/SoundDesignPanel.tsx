@@ -22,6 +22,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -216,10 +217,11 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
       );
       setCatalog(next);
       setSelectedModelId(
-        (next.models.find((model) => model.active) ??
+        (
+          next.models.find((model) => model.active) ??
           next.models.find((model) => model.runnable) ??
-          next.models[0])
-          ?.id ?? "",
+          next.models[0]
+        )?.id ?? "",
       );
     } catch (error) {
       console.error("Failed to load creative audio catalog:", error);
@@ -709,25 +711,22 @@ const ProjectSoundJobRow: React.FC<{
         </p>
       </div>
       {isLive ? (
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        <ActionIconButton
+          tone="danger"
           onClick={() => void onCancel(job)}
           aria-label={t("common.cancel")}
           title={t("common.cancel")}
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
-        </button>
+          <X aria-hidden />
+        </ActionIconButton>
       ) : (
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        <ActionIconButton
           onClick={() => onDismiss(job)}
           aria-label={t("common.dismiss", { defaultValue: "Dismiss" })}
           title={t("common.dismiss", { defaultValue: "Dismiss" })}
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
-        </button>
+          <X aria-hidden />
+        </ActionIconButton>
       )}
     </div>
   );
@@ -872,25 +871,22 @@ const ProjectSoundRow: React.FC<{
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+        <ActionIconButton
           onClick={() => void rename()}
           disabled={isBusy}
           aria-label="Rename sound"
           title="Rename sound"
         >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          <Pencil aria-hidden />
+        </ActionIconButton>
+        <ActionIconButton
+          tone="danger"
           onClick={() => void remove()}
           disabled={isBusy}
           aria-label="Delete sound"
         >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        </button>
+          <Trash2 aria-hidden />
+        </ActionIconButton>
       </div>
     </div>
   );

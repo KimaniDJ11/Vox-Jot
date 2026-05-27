@@ -25,6 +25,7 @@ import type {
   ToneDefinition,
   WriteRuleOverrides,
 } from "@/bindings";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import {
@@ -153,10 +154,9 @@ const OverrideRow: React.FC<{
           onSelect={(value) => onChange(spec.applyValue(overrides, value))}
           className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
         />
-        <button
-          type="button"
+        <ActionIconButton
+          tone="danger"
           onClick={() => onChange(spec.reset(overrides))}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--danger)]"
           aria-label={t(
             "refine.writeRules.overridesEditor.removeOverrideAria",
             {
@@ -165,8 +165,8 @@ const OverrideRow: React.FC<{
           )}
           title={t("refine.writeRules.overridesEditor.removeOverride")}
         >
-          <X className="h-4 w-4" />
-        </button>
+          <X aria-hidden />
+        </ActionIconButton>
       </div>
     </li>
   );

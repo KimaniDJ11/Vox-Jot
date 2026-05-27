@@ -19,6 +19,7 @@ import {
   type InstalledApp,
   type ScreenContextDiagnostics,
 } from "@/bindings";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import {
@@ -646,17 +647,17 @@ const ScreenContextSettingsSection: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <Button
+                  <ActionIconButton
+                    tone="danger"
                     onClick={() => void removeExcludedApp(entry.bundle_id)}
-                    size="sm"
-                    variant="ghost"
                     aria-label={t(
                       "settings.screenContext.removeExclusionLabel",
                     )}
+                    title={t("settings.screenContext.removeExclusionLabel")}
                     disabled={isUpdating("screen_context_excluded_bundle_ids")}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Trash2 aria-hidden />
+                  </ActionIconButton>
                 </li>
               ))}
             </ul>

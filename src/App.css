@@ -1520,6 +1520,12 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .story-audio-waveform-hud {
+    background: var(--card);
+    border: 1px solid var(--ring-hairline);
+    box-shadow:
+      inset 0 1px 0 var(--edge-highlight),
+      inset 0 -1px 0 var(--edge-shadow),
+      0 22px 60px -18px rgba(0, 0, 0, 0.32);
     transition:
       border-color 160ms ease,
       box-shadow 180ms ease,
@@ -1530,7 +1536,10 @@ input[type="range"]:disabled::-moz-range-thumb {
   .story-audio-waveform-hud:focus-within,
   .story-audio-waveform-hud[data-expanded="true"] {
     border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
-    box-shadow: 0 24px 70px -20px rgba(0, 0, 0, 0.38);
+    box-shadow:
+      inset 0 1px 0 var(--edge-highlight),
+      inset 0 -1px 0 var(--edge-shadow),
+      0 24px 70px -20px rgba(0, 0, 0, 0.38);
   }
 
   .story-audio-waveform-hud__details {
@@ -1579,14 +1588,14 @@ input[type="range"]:disabled::-moz-range-thumb {
     bottom: calc(100% + 0.6rem);
     z-index: 2;
     display: flex;
-    max-width: 100%;
-    flex-wrap: wrap;
+    max-width: calc(100% - clamp(8rem, 24vw, 18rem) - 2rem);
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-end;
     gap: 0.75rem;
   }
 
-  @media (max-width: 1100px) {
+  @media (max-width: 768px) {
     .story-audio-player-scroll {
       padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
       scroll-padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
@@ -1602,6 +1611,8 @@ input[type="range"]:disabled::-moz-range-thumb {
       left: 0;
       right: 0;
       gap: 0.5rem;
+      max-width: 100%;
+      flex-wrap: wrap;
     }
   }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, Play, Trash2 } from "lucide-react";
 import { commands } from "@/bindings";
-import { Button } from "@/components/ui/Button";
+import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import Badge from "@/components/ui/Badge";
 import { ActiveBadgeIcon } from "@/components/ui/CompactOverflow";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
@@ -190,17 +190,15 @@ export const SavedVoiceProfilesSection: React.FC<{
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <Button
-                  type="button"
-                  variant="danger-ghost"
-                  size="icon-sm"
+                <ActionIconButton
+                  tone="danger"
                   onClick={() => void speech.removePreset(preset.id)}
                   disabled={!speech.ttsEnabled || speech.presets.length <= 1}
                   title={`${deleteLabel} ${preset.label}`}
                   aria-label={`${deleteLabel} ${preset.label}`}
                 >
                   <Trash2 aria-hidden />
-                </Button>
+                </ActionIconButton>
               </div>
             </div>
           );

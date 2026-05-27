@@ -2123,7 +2123,17 @@
       "formatAria": "định dạng đầu ra",
       "recentActivity": "Hoạt động gần đây",
       "emptyDescription": "Thêm thư mục để tự động chép lại các tệp âm thanh khi bạn thả chúng vào.",
-      "emptyExample": "Ví dụ: xem thư mục Phỏng vấn và lưu từng bản ghi mới dưới dạng văn bản, SRT hoặc VTT."
+      "emptyExample": "Ví dụ: xem thư mục Phỏng vấn và lưu từng bản ghi mới dưới dạng văn bản, SRT hoặc VTT.",
+      "status": {
+        "processing": "Đang xử lý",
+        "needsAttention": "Cần chú ý",
+        "missingCount_one": "1 thư mục bị thiếu",
+        "missingCount_other": "{{count}} thư mục bị thiếu",
+        "countLabel": "THƯ MỤC ĐANG THEO DÕI",
+        "emptyDetail": "Không có thư mục đang theo dõi",
+        "missing": "Thiếu thư mục",
+        "paused": "Đã tạm dừng"
+      }
     }
   },
   "modelHub": {

@@ -2951,6 +2951,11 @@ export type VoiceInfo = { id: string; label: string; locale: string | null; engi
  */
 export type WatchFolderConfig = { id: string; path: string; output_format?: WatchFolderOutputFormat;
 /**
+ * Runtime health exposed to the UI. This is recomputed when the app
+ * lists watch folders so stale deleted folders do not look active.
+ */
+missing?: boolean;
+/**
  * When true, the source audio file is deleted after a successful
  * transcription. Defaults to false because losing recordings to a
  * silent typo would be very bad.

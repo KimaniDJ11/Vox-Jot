@@ -2123,7 +2123,17 @@
       "formatAria": "Formato di uscita",
       "recentActivity": "Attività recente",
       "emptyDescription": "Aggiungi una cartella per trascrivere automaticamente i file audio quando li inserisci.",
-      "emptyExample": "Ad esempio, guarda una cartella Interviste e salva ogni nuova registrazione come testo, SRT o VTT."
+      "emptyExample": "Ad esempio, guarda una cartella Interviste e salva ogni nuova registrazione come testo, SRT o VTT.",
+      "status": {
+        "processing": "Elaborazione",
+        "needsAttention": "Richiede attenzione",
+        "missingCount_one": "1 cartella mancante",
+        "missingCount_other": "{{count}} cartelle mancanti",
+        "countLabel": "CARTELLE MONITORATE",
+        "emptyDetail": "Nessuna cartella monitorata",
+        "missing": "Cartella mancante",
+        "paused": "In pausa"
+      }
     }
   },
   "modelHub": {

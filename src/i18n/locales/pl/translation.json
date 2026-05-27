@@ -2123,7 +2123,17 @@
       "formatAria": "Format wyjściowy",
       "recentActivity": "Ostatnia aktywność",
       "emptyDescription": "Dodaj folder, aby automatycznie transkrybować pliki audio po ich upuszczeniu.",
-      "emptyExample": "Na przykład obejrzyj folder Wywiady i zapisz każde nowe nagranie jako tekst, SRT lub VTT."
+      "emptyExample": "Na przykład obejrzyj folder Wywiady i zapisz każde nowe nagranie jako tekst, SRT lub VTT.",
+      "status": {
+        "processing": "Przetwarzanie",
+        "needsAttention": "Wymaga uwagi",
+        "missingCount_one": "1 brakujący folder",
+        "missingCount_other": "{{count}} brakujących folderów",
+        "countLabel": "OBSERWOWANE FOLDERY",
+        "emptyDetail": "Brak obserwowanych folderów",
+        "missing": "Brak folderu",
+        "paused": "Wstrzymano"
+      }
     }
   },
   "modelHub": {

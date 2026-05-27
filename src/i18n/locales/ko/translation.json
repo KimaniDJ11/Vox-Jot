@@ -2123,7 +2123,17 @@
       "formatAria": "출력 형식",
       "recentActivity": "최근 활동",
       "emptyDescription": "오디오 파일을 추가할 때 자동으로 텍스트로 변환할 수 있는 폴더를 추가하세요.",
-      "emptyExample": "예를 들어 인터뷰 폴더를 보고 각각의 새 녹음을 텍스트, SRT 또는 VTT로 저장합니다."
+      "emptyExample": "예를 들어 인터뷰 폴더를 보고 각각의 새 녹음을 텍스트, SRT 또는 VTT로 저장합니다.",
+      "status": {
+        "processing": "처리 중",
+        "needsAttention": "주의 필요",
+        "missingCount_one": "누락된 폴더 1개",
+        "missingCount_other": "누락된 폴더 {{count}}개",
+        "countLabel": "감시 중인 폴더",
+        "emptyDetail": "감시 중인 폴더 없음",
+        "missing": "폴더 누락됨",
+        "paused": "일시 중지됨"
+      }
     }
   },
   "modelHub": {

@@ -2123,7 +2123,17 @@
       "formatAria": "Çıkış formatı",
       "recentActivity": "Son etkinlik",
       "emptyDescription": "Ses dosyalarını bıraktığınızda otomatik olarak yazıya dönüştürmek için bir klasör ekleyin.",
-      "emptyExample": "Örneğin, bir Röportajlar klasörünü izleyin ve her yeni kaydı metin, SRT veya VTT olarak kaydedin."
+      "emptyExample": "Örneğin, bir Röportajlar klasörünü izleyin ve her yeni kaydı metin, SRT veya VTT olarak kaydedin.",
+      "status": {
+        "processing": "İşleniyor",
+        "needsAttention": "Dikkat gerekiyor",
+        "missingCount_one": "1 eksik klasör",
+        "missingCount_other": "{{count}} eksik klasör",
+        "countLabel": "İZLENEN KLASÖRLER",
+        "emptyDetail": "İzlenen klasör yok",
+        "missing": "Klasör eksik",
+        "paused": "Duraklatıldı"
+      }
     }
   },
   "modelHub": {

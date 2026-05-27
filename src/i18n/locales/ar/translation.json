@@ -2123,7 +2123,17 @@
       "formatAria": "تنسيق الإخراج",
       "recentActivity": "النشاط الأخير",
       "emptyDescription": "أضف مجلدًا لنسخ الملفات الصوتية تلقائيًا عندما تقوم بإسقاطها.",
-      "emptyExample": "على سبيل المثال، شاهد مجلد المقابلات واحفظ كل تسجيل جديد كنص أو SRT أو VTT."
+      "emptyExample": "على سبيل المثال، شاهد مجلد المقابلات واحفظ كل تسجيل جديد كنص أو SRT أو VTT.",
+      "status": {
+        "processing": "قيد المعالجة",
+        "needsAttention": "يحتاج إلى انتباه",
+        "missingCount_one": "مجلد مفقود واحد",
+        "missingCount_other": "{{count}} مجلدات مفقودة",
+        "countLabel": "المجلدات المراقبة",
+        "emptyDetail": "لا توجد مجلدات مراقبة",
+        "missing": "المجلد مفقود",
+        "paused": "متوقف مؤقتًا"
+      }
     }
   },
   "modelHub": {

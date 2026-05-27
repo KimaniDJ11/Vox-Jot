@@ -2123,7 +2123,17 @@
       "formatAria": "輸出格式",
       "recentActivity": "最近的活動",
       "emptyDescription": "添加一個資料夾，以便在您放入音訊檔案時自動轉錄它們。",
-      "emptyExample": "例如，觀看 Interviews 資料夾並將每個新錄音儲存為文字、SRT 或 VTT。"
+      "emptyExample": "例如，觀看 Interviews 資料夾並將每個新錄音儲存為文字、SRT 或 VTT。",
+      "status": {
+        "processing": "處理中",
+        "needsAttention": "需要注意",
+        "missingCount_one": "1 個遺失資料夾",
+        "missingCount_other": "{{count}} 個遺失資料夾",
+        "countLabel": "已監看資料夾",
+        "emptyDetail": "沒有已監看資料夾",
+        "missing": "資料夾遺失",
+        "paused": "已暫停"
+      }
     }
   },
   "modelHub": {

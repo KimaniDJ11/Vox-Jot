@@ -297,7 +297,17 @@
       "formatSrt": "SRT",
       "formatVtt": "VTT",
       "formatAria": "Output format",
-      "recentActivity": "Recent activity"
+      "recentActivity": "Recent activity",
+      "status": {
+        "processing": "Processing",
+        "needsAttention": "Needs attention",
+        "missingCount_one": "1 missing folder",
+        "missingCount_other": "{{count}} missing folders",
+        "countLabel": "WATCHED FOLDERS",
+        "emptyDetail": "No watched folders",
+        "missing": "Folder missing",
+        "paused": "Paused"
+      }
     }
   },
   "tray": {

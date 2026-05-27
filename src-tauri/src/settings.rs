@@ -893,6 +893,10 @@ pub struct WatchFolderConfig {
     pub path: String,
     #[serde(default)]
     pub output_format: WatchFolderOutputFormat,
+    /// Runtime health exposed to the UI. This is recomputed when the app
+    /// lists watch folders so stale deleted folders do not look active.
+    #[serde(default)]
+    pub missing: bool,
     /// When true, the source audio file is deleted after a successful
     /// transcription. Defaults to false because losing recordings to a
     /// silent typo would be very bad.

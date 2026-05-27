@@ -2123,7 +2123,17 @@
       "formatAria": "Výstupní formát",
       "recentActivity": "Nedávná aktivita",
       "emptyDescription": "Přidejte složku pro automatický přepis zvukových souborů, když je vložíte.",
-      "emptyExample": "Sledujte například složku Interviews a uložte každou novou nahrávku jako text SRT nebo VTT."
+      "emptyExample": "Sledujte například složku Interviews a uložte každou novou nahrávku jako text SRT nebo VTT.",
+      "status": {
+        "processing": "Zpracovává se",
+        "needsAttention": "Vyžaduje pozornost",
+        "missingCount_one": "1 chybějící složka",
+        "missingCount_other": "{{count}} chybějících složek",
+        "countLabel": "SLEDOVANÉ SLOŽKY",
+        "emptyDetail": "Žádné sledované složky",
+        "missing": "Složka chybí",
+        "paused": "Pozastaveno"
+      }
     }
   },
   "modelHub": {

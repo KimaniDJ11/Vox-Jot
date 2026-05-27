@@ -3,9 +3,10 @@
 //! ## Design in plain English
 //!
 //! - The user adds folders in **Dictate → File transcription**.
-//! - For each enabled folder we ask the OS for filesystem events (no
-//!   polling) using the `notify` crate, then debounce them so a file
-//!   that's still being copied isn't transcribed mid-write.
+//! - For each enabled folder we ask the OS for filesystem events using
+//!   the `notify` crate, then debounce them so a file that's still being
+//!   copied isn't transcribed mid-write. The supervisor also does a cheap
+//!   root-exists health check so a deleted watched folder is not silent.
 //! - When a settled audio file appears, we run the existing
 //!   `transcribe_with_segments` pipeline on a Tokio task and write the
 //!   transcript next to the source file (or as `.srt`/`.vtt`).
@@ -56,6 +57,7 @@ pub enum WatchFolderStage {
     Started,
     Completed,
     Failed,
+    Missing,
 }
 
 pub struct WatchFolderManager {
@@ -68,6 +70,9 @@ pub struct WatchFolderManager {
     /// Files we've already started processing — guard against the same
     /// `notify` event firing twice (which is common across editors).
     in_flight: Arc<Mutex<HashSet<PathBuf>>>,
+    /// Folder ids already reported as missing so a deleted directory does not
+    /// spam the activity feed while settings still contain its row.
+    missing_reported: Arc<Mutex<HashSet<String>>>,
     /// Bumped from `reload_from_settings` so the supervisor thread
     /// rebuilds its watcher on the next iteration.
     config_version: Arc<std::sync::atomic::AtomicU64>,
@@ -80,6 +85,7 @@ impl WatchFolderManager {
             shutdown: Arc::new(AtomicBool::new(false)),
             supervisor_handle: Mutex::new(None),
             in_flight: Arc::new(Mutex::new(HashSet::new())),
+            missing_reported: Arc::new(Mutex::new(HashSet::new())),
             config_version: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         });
 
@@ -139,11 +145,21 @@ impl WatchFolderManager {
             }
             last_seen_version = current_version;
 
-            let folders: Vec<WatchFolderConfig> = get_settings(&self.app)
+            let enabled_folders: Vec<WatchFolderConfig> = get_settings(&self.app)
                 .watch_folders
                 .into_iter()
-                .filter(|f| f.enabled && Path::new(&f.path).is_dir())
+                .filter(|f| f.enabled)
                 .collect();
+            let mut folders = Vec::new();
+
+            for cfg in enabled_folders {
+                if Path::new(&cfg.path).is_dir() {
+                    self.clear_missing_reported(&cfg.id);
+                    folders.push(cfg);
+                } else {
+                    self.emit_missing_folder(&cfg);
+                }
+            }
 
             if folders.is_empty() {
                 debug!("watch-folders: no enabled folders; supervisor idle");
@@ -172,6 +188,11 @@ impl WatchFolderManager {
                                 if let Some((root, cfg)) =
                                     find_owning_folder(path, &folders_for_handler)
                                 {
+                                    if !root.is_dir() {
+                                        manager_for_handler.emit_missing_folder(cfg);
+                                        manager_for_handler.reload_from_settings();
+                                        continue;
+                                    }
                                     manager_for_handler.maybe_handle_file(
                                         path.clone(),
                                         cfg.clone(),
@@ -202,6 +223,7 @@ impl WatchFolderManager {
                     .watch(Path::new(&cfg.path), RecursiveMode::Recursive)
                 {
                     warn!("watch-folders: failed to watch '{}': {}", cfg.path, err);
+                    self.emit_missing_folder(cfg);
                 }
             }
 
@@ -209,6 +231,11 @@ impl WatchFolderManager {
             while !self.shutdown.load(Ordering::Relaxed)
                 && self.config_version.load(Ordering::Relaxed) == last_seen_version
             {
+                if let Some(cfg) = folders.iter().find(|cfg| !Path::new(&cfg.path).is_dir()) {
+                    self.emit_missing_folder(cfg);
+                    self.reload_from_settings();
+                    break;
+                }
                 thread::sleep(Duration::from_millis(500));
             }
 
@@ -346,6 +373,35 @@ impl WatchFolderManager {
                 message: Some(msg.to_string()),
             },
         );
+    }
+
+    fn emit_missing_folder(&self, cfg: &WatchFolderConfig) {
+        let mut reported = self
+            .missing_reported
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !reported.insert(cfg.id.clone()) {
+            return;
+        }
+        drop(reported);
+
+        warn!("watch-folders: watched folder '{}' is missing", cfg.path);
+        let _ = self.app.emit(
+            "watch-folder-progress",
+            WatchFolderProgressEvent {
+                folder_id: cfg.id.clone(),
+                source_path: cfg.path.clone(),
+                stage: WatchFolderStage::Missing,
+                message: Some("Folder was deleted or is no longer available.".to_string()),
+            },
+        );
+    }
+
+    fn clear_missing_reported(&self, id: &str) {
+        self.missing_reported
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(id);
     }
 }
 

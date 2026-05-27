@@ -2123,7 +2123,17 @@
       "formatAria": "Format de sortie",
       "recentActivity": "Activité récente",
       "emptyDescription": "Ajoutez un dossier pour transcrire automatiquement les fichiers audio lorsque vous les déposez.",
-      "emptyExample": "Par exemple, regardez un dossier Interviews et enregistrez chaque nouvel enregistrement sous forme de texte, SRT ou VTT."
+      "emptyExample": "Par exemple, regardez un dossier Interviews et enregistrez chaque nouvel enregistrement sous forme de texte, SRT ou VTT.",
+      "status": {
+        "processing": "Traitement en cours",
+        "needsAttention": "Attention requise",
+        "missingCount_one": "1 dossier manquant",
+        "missingCount_other": "{{count}} dossiers manquants",
+        "countLabel": "DOSSIERS SURVEILLÉS",
+        "emptyDetail": "Aucun dossier surveillé",
+        "missing": "Dossier manquant",
+        "paused": "En pause"
+      }
     }
   },
   "modelHub": {

@@ -2123,7 +2123,17 @@
       "formatAria": "Formato de salida",
       "recentActivity": "Actividad reciente",
       "emptyDescription": "Agregue una carpeta para transcribir archivos de audio automáticamente cuando los suelte.",
-      "emptyExample": "Por ejemplo, mire una carpeta de Entrevistas y guarde cada nueva grabación como texto, SRT o VTT."
+      "emptyExample": "Por ejemplo, mire una carpeta de Entrevistas y guarde cada nueva grabación como texto, SRT o VTT.",
+      "status": {
+        "processing": "Procesando",
+        "needsAttention": "Requiere atención",
+        "missingCount_one": "1 carpeta faltante",
+        "missingCount_other": "{{count}} carpetas faltantes",
+        "countLabel": "CARPETAS VIGILADAS",
+        "emptyDetail": "No hay carpetas vigiladas",
+        "missing": "Carpeta faltante",
+        "paused": "En pausa"
+      }
     }
   },
   "modelHub": {

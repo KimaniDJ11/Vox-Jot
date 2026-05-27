@@ -606,7 +606,7 @@ export const FileTranscriptionPanel: React.FC = () => {
 type WatchProgressPayload = {
   folder_id: string;
   source_path: string;
-  stage: "started" | "completed" | "failed";
+  stage: "started" | "completed" | "failed" | "missing";
   message: string | null;
 };
 
@@ -616,10 +616,14 @@ const WatchedFoldersStatusHeader: React.FC<{
   selectedAsrModel: SpeechAnalysisModelDescriptor | null;
 }> = ({ folders, activity, selectedAsrModel }) => {
   const { t } = useTranslation();
-  const active = activity.find((event) => event.stage === "started");
   const latest = activity[0];
-  const isFolderCountSummary =
-    folders.length > 0 && !active && latest?.stage !== "failed";
+  const active = latest?.stage === "started" ? latest : undefined;
+  const missingCount = folders.filter((folder) => folder.missing).length;
+  const needsAttention =
+    latest?.stage === "failed" ||
+    latest?.stage === "missing" ||
+    missingCount > 0;
+  const isFolderCountSummary = folders.length > 0 && !active && !needsAttention;
   const status = (() => {
     if (active) {
       return {
@@ -630,12 +634,27 @@ const WatchedFoldersStatusHeader: React.FC<{
         icon: <Loader2 size={12} className="animate-spin" aria-hidden="true" />,
       };
     }
-    if (latest?.stage === "failed") {
+    if (latest?.stage === "failed" || latest?.stage === "missing") {
       return {
         label: t("dictate.watchFolders.status.needsAttention", {
           defaultValue: "Needs attention",
         }),
         detail: basename(latest.source_path),
+        icon: <AlertCircle size={12} aria-hidden="true" />,
+      };
+    }
+    if (missingCount > 0) {
+      return {
+        label: t("dictate.watchFolders.status.needsAttention", {
+          defaultValue: "Needs attention",
+        }),
+        detail: t("dictate.watchFolders.status.missingCount", {
+          count: missingCount,
+          defaultValue:
+            missingCount === 1
+              ? "1 missing folder"
+              : "{{count}} missing folders",
+        }),
         icon: <AlertCircle size={12} aria-hidden="true" />,
       };
     }
@@ -679,9 +698,7 @@ const WatchedFoldersStatusHeader: React.FC<{
           >
             <span
               className={
-                isFolderCountSummary
-                  ? ""
-                  : "font-medium text-[var(--text)]"
+                isFolderCountSummary ? "" : "font-medium text-[var(--text)]"
               }
             >
               {status.label}
@@ -952,7 +969,9 @@ const WatchFolderFormatPicker: React.FC<{
         <ChevronDown
           size={13}
           aria-hidden="true"
-          className={isOpen ? "rotate-180 transition-transform" : "transition-transform"}
+          className={
+            isOpen ? "rotate-180 transition-transform" : "transition-transform"
+          }
         />
       </button>
       {typeof document !== "undefined" && popup
@@ -962,10 +981,11 @@ const WatchFolderFormatPicker: React.FC<{
   );
 };
 
-const NativeFolderIcon: React.FC<{ path: string; name: string }> = ({
-  path,
-  name,
-}) => {
+const NativeFolderIcon: React.FC<{
+  path: string;
+  name: string;
+  missing?: boolean;
+}> = ({ path, name, missing = false }) => {
   const [icon, setIcon] = useState<string | null>(() => {
     return FOLDER_ICON_CACHE.has(path) ? FOLDER_ICON_CACHE.get(path)! : null;
   });
@@ -993,6 +1013,18 @@ const NativeFolderIcon: React.FC<{ path: string; name: string }> = ({
       cancelled = true;
     };
   }, [path]);
+
+  if (missing) {
+    return (
+      <span
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--danger),transparent_90%)] text-[var(--danger)]"
+        aria-hidden="true"
+        title={name}
+      >
+        <AlertCircle className="h-6 w-6" />
+      </span>
+    );
+  }
 
   if (icon) {
     return (
@@ -1146,12 +1178,15 @@ const WatchedFoldersGroup: React.FC<{
       "watch-folder-progress",
       (event) => {
         setActivity((prev) => [event.payload, ...prev].slice(0, 5));
+        if (event.payload.stage === "missing") {
+          void refresh();
+        }
       },
     );
     return () => {
       void unlistenPromise.then((fn) => fn());
     };
-  }, []);
+  }, [refresh]);
 
   const removeFolder = useCallback(
     async (folder: WatchFolderConfig) => {
@@ -1253,18 +1288,34 @@ const WatchedFoldersGroup: React.FC<{
           <ul className="flex flex-wrap gap-2">
             {folders.map((f) => {
               const latest = latestActivityByFolder.get(f.id);
-              const showActions = newlyAddedFolderId === f.id;
-              const statusLabel = latest
-                ? `${latest.stage}: ${basename(latest.source_path)}`
-                : f.enabled
-                  ? null
-                  : "Paused";
+              const isMissing = f.missing || latest?.stage === "missing";
+              const showActions = newlyAddedFolderId === f.id || isMissing;
+              const statusLabel = isMissing
+                ? t("dictate.watchFolders.status.missing", {
+                    defaultValue: "Folder missing",
+                  })
+                : latest
+                  ? `${latest.stage}: ${basename(latest.source_path)}`
+                  : f.enabled
+                    ? null
+                    : t("dictate.watchFolders.status.paused", {
+                        defaultValue: "Paused",
+                      });
               return (
                 <li
                   key={f.id}
-                  className="group flex min-h-[136px] w-36 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
+                  className={[
+                    "group flex min-h-[136px] w-36 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]",
+                    isMissing
+                      ? "bg-[color-mix(in_srgb,var(--danger),transparent_94%)]"
+                      : "",
+                  ].join(" ")}
                 >
-                  <NativeFolderIcon path={f.path} name={basename(f.path)} />
+                  <NativeFolderIcon
+                    path={f.path}
+                    name={basename(f.path)}
+                    missing={isMissing}
+                  />
                   <h3
                     className="mt-2 max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)]"
                     title={basename(f.path)}
@@ -1273,10 +1324,14 @@ const WatchedFoldersGroup: React.FC<{
                   </h3>
                   {statusLabel ? (
                     <p
-                      className="mt-1 max-w-full truncate text-center text-[11px] text-[var(--muted)]"
                       role="status"
                       aria-live="polite"
                       title={statusLabel}
+                      className={
+                        isMissing
+                          ? "mt-1 max-w-full truncate text-center text-[11px] font-medium text-[var(--danger)]"
+                          : "mt-1 max-w-full truncate text-center text-[11px] text-[var(--muted)]"
+                      }
                     >
                       {statusLabel}
                     </p>
@@ -1321,12 +1376,14 @@ const WatchedFoldersGroup: React.FC<{
                       </>
                     ) : (
                       <>
-                        <WatchFolderFormatPicker
-                          value={f.output_format}
-                          onChange={(format) =>
-                            void updateFormat(f.id, format)
-                          }
-                        />
+                        {!isMissing ? (
+                          <WatchFolderFormatPicker
+                            value={f.output_format}
+                            onChange={(format) =>
+                              void updateFormat(f.id, format)
+                            }
+                          />
+                        ) : null}
                         <ActionIconButton
                           type="button"
                           tone="danger"
@@ -1365,7 +1422,7 @@ const WatchedFoldersGroup: React.FC<{
                   className={
                     a.stage === "completed"
                       ? "text-[var(--accent)]"
-                      : a.stage === "failed"
+                      : a.stage === "failed" || a.stage === "missing"
                         ? "text-[var(--danger)]"
                         : ""
                   }

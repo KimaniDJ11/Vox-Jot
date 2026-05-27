@@ -84,6 +84,8 @@ pub fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
 
     let recordings_dir = app_data_dir.join("recordings");
+    std::fs::create_dir_all(&recordings_dir)
+        .map_err(|e| format!("Failed to create recordings folder: {}", e))?;
 
     let path = recordings_dir.to_string_lossy().as_ref().to_string();
     app.opener()
@@ -98,6 +100,8 @@ pub fn open_recordings_folder(app: AppHandle) -> Result<(), String> {
 pub fn open_log_dir(app: AppHandle) -> Result<(), String> {
     let log_dir = crate::portable::app_log_dir(&app)
         .map_err(|e| format!("Failed to get log directory: {}", e))?;
+    std::fs::create_dir_all(&log_dir)
+        .map_err(|e| format!("Failed to create log directory: {}", e))?;
 
     let path = log_dir.to_string_lossy().as_ref().to_string();
     app.opener()
@@ -112,6 +116,8 @@ pub fn open_log_dir(app: AppHandle) -> Result<(), String> {
 pub fn open_app_data_dir(app: AppHandle) -> Result<(), String> {
     let app_data_dir = crate::portable::app_data_dir(&app)
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
+    std::fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Failed to create app data directory: {}", e))?;
 
     let path = app_data_dir.to_string_lossy().as_ref().to_string();
     app.opener()

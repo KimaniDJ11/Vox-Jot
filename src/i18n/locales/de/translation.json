@@ -2123,7 +2123,17 @@
       "formatAria": "Ausgabeformat",
       "recentActivity": "Aktuelle Aktivität",
       "emptyDescription": "Fügen Sie einen Ordner hinzu, um Audiodateien automatisch zu transkribieren, wenn Sie sie ablegen.",
-      "emptyExample": "Sehen Sie sich beispielsweise den Ordner „Interviews“ an und speichern Sie jede neue Aufnahme als Text, SRT oder VTT."
+      "emptyExample": "Sehen Sie sich beispielsweise den Ordner „Interviews“ an und speichern Sie jede neue Aufnahme als Text, SRT oder VTT.",
+      "status": {
+        "processing": "Wird verarbeitet",
+        "needsAttention": "Benötigt Aufmerksamkeit",
+        "missingCount_one": "1 fehlender Ordner",
+        "missingCount_other": "{{count}} fehlende Ordner",
+        "countLabel": "BEOBACHTETE ORDNER",
+        "emptyDetail": "Keine beobachteten Ordner",
+        "missing": "Ordner fehlt",
+        "paused": "Pausiert"
+      }
     }
   },
   "modelHub": {

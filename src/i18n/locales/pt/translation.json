@@ -2123,7 +2123,17 @@
       "formatAria": "Formato de saída",
       "recentActivity": "Atividade recente",
       "emptyDescription": "Adicione uma pasta para transcrever arquivos de áudio automaticamente ao soltá-los.",
-      "emptyExample": "Por exemplo, observe uma pasta Entrevistas e salve cada nova gravação como texto, SRT ou VTT."
+      "emptyExample": "Por exemplo, observe uma pasta Entrevistas e salve cada nova gravação como texto, SRT ou VTT.",
+      "status": {
+        "processing": "Processando",
+        "needsAttention": "Precisa de atenção",
+        "missingCount_one": "1 pasta ausente",
+        "missingCount_other": "{{count}} pastas ausentes",
+        "countLabel": "PASTAS MONITORADAS",
+        "emptyDetail": "Nenhuma pasta monitorada",
+        "missing": "Pasta ausente",
+        "paused": "Pausado"
+      }
     }
   },
   "modelHub": {

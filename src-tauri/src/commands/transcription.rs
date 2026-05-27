@@ -681,7 +681,18 @@ pub fn export_subtitles_vtt(segments: Vec<TimedSegment>, path: String) -> Result
 #[tauri::command]
 #[specta::specta]
 pub fn list_watch_folders(app: AppHandle) -> Result<Vec<WatchFolderConfig>, String> {
-    Ok(get_settings(&app).watch_folders)
+    Ok(annotate_watch_folder_missing_status(
+        get_settings(&app).watch_folders,
+    ))
+}
+
+fn annotate_watch_folder_missing_status(
+    mut folders: Vec<WatchFolderConfig>,
+) -> Vec<WatchFolderConfig> {
+    for folder in &mut folders {
+        folder.missing = !Path::new(&folder.path).is_dir();
+    }
+    folders
 }
 
 #[tauri::command]
@@ -704,6 +715,7 @@ pub fn add_watch_folder(
         id: uuid::Uuid::new_v4().to_string(),
         path,
         output_format,
+        missing: false,
         delete_after,
         enabled: true,
     };
@@ -786,6 +798,36 @@ mod tests {
             text: text.to_string(),
             confidence: None,
         }
+    }
+
+    #[test]
+    fn watch_folder_list_marks_deleted_folders_missing() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let existing_path = temp.path().join("existing");
+        std::fs::create_dir(&existing_path).expect("existing dir");
+        let deleted_path = temp.path().join("deleted");
+
+        let folders = annotate_watch_folder_missing_status(vec![
+            WatchFolderConfig {
+                id: "existing".to_string(),
+                path: existing_path.to_string_lossy().to_string(),
+                output_format: WatchFolderOutputFormat::Text,
+                missing: true,
+                delete_after: false,
+                enabled: true,
+            },
+            WatchFolderConfig {
+                id: "deleted".to_string(),
+                path: deleted_path.to_string_lossy().to_string(),
+                output_format: WatchFolderOutputFormat::Text,
+                missing: false,
+                delete_after: false,
+                enabled: true,
+            },
+        ]);
+
+        assert!(!folders[0].missing);
+        assert!(folders[1].missing);
     }
 
     #[test]

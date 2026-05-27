@@ -2123,7 +2123,17 @@
       "formatAria": "输出格式",
       "recentActivity": "最近的活动",
       "emptyDescription": "添加一个文件夹，以便在您放入音频文件时自动转录它们。",
-      "emptyExample": "例如，观看 Interviews 文件夹并将每个新录音保存为文本、SRT 或 VTT。"
+      "emptyExample": "例如，观看 Interviews 文件夹并将每个新录音保存为文本、SRT 或 VTT。",
+      "status": {
+        "processing": "处理中",
+        "needsAttention": "需要注意",
+        "missingCount_one": "1 个缺失文件夹",
+        "missingCount_other": "{{count}} 个缺失文件夹",
+        "countLabel": "已监视文件夹",
+        "emptyDetail": "没有已监视文件夹",
+        "missing": "文件夹缺失",
+        "paused": "已暂停"
+      }
     }
   },
   "modelHub": {

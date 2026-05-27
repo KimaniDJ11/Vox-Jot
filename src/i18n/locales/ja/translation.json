@@ -2123,7 +2123,17 @@
       "formatAria": "出力フォーマット",
       "recentActivity": "最近の活動",
       "emptyDescription": "フォルダーを追加すると、オーディオ ファイルをドロップしたときに自動的に文字起こしされます。",
-      "emptyExample": "たとえば、インタビュー フォルダーを監視し、新しい録画をテキスト、SRT、または VTT として保存します。"
+      "emptyExample": "たとえば、インタビュー フォルダーを監視し、新しい録画をテキスト、SRT、または VTT として保存します。",
+      "status": {
+        "processing": "処理中",
+        "needsAttention": "確認が必要",
+        "missingCount_one": "不足しているフォルダ 1 件",
+        "missingCount_other": "不足しているフォルダ {{count}} 件",
+        "countLabel": "監視フォルダ",
+        "emptyDetail": "監視フォルダはありません",
+        "missing": "フォルダが見つかりません",
+        "paused": "一時停止中"
+      }
     }
   },
   "modelHub": {

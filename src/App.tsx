@@ -71,6 +71,7 @@ import {
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import { isProductSectionVisible } from "@/lib/productArchitecture";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
@@ -303,22 +304,28 @@ const HistoryEncouragementTitle: React.FC = () => {
   return <span className="font-bold">{title}</span>;
 };
 
-const SectionHeader: React.FC<{ id: string; title: string }> = ({
-  id,
-  title,
-}) => (
-  <div className="px-1">
-    <div className="flex items-center justify-between gap-4">
-      <h2 className="heading-display text-2xl font-semibold tracking-tight text-[var(--text)]">
-        {id === "history" ? <HistoryEncouragementTitle /> : title}
-      </h2>
-      <div
-        id={`${id}-section-actions`}
-        className="app-no-drag flex shrink-0 items-center gap-1"
-      />
+const SectionHeader: React.FC<{
+  id: string;
+  title: string;
+}> = ({ id, title }) => {
+  return (
+    <div className="px-1">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="heading-display text-2xl font-bold tracking-tight text-[var(--text)]">
+          {id === "history" ? (
+            <HistoryEncouragementTitle />
+          ) : (
+            <span className="font-bold">{title}</span>
+          )}
+        </h2>
+        <div
+          id={`${id}-section-actions`}
+          className="app-no-drag flex shrink-0 items-center gap-1"
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const PrimaryModeSwitcher: React.FC<{
   activeMode: PrimaryMode;
@@ -1014,31 +1021,40 @@ function App() {
 
         if (currentPlatform === "macos") {
           try {
-            const [
-              hasAccessibility,
-              hasMicrophone,
-              hasInputMonitoring,
-              hasScreenRecording,
-            ] = await Promise.all([
-              checkAccessibilityPermission(),
-              checkMicrophonePermission(),
-              checkInputMonitoringPermission(),
-              checkScreenRecordingPermission(),
-            ]);
-            const settingsResult = await commands.getAppSettings();
-            const screenContextEnabled =
-              settingsResult.status === "ok"
-                ? (settingsResult.data.screen_context_enabled ?? true)
-                : true;
-            if (
-              !hasAccessibility ||
-              !hasMicrophone ||
-              !hasInputMonitoring ||
-              (screenContextEnabled && !hasScreenRecording)
-            ) {
-              await revealMainWindowForPermissions();
-              setOnboardingStep("onboarding");
-              return;
+            if (isMacAppStoreBuild) {
+              const hasMicrophone = await checkMicrophonePermission();
+              if (!hasMicrophone) {
+                await revealMainWindowForPermissions();
+                setOnboardingStep("onboarding");
+                return;
+              }
+            } else {
+              const [
+                hasAccessibility,
+                hasMicrophone,
+                hasInputMonitoring,
+                hasScreenRecording,
+              ] = await Promise.all([
+                checkAccessibilityPermission(),
+                checkMicrophonePermission(),
+                checkInputMonitoringPermission(),
+                checkScreenRecordingPermission(),
+              ]);
+              const settingsResult = await commands.getAppSettings();
+              const screenContextEnabled =
+                settingsResult.status === "ok"
+                  ? (settingsResult.data.screen_context_enabled ?? true)
+                  : true;
+              if (
+                !hasAccessibility ||
+                !hasMicrophone ||
+                !hasInputMonitoring ||
+                (screenContextEnabled && !hasScreenRecording)
+              ) {
+                await revealMainWindowForPermissions();
+                setOnboardingStep("onboarding");
+                return;
+              }
             }
           } catch (error) {
             console.warn("Failed to check macOS permissions:", error);
@@ -1320,7 +1336,7 @@ function App() {
       />
 
       <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="app-main-scroll min-h-0 flex-1 overflow-y-scroll">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (
               <section

@@ -1081,6 +1081,7 @@ impl ShortcutAction for TranscribeAction {
                                 let merged = crate::correction_tracker::store::build_effective_personal_dictionary(
                                     &effective_settings,
                                     correction_store.as_ref(),
+                                    active_app_context.as_ref().map(|ctx| ctx.bundle_id.as_str()),
                                 );
                                 if merged != effective_settings.personal_dictionary {
                                     debug!(

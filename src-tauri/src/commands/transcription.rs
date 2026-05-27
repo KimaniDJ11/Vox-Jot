@@ -619,6 +619,7 @@ pub async fn transcribe_file(
         let dict_entries = crate::correction_tracker::store::build_effective_personal_dictionary(
             &settings,
             correction_store.inner().as_ref(),
+            None,
         );
         if !dict_entries.is_empty() {
             let dict_result =

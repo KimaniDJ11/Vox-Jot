@@ -33,6 +33,9 @@ static MIGRATIONS: &[M] = &[
     M::up(
         "ALTER TABLE auto_corrections ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'auto_learned';",
     ),
+    M::up(
+        "ALTER TABLE auto_corrections ADD COLUMN disabled_bundle_ids TEXT NOT NULL DEFAULT '[]';",
+    ),
 ];
 
 /// A stored correction entry, as returned to the frontend.
@@ -48,6 +51,8 @@ pub struct StoredCorrection {
     pub source_app: Option<String>,
     #[serde(default)]
     pub source_kind: CorrectionSourceKind,
+    #[serde(default)]
+    pub disabled_bundle_ids: Vec<String>,
     pub first_seen: i64,
     pub last_seen: i64,
     pub is_active: bool,
@@ -311,10 +316,11 @@ impl CorrectionStore {
         include_auto_learned: bool,
         min_frequency: u32,
         min_confidence: f64,
+        active_app_bundle_id: Option<&str>,
     ) -> Result<Vec<DictionaryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT original, corrected, frequency, confidence, exact_only, user_approved
+            "SELECT original, corrected, frequency, confidence, exact_only, user_approved, disabled_bundle_ids
              FROM auto_corrections
              WHERE is_active = 1
              ORDER BY user_approved DESC, frequency DESC, confidence DESC, last_seen DESC",
@@ -328,12 +334,25 @@ impl CorrectionStore {
                 row.get::<_, f64>("confidence")?,
                 row.get::<_, bool>("exact_only")?,
                 row.get::<_, bool>("user_approved")?,
+                row.get::<_, String>("disabled_bundle_ids")?,
             ))
         })?;
 
         let mut entries = Vec::new();
         for row in rows {
-            let (original, corrected, frequency, confidence, exact_only, user_approved) = row?;
+            let (
+                original,
+                corrected,
+                frequency,
+                confidence,
+                exact_only,
+                user_approved,
+                disabled_bundle_ids,
+            ) = row?;
+
+            if correction_disabled_for_app(&disabled_bundle_ids, active_app_bundle_id) {
+                continue;
+            }
 
             let auto_score = if user_approved {
                 None
@@ -383,7 +402,7 @@ impl CorrectionStore {
     pub fn list_all(&self) -> Result<Vec<StoredCorrection>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, original, corrected, frequency, confidence, exact_only, source_app, source_kind, first_seen, last_seen, is_active, user_approved
+            "SELECT id, original, corrected, frequency, confidence, exact_only, source_app, source_kind, disabled_bundle_ids, first_seen, last_seen, is_active, user_approved
              FROM auto_corrections
              ORDER BY last_seen DESC",
         )?;
@@ -398,6 +417,8 @@ impl CorrectionStore {
             let source_app: Option<String> = row.get("source_app")?;
             let raw_source_kind: String = row.get("source_kind")?;
             let source_kind = normalize_source_kind(&raw_source_kind, user_approved, &source_app);
+            let disabled_bundle_ids =
+                parse_disabled_bundle_ids(&row.get::<_, String>("disabled_bundle_ids")?);
 
             Ok(StoredCorrection {
                 id: row.get("id")?,
@@ -416,6 +437,7 @@ impl CorrectionStore {
                 exact_only: row.get("exact_only")?,
                 source_app,
                 source_kind,
+                disabled_bundle_ids,
                 first_seen: row.get("first_seen")?,
                 last_seen: row.get("last_seen")?,
                 is_active,
@@ -620,6 +642,20 @@ impl CorrectionStore {
         Ok(())
     }
 
+    /// Update the app-specific disable list for a correction.
+    pub fn set_disabled_bundle_ids(&self, id: i64, bundle_ids: &[String]) -> Result<()> {
+        let normalized = normalize_bundle_ids(bundle_ids);
+        let encoded = serde_json::to_string(&normalized)
+            .map_err(|e| anyhow::anyhow!("Failed to encode disabled apps: {}", e))?;
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE auto_corrections SET disabled_bundle_ids = ?1 WHERE id = ?2",
+            params![encoded, id],
+        )?;
+        debug!("Set correction {} disabled apps={:?}", id, normalized);
+        Ok(())
+    }
+
     /// Clear all corrections.
     pub fn clear_all(&self) -> Result<()> {
         let conn = self.get_connection()?;
@@ -646,14 +682,15 @@ impl CorrectionStore {
 
         for correction in &corrections {
             conn.execute(
-                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, exact_only, source_app, source_kind, first_seen, last_seen, is_active, user_approved)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'imported', ?7, ?8, ?9, ?10)
+                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, exact_only, source_app, source_kind, disabled_bundle_ids, first_seen, last_seen, is_active, user_approved)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'imported', ?7, ?8, ?9, ?10, ?11)
                  ON CONFLICT(original, corrected) DO UPDATE SET
                     frequency = MAX(auto_corrections.frequency, excluded.frequency),
                     confidence = MAX(auto_corrections.confidence, excluded.confidence),
                     exact_only = excluded.exact_only,
                     source_app = excluded.source_app,
                     source_kind = excluded.source_kind,
+                    disabled_bundle_ids = excluded.disabled_bundle_ids,
                     last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
                     is_active = 1,
                     user_approved = 1",
@@ -664,6 +701,8 @@ impl CorrectionStore {
                     correction.confidence,
                     correction.exact_only,
                     "imported",
+                    serde_json::to_string(&normalize_bundle_ids(&correction.disabled_bundle_ids))
+                        .unwrap_or_else(|_| "[]".to_string()),
                     correction.first_seen,
                     correction.last_seen,
                     correction.is_active,
@@ -683,6 +722,7 @@ impl CorrectionStore {
 pub fn build_effective_personal_dictionary(
     settings: &crate::settings::AppSettings,
     store: &CorrectionStore,
+    active_app_bundle_id: Option<&str>,
 ) -> Vec<crate::post_processing::DictionaryEntry> {
     use crate::post_processing::get_merged_dictionary;
     use crate::settings::correction_defaults;
@@ -691,6 +731,7 @@ pub fn build_effective_personal_dictionary(
         settings.correction_tracking_enabled,
         correction_defaults::MIN_FREQUENCY,
         correction_defaults::MIN_CONFIDENCE,
+        active_app_bundle_id,
     ) {
         Ok(store_entries) if !store_entries.is_empty() => {
             get_merged_dictionary(&settings.personal_dictionary, &store_entries)
@@ -782,6 +823,44 @@ fn normalize_source_kind(
         _ if user_approved => CorrectionSourceKind::ObservedEdit,
         _ => CorrectionSourceKind::AutoLearned,
     }
+}
+
+fn normalize_bundle_ids(bundle_ids: &[String]) -> Vec<String> {
+    bundle_ids
+        .iter()
+        .map(|bundle_id| bundle_id.trim())
+        .filter(|bundle_id| !bundle_id.is_empty())
+        .fold(Vec::<String>::new(), |mut acc, bundle_id| {
+            if !acc
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(bundle_id))
+            {
+                acc.push(bundle_id.to_string());
+            }
+            acc
+        })
+}
+
+fn parse_disabled_bundle_ids(raw: &str) -> Vec<String> {
+    serde_json::from_str::<Vec<String>>(raw)
+        .map(|ids| normalize_bundle_ids(&ids))
+        .unwrap_or_default()
+}
+
+fn correction_disabled_for_app(
+    disabled_bundle_ids: &str,
+    active_app_bundle_id: Option<&str>,
+) -> bool {
+    let Some(active_bundle_id) = active_app_bundle_id
+        .map(str::trim)
+        .filter(|bundle_id| !bundle_id.is_empty())
+    else {
+        return false;
+    };
+
+    parse_disabled_bundle_ids(disabled_bundle_ids)
+        .iter()
+        .any(|bundle_id| bundle_id.eq_ignore_ascii_case(active_bundle_id))
 }
 
 /// Map frequency × confidence to a 0-255 priority scale.
@@ -908,10 +987,48 @@ mod tests {
         ));
         assert!(all[0].confidence >= pair.confidence);
 
-        let entries = store.get_dictionary_entries(false, 3, 0.74).unwrap();
+        let entries = store.get_dictionary_entries(false, 3, 0.74, None).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].spoken, "Cheyene");
         assert_eq!(entries[0].written, "Cheyenne");
+    }
+
+    #[test]
+    fn test_dictionary_entries_respect_app_specific_disables() {
+        let (store, _dir) = setup_store();
+        store
+            .add_manual_correction("recieve", "receive", false, 1000)
+            .unwrap();
+
+        let correction = store.list_all().unwrap().remove(0);
+        store
+            .set_disabled_bundle_ids(
+                correction.id,
+                &[
+                    "com.apple.TextEdit".to_string(),
+                    " com.apple.TextEdit ".to_string(),
+                ],
+            )
+            .unwrap();
+
+        let unrestricted = store.get_dictionary_entries(false, 3, 0.74, None).unwrap();
+        assert_eq!(unrestricted.len(), 1);
+
+        let text_edit = store
+            .get_dictionary_entries(false, 3, 0.74, Some("com.apple.TextEdit"))
+            .unwrap();
+        assert!(text_edit.is_empty());
+
+        let notes = store
+            .get_dictionary_entries(false, 3, 0.74, Some("com.apple.Notes"))
+            .unwrap();
+        assert_eq!(notes.len(), 1);
+
+        let stored = store.list_all().unwrap();
+        assert_eq!(
+            stored[0].disabled_bundle_ids,
+            vec!["com.apple.TextEdit".to_string()]
+        );
     }
 
     #[test]
@@ -1295,6 +1412,7 @@ mod tests {
                 true,
                 crate::settings::correction_defaults::MIN_FREQUENCY,
                 crate::settings::correction_defaults::MIN_CONFIDENCE,
+                None,
             )
             .unwrap();
         assert!(
@@ -1308,6 +1426,7 @@ mod tests {
                 true,
                 crate::settings::correction_defaults::MIN_FREQUENCY,
                 crate::settings::correction_defaults::MIN_CONFIDENCE,
+                None,
             )
             .unwrap();
         assert_eq!(entries.len(), 1);
@@ -1328,7 +1447,7 @@ mod tests {
         };
 
         add_n_times(&store, &bad_pair, 5);
-        let entries = store.get_dictionary_entries(true, 3, 0.74).unwrap();
+        let entries = store.get_dictionary_entries(true, 3, 0.74, None).unwrap();
         assert!(
             entries.is_empty(),
             "Unsafe legacy correction should be listed but never exported as an auto dictionary rule"
@@ -1348,7 +1467,7 @@ mod tests {
         };
 
         add_n_times(&store, &legacy_pair, 3);
-        let entries = store.get_dictionary_entries(true, 3, 0.74).unwrap();
+        let entries = store.get_dictionary_entries(true, 3, 0.74, None).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].spoken, "teh");
         assert_eq!(entries[0].written, "the");

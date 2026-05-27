@@ -1496,6 +1496,10 @@ input[type="range"]:disabled::-moz-range-thumb {
     background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
   }
 
+  .app-main-scroll {
+    scrollbar-gutter: stable both-edges;
+  }
+
   .story-audio-docked-player,
   .history-transcript-docked-player {
     position: fixed;

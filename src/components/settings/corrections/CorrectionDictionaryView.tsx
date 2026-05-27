@@ -8,9 +8,12 @@ import React, {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Ban,
   CheckCircle2,
+  History,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   Undo2,
   X,
@@ -19,18 +22,23 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
-import type { StoredCorrection } from "@/bindings";
+import type { InstalledApp, StoredCorrection } from "@/bindings";
 import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { Input } from "../../ui/Input";
-import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { pickJsonFileText } from "@/lib/fileIo";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
+import {
+  humanizeBundleId,
+  readCachedInstalledApps,
+  refreshInstalledApps,
+  subscribeInstalledApps,
+} from "@/lib/installedApps";
+import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 
 type CorrectionViewMode = "corrections" | "dictionary";
 
@@ -41,14 +49,8 @@ type CorrectionViewMode = "corrections" | "dictionary";
 interface CorrectionGroup {
   corrected: string;
   entries: StoredCorrection[];
-  totalFrequency: number;
-  avgEffectiveConfidence: number;
   allActive: boolean;
-  manualCount: number;
-  eligibleCount: number;
-  lowConfidenceCount: number;
-  blockedCount: number;
-  disabledCount: number;
+  disabledBundleIds: string[];
 }
 
 const getCorrectionGroupKey = (group: CorrectionGroup): string => {
@@ -73,42 +75,16 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
 
   const groups: CorrectionGroup[] = [];
   for (const entries of map.values()) {
-    const totalFrequency = entries.reduce(
-      (sum, entry) => sum + entry.frequency,
-      0,
-    );
-    const avgEffectiveConfidence =
-      entries.reduce(
-        (sum, entry) =>
-          sum + (entry.auto_apply?.effective_confidence ?? entry.confidence),
-        0,
-      ) / entries.length;
     const allActive = entries.every((entry) => entry.is_active);
-    const manualCount = entries.filter((entry) => entry.user_approved).length;
-    const eligibleCount = entries.filter(
-      (entry) => !entry.user_approved && entry.auto_apply?.eligible,
-    ).length;
-    const lowConfidenceCount = entries.filter(
-      (entry) => entry.auto_apply?.status === "low_confidence",
-    ).length;
-    const blockedCount = entries.filter(
-      (entry) => entry.auto_apply?.status === "blocked",
-    ).length;
-    const disabledCount = entries.filter(
-      (entry) => entry.auto_apply?.status === "disabled",
-    ).length;
+    const disabledBundleIds = normalizeBundleIds(
+      entries.flatMap((entry) => entry.disabled_bundle_ids ?? []),
+    );
 
     groups.push({
       corrected: entries[0].corrected,
       entries,
-      totalFrequency,
-      avgEffectiveConfidence,
       allActive,
-      manualCount,
-      eligibleCount,
-      lowConfidenceCount,
-      blockedCount,
-      disabledCount,
+      disabledBundleIds,
     });
   }
 
@@ -247,61 +223,6 @@ const getEntrySourceTitle = (
   });
 };
 
-const getGroupStatus = (
-  group: CorrectionGroup,
-  t: ReturnType<typeof useTranslation>["t"],
-) => {
-  const total = group.entries.length;
-  if (group.disabledCount === total) {
-    return {
-      label: t("settings.corrections.dictionary.groupStatus.off"),
-      title: t("settings.corrections.dictionary.groupStatus.offTitle"),
-      className:
-        "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
-    };
-  }
-  if (group.manualCount === total) {
-    return {
-      label: t("settings.corrections.dictionary.groupStatus.manual"),
-      title: t("settings.corrections.dictionary.groupStatus.manualTitle"),
-      className:
-        "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]",
-    };
-  }
-  if (group.manualCount + group.eligibleCount === total) {
-    return {
-      label: t("settings.corrections.dictionary.groupStatus.applying"),
-      title: t("settings.corrections.dictionary.groupStatus.applyingTitle"),
-      className:
-        "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]",
-    };
-  }
-  if (group.blockedCount > 0) {
-    return {
-      label: t("settings.corrections.dictionary.groupStatus.review"),
-      title: t("settings.corrections.dictionary.groupStatus.reviewTitle"),
-      className:
-        "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
-    };
-  }
-  if (group.lowConfidenceCount > 0) {
-    return {
-      label: t("settings.corrections.dictionary.groupStatus.lowConfidence"),
-      title: t(
-        "settings.corrections.dictionary.groupStatus.lowConfidenceTitle",
-      ),
-      className:
-        "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
-    };
-  }
-
-  return {
-    label: t("settings.corrections.dictionary.groupStatus.learning"),
-    title: t("settings.corrections.dictionary.groupStatus.learningTitle"),
-    className: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
-  };
-};
-
 function groupMatchesSearch(group: CorrectionGroup, normalizedQuery: string) {
   if (!normalizedQuery) {
     return true;
@@ -313,6 +234,22 @@ function groupMatchesSearch(group: CorrectionGroup, normalizedQuery: string) {
       entry.original.toLowerCase().includes(normalizedQuery),
     )
   );
+}
+
+function normalizeBundleIds(bundleIds: string[]): string[] {
+  return bundleIds
+    .map((bundleId) => bundleId.trim())
+    .filter(Boolean)
+    .reduce<string[]>((acc, bundleId) => {
+      if (
+        !acc.some(
+          (existing) => existing.toLowerCase() === bundleId.toLowerCase(),
+        )
+      ) {
+        acc.push(bundleId);
+      }
+      return acc;
+    }, []);
 }
 
 interface CorrectionDictionaryViewProps {
@@ -340,15 +277,29 @@ export const CorrectionDictionaryView: React.FC<
   const [loading, setLoading] = useState(true);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [newOriginal, setNewOriginal] = useState("");
+  const [openOriginalsKey, setOpenOriginalsKey] = useState<string | null>(null);
+  const [openDisableKey, setOpenDisableKey] = useState<string | null>(null);
+  const [disableAppQuery, setDisableAppQuery] = useState("");
+  const [installedApps, setInstalledApps] = useState<InstalledApp[]>(
+    () => readCachedInstalledApps() ?? [],
+  );
+  const [confirmingDeleteGroupKey, setConfirmingDeleteGroupKey] = useState<
+    string | null
+  >(null);
   const [showManualEditor, setShowManualEditor] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualCorrectionDraft>(
     emptyManualCorrectionDraft,
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
+  const disablePopoverRef = useRef<HTMLDivElement>(null);
+  const originalsPopoverRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const manualOriginalRef = useRef<HTMLInputElement>(null);
   const manualDialogRef = useRef<HTMLDivElement>(null);
 
@@ -376,26 +327,76 @@ export const CorrectionDictionaryView: React.FC<
   }, [loadCorrections]);
 
   useEffect(() => {
+    const unsubscribe = subscribeInstalledApps(setInstalledApps);
+    void refreshInstalledApps().then(setInstalledApps);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (addingTo && addInputRef.current) {
       addInputRef.current.focus();
     }
   }, [addingTo]);
 
-  const handleDelete = async (id: number) => {
-    const entry = corrections.find((correction) => correction.id === id);
-    const phrase =
-      entry?.original ?? t("common.delete", { defaultValue: "Delete" });
-    if (
-      !confirmDestructiveAction(
-        t("settings.corrections.dictionary.deleteConfirm", {
-          phrase,
-          defaultValue: 'Delete correction "{{phrase}}"?',
-        }),
-      )
-    ) {
-      return;
-    }
+  useEffect(() => {
+    if (!searchExpanded) return;
+    searchInputRef.current?.focus();
+  }, [searchExpanded]);
 
+  useEffect(() => {
+    if (!searchExpanded) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setSearchExpanded(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [searchExpanded]);
+
+  useEffect(() => {
+    if (!openOriginalsKey) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        originalsPopoverRef.current?.contains(event.target as Node) ||
+        (event.target as HTMLElement).closest("[data-originals-trigger]")
+      ) {
+        return;
+      }
+
+      setOpenOriginalsKey(null);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openOriginalsKey]);
+
+  useEffect(() => {
+    if (!openDisableKey) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        disablePopoverRef.current?.contains(event.target as Node) ||
+        (event.target as HTMLElement).closest("[data-disable-trigger]")
+      ) {
+        return;
+      }
+
+      setOpenDisableKey(null);
+      setDisableAppQuery("");
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openDisableKey]);
+
+  const handleDelete = async (id: number) => {
     try {
       const result = await commands.deleteCorrection(id);
       if (result.status === "ok") {
@@ -409,19 +410,6 @@ export const CorrectionDictionaryView: React.FC<
   };
 
   const handleDeleteGroup = async (group: CorrectionGroup) => {
-    if (
-      !confirmDestructiveAction(
-        t("settings.corrections.dictionary.deleteGroupConfirm", {
-          phrase: group.corrected,
-          count: group.entries.length,
-          defaultValue:
-            'Delete "{{phrase}}" and its {{count}} correction entries?',
-        }),
-      )
-    ) {
-      return;
-    }
-
     try {
       for (const entry of group.entries) {
         await commands.deleteCorrection(entry.id);
@@ -430,6 +418,8 @@ export const CorrectionDictionaryView: React.FC<
       setCorrections((prev) =>
         prev.filter((correction) => !ids.has(correction.id)),
       );
+      setConfirmingDeleteGroupKey(null);
+      setOpenOriginalsKey(null);
     } catch (error) {
       console.error("Failed to delete group:", error);
     }
@@ -446,6 +436,71 @@ export const CorrectionDictionaryView: React.FC<
       await loadCorrections();
     } catch (error) {
       console.error("Failed to toggle group:", error);
+    }
+  };
+
+  const handleSetGroupDisabledApps = async (
+    group: CorrectionGroup,
+    bundleIds: string[],
+  ) => {
+    const nextBundleIds = normalizeBundleIds(bundleIds);
+    try {
+      for (const entry of group.entries) {
+        const result = await commands.setCorrectionDisabledApps(
+          entry.id,
+          nextBundleIds,
+        );
+        if (result.status === "error") {
+          throw new Error(result.error);
+        }
+      }
+
+      const ids = new Set(group.entries.map((entry) => entry.id));
+      setCorrections((prev) =>
+        prev.map((correction) =>
+          ids.has(correction.id)
+            ? { ...correction, disabled_bundle_ids: nextBundleIds }
+            : correction,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update disabled apps:", error);
+    }
+  };
+
+  const handleDisableForCurrentApp = async (group: CorrectionGroup) => {
+    try {
+      const result = await commands.getFrontmostAppForExclusion();
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+
+      const bundleId = result.data.bundle_id.trim();
+      if (!bundleId) return;
+
+      setInstalledApps((current) => {
+        if (
+          current.some(
+            (app) => app.bundle_id.toLowerCase() === bundleId.toLowerCase(),
+          )
+        ) {
+          return current;
+        }
+        return [
+          ...current,
+          {
+            bundle_id: bundleId,
+            name: result.data.localized_name || humanizeBundleId(bundleId),
+          },
+        ];
+      });
+
+      await handleSetGroupDisabledApps(group, [
+        ...group.disabledBundleIds,
+        bundleId,
+      ]);
+    } catch (error) {
+      console.error("Failed to add current app exclusion:", error);
     }
   };
 
@@ -624,6 +679,11 @@ export const CorrectionDictionaryView: React.FC<
       ),
     [groups, normalizedSearchQuery],
   );
+  const installedAppsByBundleId = useMemo(
+    () =>
+      new Map(installedApps.map((app) => [app.bundle_id.toLowerCase(), app])),
+    [installedApps],
+  );
 
   const viewItems = useMemo(
     () => [
@@ -642,61 +702,97 @@ export const CorrectionDictionaryView: React.FC<
     ],
     [t],
   );
+  const viewDescription =
+    viewMode === "dictionary"
+      ? t("settings.corrections.dictionary.views.dictionaryDescription", {
+          defaultValue:
+            "Vox Jot uses your personal dictionary for words and names you add manually or import. Add preferred spellings, company jargon, client names, and industry terms so dictation uses the language that matters to you.",
+        })
+      : t("settings.corrections.dictionary.views.correctionsDescription", {
+          defaultValue:
+            "Corrections are learned automatically from edits you make after dictation. Vox Jot reads the text field after insertion, then uses those fixes to avoid repeated names, spellings, and phrase mistakes.",
+        });
+
+  const searchAriaLabel =
+    viewMode === "dictionary"
+      ? t("settings.corrections.dictionary.search.dictionaryAriaLabel", {
+          defaultValue: "Search dictionary",
+        })
+      : t("settings.corrections.dictionary.search.ariaLabel", {
+          defaultValue: "Search learned corrections",
+        });
+  const searchPlaceholder =
+    viewMode === "dictionary"
+      ? t("settings.corrections.dictionary.search.dictionaryPlaceholder", {
+          defaultValue: "Search dictionary",
+        })
+      : t("settings.corrections.dictionary.search.placeholder", {
+          defaultValue: "Search corrections",
+        });
 
   const searchField = (
-    <label
-      className="relative flex h-9 w-[min(20rem,100%)] min-w-[12rem] items-center"
-      aria-label={
-        viewMode === "dictionary"
-          ? t("settings.corrections.dictionary.search.dictionaryAriaLabel", {
-              defaultValue: "Search dictionary",
-            })
-          : t("settings.corrections.dictionary.search.ariaLabel", {
-              defaultValue: "Search learned corrections",
-            })
-      }
-    >
-      <Search
-        className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--muted)]"
-        aria-hidden
-      />
-      <Input
-        type="search"
-        value={searchQuery}
-        onChange={(event) => setSearchQuery(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && searchQuery) {
-            setSearchQuery("");
-            event.preventDefault();
-          }
-        }}
-        placeholder={
-          viewMode === "dictionary"
-            ? t(
-                "settings.corrections.dictionary.search.dictionaryPlaceholder",
-                {
-                  defaultValue: "Search dictionary",
-                },
-              )
-            : t("settings.corrections.dictionary.search.placeholder", {
-                defaultValue: "Search corrections",
-              })
-        }
-        className="h-9 w-full pl-8 pr-8 text-xs text-[var(--text)] placeholder:text-[var(--muted)]"
-      />
-      {searchQuery ? (
+    <div ref={searchContainerRef} className="flex justify-end">
+      {searchExpanded ? (
+        <label
+          className="relative flex h-9 w-[min(20rem,calc(100vw-3rem))] min-w-[12rem] items-center"
+          aria-label={searchAriaLabel}
+        >
+          <Search
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--muted)]"
+            aria-hidden
+          />
+          <input
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                if (searchQuery) {
+                  setSearchQuery("");
+                } else {
+                  setSearchExpanded(false);
+                }
+                event.preventDefault();
+              }
+            }}
+            placeholder={searchPlaceholder}
+            className="h-9 w-full rounded-full border border-mid-gray/80 bg-mid-gray/10 py-1 pl-8 pr-8 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              className="absolute right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              onClick={() => setSearchQuery("")}
+              aria-label={t("settings.corrections.dictionary.search.clear", {
+                defaultValue: "Clear search",
+              })}
+            >
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          ) : null}
+        </label>
+      ) : (
         <button
           type="button"
-          className="absolute right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-          onClick={() => setSearchQuery("")}
-          aria-label={t("settings.corrections.dictionary.search.clear", {
-            defaultValue: "Clear search",
-          })}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+            searchQuery ? "text-[var(--accent)]" : "text-[var(--muted)]"
+          }`}
+          onClick={() => setSearchExpanded(true)}
+          aria-label={searchAriaLabel}
+          title={
+            searchQuery
+              ? t("settings.corrections.dictionary.search.activeTitle", {
+                  query: searchQuery,
+                  defaultValue: "Search active: {{query}}",
+                })
+              : searchAriaLabel
+          }
         >
-          <X className="h-3 w-3" aria-hidden />
+          <Search className="h-4 w-4" aria-hidden />
         </button>
-      ) : null}
-    </label>
+      )}
+    </div>
   );
 
   const actionButtons = (
@@ -724,7 +820,7 @@ export const CorrectionDictionaryView: React.FC<
           items={viewItems}
         />
       </div>
-      <div className="correction-dictionary-actions__trailing ms-auto flex min-w-[min(100%,20rem)] justify-end">
+      <div className="correction-dictionary-actions__trailing ms-auto flex justify-end">
         {searchField}
       </div>
     </div>
@@ -945,165 +1041,463 @@ export const CorrectionDictionaryView: React.FC<
     }
 
     return (
-      <div className="divide-y divide-[var(--border)]">
-        <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
-          <span>{t("settings.corrections.dictionary.columns.original")}</span>
-          <span>{t("settings.corrections.dictionary.columns.corrected")}</span>
-          <span>{t("common.status", { defaultValue: "Stats" })}</span>
-          <span className="text-right">
-            {t("common.actions", { defaultValue: "Actions" })}
-          </span>
-        </div>
-        {filteredGroups.map((group) => (
-          <div
-            key={getCorrectionGroupKey(group)}
-            className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] md:items-center md:gap-4 ${
-              !group.allActive
-                ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
-                : ""
-            }`}
-          >
-            <div className="min-w-0 space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
-                {t("settings.corrections.dictionary.columns.original")}
-              </span>
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                {group.entries.map((entry) => (
-                  <OriginalChip
-                    key={entry.id}
-                    entry={entry}
-                    onUpdate={handleUpdateOriginal}
-                    onDelete={handleDelete}
-                    onApprove={handleApprove}
-                    onToggleActive={handleToggleEntryActive}
-                  />
-                ))}
-                {addingTo === group.corrected ? (
-                  <form
-                    className="inline-flex items-center gap-1"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void handleAddOriginal(group.corrected);
-                    }}
-                  >
-                    <input
-                      ref={addInputRef}
-                      type="text"
-                      value={newOriginal}
-                      onChange={(event) => setNewOriginal(event.target.value)}
-                      onBlur={() => {
-                        if (!newOriginal.trim()) {
-                          setAddingTo(null);
-                          setNewOriginal("");
-                        }
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          setAddingTo(null);
-                          setNewOriginal("");
-                        }
-                      }}
-                      className="h-7 w-28 rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                      placeholder={t("common.add", {
-                        defaultValue: "Add...",
-                      })}
-                    />
-                  </form>
+      <div className="space-y-4">
+        {filteredGroups.map((group) => {
+          const groupKey = getCorrectionGroupKey(group);
+          const originalsOpen = openOriginalsKey === groupKey;
+          const confirmingDelete = confirmingDeleteGroupKey === groupKey;
+          const disableOpen = openDisableKey === groupKey;
+          const hasAppDisables = group.disabledBundleIds.length > 0;
+          const isDisabled = !group.allActive || hasAppDisables;
+          const actionsVisible =
+            originalsOpen || disableOpen || confirmingDelete;
+          const actionClusterClassName = `inline-flex items-center gap-2 transition-opacity duration-150 ${
+            actionsVisible
+              ? "opacity-100"
+              : "opacity-0 group-hover/dictionary-row:opacity-100 group-focus-within/dictionary-row:opacity-100"
+          }`;
+          const disableQuery = disableOpen
+            ? disableAppQuery.trim().toLowerCase()
+            : "";
+          const disabledAppSuggestions = disableQuery
+            ? installedApps
+                .filter(
+                  (app) =>
+                    !group.disabledBundleIds.some(
+                      (bundleId) =>
+                        bundleId.localeCompare(app.bundle_id, undefined, {
+                          sensitivity: "accent",
+                        }) === 0,
+                    ) &&
+                    (app.name.toLowerCase().includes(disableQuery) ||
+                      app.bundle_id.toLowerCase().includes(disableQuery)),
+                )
+                .slice(0, 6)
+            : [];
+
+          return (
+            <div
+              key={groupKey}
+              className={`card-linear group/dictionary-row relative grid grid-cols-1 gap-3 overflow-visible px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] md:grid-cols-[minmax(14rem,1fr)_auto] md:items-center md:gap-4 ${
+                !group.allActive
+                  ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
+                  : ""
+              }`}
+            >
+              <div className="min-w-0 space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
+                  {t("settings.corrections.dictionary.columns.corrected")}
+                </span>
+                <Input
+                  variant="compact"
+                  aria-label={t(
+                    "settings.corrections.dictionary.columns.corrected",
+                  )}
+                  className="min-h-9 w-full min-w-0 border-transparent bg-transparent px-0 text-base font-semibold text-[var(--text)] shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0"
+                  defaultValue={group.corrected}
+                  onBlur={(event) =>
+                    handleUpdateCorrected(group, event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      (event.target as HTMLInputElement).blur();
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="relative flex items-center justify-start md:justify-end">
+                {confirmingDelete ? (
+                  <div className={actionClusterClassName}>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="icon-sm"
+                      onClick={() => void handleDeleteGroup(group)}
+                      title={t("common.delete")}
+                      aria-label={t("common.delete")}
+                    >
+                      <Trash2 aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setConfirmingDeleteGroupKey(null)}
+                      title={t("common.cancel")}
+                      aria-label={t("common.cancel")}
+                    >
+                      <X aria-hidden />
+                    </Button>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    onClick={() => {
-                      setAddingTo(group.corrected);
-                      setNewOriginal("");
-                    }}
-                    title={t("common.add", { defaultValue: "Add" })}
-                    aria-label={t("common.add", { defaultValue: "Add" })}
-                  >
-                    <Plus className="h-3 w-3" aria-hidden />
-                  </button>
+                  <div className={actionClusterClassName}>
+                    <button
+                      type="button"
+                      data-originals-trigger
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+                        originalsOpen
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                          : "text-[var(--text)]"
+                      }`}
+                      onClick={() => {
+                        setOpenDisableKey(null);
+                        setDisableAppQuery("");
+                        setOpenOriginalsKey((current) =>
+                          current === groupKey ? null : groupKey,
+                        );
+                      }}
+                      aria-haspopup="dialog"
+                      aria-expanded={originalsOpen}
+                      aria-label={t(
+                        "settings.corrections.dictionary.originals.openAria",
+                        {
+                          count: group.entries.length,
+                          defaultValue: "Show {{count}} original phrases",
+                        },
+                      )}
+                      title={t(
+                        "settings.corrections.dictionary.originals.openTitle",
+                        {
+                          count: group.entries.length,
+                          defaultValue: "Show original phrases",
+                        },
+                      )}
+                    >
+                      <History className="h-[18px] w-[18px]" aria-hidden />
+                    </button>
+                    {originalsOpen ? (
+                      <div
+                        ref={originalsPopoverRef}
+                        role="dialog"
+                        aria-label={t(
+                          "settings.corrections.dictionary.originals.dialogTitle",
+                          {
+                            defaultValue: "Original phrases",
+                          },
+                        )}
+                        className="absolute right-0 top-full z-30 mt-2 w-[min(28rem,calc(100vw-3rem))] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 shadow-[var(--shadow-lg)]"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                            {t(
+                              "settings.corrections.dictionary.columns.original",
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                            onClick={() => setOpenOriginalsKey(null)}
+                            aria-label={t("common.close", {
+                              defaultValue: "Close",
+                            })}
+                            title={t("common.close", { defaultValue: "Close" })}
+                          >
+                            <X className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </div>
+                        <div className="flex max-h-64 min-w-0 flex-wrap gap-1.5 overflow-y-auto pr-1">
+                          {group.entries.map((entry) => (
+                            <OriginalChip
+                              key={entry.id}
+                              entry={entry}
+                              onUpdate={handleUpdateOriginal}
+                              onDelete={handleDelete}
+                              onApprove={handleApprove}
+                              onToggleActive={handleToggleEntryActive}
+                            />
+                          ))}
+                          {addingTo === group.corrected ? (
+                            <form
+                              className="inline-flex items-center gap-1"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleAddOriginal(group.corrected);
+                              }}
+                            >
+                              <input
+                                ref={addInputRef}
+                                type="text"
+                                value={newOriginal}
+                                onChange={(event) =>
+                                  setNewOriginal(event.target.value)
+                                }
+                                onBlur={() => {
+                                  if (!newOriginal.trim()) {
+                                    setAddingTo(null);
+                                    setNewOriginal("");
+                                  }
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    setAddingTo(null);
+                                    setNewOriginal("");
+                                  }
+                                }}
+                                className="h-7 w-28 rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                                placeholder={t("common.add", {
+                                  defaultValue: "Add...",
+                                })}
+                              />
+                            </form>
+                          ) : (
+                            <button
+                              type="button"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                              onClick={() => {
+                                setAddingTo(group.corrected);
+                                setNewOriginal("");
+                              }}
+                              title={t("common.add", { defaultValue: "Add" })}
+                              aria-label={t("common.add", {
+                                defaultValue: "Add",
+                              })}
+                            >
+                              <Plus className="h-3 w-3" aria-hidden />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      data-disable-trigger
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+                        disableOpen
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                          : "text-[var(--text)]"
+                      }`}
+                      onClick={() => {
+                        setOpenOriginalsKey(null);
+                        setOpenDisableKey((current) =>
+                          current === groupKey ? null : groupKey,
+                        );
+                        setDisableAppQuery("");
+                      }}
+                      aria-haspopup="dialog"
+                      aria-expanded={disableOpen}
+                      aria-label={t(
+                        "settings.corrections.dictionary.disableMenu.open",
+                        {
+                          defaultValue: "Correction disable options",
+                        },
+                      )}
+                      title={t(
+                        "settings.corrections.dictionary.disableMenu.open",
+                        {
+                          defaultValue: "Correction disable options",
+                        },
+                      )}
+                    >
+                      {isDisabled ? (
+                        <Ban className="h-[18px] w-[18px]" aria-hidden />
+                      ) : (
+                        <SlidersHorizontal
+                          className="h-[18px] w-[18px]"
+                          aria-hidden
+                        />
+                      )}
+                    </button>
+                    {disableOpen ? (
+                      <div
+                        ref={disablePopoverRef}
+                        role="dialog"
+                        aria-label={t(
+                          "settings.corrections.dictionary.disableMenu.title",
+                          {
+                            defaultValue: "Disable options",
+                          },
+                        )}
+                        className="absolute right-0 top-full z-30 mt-2 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-left shadow-[var(--shadow-lg)]"
+                      >
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                            {t(
+                              "settings.corrections.dictionary.disableMenu.title",
+                              {
+                                defaultValue: "Disable options",
+                              },
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                            onClick={() => {
+                              setOpenDisableKey(null);
+                              setDisableAppQuery("");
+                            }}
+                            aria-label={t("common.close", {
+                              defaultValue: "Close",
+                            })}
+                            title={t("common.close", { defaultValue: "Close" })}
+                          >
+                            <X className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                          onClick={() =>
+                            void handleToggleGroup(group, !group.allActive)
+                          }
+                        >
+                          <span>
+                            {group.allActive
+                              ? t(
+                                  "settings.corrections.dictionary.disableMenu.disableEverywhere",
+                                  {
+                                    defaultValue: "Disable everywhere",
+                                  },
+                                )
+                              : t(
+                                  "settings.corrections.dictionary.disableMenu.enableEverywhere",
+                                  {
+                                    defaultValue: "Enable everywhere",
+                                  },
+                                )}
+                          </span>
+                          <Ban
+                            className="h-4 w-4 text-[var(--muted)]"
+                            aria-hidden
+                          />
+                        </button>
+
+                        <div className="mt-3 space-y-2">
+                          <button
+                            type="button"
+                            className="w-full rounded-xl border border-dashed border-[var(--border)] px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                            onClick={() =>
+                              void handleDisableForCurrentApp(group)
+                            }
+                          >
+                            {t(
+                              "settings.corrections.dictionary.disableMenu.currentApp",
+                              {
+                                defaultValue: "Disable in current app",
+                              },
+                            )}
+                          </button>
+
+                          <input
+                            type="search"
+                            value={disableAppQuery}
+                            onChange={(event) =>
+                              setDisableAppQuery(event.target.value)
+                            }
+                            placeholder={t(
+                              "settings.corrections.dictionary.disableMenu.searchApps",
+                              {
+                                defaultValue: "Search apps",
+                              },
+                            )}
+                            className="h-9 w-full rounded-full border border-mid-gray/80 bg-mid-gray/10 px-3 py-1 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
+                          />
+
+                          {disabledAppSuggestions.length > 0 ? (
+                            <div className="max-h-48 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] py-1">
+                              {disabledAppSuggestions.map((app) => (
+                                <button
+                                  key={app.bundle_id}
+                                  type="button"
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--input)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                                  onClick={() => {
+                                    void handleSetGroupDisabledApps(group, [
+                                      ...group.disabledBundleIds,
+                                      app.bundle_id,
+                                    ]);
+                                    setDisableAppQuery("");
+                                  }}
+                                >
+                                  <AppMonogram
+                                    bundleId={app.bundle_id}
+                                    name={app.name}
+                                    size="sm"
+                                  />
+                                  <span className="min-w-0 flex-1 truncate text-[var(--text)]">
+                                    {app.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {group.disabledBundleIds.length > 0 ? (
+                            <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                              {group.disabledBundleIds.map((bundleId) => {
+                                const app = installedAppsByBundleId.get(
+                                  bundleId.toLowerCase(),
+                                );
+                                const name =
+                                  app?.name ?? humanizeBundleId(bundleId);
+                                return (
+                                  <span
+                                    key={bundleId}
+                                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--input)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
+                                    title={bundleId}
+                                  >
+                                    <AppMonogram
+                                      bundleId={bundleId}
+                                      name={name}
+                                      size="xs"
+                                    />
+                                    <span className="max-w-36 truncate">
+                                      {name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="text-[var(--muted)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                                      onClick={() =>
+                                        void handleSetGroupDisabledApps(
+                                          group,
+                                          group.disabledBundleIds.filter(
+                                            (id) =>
+                                              id.toLowerCase() !==
+                                              bundleId.toLowerCase(),
+                                          ),
+                                        )
+                                      }
+                                      aria-label={t("common.remove", {
+                                        defaultValue: "Remove",
+                                      })}
+                                    >
+                                      <X className="h-3 w-3" aria-hidden />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs leading-5 text-[var(--muted)]">
+                              {t(
+                                "settings.corrections.dictionary.disableMenu.noApps",
+                                {
+                                  defaultValue:
+                                    "No app-specific disables for this correction.",
+                                },
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="danger-ghost"
+                      size="icon-sm"
+                      className="text-[var(--text)] [&>svg]:h-[18px] [&>svg]:w-[18px]"
+                      onClick={() => setConfirmingDeleteGroupKey(groupKey)}
+                      title={t("common.delete")}
+                      aria-label={t("common.delete")}
+                    >
+                      <Trash2 aria-hidden />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
-
-            <div className="min-w-0 space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
-                {t("settings.corrections.dictionary.columns.corrected")}
-              </span>
-              <Input
-                variant="compact"
-                aria-label={t(
-                  "settings.corrections.dictionary.columns.corrected",
-                )}
-                className="min-h-9 w-full min-w-0 rounded-[999px] px-3 font-semibold text-[var(--text)]"
-                defaultValue={group.corrected}
-                onBlur={(event) =>
-                  handleUpdateCorrected(group, event.target.value)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    (event.target as HTMLInputElement).blur();
-                  }
-                }}
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
-              {(() => {
-                const groupStatus = getGroupStatus(group, t);
-                return (
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${groupStatus.className}`}
-                    title={groupStatus.title}
-                  >
-                    {groupStatus.label}
-                  </span>
-                );
-              })()}
-              <span className="block text-[var(--text)]">
-                {t("settings.corrections.dictionary.columns.frequency", {
-                  defaultValue: "Uses",
-                })}
-                : {group.totalFrequency}
-              </span>
-              <span className="block">
-                {t("settings.corrections.dictionary.columns.confidence", {
-                  defaultValue: "Confidence",
-                })}
-                : {(group.avgEffectiveConfidence * 100).toFixed(0)}%
-              </span>
-            </div>
-
-            <div className="flex items-center justify-end gap-1.5">
-              <SwitchControl
-                checked={group.allActive}
-                onChange={(checked) => handleToggleGroup(group, checked)}
-                size="compact"
-                frame="icon"
-                title={
-                  group.allActive
-                    ? t("common.disable", { defaultValue: "Disable" })
-                    : t("common.enable", { defaultValue: "Enable" })
-                }
-                ariaLabel={
-                  group.allActive
-                    ? t("common.disable", { defaultValue: "Disable" })
-                    : t("common.enable", { defaultValue: "Enable" })
-                }
-              />
-              <Button
-                type="button"
-                variant="danger-ghost"
-                size="icon-sm"
-                onClick={() => handleDeleteGroup(group)}
-                title={t("common.delete")}
-                aria-label={t("common.delete")}
-              >
-                <Trash2 aria-hidden />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -1112,17 +1506,22 @@ export const CorrectionDictionaryView: React.FC<
     <section className="space-y-7">
       {addDialog}
       {showHeaderTitle ? (
-        <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3 px-5">
-          <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-widest text-[var(--text)]">
-            {sectionTitle}
-          </h2>
+        <div className="mb-3 flex min-w-0 flex-wrap items-start justify-between gap-3 px-5">
+          <div className="min-w-0 flex-1">
+            <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+              {sectionTitle}
+            </h2>
+            <p className="mt-1 max-w-4xl text-sm font-semibold leading-6 text-[var(--muted)]">
+              {viewDescription}
+            </p>
+          </div>
           {actionButtons}
         </div>
       ) : (
         <SettingsGroup
           noCard
           title={sectionTitle}
-          description={t("settings.corrections.description")}
+          description={viewDescription}
           showTitle={false}
           descriptionOnlyGap="controls"
         >
@@ -1143,7 +1542,7 @@ export const CorrectionDictionaryView: React.FC<
           {importError}
         </div>
       ) : null}
-      <div className="flat-card overflow-visible">{renderContent()}</div>
+      {renderContent()}
     </section>
   );
 };
@@ -1161,6 +1560,7 @@ const OriginalChip: React.FC<{
 }> = ({ entry, onUpdate, onDelete, onApprove, onToggleActive }) => {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [value, setValue] = useState(entry.original);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -1260,14 +1660,43 @@ const OriginalChip: React.FC<{
           <Undo2 className="h-3 w-3" aria-hidden />
         </button>
       ) : null}
-      <button
-        type="button"
-        className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-        onClick={() => void onDelete(entry.id)}
-        aria-label={t("settings.corrections.dictionary.deleteOriginalPhrase")}
-      >
-        <X className="h-2.5 w-2.5" aria-hidden />
-      </button>
+      {confirmingDelete ? (
+        <>
+          <button
+            type="button"
+            className="shrink-0 rounded-full bg-[var(--danger-soft)] p-0.5 text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            onClick={async () => {
+              await onDelete(entry.id);
+              setConfirmingDelete(false);
+            }}
+            aria-label={t(
+              "settings.corrections.dictionary.deleteOriginalPhrase",
+            )}
+            title={t("common.delete")}
+          >
+            <Trash2 className="h-3 w-3" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            onClick={() => setConfirmingDelete(false)}
+            aria-label={t("common.cancel")}
+            title={t("common.cancel")}
+          >
+            <X className="h-2.5 w-2.5" aria-hidden />
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => setConfirmingDelete(true)}
+          aria-label={t("settings.corrections.dictionary.deleteOriginalPhrase")}
+          title={t("common.delete")}
+        >
+          <X className="h-2.5 w-2.5" aria-hidden />
+        </button>
+      )}
     </Badge>
   );
 };

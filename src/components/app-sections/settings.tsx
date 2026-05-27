@@ -45,6 +45,7 @@ import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { isMacAppStoreBuild } from "@/lib/distribution";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { Alert } from "@/components/ui/Alert";
+import { BooleanSetting } from "@/components/ui/BooleanSetting";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -2143,6 +2144,33 @@ export const DiagnosticsSettingsSection: React.FC = () => {
         description={t("appSections.diagnostics.labsDescription")}
       >
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("appSections.diagnostics.technicalFeaturesTitle", {
+          defaultValue: "Technical features",
+        })}
+        description={t("appSections.diagnostics.technicalFeaturesDescription", {
+          defaultValue:
+            "Control lower-level interface details used during development and diagnostics.",
+        })}
+      >
+        <BooleanSetting
+          settingKey="show_technical_features"
+          label={t("appSections.diagnostics.technicalFeaturesToggleLabel", {
+            defaultValue: "Show technical features",
+          })}
+          description={t(
+            "appSections.diagnostics.technicalFeaturesToggleDescription",
+            {
+              defaultValue:
+                "Shows extra diagnostic badges and technical context in user-facing surfaces.",
+            },
+          )}
+          defaultValue={true}
+          descriptionMode="tooltip"
+          grouped={true}
+        />
       </SettingsGroup>
 
       <SettingsGroup

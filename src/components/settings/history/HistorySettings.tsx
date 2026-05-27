@@ -34,6 +34,7 @@ import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
+import { useSetting } from "@/hooks/useSettings";
 
 const getHistoryDateKey = (timestamp: number): string => {
   const date = new Date(timestamp * 1000);
@@ -72,18 +73,11 @@ const formatHistoryGroupLabel = (
   return formatDate(String(timestamp), locale);
 };
 
-const formatHistoryDuration = (durationMs: number): string => {
-  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-};
-
 const HISTORY_PAGE_SIZE = 50;
 
 export const HistorySettings: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const showTechnicalFeatures = useSetting("show_technical_features") ?? true;
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -370,6 +364,7 @@ export const HistorySettings: React.FC = () => {
                     onOpenTranscript={() => handleOpenTranscript(entry.id)}
                     getAudioUrl={getAudioUrl}
                     deleteAudio={deleteAudioEntry}
+                    showTechnicalFeatures={showTechnicalFeatures}
                   />
                 );
               })}
@@ -472,6 +467,7 @@ interface HistoryEntryProps {
   onOpenTranscript: () => void;
   getAudioUrl: (fileName: string) => Promise<string | null>;
   deleteAudio: (id: number) => Promise<void>;
+  showTechnicalFeatures: boolean;
 }
 
 const sectionLabelClassName =
@@ -480,11 +476,12 @@ const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[var(--panel-bg)] px-3 py-3";
 
 const historyActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyDangerActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--text)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyConfirmDeleteButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+const historyActionIconSize = 18;
 const historyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
 
@@ -641,6 +638,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   onOpenTranscript,
   getAudioUrl,
   deleteAudio,
+  showTechnicalFeatures,
 }) => {
   const { t, i18n } = useTranslation();
   const [showCopied, setShowCopied] = useState(false);
@@ -731,7 +729,11 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         title={t("settings.history.transcript.openLabel")}
         aria-label={t("settings.history.transcript.openLabel")}
       >
-        <FileText width={14} height={14} aria-hidden />
+        <FileText
+          width={historyActionIconSize}
+          height={historyActionIconSize}
+          aria-hidden
+        />
       </button>
       <button
         type="button"
@@ -741,9 +743,9 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         aria-label={t("settings.history.copyToClipboard")}
       >
         {showCopied ? (
-          <Check width={14} height={14} />
+          <Check width={historyActionIconSize} height={historyActionIconSize} />
         ) : (
-          <Copy width={14} height={14} />
+          <Copy width={historyActionIconSize} height={historyActionIconSize} />
         )}
       </button>
       <button
@@ -753,7 +755,11 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         title={t("settings.history.showRecordingInFolder")}
         aria-label={t("settings.history.showRecordingInFolder")}
       >
-        <FolderOpen width={14} height={14} aria-hidden />
+        <FolderOpen
+          width={historyActionIconSize}
+          height={historyActionIconSize}
+          aria-hidden
+        />
       </button>
       <button
         type="button"
@@ -761,7 +767,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
           entry.saved
             ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
-            : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+            : "text-[var(--text)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
         }`}
         title={
           entry.saved
@@ -775,8 +781,8 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         }
       >
         <Star
-          width={14}
-          height={14}
+          width={historyActionIconSize}
+          height={historyActionIconSize}
           fill={entry.saved ? "currentColor" : "none"}
         />
       </button>
@@ -789,7 +795,10 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             title={t("settings.history.delete")}
             aria-label={t("settings.history.delete")}
           >
-            <Trash2 width={14} height={14} />
+            <Trash2
+              width={historyActionIconSize}
+              height={historyActionIconSize}
+            />
           </button>
           <button
             type="button"
@@ -798,7 +807,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             title={t("common.cancel")}
             aria-label={t("common.cancel")}
           >
-            <X width={14} height={14} />
+            <X width={historyActionIconSize} height={historyActionIconSize} />
           </button>
         </>
       ) : (
@@ -809,7 +818,10 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           title={t("settings.history.delete")}
           aria-label={t("settings.history.delete")}
         >
-          <Trash2 width={14} height={14} />
+          <Trash2
+            width={historyActionIconSize}
+            height={historyActionIconSize}
+          />
         </button>
       )}
     </>
@@ -894,18 +906,12 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   );
 
   const metaParts: React.ReactNode[] = [
-    <span key="time">{formattedTime}</span>,
+    <span key="time" className="font-medium text-black">
+      {formattedTime}
+    </span>,
   ];
 
-  if (typeof entry.duration_ms === "number" && entry.duration_ms > 0) {
-    metaParts.push(
-      <span key="duration" className="tabular-nums">
-        {formatHistoryDuration(entry.duration_ms)}
-      </span>,
-    );
-  }
-
-  if (postProcessApplied) {
+  if (showTechnicalFeatures && postProcessApplied) {
     metaParts.push(
       <HistoryBadgeHoverPanel key="post-process" panel={postProcessBadgePanel}>
         <span className="inline-flex items-center gap-1 font-semibold text-[var(--success)]">
@@ -921,7 +927,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     );
   }
 
-  if (dictionaryApplied) {
+  if (showTechnicalFeatures && dictionaryApplied) {
     metaParts.push(
       <HistoryBadgeHoverPanel key="dictionary" panel={dictionaryBadgePanel}>
         <span className="inline-flex items-center gap-1 font-semibold text-[var(--success)]">
@@ -937,7 +943,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     );
   }
 
-  if (showFieldObservationBadge) {
+  if (showTechnicalFeatures && showFieldObservationBadge) {
     const fieldToneClass =
       fieldSnapshotStatus === "failed"
         ? "font-semibold text-[var(--danger)]"

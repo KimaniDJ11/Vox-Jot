@@ -768,7 +768,9 @@
         "views": {
           "ariaLabel": "Dictionary view",
           "corrections": "Corrections",
-          "dictionary": "Dictionary"
+          "dictionary": "Dictionary",
+          "correctionsDescription": "Corrections are learned automatically from edits you make after dictation. Vox Jot reads the text field after insertion, then uses those fixes to avoid repeated names, spellings, and phrase mistakes.",
+          "dictionaryDescription": "Vox Jot uses your personal dictionary for words and names you add manually or import. Add preferred spellings, company jargon, client names, and industry terms so dictation uses the language that matters to you."
         },
         "search": {
           "placeholder": "Search corrections",

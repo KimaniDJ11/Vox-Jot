@@ -41,6 +41,20 @@ pub fn toggle_correction(app: AppHandle, id: i64, active: bool) -> Result<(), St
     store.set_active(id, active).map_err(|e| e.to_string())
 }
 
+/// Update the apps where a correction should be disabled.
+#[tauri::command]
+#[specta::specta]
+pub fn set_correction_disabled_apps(
+    app: AppHandle,
+    id: i64,
+    bundle_ids: Vec<String>,
+) -> Result<(), String> {
+    let store = app.state::<Arc<CorrectionStore>>();
+    store
+        .set_disabled_bundle_ids(id, &bundle_ids)
+        .map_err(|e| e.to_string())
+}
+
 /// Clear all stored corrections.
 #[tauri::command]
 #[specta::specta]

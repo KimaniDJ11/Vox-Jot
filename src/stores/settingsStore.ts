@@ -231,6 +231,8 @@ const settingUpdaters: {
   recording_overlay_style: (value) =>
     commands.changeRecordingOverlayStyleSetting(value as string),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),
+  show_technical_features: (value) =>
+    commands.changeShowTechnicalFeaturesSetting(value as boolean),
   custom_words: (value) => commands.updateCustomWords(value as string[]),
   word_correction_threshold: (value) =>
     commands.changeWordCorrectionThresholdSetting(value as number),

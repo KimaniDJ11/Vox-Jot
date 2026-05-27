@@ -702,6 +702,8 @@ pub struct AppSettings {
     pub recording_overlay_style: RecordingOverlayStyle,
     #[serde(default = "default_debug_mode")]
     pub debug_mode: bool,
+    #[serde(default = "default_show_technical_features")]
+    pub show_technical_features: bool,
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
     #[serde(default)]
@@ -1055,6 +1057,10 @@ fn default_recording_overlay_style() -> RecordingOverlayStyle {
 
 fn default_debug_mode() -> bool {
     false
+}
+
+fn default_show_technical_features() -> bool {
+    true
 }
 
 fn default_log_level() -> LogLevel {
@@ -2001,6 +2007,7 @@ pub fn get_default_settings() -> AppSettings {
         overlay_position: default_overlay_position(),
         recording_overlay_style: default_recording_overlay_style(),
         debug_mode: false,
+        show_technical_features: default_show_technical_features(),
         log_level: default_log_level(),
         custom_words: Vec::new(),
         model_unload_timeout: ModelUnloadTimeout::Never,

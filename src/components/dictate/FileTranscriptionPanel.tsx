@@ -1,23 +1,32 @@
 import React, {
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
+  Captions,
+  Check,
+  ChevronDown,
+  ClipboardCopy,
   FileAudio,
+  FileText,
   Folder,
   FolderPlus,
   Layers,
-  Plus,
+  Loader2,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import type {
   SpeechAnalysisModelDescriptor,
@@ -32,10 +41,8 @@ import {
   SettingsGroup,
 } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { voiceAvatarGradient } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import { useSettingsSlice } from "@/hooks/useSettings";
@@ -120,7 +127,7 @@ const SelectedAsrModelInline: React.FC<{
 
   return (
     <div
-      className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-[var(--muted)]"
       aria-label={label}
       title={label}
     >
@@ -131,7 +138,7 @@ const SelectedAsrModelInline: React.FC<{
         }}
         aria-hidden="true"
       />
-      <span className="truncate">{model.label}</span>
+      <span className="truncate font-medium">{model.label}</span>
     </div>
   );
 };
@@ -157,6 +164,7 @@ const FileTranscriptionStatusHeader: React.FC<{
           count: 0,
           defaultValue: "{{count}} remaining",
         }),
+        icon: <Loader2 size={12} className="animate-spin" aria-hidden="true" />,
       };
     }
     if (error) {
@@ -168,6 +176,7 @@ const FileTranscriptionStatusHeader: React.FC<{
           count: 1,
           defaultValue: "{{count}} file stopped",
         }),
+        icon: <AlertCircle size={12} aria-hidden="true" />,
       };
     }
     if (hasTranscript) {
@@ -179,6 +188,7 @@ const FileTranscriptionStatusHeader: React.FC<{
           count: 1,
           defaultValue: "{{count}} file complete",
         }),
+        icon: <Check size={12} aria-hidden="true" />,
       };
     }
     return {
@@ -188,29 +198,39 @@ const FileTranscriptionStatusHeader: React.FC<{
       detail: t("dictate.fileTranscription.status.idleDetail", {
         defaultValue: "No files transcribing",
       }),
+      icon: null,
     };
   })();
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-      <div
-        className="min-w-0 truncate text-sm text-[var(--muted)]"
-        role="status"
-        aria-live="polite"
-        title={fileName || undefined}
-      >
-        <span className="font-semibold text-[var(--text)]">{status.label}</span>
-        <span> - {status.detail}</span>
-        {isRunning && fileName ? (
-          <span className="sr-only">
-            {t("dictate.fileTranscription.status.currentFile", {
-              fileName,
-              defaultValue: "Current file: {{fileName}}",
-            })}
+    <div className="space-y-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div
+          className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--muted)]"
+          role="status"
+          aria-live="polite"
+          title={fileName || undefined}
+        >
+          {status.icon && <span className="shrink-0">{status.icon}</span>}
+          <span className="min-w-0 truncate">
+            <span className="font-medium text-[var(--text)]">
+              {status.label}
+            </span>
+            <span className="mx-1.5 text-[var(--border-strong)]">·</span>
+            <span>{status.detail}</span>
           </span>
-        ) : null}
+          {isRunning && fileName ? (
+            <span className="sr-only">
+              {t("dictate.fileTranscription.status.currentFile", {
+                fileName,
+                defaultValue: "Current file: {{fileName}}",
+              })}
+            </span>
+          ) : null}
+        </div>
+        <SelectedAsrModelInline model={selectedAsrModel} />
       </div>
-      <SelectedAsrModelInline model={selectedAsrModel} />
+      <div className="border-t border-[var(--border)]" aria-hidden="true" />
     </div>
   );
 };
@@ -361,6 +381,14 @@ export const FileTranscriptionPanel: React.FC = () => {
     };
   }, [runTranscription]);
 
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await copyResult();
+    setCopyFeedback(true);
+    setTimeout(() => setCopyFeedback(false), 1800);
+  }, [copyResult]);
+
   return (
     <div className="space-y-7" aria-busy={isRunning}>
       <SettingsGroup
@@ -396,63 +424,67 @@ export const FileTranscriptionPanel: React.FC = () => {
 
             <div
               className={[
-                "flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-5 py-4 text-center transition-[border-color,background-color,box-shadow] duration-150",
+                "flex min-h-[150px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-6 text-center transition-[border-color,background-color,box-shadow] duration-150",
                 isDragOver
-                  ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
-                  : "",
+                  ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[inset_0_0_0_1px_var(--accent)]"
+                  : "border-[var(--border)] bg-[var(--bg)]",
               ].join(" ")}
             >
               <div
-                className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+                className="flex size-11 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
                 aria-hidden="true"
               >
-                {isDragOver ? <Upload size={22} /> : <FileAudio size={22} />}
+                {isDragOver ? <Upload size={20} /> : <FileAudio size={20} />}
               </div>
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-[var(--text)]">
-                  {t("dictate.fileTranscription.dropHint", {
-                    defaultValue: "Drag & drop an audio or video file here",
+              {isDragOver ? (
+                <div className="text-sm font-semibold text-[var(--accent)]">
+                  {t("dictate.fileTranscription.dropRelease", {
+                    defaultValue: "Release to transcribe",
                   })}
                 </div>
-                <div className="text-xs text-[var(--muted)]">
-                  {t("dictate.fileTranscription.orLabel", {
-                    defaultValue: "or",
-                  })}
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                onClick={pickFile}
-                disabled={isRunning}
-              >
-                {isRunning
-                  ? t("dictate.fileTranscription.transcribing", {
-                      defaultValue: "Transcribing…",
-                    })
-                  : t("dictate.fileTranscription.pickFile", {
-                      defaultValue: "Pick File",
+              ) : (
+                <>
+                  <div className="text-sm font-semibold text-[var(--text)]">
+                    {t("dictate.fileTranscription.dropHint", {
+                      defaultValue: "Drag & drop an audio or video file here",
                     })}
-              </Button>
+                  </div>
+                  <div className="text-[11px] text-[var(--muted)]">
+                    {t("dictate.fileTranscription.orLabel", {
+                      defaultValue: "or",
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={pickFile}
+                    disabled={isRunning}
+                    className="cursor-pointer rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isRunning
+                      ? t("dictate.fileTranscription.transcribing", {
+                          defaultValue: "Transcribing…",
+                        })
+                      : t("dictate.fileTranscription.pickFile", {
+                          defaultValue: "Pick file",
+                        })}
+                  </button>
+                </>
+              )}
             </div>
 
             {selectedPath && (
               <div
-                className="truncate text-xs text-[var(--muted)]"
+                className="truncate px-1 pt-3 text-xs text-[var(--muted)]"
                 title={selectedPath}
                 aria-label={selectedPath}
               >
-                {t("dictate.fileTranscription.selectedLabel", {
-                  defaultValue: "Selected:",
-                })}{" "}
-                <span className="text-[var(--text)]">
-                  {basename(selectedPath)}
-                </span>
+                {basename(selectedPath)}
               </div>
             )}
 
             <div className="space-y-2">
               <label
-                className="text-xs font-medium text-[var(--muted)]"
+                className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]"
                 htmlFor="file-transcription-output"
               >
                 {t("dictate.fileTranscription.outputLabel", {
@@ -467,13 +499,17 @@ export const FileTranscriptionPanel: React.FC = () => {
                   defaultValue: "Transcript appears here after processing.",
                 })}
                 aria-live="polite"
-                className="min-h-[140px]"
+                className="min-h-[170px] resize-none rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-3 text-sm font-normal shadow-none placeholder:italic placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-glow)]"
               />
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="secondary"
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+              <div className="flex items-center gap-0 text-xs">
+                <button
+                  type="button"
                   onClick={() => exportSubtitles("srt")}
                   disabled={segments.length === 0 || isRunning}
+                  className="cursor-pointer px-1 py-0.5 font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                   title={
                     segments.length === 0
                       ? t("dictate.fileTranscription.exportSrtUnavailable", {
@@ -483,14 +519,19 @@ export const FileTranscriptionPanel: React.FC = () => {
                       : undefined
                   }
                 >
-                  {t("dictate.fileTranscription.exportSrt", {
-                    defaultValue: "Save .srt",
-                  })}
-                </Button>
-                <Button
-                  variant="secondary"
+                  SRT
+                </button>
+                <span
+                  className="text-[var(--border-strong)]"
+                  aria-hidden="true"
+                >
+                  ·
+                </span>
+                <button
+                  type="button"
                   onClick={() => exportSubtitles("vtt")}
                   disabled={segments.length === 0 || isRunning}
+                  className="cursor-pointer px-1 py-0.5 font-medium text-[var(--muted)] transition-colors hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                   title={
                     segments.length === 0
                       ? t("dictate.fileTranscription.exportSrtUnavailable", {
@@ -500,44 +541,56 @@ export const FileTranscriptionPanel: React.FC = () => {
                       : undefined
                   }
                 >
-                  {t("dictate.fileTranscription.exportVtt", {
-                    defaultValue: "Save .vtt",
-                  })}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={copyResult}
-                  disabled={!transcription.trim() || isRunning}
-                >
-                  {t("dictate.fileTranscription.copy", {
-                    defaultValue: "Copy",
-                  })}
-                </Button>
+                  VTT
+                </button>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCopy}
+                disabled={!transcription.trim() || isRunning}
+                className="gap-1.5 px-3.5 text-xs"
+              >
+                {copyFeedback ? (
+                  <>
+                    <Check size={12} aria-hidden="true" />
+                    {t("dictate.fileTranscription.copied", {
+                      defaultValue: "Copied",
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCopy size={12} aria-hidden="true" />
+                    {t("dictate.fileTranscription.copy", {
+                      defaultValue: "Copy",
+                    })}
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </>
       ) : (
-        <WatchedFoldersGroup />
+        <WatchedFoldersGroup selectedAsrModel={selectedAsrModel} />
       )}
 
       {error && (
         <div
-          className="flex items-start gap-2 rounded-2xl border border-[var(--danger)] bg-[var(--input)] px-4 py-3 text-xs text-[var(--danger)]"
+          className="flex items-start gap-2.5 rounded-xl bg-[color-mix(in_srgb,var(--danger),transparent_94%)] px-4 py-3 text-xs"
           role="alert"
         >
           <AlertCircle
-            size={16}
+            size={14}
             aria-hidden="true"
-            className="mt-0.5 shrink-0"
+            className="mt-0.5 shrink-0 text-[var(--danger)]"
           />
-          <div>
-            <div className="font-medium">
+          <div className="min-w-0">
+            <div className="font-medium text-[var(--danger)]">
               {t("dictate.fileTranscription.errors.heading", {
                 defaultValue: "Transcription failed",
               })}
             </div>
-            <div className="mt-1 break-words text-[var(--text)]">{error}</div>
+            <div className="mt-0.5 break-words text-[var(--text)]">{error}</div>
           </div>
         </div>
       )}
@@ -563,18 +616,356 @@ type WatchProgressPayload = {
   message: string | null;
 };
 
-const FOLDER_ICON_CACHE = new Map<string, string | null>();
+const WatchedFoldersStatusHeader: React.FC<{
+  folders: WatchFolderConfig[];
+  activity: WatchProgressPayload[];
+  selectedAsrModel: SpeechAnalysisModelDescriptor | null;
+}> = ({ folders, activity, selectedAsrModel }) => {
+  const { t } = useTranslation();
+  const active = activity.find((event) => event.stage === "started");
+  const latest = activity[0];
+  const isFolderCountSummary =
+    folders.length > 0 && !active && latest?.stage !== "failed";
+  const status = (() => {
+    if (active) {
+      return {
+        label: t("dictate.watchFolders.status.processing", {
+          defaultValue: "Processing",
+        }),
+        detail: basename(active.source_path),
+        icon: <Loader2 size={12} className="animate-spin" aria-hidden="true" />,
+      };
+    }
+    if (latest?.stage === "failed") {
+      return {
+        label: t("dictate.watchFolders.status.needsAttention", {
+          defaultValue: "Needs attention",
+        }),
+        detail: basename(latest.source_path),
+        icon: <AlertCircle size={12} aria-hidden="true" />,
+      };
+    }
+    if (folders.length > 0) {
+      return {
+        label: t("dictate.watchFolders.status.countLabel", {
+          defaultValue: "WATCHED FOLDERS",
+        }),
+        detail: String(folders.length),
+        icon: null,
+      };
+    }
+    return {
+      label: t("dictate.fileTranscription.status.ready", {
+        defaultValue: "Ready",
+      }),
+      detail: t("dictate.watchFolders.status.emptyDetail", {
+        defaultValue: "No watched folders",
+      }),
+      icon: null,
+    };
+  })();
 
-const formatLabel = (format?: WatchFolderOutputFormat): string => {
+  return (
+    <div className="space-y-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div
+          className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--muted)]"
+          role="status"
+          aria-live="polite"
+          title={active || latest ? status.detail : undefined}
+        >
+          {status.icon && <span className="shrink-0">{status.icon}</span>}
+          <span
+            className={[
+              "min-w-0 truncate",
+              isFolderCountSummary
+                ? "text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]"
+                : "",
+            ].join(" ")}
+          >
+            <span
+              className={
+                isFolderCountSummary
+                  ? ""
+                  : "font-medium text-[var(--text)]"
+              }
+            >
+              {status.label}
+            </span>
+            <span className="mx-1.5 text-[var(--border-strong)]">·</span>
+            <span>{status.detail}</span>
+          </span>
+        </div>
+        <SelectedAsrModelInline model={selectedAsrModel} />
+      </div>
+      <div className="border-t border-[var(--border)]" aria-hidden="true" />
+    </div>
+  );
+};
+
+const FOLDER_ICON_CACHE = new Map<string, string | null>();
+let latestAddedWatchFolderId: string | null = null;
+
+const watchFolderFormatTone = (format?: WatchFolderOutputFormat): string => {
   switch (format) {
     case "srt":
-      return "SRT";
+      return "text-[var(--accent)] bg-[var(--accent-soft)]";
     case "vtt":
-      return "VTT";
+      return "text-[var(--info)] bg-[color-mix(in_srgb,var(--info),transparent_88%)]";
     case "text":
     default:
-      return "Text";
+      return "text-[var(--muted)] bg-[var(--input)]";
   }
+};
+
+const WatchFolderFormatIcon: React.FC<{
+  format?: WatchFolderOutputFormat;
+  size?: number;
+}> = ({ format, size = 18 }) => {
+  if (format === "srt" || format === "vtt") {
+    return <Captions size={size} aria-hidden="true" />;
+  }
+  return <FileText size={size} aria-hidden="true" />;
+};
+
+const WatchFolderFormatPicker: React.FC<{
+  value?: WatchFolderOutputFormat;
+  onChange: (format: WatchFolderOutputFormat) => void;
+}> = ({ value = "text", onChange }) => {
+  const { t } = useTranslation();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const triggerId = useId();
+  const listboxId = useId();
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [popupRect, setPopupRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  const options: Array<{
+    value: WatchFolderOutputFormat;
+    label: string;
+  }> = useMemo(
+    () => [
+      {
+        value: "text",
+        label: t("dictate.watchFolders.formatText", {
+          defaultValue: "Text",
+        }),
+      },
+      {
+        value: "srt",
+        label: t("dictate.watchFolders.formatSrt", {
+          defaultValue: "SRT",
+        }),
+      },
+      {
+        value: "vtt",
+        label: t("dictate.watchFolders.formatVtt", {
+          defaultValue: "VTT",
+        }),
+      },
+    ],
+    [t],
+  );
+
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
+  const selectedOption = options[selectedIndex] ?? options[0];
+  const ariaLabel = t("dictate.watchFolders.formatAria", {
+    defaultValue: "Output format",
+  });
+  const triggerLabel = `${ariaLabel}: ${selectedOption.label}`;
+
+  const updatePopupRect = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPopupRect({
+      top: rect.bottom + 6,
+      left: rect.left,
+      width: 144,
+    });
+  }, []);
+
+  const openPopup = useCallback(() => {
+    updatePopupRect();
+    setActiveIndex(selectedIndex);
+    setIsOpen(true);
+  }, [selectedIndex, updatePopupRect]);
+
+  const closePopup = useCallback(() => {
+    setIsOpen(false);
+    setPopupRect(null);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    updatePopupRect();
+    const handleLayoutChange = () => updatePopupRect();
+    window.addEventListener("resize", handleLayoutChange);
+    document.addEventListener("scroll", handleLayoutChange, true);
+    return () => {
+      window.removeEventListener("resize", handleLayoutChange);
+      document.removeEventListener("scroll", handleLayoutChange, true);
+    };
+  }, [isOpen, updatePopupRect]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (popupRef.current?.contains(target)) return;
+      closePopup();
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [closePopup, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const frame = requestAnimationFrame(() => {
+      optionRefs.current[activeIndex]?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeIndex, isOpen]);
+
+  const selectFormat = (nextValue: WatchFolderOutputFormat) => {
+    onChange(nextValue);
+    closePopup();
+    requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+
+  const handleTriggerKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (
+    event,
+  ) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openPopup();
+    } else if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      closePopup();
+    }
+  };
+
+  const handleMenuKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (
+    event,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePopup();
+      requestAnimationFrame(() => buttonRef.current?.focus());
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % options.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + options.length) % options.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(options.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectFormat(options[activeIndex]?.value ?? value);
+    }
+  };
+
+  const popup =
+    isOpen && popupRect ? (
+      <div
+        ref={popupRef}
+        id={listboxId}
+        role="listbox"
+        aria-labelledby={triggerId}
+        className="fixed z-[200] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-[var(--shadow-lg)]"
+        style={{
+          top: popupRect.top,
+          left: popupRect.left,
+          width: popupRect.width,
+        }}
+        onKeyDown={handleMenuKeyDown}
+      >
+        {options.map((option, index) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              tabIndex={index === activeIndex ? 0 : -1}
+              className={[
+                "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                selected
+                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "text-[var(--text)] hover:bg-[var(--input)]",
+              ].join(" ")}
+              onClick={() => selectFormat(option.value)}
+            >
+              <span
+                className={[
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                  watchFolderFormatTone(option.value),
+                ].join(" ")}
+                aria-hidden="true"
+              >
+                <WatchFolderFormatIcon format={option.value} size={16} />
+              </span>
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        id={triggerId}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-label={triggerLabel}
+        title={triggerLabel}
+        className={[
+          "inline-flex h-9 min-w-12 items-center justify-center gap-1 rounded-full border border-[var(--border)] px-2 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+          "hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]",
+          watchFolderFormatTone(value),
+        ].join(" ")}
+        onClick={() => {
+          if (isOpen) closePopup();
+          else openPopup();
+        }}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <WatchFolderFormatIcon format={value} />
+        <ChevronDown
+          size={13}
+          aria-hidden="true"
+          className={isOpen ? "rotate-180 transition-transform" : "transition-transform"}
+        />
+      </button>
+      {typeof document !== "undefined" && popup
+        ? createPortal(popup, document.body)
+        : null}
+    </>
+  );
 };
 
 const NativeFolderIcon: React.FC<{ path: string; name: string }> = ({
@@ -634,17 +1025,22 @@ const NativeFolderIcon: React.FC<{ path: string; name: string }> = ({
   );
 };
 
-const addWatchFolder = async (): Promise<boolean> => {
+const addWatchFolder = async (): Promise<WatchFolderConfig | null> => {
   const picked = await open({ directory: true, multiple: false });
-  if (!picked || Array.isArray(picked)) return false;
+  if (!picked || Array.isArray(picked)) return null;
 
   const result = await commands.addWatchFolder(picked, "text", false);
   if (result.status === "ok") {
-    window.dispatchEvent(new CustomEvent("watch-folders-changed"));
-    return true;
+    latestAddedWatchFolderId = result.data.id;
+    window.dispatchEvent(
+      new CustomEvent<WatchFolderConfig>("watch-folders-changed", {
+        detail: result.data,
+      }),
+    );
+    return result.data;
   }
   console.error("addWatchFolder failed:", result.error);
-  return false;
+  return null;
 };
 
 const WatchedFoldersToolbar: React.FC<{
@@ -657,8 +1053,8 @@ const WatchedFoldersToolbar: React.FC<{
   const handleAddFolder = useCallback(async () => {
     setBusy(true);
     try {
-      const added = await addWatchFolder();
-      if (added) onViewChange("folders");
+      const folder = await addWatchFolder();
+      if (folder) onViewChange("folders");
     } finally {
       setBusy(false);
     }
@@ -673,7 +1069,6 @@ const WatchedFoldersToolbar: React.FC<{
         onClick={handleAddFolder}
         disabled={busy}
       >
-        <Plus className="h-3.5 w-3.5" />
         {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
       </Button>
       <SegmentedControl<FileTranscriptionView>
@@ -713,11 +1108,19 @@ const WatchedFoldersToolbar: React.FC<{
   );
 };
 
-const WatchedFoldersGroup: React.FC = () => {
+const WatchedFoldersGroup: React.FC<{
+  selectedAsrModel: SpeechAnalysisModelDescriptor | null;
+}> = ({ selectedAsrModel }) => {
   const { t } = useTranslation();
   const [folders, setFolders] = useState<WatchFolderConfig[]>([]);
   const [activity, setActivity] = useState<WatchProgressPayload[]>([]);
   const [busy, setBusy] = useState(false);
+  const [newlyAddedFolderId, setNewlyAddedFolderId] = useState<string | null>(
+    () => latestAddedWatchFolderId,
+  );
+  const [confirmingDeleteFolderId, setConfirmingDeleteFolderId] = useState<
+    string | null
+  >(null);
 
   const refresh = useCallback(async () => {
     const r = await commands.listWatchFolders();
@@ -729,8 +1132,17 @@ const WatchedFoldersGroup: React.FC = () => {
   }, [refresh]);
 
   useEffect(() => {
-    window.addEventListener("watch-folders-changed", refresh);
-    return () => window.removeEventListener("watch-folders-changed", refresh);
+    const handleWatchFoldersChanged = (event: Event) => {
+      const folder = (event as CustomEvent<WatchFolderConfig>).detail;
+      if (folder?.id) setNewlyAddedFolderId(folder.id);
+      void refresh();
+    };
+    window.addEventListener("watch-folders-changed", handleWatchFoldersChanged);
+    return () =>
+      window.removeEventListener(
+        "watch-folders-changed",
+        handleWatchFoldersChanged,
+      );
   }, [refresh]);
 
   // Live activity feed: backend emits one event per stage change. We
@@ -749,28 +1161,18 @@ const WatchedFoldersGroup: React.FC = () => {
 
   const removeFolder = useCallback(
     async (folder: WatchFolderConfig) => {
-      const folderName = basename(folder.path);
-      if (
-        !confirmDestructiveAction(
-          t("dictate.watchFolders.removeConfirm", {
-            folderName,
-            defaultValue:
-              "Remove {{folderName}} from watched folders? The folder and its files will stay on disk.",
-          }),
-        )
-      ) {
-        return;
-      }
-
       setBusy(true);
       try {
         const r = await commands.removeWatchFolder(folder.id);
-        if (r.status === "ok") await refresh();
+        if (r.status === "ok") {
+          setConfirmingDeleteFolderId(null);
+          await refresh();
+        }
       } finally {
         setBusy(false);
       }
     },
-    [refresh, t],
+    [refresh],
   );
 
   const updateFormat = useCallback(
@@ -791,125 +1193,169 @@ const WatchedFoldersGroup: React.FC = () => {
   }, [activity]);
 
   return (
-    <div className="space-y-4">
+    <div
+      className={[subtleCardClassName, "space-y-4"].join(" ")}
+      data-testid="watch-folders-panel"
+    >
+      <WatchedFoldersStatusHeader
+        folders={folders}
+        activity={activity}
+        selectedAsrModel={selectedAsrModel}
+      />
+
       {folders.length === 0 ? (
-        <EmptyState
-          framed={false}
-          icon={<FolderPlus className="h-5 w-5" aria-hidden />}
-          title={t("dictate.watchFolders.empty", {
-            defaultValue: "No watched folders yet.",
-          })}
-          description={t("dictate.watchFolders.emptyDescription", {
-            defaultValue:
-              "Add a folder to transcribe audio files automatically when you drop them in.",
-          })}
-          example={t("dictate.watchFolders.emptyExample", {
-            defaultValue:
-              "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT.",
-          })}
-          action={
+        <div
+          className="flex min-h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-5 py-8 text-center"
+          data-testid="watch-folders-empty-surface"
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+            aria-hidden="true"
+          >
+            <FolderPlus size={20} />
+          </div>
+          <div className="mt-6 text-sm font-semibold text-[var(--text)]">
+            {t("dictate.watchFolders.empty", {
+              defaultValue: "No watched folders yet.",
+            })}
+          </div>
+          <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
+            {t("dictate.watchFolders.emptyDescription", {
+              defaultValue:
+                "Add a folder to transcribe audio files automatically when you drop them in.",
+            })}
+          </p>
+          <p className="mt-3 max-w-md text-xs leading-5 text-[var(--muted)]">
+            {t("dictate.watchFolders.emptyExample", {
+              defaultValue:
+                "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT.",
+            })}
+          </p>
+          <div className="mt-5">
             <Button
               type="button"
               size="sm"
-              variant="primary-soft"
+              variant="secondary"
               onClick={async () => {
                 setBusy(true);
                 try {
-                  if (await addWatchFolder()) await refresh();
+                  const folder = await addWatchFolder();
+                  if (folder) {
+                    setNewlyAddedFolderId(folder.id);
+                    await refresh();
+                  }
                 } finally {
                   setBusy(false);
                 }
               }}
               disabled={busy}
             >
-              <Plus className="h-3.5 w-3.5" />
               {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
             </Button>
-          }
-          className="py-5"
-        />
+          </div>
+        </div>
       ) : (
-        <ul className="flex flex-wrap gap-2">
-          {folders.map((f) => {
-            const latest = latestActivityByFolder.get(f.id);
-            const statusLabel = latest
-              ? `${latest.stage}: ${basename(latest.source_path)}`
-              : f.enabled
-                ? "Watching recursively"
-                : "Paused";
-            return (
-              <li
-                key={f.id}
-                className="group flex min-h-[136px] w-36 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
-              >
-                <NativeFolderIcon path={f.path} name={basename(f.path)} />
-                <h3
-                  className="mt-2 max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)]"
-                  title={basename(f.path)}
+        <div>
+          <ul className="flex flex-wrap gap-2">
+            {folders.map((f) => {
+              const latest = latestActivityByFolder.get(f.id);
+              const showActions = newlyAddedFolderId === f.id;
+              const statusLabel = latest
+                ? `${latest.stage}: ${basename(latest.source_path)}`
+                : f.enabled
+                  ? null
+                  : "Paused";
+              return (
+                <li
+                  key={f.id}
+                  className="group flex min-h-[136px] w-36 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
                 >
-                  {basename(f.path)}
-                </h3>
-                <p
-                  className="mt-1 max-w-full truncate text-center text-[11px] text-[var(--muted)]"
-                  role="status"
-                  aria-live="polite"
-                  title={statusLabel}
-                >
-                  {statusLabel}
-                </p>
-                <div className="mt-2 flex items-center justify-center gap-1">
-                  <select
-                    value={f.output_format}
-                    onChange={(e) =>
-                      void updateFormat(
-                        f.id,
-                        e.target.value as WatchFolderOutputFormat,
-                      )
-                    }
-                    className="h-7 max-w-[5.5rem] rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 text-xs font-medium text-[var(--text)]"
-                    aria-label={t("dictate.watchFolders.formatAria", {
-                      defaultValue: "Output format",
-                    })}
-                    title={`${t("dictate.watchFolders.formatAria", {
-                      defaultValue: "Output format",
-                    })}: ${formatLabel(f.output_format)}`}
+                  <NativeFolderIcon path={f.path} name={basename(f.path)} />
+                  <h3
+                    className="mt-2 max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)]"
+                    title={basename(f.path)}
                   >
-                    <option value="text">
-                      {t("dictate.watchFolders.formatText", {
-                        defaultValue: "Text",
-                      })}
-                    </option>
-                    <option value="srt">
-                      {t("dictate.watchFolders.formatSrt", {
-                        defaultValue: "SRT",
-                      })}
-                    </option>
-                    <option value="vtt">
-                      {t("dictate.watchFolders.formatVtt", {
-                        defaultValue: "VTT",
-                      })}
-                    </option>
-                  </select>
-                  <ActionIconButton
-                    type="button"
-                    tone="danger"
-                    onClick={() => void removeFolder(f)}
-                    aria-label={t("dictate.watchFolders.remove", {
-                      defaultValue: "Remove folder",
-                    })}
+                    {basename(f.path)}
+                  </h3>
+                  {statusLabel ? (
+                    <p
+                      className="mt-1 max-w-full truncate text-center text-[11px] text-[var(--muted)]"
+                      role="status"
+                      aria-live="polite"
+                      title={statusLabel}
+                    >
+                      {statusLabel}
+                    </p>
+                  ) : null}
+                  <div
+                    className={[
+                      "mt-2 flex items-center justify-center gap-1 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                      showActions || confirmingDeleteFolderId === f.id
+                        ? "pointer-events-auto opacity-100"
+                        : "pointer-events-none opacity-0",
+                    ].join(" ")}
                   >
-                    <Trash2 aria-hidden />
-                  </ActionIconButton>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    {confirmingDeleteFolderId === f.id ? (
+                      <>
+                        <ActionIconButton
+                          type="button"
+                          tone="confirm"
+                          onClick={() => void removeFolder(f)}
+                          disabled={busy}
+                          title={t("dictate.watchFolders.confirmRemove", {
+                            defaultValue: "Confirm remove folder",
+                          })}
+                          aria-label={t("dictate.watchFolders.confirmRemove", {
+                            defaultValue: "Confirm remove folder",
+                          })}
+                        >
+                          <Trash2 aria-hidden />
+                        </ActionIconButton>
+                        <ActionIconButton
+                          type="button"
+                          onClick={() => setConfirmingDeleteFolderId(null)}
+                          disabled={busy}
+                          title={t("dictate.watchFolders.cancelRemove", {
+                            defaultValue: "Cancel remove folder",
+                          })}
+                          aria-label={t("dictate.watchFolders.cancelRemove", {
+                            defaultValue: "Cancel remove folder",
+                          })}
+                        >
+                          <X aria-hidden />
+                        </ActionIconButton>
+                      </>
+                    ) : (
+                      <>
+                        <WatchFolderFormatPicker
+                          value={f.output_format}
+                          onChange={(format) =>
+                            void updateFormat(f.id, format)
+                          }
+                        />
+                        <ActionIconButton
+                          type="button"
+                          tone="danger"
+                          onClick={() => setConfirmingDeleteFolderId(f.id)}
+                          aria-label={t("dictate.watchFolders.remove", {
+                            defaultValue: "Remove folder",
+                          })}
+                        >
+                          <Trash2 aria-hidden />
+                        </ActionIconButton>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {activity.length > 0 && (
         <div
-          className={subtleCardClassName + " text-xs text-[var(--muted)]"}
+          className="border-t border-[var(--border)] pt-4 text-xs text-[var(--muted)]"
           role="status"
           aria-live="polite"
         >

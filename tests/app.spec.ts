@@ -20,6 +20,7 @@ type Scenario = {
   settings: Record<string, unknown>;
   models: Array<Record<string, unknown>>;
   corrections?: Array<Record<string, unknown>>;
+  watchFolders?: Array<Record<string, unknown>>;
 };
 
 const baseProviders = [
@@ -204,6 +205,7 @@ const baseScenario: Scenario = {
   },
   platform: "macos",
   settings: baseSettings,
+  watchFolders: [],
 };
 
 const dictionaryCorrection = {
@@ -221,6 +223,42 @@ const dictionaryCorrection = {
   user_approved: true,
   auto_apply: "always",
 };
+
+const makeHistoryEntry = (
+  overrides: Partial<Record<string, unknown>>,
+): Record<string, unknown> => ({
+  id: 1,
+  file_name: "entry.wav",
+  timestamp: 1_774_000_000,
+  saved: false,
+  title: "Dictation",
+  transcription_text: "",
+  post_processed_text: null,
+  post_process_prompt: null,
+  dictionary_hits: [],
+  pasted_text: null,
+  field_snapshot_text: null,
+  field_snapshot_at: null,
+  field_snapshot_status: "not_requested",
+  field_snapshot_error: null,
+  source_language_detected: null,
+  translation_target_language: null,
+  translated_text: null,
+  translation_route: null,
+  translation_provider_id: null,
+  translation_model_id: null,
+  translation_origin: null,
+  translation_destination: null,
+  tts_requested: null,
+  tts_engine: null,
+  tts_voice_id: null,
+  tts_locale: null,
+  tts_trigger: null,
+  tts_status: null,
+  screen_context_metadata: null,
+  duration_ms: null,
+  ...overrides,
+});
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -269,6 +307,7 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
     const state = {
       models: activeScenario.models,
       settings: activeScenario.settings,
+      watchFolders: activeScenario.watchFolders ?? [],
     };
 
     const getModelById = (modelId: string) =>
@@ -279,6 +318,16 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
         __TAURI_EVENT_PLUGIN_INTERNALS__?: { unregisterListener: () => void };
         __TAURI_INTERNALS__?: Record<string, unknown>;
         __TAURI_OS_PLUGIN_INTERNALS__?: Record<string, unknown>;
+        __voxJotCommandCalls?: Array<{
+          args: Record<string, unknown>;
+          cmd: string;
+        }>;
+      }
+    ).__voxJotCommandCalls = [];
+
+    (
+      window as Window & {
+        __TAURI_EVENT_PLUGIN_INTERNALS__?: { unregisterListener: () => void };
       }
     ).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
       unregisterListener: () => {},
@@ -306,6 +355,15 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
       callbacks,
       convertFileSrc: (filePath: string) => filePath,
       invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
+        (
+          window as Window & {
+            __voxJotCommandCalls?: Array<{
+              args: Record<string, unknown>;
+              cmd: string;
+            }>;
+          }
+        ).__voxJotCommandCalls?.push({ cmd, args });
+
         switch (cmd) {
           case "plugin:event|listen":
             eventListenerId += 1;
@@ -434,6 +492,76 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             };
           case "get_history_entries":
             return activeScenario.historyEntries;
+          case "list_watch_folders":
+            return state.watchFolders;
+          case "add_watch_folder": {
+            const folder = {
+              id: `watch-${state.watchFolders.length + 1}`,
+              path: args.path,
+              output_format: args.outputFormat,
+              delete_after: args.deleteAfter,
+              enabled: true,
+            };
+            state.watchFolders.push(folder);
+            return folder;
+          }
+          case "remove_watch_folder":
+            state.watchFolders = state.watchFolders.filter(
+              (folder) => folder.id !== args.id,
+            );
+            return null;
+          case "update_watch_folder_format":
+            state.watchFolders = state.watchFolders.map((folder) =>
+              folder.id === args.id
+                ? { ...folder, output_format: args.outputFormat }
+                : folder,
+            );
+            return null;
+          case "get_file_icon":
+            return null;
+          case "get_speech_analysis_catalog":
+            return {
+              models: [
+                {
+                  id: "fireredasr2-aed-mlx",
+                  label: "FireRedASR2 AED (MLX)",
+                  provider: "FireRed",
+                  repo_id: null,
+                  source_kind: "runtime_managed",
+                  source_url: null,
+                  license_label: null,
+                  gated: false,
+                  downloadable: false,
+                  installed: true,
+                  local_path: null,
+                  size_hint_label: null,
+                  task: "asr",
+                  engine: "mlx",
+                  runtime: "mlx_native",
+                  description: "Local file transcription model.",
+                  readiness: "ready",
+                  supported_languages: ["en"],
+                  output_contract: ["text"],
+                  capabilities: {
+                    file_transcription: true,
+                    live_dictation: false,
+                    speaker_labels: false,
+                    timestamps: false,
+                    word_timestamps: false,
+                    requires_hf_token: false,
+                    requires_trust_remote_code: false,
+                    requires_cloud_gpu_validation: false,
+                    supports_onnx: false,
+                    supports_coreml: false,
+                    supports_mlx: true,
+                  },
+                },
+              ],
+              selection: {
+                asr_model_id: "fireredasr2-aed-mlx",
+                diarization_model_id: "",
+              },
+            };
           case "get_corrections":
             return activeScenario.corrections ?? [];
           case "list_write_rules":
@@ -511,7 +639,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: /Set up private assistive voice dictation/i,
+        name: /Talk once\. Text appears where your cursor is\./i,
       }),
     ).toBeVisible();
     await expect(
@@ -524,15 +652,18 @@ test.describe("Vox Jot app", () => {
       page.locator(".ob-progress-step", { hasText: "Model" }),
     ).toBeVisible();
     await expect(
+      page.locator(".ob-progress-step", { hasText: "Refine" }),
+    ).toBeVisible();
+    await expect(
       page.locator(".ob-progress-step", { hasText: "First Dictation" }),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: /Set Up Vox Jot/i }).click();
+    await page.getByRole("button", { name: /Set up dictation/i }).click();
     await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(
       page.getByRole("heading", {
-        name: /Choose the transcription model you want to start with/i,
+        name: /Pick the model that turns speech into text/i,
       }),
     ).toBeVisible();
   });
@@ -545,7 +676,7 @@ test.describe("Vox Jot app", () => {
       models: [availableModel, largeAvailableModel, moonshineAvailableModel],
     });
 
-    await page.getByRole("button", { name: /Set Up Vox Jot/i }).click();
+    await page.getByRole("button", { name: /Set up dictation/i }).click();
     await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(page.getByText("Parakeet V3")).toBeVisible();
@@ -577,7 +708,7 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: /Set up private assistive voice dictation/i,
+        name: /Talk once\. Text appears where your cursor is\./i,
       }),
     ).toHaveCount(0);
   });
@@ -634,7 +765,7 @@ test.describe("Vox Jot app", () => {
     await expect(titleBarNotice).toBeVisible();
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility for assistive voice text entry and correction learning, Input Monitoring/i,
+        /Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring/i,
       ),
     ).toHaveCount(0);
 
@@ -642,7 +773,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility for assistive voice text entry and correction learning, Input Monitoring/i,
+        /Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring/i,
       ),
     ).toBeVisible();
     await expect(page.getByText(/Input Monitoring/i).first()).toBeVisible();
@@ -835,6 +966,150 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
   });
 
+  test("frames the watched-folder empty state like file transcription", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      watchFolders: [],
+    });
+
+    await page
+      .getByRole("button", { name: "File Transcription", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Folders", exact: true }).click();
+
+    const panel = page.getByTestId("watch-folders-panel");
+    const emptySurface = page.getByTestId("watch-folders-empty-surface");
+
+    await expect(panel).toBeVisible();
+    await expect(emptySurface).toBeVisible();
+    await expect(panel.getByText("Ready")).toBeVisible();
+    await expect(
+      panel.getByText("No watched folders", { exact: true }),
+    ).toBeVisible();
+    await expect(panel.getByText("FireRedASR2 AED (MLX)")).toBeVisible();
+    await expect(panel.getByText("No watched folders yet.")).toBeVisible();
+    await expect(
+      panel.getByText(
+        "Add a folder to transcribe audio files automatically when you drop them in.",
+      ),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("button", { name: "Add folder" }),
+    ).toBeVisible();
+
+    await expect(emptySurface).toHaveCSS("border-style", "dashed");
+  });
+
+  test("uses inline confirmation before removing a watched folder from the trash icon", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      watchFolders: [
+        {
+          id: "watch-interviews",
+          path: "/Users/test/Interviews",
+          output_format: "text",
+          delete_after: false,
+          enabled: true,
+        },
+      ],
+    });
+
+    await page
+      .getByRole("button", { name: "File Transcription", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Folders", exact: true }).click();
+
+    const folderRow = page.locator("li", { hasText: "Interviews" });
+    await expect(folderRow).toBeVisible();
+    await folderRow.hover();
+
+    const removeButton = folderRow.getByRole("button", {
+      name: "Remove folder",
+      exact: true,
+    });
+    await expect(removeButton).toBeVisible();
+
+    await removeButton.click();
+    await expect(folderRow).toBeVisible();
+    await expect(
+      folderRow.getByRole("button", {
+        name: "Confirm remove folder",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      folderRow.getByRole("button", {
+        name: "Cancel remove folder",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            (window as Window & {
+              __voxJotCommandCalls?: Array<{ cmd: string }>;
+            }).__voxJotCommandCalls ?? []
+          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        ),
+      )
+      .toBe(0);
+
+    await folderRow
+      .getByRole("button", {
+        name: "Cancel remove folder",
+        exact: true,
+      })
+      .click();
+    await expect(
+      folderRow.getByRole("button", {
+        name: "Confirm remove folder",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(folderRow).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            (window as Window & {
+              __voxJotCommandCalls?: Array<{ cmd: string }>;
+            }).__voxJotCommandCalls ?? []
+          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        ),
+      )
+      .toBe(0);
+
+    await folderRow.hover();
+    await folderRow
+      .getByRole("button", {
+        name: "Remove folder",
+        exact: true,
+      })
+      .click();
+    await folderRow
+      .getByRole("button", {
+        name: "Confirm remove folder",
+        exact: true,
+      })
+      .click();
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            (window as Window & {
+              __voxJotCommandCalls?: Array<{ cmd: string }>;
+            }).__voxJotCommandCalls ?? []
+          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        ),
+      )
+      .toBe(1);
+    await expect(folderRow).toHaveCount(0);
+  });
+
   test("keeps the learned corrections manager out of settings", async ({
     page,
   }) => {
@@ -855,8 +1130,13 @@ test.describe("Vox Jot app", () => {
 
     await page.getByRole("button", { name: /Open dictionary/i }).click();
 
+    await page
+      .getByRole("button", { name: "Search dictionary", exact: true })
+      .click();
     await expect(page.getByPlaceholder("Search dictionary")).toBeVisible();
-    await expect(page.getByText("Vox Jot")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Corrected" }),
+    ).toHaveValue("Vox Jot");
   });
 
   test("shows unified history preferring post-processed text", async ({
@@ -864,24 +1144,23 @@ test.describe("Vox Jot app", () => {
   }) => {
     await bootApp(page, {
       historyEntries: [
-        {
+        makeHistoryEntry({
           id: 1,
-          timestamp: "2026-03-16T11:00:00Z",
+          timestamp: 1_774_000_000,
+          title: "Groceries",
           transcription_text: "buy bread and apples",
-          post_processed_text: null,
-          post_process_prompt: null,
           file_name: "entry-1.wav",
-          saved: false,
-        },
-        {
+        }),
+        makeHistoryEntry({
           id: 2,
-          timestamp: "2026-03-16T11:05:00Z",
+          timestamp: 1_774_000_300,
+          title: "Team update",
           transcription_text: "draft status update",
           post_processed_text: "Draft a clear status update for the team",
           post_process_prompt: "Improve structure",
           file_name: "entry-2.wav",
           saved: true,
-        },
+        }),
       ],
     });
 
@@ -933,7 +1212,7 @@ test.describe("Vox Jot app", () => {
     await expect(
       page
         .getByText(
-          /Apple Intelligence is selected, but it is not available on this device right now/i,
+          /Apple Intelligence is blocked on this device/i,
         )
         .first(),
     ).toBeVisible();

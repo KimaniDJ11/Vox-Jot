@@ -616,7 +616,7 @@ const ScreenContextSettingsSection: React.FC = () => {
               isUpdating("screen_context_excluded_bundle_ids")
             }
           >
-            <Plus className="mr-1 h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" aria-hidden />
             {addingApp
               ? t("settings.screenContext.addCurrentAppResolving")
               : t("settings.screenContext.addCurrentAppLabel")}

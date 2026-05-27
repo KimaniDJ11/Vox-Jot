@@ -121,9 +121,7 @@ pub async fn get_dictation_stats(
     }
 
     // Find the app with the highest session count.
-    let top_app = app_counts
-        .values()
-        .max_by_key(|(count, _, _)| *count);
+    let top_app = app_counts.values().max_by_key(|(count, _, _)| *count);
     let top_app_name = top_app.and_then(|(_, name, _)| name.clone());
     let top_app_bundle_id = top_app.and_then(|(_, _, bid)| bid.clone());
 

@@ -64,6 +64,11 @@ const THEME_IDS = [
   "sepia",
   "ocean",
   "rose",
+  "aurora",
+  "lagoon",
+  "daybreak",
+  "ember",
+  "galaxy",
   "forest",
   "solarized",
 ] as const;
@@ -243,7 +248,12 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
           ? Sun
           : id === "system"
             ? Laptop
-            : id === "dark" || id === "slate" || id === "graphite"
+            : id === "dark" ||
+                id === "slate" ||
+                id === "graphite" ||
+                id === "aurora" ||
+                id === "ember" ||
+                id === "galaxy"
               ? Moon
               : Palette;
       base.push({

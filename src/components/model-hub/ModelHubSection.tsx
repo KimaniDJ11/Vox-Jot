@@ -66,6 +66,7 @@ function readInitialTab(): ModelHubTabId {
 }
 
 const MODEL_HUB_SEARCH_SLOT_ID = "model-hub-search-slot";
+const MODEL_HUB_ANALYSIS_TITLE_SLOT_ID = "model-hub-analysis-title-slot";
 
 function getControlScope(tab: ModelHubTabId): ModelHubControlScope {
   return tab;
@@ -192,6 +193,10 @@ const ModelHubSection: React.FC = () => {
     const titleActionTargetId = isActive
       ? "model-hub-section-actions"
       : undefined;
+    const titleContentTargetId =
+      isActive && scope === "analysis" && tabId === "analysis"
+        ? MODEL_HUB_ANALYSIS_TITLE_SLOT_ID
+        : undefined;
     const activeModelHubControls = isActive ? modelHubControls : undefined;
     const commonSectionProps = {
       titleActionTargetId,
@@ -205,6 +210,7 @@ const ModelHubSection: React.FC = () => {
       content = (
         <SpeechAnalysisEnginesSection
           titleActionTargetId={titleActionTargetId}
+          titleContentTargetId={titleContentTargetId}
           hubSearchQuery={query}
           modelHubControls={activeModelHubControls}
           onHeaderTitleChange={setAnalysisTabLabelOverride}
@@ -270,15 +276,15 @@ const ModelHubSection: React.FC = () => {
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
               {scope === "analysis" ? (
-                <h2
+                <div
                   id="model-hub-tab-analysis"
-                  className="text-sm font-semibold text-[var(--text)]"
+                  aria-label={t("modelHub.tabs.analysis", {
+                    defaultValue: "Speech Analysis",
+                  })}
+                  className="app-no-drag flex min-w-0 items-center"
                 >
-                  {analysisTabLabelOverride ??
-                    t("modelHub.tabs.analysis", {
-                      defaultValue: "Speech Analysis",
-                    })}
-                </h2>
+                  <div id={MODEL_HUB_ANALYSIS_TITLE_SLOT_ID} />
+                </div>
               ) : scope === "creative_audio" ? (
                 <h2
                   id="model-hub-tab-creative_audio"

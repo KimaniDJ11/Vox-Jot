@@ -226,7 +226,7 @@ const AddOverrideMenu: React.FC<{
         variant="ghost"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-3.5 w-3.5" aria-hidden />
         {t("refine.writeRules.overridesEditor.addOverride")}
       </Button>
       {open ? (

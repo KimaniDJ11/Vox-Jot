@@ -155,6 +155,16 @@ const themeLabel = (
       return t("settings.advanced.theme.options.forest");
     case "rose":
       return t("settings.advanced.theme.options.rose");
+    case "aurora":
+      return t("settings.advanced.theme.options.aurora");
+    case "lagoon":
+      return t("settings.advanced.theme.options.lagoon");
+    case "daybreak":
+      return t("settings.advanced.theme.options.daybreak");
+    case "ember":
+      return t("settings.advanced.theme.options.ember");
+    case "galaxy":
+      return t("settings.advanced.theme.options.galaxy");
     case "slate":
       return t("settings.advanced.theme.options.slate");
     case "solarized":
@@ -2262,6 +2272,17 @@ export const AboutSection: React.FC = () => {
         tone: "accent" as const,
       },
       {
+        icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+        title: t("appSections.about.highlightPrivacyTitle", {
+          defaultValue: "Local-first privacy",
+        }),
+        detail: t("appSections.about.highlightPrivacyDetail", {
+          defaultValue:
+            "Local-only dictation keeps audio and transcripts on this Mac, avoiding cloud AI processing and third-party cloud AI BAA requirements for dictation workflows.",
+        }),
+        tone: "success" as const,
+      },
+      {
         icon: <WandSparkles className="h-4 w-4" aria-hidden />,
         title: t("appSections.about.highlightRefineTitle"),
         detail: t("appSections.about.highlightRefineDetail"),
@@ -2312,7 +2333,7 @@ export const AboutSection: React.FC = () => {
       </div>
 
       <BoardList title={t("appSections.about.highlightsTitle")} columns={1}>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {highlights.map((highlight) => (
             <MetricTile
               key={highlight.title}

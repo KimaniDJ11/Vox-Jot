@@ -7,7 +7,6 @@ import {
   Loader2,
   Mars,
   Play,
-  Plus,
   Search,
   Sparkles,
   UserRound,
@@ -113,7 +112,6 @@ const VoiceFilterSelect: React.FC<{
       aria-label={ariaLabel}
       title={label}
     >
-      <Plus className="me-2 h-4 w-4" aria-hidden />
       <span className="max-w-[9rem] truncate">{label}</span>
       <select
         value={value}

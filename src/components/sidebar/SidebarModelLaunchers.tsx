@@ -83,7 +83,7 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
           <span className="flex items-center justify-between gap-2">
             {renderIcon("h-7 w-7")}
             <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <span className="truncate text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
                 {label}
               </span>
               <ChevronRight
@@ -92,7 +92,7 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
               />
             </span>
           </span>
-          <span className="truncate text-[13px] font-semibold leading-tight text-[var(--text)]">
+          <span className="truncate text-[13px] font-bold leading-tight text-[var(--text)]">
             {value}
           </span>
         </>
@@ -100,10 +100,10 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
         <>
           {renderIcon("h-8 w-8")}
           <span className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <span className="truncate text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
               {label}
             </span>
-            <span className="truncate text-[13px] font-semibold leading-tight text-[var(--text)]">
+            <span className="truncate text-[13px] font-bold leading-tight text-[var(--text)]">
               {value}
             </span>
           </span>

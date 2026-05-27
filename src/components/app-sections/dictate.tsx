@@ -754,7 +754,7 @@ export const JotPadSection: React.FC = () => {
                 variant="secondary"
                 onClick={() => void createNote()}
               >
-                <Plus className="mr-1 h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" aria-hidden />
                 {t("appSections.common.createNote")}
               </Button>
             }

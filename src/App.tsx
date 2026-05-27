@@ -1222,7 +1222,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}${modelHubVisible ? " shell--dimmed" : ""}`}
+      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}${modelHubVisible ? " shell--dimmed" : ""}`}
     >
       <Toaster
         theme="system"
@@ -1335,7 +1335,7 @@ function App() {
         onSettingsClick={handleSettingsOpen}
       />
 
-      <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
+      <main className="main-content relative flex min-w-0 flex-col overflow-hidden">
         <div className="app-main-scroll min-h-0 flex-1 overflow-y-scroll">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (

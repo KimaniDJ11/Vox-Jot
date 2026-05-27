@@ -65,6 +65,7 @@ import { getSpeakerIsolationEvaluationResult } from "@/lib/speakerIsolationEvalu
 
 interface SpeechAnalysisEnginesSectionProps {
   titleActionTargetId?: string;
+  titleContentTargetId?: string;
   hubSearchQuery?: string;
   modelHubControls?: ModelHubControlState;
   onHeaderTitleChange?: (title: string | null) => void;
@@ -192,6 +193,7 @@ const SpeechAnalysisEnginesSection: React.FC<
   SpeechAnalysisEnginesSectionProps
 > = ({
   titleActionTargetId,
+  titleContentTargetId,
   hubSearchQuery = "",
   modelHubControls,
   onHeaderTitleChange,
@@ -243,6 +245,7 @@ const SpeechAnalysisEnginesSection: React.FC<
   const viewSwitcherRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<SpeechAnalysisCatalog | null>(null);
   const headerActionPortal = usePortalTarget(titleActionTargetId ?? null);
+  const headerTitlePortal = usePortalTarget(titleContentTargetId ?? null);
 
   const loadCatalog = useCallback(async () => {
     const result = await commands.getSpeechAnalysisCatalog();
@@ -784,6 +787,10 @@ const SpeechAnalysisEnginesSection: React.FC<
 
   useEffect(() => {
     if (!onHeaderTitleChange) return;
+    if (titleContentTargetId) {
+      onHeaderTitleChange(null);
+      return () => onHeaderTitleChange(null);
+    }
     const switcher = viewSwitcherRef.current;
     if (!switcher) return;
 
@@ -814,7 +821,7 @@ const SpeechAnalysisEnginesSection: React.FC<
       scrollParent.removeEventListener("scroll", updateTitle);
       onHeaderTitleChange(null);
     };
-  }, [activeView.label, onHeaderTitleChange]);
+  }, [activeView.label, onHeaderTitleChange, titleContentTargetId]);
 
   if (!catalog) {
     return (
@@ -827,28 +834,41 @@ const SpeechAnalysisEnginesSection: React.FC<
     );
   }
 
+  const viewSwitcherControl = (
+    <SegmentedControl<AnalysisGroup>
+      value={activeGroup}
+      onChange={setActiveGroup}
+      layoutId="speech-analysis-view-toggle"
+      ariaLabel={t("modelHub.analysis.viewSwitcherLabel", {
+        defaultValue: "Speech analysis view",
+      })}
+      items={analysisViews.map((view) => ({
+        value: view.group,
+        label: view.label,
+      }))}
+    />
+  );
+
   return (
     <div className="space-y-5">
       {headerActionPortal
         ? createPortal(filterAction, headerActionPortal)
         : null}
-      <div ref={viewSwitcherRef}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <SegmentedControl<AnalysisGroup>
-            value={activeGroup}
-            onChange={setActiveGroup}
-            layoutId="speech-analysis-view-toggle"
-            ariaLabel={t("modelHub.analysis.viewSwitcherLabel", {
-              defaultValue: "Speech analysis view",
-            })}
-            items={analysisViews.map((view) => ({
-              value: view.group,
-              label: view.label,
-            }))}
-          />
-          {!headerActionPortal ? filterAction : null}
+      {headerTitlePortal
+        ? createPortal(viewSwitcherControl, headerTitlePortal)
+        : null}
+      {!titleContentTargetId ? (
+        <div ref={viewSwitcherRef}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {viewSwitcherControl}
+            {!headerActionPortal ? filterAction : null}
+          </div>
         </div>
-      </div>
+      ) : !headerActionPortal ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {filterAction}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_65%)] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">

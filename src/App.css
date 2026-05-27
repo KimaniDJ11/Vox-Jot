@@ -107,6 +107,34 @@
    * on top of the NSVisualEffectView / Mica layer. */
   --vibrancy-tint: color-mix(in srgb, var(--bg) 70%, transparent);
   --vibrancy-border: color-mix(in srgb, var(--text), transparent 90%);
+  --app-background: color-mix(in srgb, var(--bg) 82%, transparent);
+  --main-background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+  --toolbar-background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 84%, transparent 16%) 0%,
+    color-mix(in srgb, var(--bg) 60%, transparent 40%) 100%
+  );
+  --titlebar-sidebar-background: color-mix(
+    in srgb,
+    var(--sidebar-bg) 72%,
+    transparent
+  );
+  --titlebar-main-background: var(--panel-bg);
+  --collapsed-titlebar-background: color-mix(
+    in srgb,
+    var(--panel-bg) 82%,
+    transparent
+  );
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel-bg) 82%, transparent),
+    color-mix(in srgb, var(--sidebar-bg) 68%, transparent)
+  );
+  --jotpad-editor-background: color-mix(
+    in srgb,
+    var(--panel-bg) 55%,
+    transparent
+  );
 
   /* Raycast-style crisp / Arc-style bouncy / modal spring easings.
    * These are the CSS-timing-function twins of the framer-motion
@@ -421,6 +449,421 @@
   --shadow-lg: 0 12px 40px rgba(58, 36, 48, 0.14);
 }
 
+/* ── Aurora Gradient Theme Tokens ────────────────────────────── */
+:root[data-theme="aurora"] {
+  --bg: #0d111b;
+  --sidebar-bg: #101a24;
+  --panel-bg: #151c28;
+  --card: #1e2635;
+  --surface-elevated: #273244;
+  --surface-muted: #17212d;
+  --input: #202b3a;
+  --border: rgba(226, 247, 243, 0.12);
+  --border-strong: rgba(226, 247, 243, 0.2);
+  --text: #f4f8fb;
+  --muted: #b2beca;
+  --text-subtle: #99a9b7;
+  --inverse-text: #061313;
+
+  --accent: #80d8ca;
+  --accent-foreground: #061313;
+  --accent-hover: #98e2d7;
+  --accent-soft: rgba(128, 216, 202, 0.16);
+  --accent-glow: rgba(128, 216, 202, 0.3);
+  --accent-2: #a8a1ff;
+  --accent-2-hover: #b8b2ff;
+  --accent-2-soft: rgba(168, 161, 255, 0.2);
+  --accent-gold: #e2b26d;
+  --accent-gold-hover: #ebc489;
+  --accent-gold-soft: rgba(226, 178, 109, 0.2);
+  --accent-gold-glow: rgba(226, 178, 109, 0.32);
+  --accent-teal: #72d1bf;
+  --accent-teal-hover: #8addce;
+  --accent-teal-soft: rgba(114, 209, 191, 0.2);
+  --focus-ring: rgba(128, 216, 202, 0.42);
+
+  --danger: #f49a9a;
+  --danger-hover: #f7b0b0;
+  --danger-soft: rgba(244, 154, 154, 0.18);
+  --success: #83d8a0;
+  --success-hover: #99e2b2;
+  --success-soft: rgba(131, 216, 160, 0.18);
+  --warning: #e4bd6c;
+  --warning-hover: #eccb86;
+  --warning-soft: rgba(228, 189, 108, 0.2);
+  --info: #8bd0ef;
+  --info-hover: #a2dbf3;
+  --info-soft: rgba(139, 208, 239, 0.18);
+
+  --voice: #e2b26d;
+  --voice-hover: #ebc489;
+  --voice-soft: rgba(226, 178, 109, 0.18);
+  --overlay-bg: rgba(8, 16, 24, 0.9);
+  --overlay-border: rgba(255, 255, 255, 0.1);
+  --overlay-text: #f4f8fb;
+  --overlay-muted: rgba(244, 248, 251, 0.6);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.44);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.54);
+  --app-background: linear-gradient(
+    135deg,
+    rgba(13, 17, 27, 0.94) 0%,
+    rgba(18, 49, 45, 0.9) 100%
+  );
+  --main-background: linear-gradient(
+    135deg,
+    rgba(21, 28, 40, 0.88) 0%,
+    rgba(18, 34, 45, 0.88) 100%
+  );
+  --toolbar-background: linear-gradient(
+    180deg,
+    rgba(13, 17, 27, 0.88) 0%,
+    rgba(18, 49, 45, 0.58) 100%
+  );
+  --titlebar-sidebar-background: rgba(16, 26, 36, 0.74);
+  --titlebar-main-background: rgba(21, 28, 40, 0.94);
+  --collapsed-titlebar-background: rgba(21, 28, 40, 0.84);
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    rgba(21, 28, 40, 0.88),
+    rgba(18, 49, 45, 0.62)
+  );
+  --jotpad-editor-background: rgba(21, 28, 40, 0.76);
+}
+
+/* ── Lagoon Gradient Theme Tokens ────────────────────────────── */
+:root[data-theme="lagoon"] {
+  --bg: #eefaf7;
+  --sidebar-bg: #dff3ef;
+  --panel-bg: #f5fbfa;
+  --card: #ffffff;
+  --surface-elevated: #fcfffe;
+  --surface-muted: #d9f0ed;
+  --input: #eaf6f4;
+  --border: #c3dedb;
+  --border-strong: #9fc6c2;
+  --text: #183332;
+  --muted: #3e615e;
+  --text-subtle: #496f6b;
+  --inverse-text: #ffffff;
+
+  --accent: #14756f;
+  --accent-hover: #0f5f5a;
+  --accent-soft: rgba(20, 117, 111, 0.12);
+  --accent-glow: rgba(20, 117, 111, 0.22);
+  --accent-2: #326db3;
+  --accent-2-hover: #28578f;
+  --accent-2-soft: rgba(50, 109, 179, 0.13);
+  --accent-gold: #c4933c;
+  --accent-gold-hover: #a97d31;
+  --accent-gold-soft: rgba(196, 147, 60, 0.18);
+  --accent-gold-glow: rgba(196, 147, 60, 0.26);
+  --accent-teal: #238d80;
+  --accent-teal-hover: #1b7167;
+  --accent-teal-soft: rgba(35, 141, 128, 0.14);
+  --focus-ring: rgba(20, 117, 111, 0.3);
+
+  --danger: #ad3434;
+  --danger-hover: #922c2c;
+  --danger-soft: rgba(173, 52, 52, 0.1);
+  --success: #286f4b;
+  --success-hover: #215b3d;
+  --success-soft: rgba(40, 111, 75, 0.12);
+  --warning: #765511;
+  --warning-hover: #60450e;
+  --warning-soft: rgba(118, 85, 17, 0.12);
+  --info: #28639b;
+  --info-hover: #204f7c;
+  --info-soft: rgba(40, 99, 155, 0.12);
+
+  --voice: #b88235;
+  --voice-hover: #976a2b;
+  --voice-soft: rgba(184, 130, 53, 0.14);
+  --overlay-bg: rgba(12, 42, 40, 0.88);
+  --overlay-border: rgba(255, 255, 255, 0.12);
+  --overlay-text: #eefaf7;
+  --overlay-muted: rgba(238, 250, 247, 0.64);
+
+  --shadow-sm: 0 1px 3px rgba(24, 51, 50, 0.08);
+  --shadow-md: 0 4px 16px rgba(24, 51, 50, 0.1);
+  --shadow-lg: 0 12px 40px rgba(24, 51, 50, 0.14);
+  --app-background: linear-gradient(
+    135deg,
+    rgba(234, 255, 248, 0.9) 0%,
+    rgba(237, 243, 255, 0.88) 100%
+  );
+  --main-background: linear-gradient(
+    135deg,
+    rgba(245, 251, 250, 0.86) 0%,
+    rgba(241, 247, 255, 0.84) 100%
+  );
+  --toolbar-background: linear-gradient(
+    180deg,
+    rgba(234, 255, 248, 0.86) 0%,
+    rgba(237, 243, 255, 0.58) 100%
+  );
+  --titlebar-sidebar-background: rgba(223, 243, 239, 0.76);
+  --titlebar-main-background: rgba(245, 251, 250, 0.94);
+  --collapsed-titlebar-background: rgba(245, 251, 250, 0.84);
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    rgba(245, 251, 250, 0.9),
+    rgba(223, 243, 239, 0.68)
+  );
+  --jotpad-editor-background: rgba(245, 251, 250, 0.76);
+}
+
+/* ── Daybreak Gradient Theme Tokens ──────────────────────────── */
+:root[data-theme="daybreak"] {
+  --bg: #fbf3ed;
+  --sidebar-bg: #f0e7e0;
+  --panel-bg: #fff8f2;
+  --card: #fffdfb;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f1e6de;
+  --input: #f7eee8;
+  --border: #decfc7;
+  --border-strong: #c7b5ac;
+  --text: #2d2931;
+  --muted: #5c5364;
+  --text-subtle: #675c6e;
+  --inverse-text: #ffffff;
+
+  --accent: #27619d;
+  --accent-hover: #204f7f;
+  --accent-soft: rgba(39, 97, 157, 0.11);
+  --accent-glow: rgba(39, 97, 157, 0.22);
+  --accent-2: #a44f65;
+  --accent-2-hover: #873f52;
+  --accent-2-soft: rgba(164, 79, 101, 0.12);
+  --accent-gold: #c4873e;
+  --accent-gold-hover: #aa7131;
+  --accent-gold-soft: rgba(196, 135, 62, 0.18);
+  --accent-gold-glow: rgba(196, 135, 62, 0.26);
+  --accent-teal: #31847b;
+  --accent-teal-hover: #286a63;
+  --accent-teal-soft: rgba(49, 132, 123, 0.14);
+  --focus-ring: rgba(39, 97, 157, 0.3);
+
+  --danger: #ad3434;
+  --danger-hover: #922c2c;
+  --danger-soft: rgba(173, 52, 52, 0.1);
+  --success: #2b704b;
+  --success-hover: #235c3d;
+  --success-soft: rgba(43, 112, 75, 0.12);
+  --warning: #765511;
+  --warning-hover: #60450e;
+  --warning-soft: rgba(118, 85, 17, 0.12);
+  --info: #27619d;
+  --info-hover: #204f7f;
+  --info-soft: rgba(39, 97, 157, 0.12);
+
+  --voice: #b77b37;
+  --voice-hover: #96652d;
+  --voice-soft: rgba(183, 123, 55, 0.14);
+  --overlay-bg: rgba(42, 32, 40, 0.9);
+  --overlay-border: rgba(255, 255, 255, 0.14);
+  --overlay-text: #fff4ed;
+  --overlay-muted: rgba(255, 244, 237, 0.62);
+
+  --shadow-sm: 0 1px 3px rgba(45, 41, 49, 0.08);
+  --shadow-md: 0 4px 16px rgba(45, 41, 49, 0.1);
+  --shadow-lg: 0 12px 40px rgba(45, 41, 49, 0.14);
+  --app-background: linear-gradient(
+    135deg,
+    rgba(255, 240, 230, 0.9) 0%,
+    rgba(234, 244, 255, 0.9) 100%
+  );
+  --main-background: linear-gradient(
+    135deg,
+    rgba(255, 248, 242, 0.88) 0%,
+    rgba(242, 248, 255, 0.84) 100%
+  );
+  --toolbar-background: linear-gradient(
+    180deg,
+    rgba(255, 240, 230, 0.86) 0%,
+    rgba(234, 244, 255, 0.6) 100%
+  );
+  --titlebar-sidebar-background: rgba(240, 231, 224, 0.76);
+  --titlebar-main-background: rgba(255, 248, 242, 0.94);
+  --collapsed-titlebar-background: rgba(255, 248, 242, 0.84);
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    rgba(255, 248, 242, 0.9),
+    rgba(240, 231, 224, 0.68)
+  );
+  --jotpad-editor-background: rgba(255, 248, 242, 0.76);
+}
+
+/* ── Ember Gradient Theme Tokens ─────────────────────────────── */
+:root[data-theme="ember"] {
+  --bg: #17131d;
+  --sidebar-bg: #1c1723;
+  --panel-bg: #211a22;
+  --card: #2d222a;
+  --surface-elevated: #382b34;
+  --surface-muted: #241c26;
+  --input: #342833;
+  --border: rgba(255, 232, 224, 0.12);
+  --border-strong: rgba(255, 232, 224, 0.2);
+  --text: #fff4f0;
+  --muted: #cdb8b3;
+  --text-subtle: #b9a29e;
+  --inverse-text: #1a0f0b;
+
+  --accent: #f0a36a;
+  --accent-foreground: #1a0f0b;
+  --accent-hover: #f5b886;
+  --accent-soft: rgba(240, 163, 106, 0.16);
+  --accent-glow: rgba(240, 163, 106, 0.3);
+  --accent-2: #dc8aa3;
+  --accent-2-hover: #e39cb2;
+  --accent-2-soft: rgba(220, 138, 163, 0.2);
+  --accent-gold: #e6b86f;
+  --accent-gold-hover: #ecc688;
+  --accent-gold-soft: rgba(230, 184, 111, 0.2);
+  --accent-gold-glow: rgba(230, 184, 111, 0.32);
+  --accent-teal: #76c7b5;
+  --accent-teal-hover: #8bd2c3;
+  --accent-teal-soft: rgba(118, 199, 181, 0.2);
+  --focus-ring: rgba(240, 163, 106, 0.42);
+
+  --danger: #f69a9a;
+  --danger-hover: #f8b0b0;
+  --danger-soft: rgba(246, 154, 154, 0.18);
+  --success: #87d79f;
+  --success-hover: #9be2b0;
+  --success-soft: rgba(135, 215, 159, 0.18);
+  --warning: #edc268;
+  --warning-hover: #f2cf83;
+  --warning-soft: rgba(237, 194, 104, 0.2);
+  --info: #92cdf0;
+  --info-hover: #a8d8f4;
+  --info-soft: rgba(146, 205, 240, 0.18);
+
+  --voice: #e6b86f;
+  --voice-hover: #ecc688;
+  --voice-soft: rgba(230, 184, 111, 0.18);
+  --overlay-bg: rgba(22, 13, 17, 0.9);
+  --overlay-border: rgba(255, 255, 255, 0.1);
+  --overlay-text: #fff4f0;
+  --overlay-muted: rgba(255, 244, 240, 0.6);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.44);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.54);
+  --app-background: linear-gradient(
+    135deg,
+    rgba(23, 19, 29, 0.94) 0%,
+    rgba(44, 32, 40, 0.9) 100%
+  );
+  --main-background: linear-gradient(
+    135deg,
+    rgba(33, 26, 34, 0.88) 0%,
+    rgba(45, 34, 42, 0.88) 100%
+  );
+  --toolbar-background: linear-gradient(
+    180deg,
+    rgba(23, 19, 29, 0.88) 0%,
+    rgba(44, 32, 40, 0.58) 100%
+  );
+  --titlebar-sidebar-background: rgba(28, 23, 35, 0.74);
+  --titlebar-main-background: rgba(33, 26, 34, 0.94);
+  --collapsed-titlebar-background: rgba(33, 26, 34, 0.84);
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    rgba(33, 26, 34, 0.88),
+    rgba(44, 32, 40, 0.62)
+  );
+  --jotpad-editor-background: rgba(33, 26, 34, 0.76);
+}
+
+/* ── Galaxy Gradient Theme Tokens ────────────────────────────── */
+:root[data-theme="galaxy"] {
+  --bg: #120026;
+  --sidebar-bg: #1b0735;
+  --panel-bg: #1f1035;
+  --card: #2a1748;
+  --surface-elevated: #36205e;
+  --surface-muted: #24133d;
+  --input: #321c54;
+  --border: rgba(255, 220, 255, 0.14);
+  --border-strong: rgba(255, 220, 255, 0.24);
+  --text: #fff7ff;
+  --muted: #d9c5ef;
+  --text-subtle: #c8aedf;
+  --inverse-text: #1a0824;
+
+  --accent: #ff72df;
+  --accent-foreground: #1a0824;
+  --accent-hover: #ff91e8;
+  --accent-soft: rgba(255, 114, 223, 0.17);
+  --accent-glow: rgba(255, 114, 223, 0.34);
+  --accent-2: #a78bfa;
+  --accent-2-hover: #b9a7ff;
+  --accent-2-soft: rgba(167, 139, 250, 0.22);
+  --accent-gold: #f2c86d;
+  --accent-gold-hover: #f6d58b;
+  --accent-gold-soft: rgba(242, 200, 109, 0.2);
+  --accent-gold-glow: rgba(242, 200, 109, 0.32);
+  --accent-teal: #68e4dc;
+  --accent-teal-hover: #84ece6;
+  --accent-teal-soft: rgba(104, 228, 220, 0.2);
+  --focus-ring: rgba(255, 114, 223, 0.46);
+
+  --danger: #ff9cac;
+  --danger-hover: #ffb3bf;
+  --danger-soft: rgba(255, 156, 172, 0.18);
+  --success: #83e1a7;
+  --success-hover: #9ae9b8;
+  --success-soft: rgba(131, 225, 167, 0.18);
+  --warning: #f4ce6f;
+  --warning-hover: #f7d98a;
+  --warning-soft: rgba(244, 206, 111, 0.2);
+  --info: #9ad5ff;
+  --info-hover: #b3e0ff;
+  --info-soft: rgba(154, 213, 255, 0.18);
+
+  --voice: #f2c86d;
+  --voice-hover: #f6d58b;
+  --voice-soft: rgba(242, 200, 109, 0.18);
+  --overlay-bg: rgba(16, 3, 32, 0.9);
+  --overlay-border: rgba(255, 255, 255, 0.12);
+  --overlay-text: #fff7ff;
+  --overlay-muted: rgba(255, 247, 255, 0.64);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.46);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.56);
+  --app-background: linear-gradient(
+    135deg,
+    rgba(18, 0, 38, 0.95) 0%,
+    rgba(91, 26, 168, 0.9) 58%,
+    rgba(255, 79, 216, 0.68) 100%
+  );
+  --main-background: linear-gradient(
+    135deg,
+    rgba(31, 16, 53, 0.9) 0%,
+    rgba(44, 22, 84, 0.88) 58%,
+    rgba(92, 28, 132, 0.82) 100%
+  );
+  --toolbar-background: linear-gradient(
+    180deg,
+    rgba(18, 0, 38, 0.9) 0%,
+    rgba(91, 26, 168, 0.62) 100%
+  );
+  --titlebar-sidebar-background: rgba(27, 7, 53, 0.76);
+  --titlebar-main-background: rgba(31, 16, 53, 0.95);
+  --collapsed-titlebar-background: rgba(31, 16, 53, 0.86);
+  --jotpad-titlebar-background: linear-gradient(
+    180deg,
+    rgba(31, 16, 53, 0.9),
+    rgba(91, 26, 168, 0.62)
+  );
+  --jotpad-editor-background: rgba(31, 16, 53, 0.78);
+}
+
 /* ── Forest Theme Tokens ─────────────────────────────────────── */
 :root[data-theme="forest"] {
   --bg: #eef5ef;
@@ -661,6 +1104,9 @@
  * surfaces read as lit from above, per Linear's technique.
  */
 :root[data-theme="dark"],
+:root[data-theme="aurora"],
+:root[data-theme="ember"],
+:root[data-theme="galaxy"],
 :root[data-theme="graphite"],
 :root[data-theme="slate"] {
   --edge-highlight: rgba(255, 255, 255, 0.05);
@@ -754,6 +1200,9 @@ body,
 }
 
 [data-theme="dark"] #root::before,
+[data-theme="aurora"] #root::before,
+[data-theme="ember"] #root::before,
+[data-theme="galaxy"] #root::before,
 [data-theme="graphite"] #root::before,
 [data-theme="slate"] #root::before {
   opacity: 0.015;
@@ -1074,7 +1523,7 @@ input[type="range"]:disabled::-moz-range-thumb {
       grid-template-columns var(--transition-smooth),
       filter 220ms ease;
     /* Translucent so NSVisualEffectView / Mica shows through. */
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    background: var(--app-background);
   }
 
   .shell.shell--dimmed {
@@ -1131,7 +1580,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     box-sizing: border-box;
     height: var(--macos-titlebar-height);
     padding-inline-end: 12px;
-    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
+    background: var(--titlebar-sidebar-background);
     /* Allow focus rings / controls to paint; do not clip (title bar is shorter than sm Button min-height) */
     overflow: visible;
     pointer-events: auto;
@@ -1147,11 +1596,11 @@ input[type="range"]:disabled::-moz-range-thumb {
       var(--macos-traffic-shim-width) + 2.75rem
     );
     /* Match .main-content — no sidebar column, so titlebar reads as one with the editor */
-    background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+    background: var(--collapsed-titlebar-background);
   }
 
   .shell.shell--sidebar-collapsed .app-macos-titlebar-overlay::after {
-    background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+    background: var(--collapsed-titlebar-background);
     border-left: none;
   }
 
@@ -1203,7 +1652,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     right: 0;
     bottom: 0;
     left: var(--macos-sidebar-strip-width);
-    background: var(--panel-bg);
+    background: var(--titlebar-main-background);
     border-left: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
     pointer-events: none;
   }
@@ -1343,11 +1792,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     min-height: 2.75rem;
     z-index: 50;
     border-bottom: none;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg) 84%, transparent 16%) 0%,
-      color-mix(in srgb, var(--bg) 60%, transparent 40%) 100%
-    );
+    background: var(--toolbar-background);
     backdrop-filter: blur(14px) saturate(1.04);
     -webkit-backdrop-filter: blur(14px) saturate(1.04);
   }
@@ -1360,7 +1805,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
+    background: var(--titlebar-sidebar-background);
     border-right: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
     overflow: visible;
   }
@@ -1389,7 +1834,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     justify-content: flex-end;
     padding-inline-start: 0;
     padding-inline-end: 0;
-    background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+    background: var(--collapsed-titlebar-background);
     border-right: none;
   }
 
@@ -1426,7 +1871,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     padding: 0.45rem 0 0.65rem;
     /* Translucent so vibrancy shows through on dark themes and the sidebar
      * inherits the colour of the wallpaper behind the window. */
-    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
+    background: var(--titlebar-sidebar-background);
     border-right: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
   }
 
@@ -1493,7 +1938,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     grid-column: 2;
     height: 100%;
     min-height: 0;
-    background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+    background: var(--main-background);
   }
 
   .app-main-scroll {
@@ -1785,11 +2230,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     box-sizing: border-box;
     gap: 10px;
     padding-inline-end: 12px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--panel-bg) 82%, transparent),
-      color-mix(in srgb, var(--sidebar-bg) 68%, transparent)
-    );
+    background: var(--jotpad-titlebar-background);
     border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
     box-shadow:
       inset 0 1px 0 color-mix(in srgb, white 44%, transparent),
@@ -2012,7 +2453,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: color-mix(in srgb, var(--panel-bg) 55%, transparent);
+    background: var(--jotpad-editor-background);
   }
 
   .jotpad-editor__meta {

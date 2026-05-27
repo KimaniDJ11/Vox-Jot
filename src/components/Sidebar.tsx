@@ -222,7 +222,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -6 }}
                 transition={crisp}
-                className="sidebar__nav-label flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold leading-5 tracking-[-0.005em]"
+                className="sidebar__nav-label flex min-w-0 flex-1 items-center gap-2 text-[13px] font-bold leading-5 tracking-[-0.005em]"
               >
                 <span className="truncate">{label}</span>
                 {showGeneratedAudioActivity ? (
@@ -274,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <React.Fragment key={item.id}>
                     {showGroupLabel ? (
-                      <div className="sidebar__group-label px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] first:pt-0">
+                      <div className="sidebar__group-label px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)] first:pt-0">
                         {item.groupLabel}
                       </div>
                     ) : null}

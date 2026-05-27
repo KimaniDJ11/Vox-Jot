@@ -39,6 +39,24 @@ use crate::tray;
 
 // Note: Commands are accessed via shortcut::handy_keys:: in lib.rs
 
+pub const VALID_APP_THEMES: &[&str] = &[
+    "system",
+    "light",
+    "dark",
+    "sepia",
+    "ocean",
+    "forest",
+    "rose",
+    "aurora",
+    "lagoon",
+    "daybreak",
+    "ember",
+    "galaxy",
+    "slate",
+    "solarized",
+    "graphite",
+];
+
 /// Initialize shortcuts using the configured implementation
 pub fn init_shortcuts(app: &AppHandle) {
     let user_settings = settings::load_or_create_app_settings(app);
@@ -546,18 +564,6 @@ pub fn change_sound_theme_setting(app: AppHandle, theme: String) -> Result<(), S
 #[tauri::command]
 #[specta::specta]
 pub fn change_app_theme_setting(app: AppHandle, theme: String) -> Result<(), String> {
-    const VALID_APP_THEMES: &[&str] = &[
-        "system",
-        "light",
-        "dark",
-        "sepia",
-        "ocean",
-        "forest",
-        "rose",
-        "slate",
-        "solarized",
-        "graphite",
-    ];
     let mut settings = settings::get_settings(&app);
     if VALID_APP_THEMES.contains(&theme.as_str()) {
         settings.app_theme = theme;
@@ -2040,4 +2046,19 @@ pub fn export_snippets(app: AppHandle) -> Result<String, String> {
     let settings = settings::get_settings(&app);
     serde_json::to_string_pretty(&settings.snippets)
         .map_err(|e| format!("Failed to serialize snippets: {}", e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::VALID_APP_THEMES;
+
+    #[test]
+    fn app_theme_allowlist_includes_gradient_themes() {
+        for theme in ["aurora", "lagoon", "daybreak", "ember", "galaxy"] {
+            assert!(
+                VALID_APP_THEMES.contains(&theme),
+                "{theme} should be accepted by change_app_theme_setting"
+            );
+        }
+    }
 }

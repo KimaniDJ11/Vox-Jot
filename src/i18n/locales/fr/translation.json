@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Remarques",
           "description": "Polissez toujours, avec un espace à la fin."
+        },
+        "concise": {
+          "label": "Concis",
+          "description": "Réécritures plus courtes et plus claires."
         }
+      },
+      "customTone": {
+        "open": "Créer un ton personnalisé",
+        "nameLabel": "Nom du ton",
+        "instructionLabel": "Consigne",
+        "save": "Enregistrer le ton",
+        "createFailed": "Impossible de créer le ton."
       },
       "overrideGroups": {
         "speech": "Discours",

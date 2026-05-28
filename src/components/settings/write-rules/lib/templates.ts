@@ -9,11 +9,24 @@
 // Apps and URL patterns are *not* templated because they're highly
 // user-specific and users almost always want to pick their own.
 
-import { Code2, FileText, Mail, MessageSquare, Plus } from "lucide-react";
+import {
+  Code2,
+  FileText,
+  Mail,
+  MessageSquare,
+  Minimize2,
+  Plus,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { WriteRule } from "@/bindings";
 
-export type ProfileTemplateId = "blank" | "email" | "coding" | "chat" | "notes";
+export type ProfileTemplateId =
+  | "blank"
+  | "email"
+  | "coding"
+  | "chat"
+  | "notes"
+  | "concise";
 
 export interface ProfileTemplate {
   id: ProfileTemplateId;
@@ -89,6 +102,23 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
       name: draft.name || "Notes",
       overrides: {
         ...draft.overrides,
+        force_post_process: true,
+        append_trailing_space: true,
+        auto_submit: false,
+      },
+    }),
+  },
+  {
+    id: "concise",
+    label: "Concise",
+    description: "Shorter, clearer rewrites.",
+    icon: Minimize2,
+    apply: (draft) => ({
+      ...draft,
+      name: draft.name || "Concise",
+      overrides: {
+        ...draft.overrides,
+        tone_id: "concise",
         force_post_process: true,
         append_trailing_space: true,
         auto_submit: false,

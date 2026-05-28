@@ -21,7 +21,7 @@ interface AppMonogramProps {
   name?: string | null;
   /** Bundle id used as a stable hash for the background tint. */
   bundleId: string;
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "hero";
   className?: string;
 }
 
@@ -31,6 +31,7 @@ const SIZE_PX: Record<NonNullable<AppMonogramProps["size"]>, number> = {
   md: 32,
   lg: 40,
   xl: 48,
+  hero: 80,
 };
 
 /**
@@ -147,7 +148,7 @@ export const AppMonogram: React.FC<AppMonogramProps> = ({
         alt=""
         width={px}
         height={px}
-        className={"inline-block shrink-0 rounded-md " + className}
+        className={"inline-block shrink-0 " + className}
         style={{ width: px, height: px }}
         aria-hidden="true"
         draggable={false}
@@ -172,7 +173,7 @@ export const AppMonogram: React.FC<AppMonogramProps> = ({
               ? 13
               : size === "lg"
                 ? 16
-                : size === "xl"
+                : size === "xl" || size === "hero"
                   ? 18
                   : 11,
       }}

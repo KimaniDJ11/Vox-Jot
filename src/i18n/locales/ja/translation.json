@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "注意事項",
           "description": "常に末尾にスペースを付けて磨きます。"
+        },
+        "concise": {
+          "label": "簡潔",
+          "description": "より短く、より明確に書き直します。"
         }
+      },
+      "customTone": {
+        "open": "カスタムトーンを作成",
+        "nameLabel": "トーン名",
+        "instructionLabel": "指示",
+        "save": "トーンを保存",
+        "createFailed": "トーンを作成できませんでした。"
       },
       "overrideGroups": {
         "speech": "スピーチ",

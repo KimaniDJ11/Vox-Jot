@@ -840,7 +840,6 @@ export const CorrectionDictionaryView: React.FC<
           onClick={openManualEditor}
           aria-haspopup="dialog"
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.postProcessing.dictionary.add", {
             defaultValue: "Add new",
           })}

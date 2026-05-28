@@ -63,6 +63,10 @@ interface WriteRuleEditorProps {
   tones: ToneDefinition[];
   prompts: LLMPrompt[];
   models?: ModelInfo[];
+  onCreateTone?: (draft: {
+    label: string;
+    instruction: string;
+  }) => Promise<ToneDefinition>;
   onSave: (rule: WriteRule) => void;
   onCancel: () => void;
   saveError?: string | null;
@@ -84,6 +88,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   tones,
   prompts,
   models: modelsProp,
+  onCreateTone,
   onSave,
   onCancel,
   saveError,
@@ -237,6 +242,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           models={models}
           tones={tones}
           prompts={prompts}
+          onCreateTone={onCreateTone}
           onChange={(overrides) => setDraft({ ...draft, overrides })}
         />
       </section>

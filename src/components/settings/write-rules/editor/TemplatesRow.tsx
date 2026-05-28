@@ -33,9 +33,14 @@ export const TemplatesRow: React.FC<TemplatesRowProps> = ({
         {PROFILE_TEMPLATES.map((template) => (
           <TemplateChip
             key={template.id}
-            label={t(`refine.writeRules.templates.${template.id}.label`)}
+            label={t(`refine.writeRules.templates.${template.id}.label`, {
+              defaultValue: template.label,
+            })}
             description={t(
               `refine.writeRules.templates.${template.id}.description`,
+              {
+                defaultValue: template.description,
+              },
             )}
             icon={template.icon}
             selected={selectedId === template.id}

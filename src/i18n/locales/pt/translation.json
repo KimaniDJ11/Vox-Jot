@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Notas",
           "description": "Sempre polir, com espaço à direita."
+        },
+        "concise": {
+          "label": "Conciso",
+          "description": "Reescritas mais curtas e claras."
         }
+      },
+      "customTone": {
+        "open": "Criar tom personalizado",
+        "nameLabel": "Nome do tom",
+        "instructionLabel": "Instrução",
+        "save": "Salvar tom",
+        "createFailed": "Não foi possível criar o tom."
       },
       "overrideGroups": {
         "speech": "Discurso",

@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Notas",
           "description": "Pulir siempre, con espacio final."
+        },
+        "concise": {
+          "label": "Conciso",
+          "description": "Reescrituras más breves y claras."
         }
+      },
+      "customTone": {
+        "open": "Crear tono personalizado",
+        "nameLabel": "Nombre del tono",
+        "instructionLabel": "Instrucción",
+        "save": "Guardar tono",
+        "createFailed": "No se pudo crear el tono."
       },
       "overrideGroups": {
         "speech": "discurso",

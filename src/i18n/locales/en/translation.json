@@ -212,7 +212,18 @@
         "notes": {
           "label": "Notes",
           "description": "Always polish, with trailing space."
+        },
+        "concise": {
+          "label": "Concise",
+          "description": "Shorter, clearer rewrites."
         }
+      },
+      "customTone": {
+        "open": "Create custom tone",
+        "nameLabel": "Tone name",
+        "instructionLabel": "Instruction",
+        "save": "Save tone",
+        "createFailed": "Couldn't create tone."
       },
       "overrideGroups": {
         "speech": "Speech",

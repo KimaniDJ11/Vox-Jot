@@ -1252,7 +1252,7 @@ function App() {
               type="button"
               variant="ghost"
               size="icon-sm"
-              className={`app-no-drag border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
+              className={`app-no-drag sidebar-toggle-button h-8 min-h-8 w-8 border-transparent text-[var(--text)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
               onClick={toggleSidebarCollapsed}
               aria-label={
                 sidebarCollapsed
@@ -1292,8 +1292,8 @@ function App() {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="border-transparent p-1.5 text-[var(--muted)] hover:text-[var(--accent)]"
+              size="icon-sm"
+              className="sidebar-toggle-button h-8 min-h-8 w-8 border-transparent text-[var(--text)] hover:text-[var(--accent)]"
               onClick={toggleSidebarCollapsed}
               aria-label={
                 sidebarCollapsed

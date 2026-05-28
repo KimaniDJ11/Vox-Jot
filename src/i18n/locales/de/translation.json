@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Notizen",
           "description": "Immer polieren, mit nachgestelltem Leerzeichen."
+        },
+        "concise": {
+          "label": "Prägnant",
+          "description": "Kürzere, klarere Umschreibungen."
         }
+      },
+      "customTone": {
+        "open": "Benutzerdefinierten Ton erstellen",
+        "nameLabel": "Tonname",
+        "instructionLabel": "Anweisung",
+        "save": "Ton speichern",
+        "createFailed": "Ton konnte nicht erstellt werden."
       },
       "overrideGroups": {
         "speech": "Rede",

@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Notlar",
           "description": "Her zaman sonunda boşluk bırakarak cilalayın."
+        },
+        "concise": {
+          "label": "Özlü",
+          "description": "Daha kısa ve daha net yeniden yazımlar."
         }
+      },
+      "customTone": {
+        "open": "Özel ton oluştur",
+        "nameLabel": "Ton adı",
+        "instructionLabel": "Talimat",
+        "save": "Tonu kaydet",
+        "createFailed": "Ton oluşturulamadı."
       },
       "overrideGroups": {
         "speech": "Konuşma",

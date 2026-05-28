@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Ghi chú",
           "description": "Luôn đánh bóng, có dấu cách."
+        },
+        "concise": {
+          "label": "Súc tích",
+          "description": "Bản viết lại ngắn hơn và rõ ràng hơn."
         }
+      },
+      "customTone": {
+        "open": "Tạo giọng điệu tùy chỉnh",
+        "nameLabel": "Tên giọng điệu",
+        "instructionLabel": "Hướng dẫn",
+        "save": "Lưu giọng điệu",
+        "createFailed": "Không thể tạo giọng điệu."
       },
       "overrideGroups": {
         "speech": "Bài phát biểu",

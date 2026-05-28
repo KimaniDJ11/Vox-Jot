@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Примітки",
           "description": "Завжди відшліфований, з пропуском у кінці."
+        },
+        "concise": {
+          "label": "Стислий",
+          "description": "Коротші й зрозуміліші переписування."
         }
+      },
+      "customTone": {
+        "open": "Створити власний тон",
+        "nameLabel": "Назва тону",
+        "instructionLabel": "Інструкція",
+        "save": "Зберегти тон",
+        "createFailed": "Не вдалося створити тон."
       },
       "overrideGroups": {
         "speech": "Виступ",

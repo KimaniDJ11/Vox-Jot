@@ -25,6 +25,7 @@ import {
   type InstalledApp,
   type ModelInfo,
   type ResolvedWriteRule,
+  type ToneDefinition,
   type WriteRule,
 } from "@/bindings";
 import {
@@ -43,7 +44,6 @@ import {
 } from "./WriteProfileGroupCard";
 import { WriteRuleRow } from "./WriteRuleRow";
 import { modal } from "@/motion/springs";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 const emptyTitle = "No write profiles yet";
@@ -54,7 +54,7 @@ type ViewMode = "individual" | "grouped";
 
 export const WriteRulesSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting, refreshSettings } = useSettings();
+  const { getSetting, refreshSettings, updateSetting } = useSettings();
 
   const [rules, setRules] = useState<WriteRule[]>([]);
   const [apps, setApps] = useState<InstalledApp[]>(
@@ -70,6 +70,33 @@ export const WriteRulesSettings: React.FC = () => {
 
   const tones = getSetting("tone_definitions") ?? [];
   const prompts = getSetting("post_process_prompts") ?? [];
+
+  const createToneDefinition = useCallback(
+    async (draft: {
+      label: string;
+      instruction: string;
+    }): Promise<ToneDefinition> => {
+      const label = draft.label.trim();
+      const instruction = draft.instruction.trim();
+      const baseId =
+        label
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "custom-tone";
+      const usedIds = new Set(tones.map((tone) => tone.id));
+      let id = baseId;
+      let suffix = 2;
+      while (usedIds.has(id)) {
+        id = `${baseId}-${suffix}`;
+        suffix += 1;
+      }
+      const definition: ToneDefinition = { id, label, instruction };
+      await updateSetting("tone_definitions", [...tones, definition]);
+      await refreshSettings();
+      return definition;
+    },
+    [refreshSettings, tones, updateSetting],
+  );
 
   const sortedRules = useMemo(
     () => [...rules].sort((left, right) => left.name.localeCompare(right.name)),
@@ -182,22 +209,6 @@ export const WriteRulesSettings: React.FC = () => {
   };
 
   const deleteRule = async (id: string) => {
-    const ruleName =
-      rules.find((rule) => rule.id === id)?.name ??
-      t("refine.writeRules.profileFallback", {
-        defaultValue: "this write profile",
-      });
-    if (
-      !confirmDestructiveAction(
-        t("refine.writeRules.deleteConfirm", {
-          ruleName,
-          defaultValue: 'Delete write profile "{{ruleName}}"?',
-        }),
-      )
-    ) {
-      return;
-    }
-
     const result = await commands.deleteWriteRule(id);
     if (result.status === "ok") {
       await loadRules();
@@ -245,6 +256,7 @@ export const WriteRulesSettings: React.FC = () => {
               tones={tones}
               prompts={prompts}
               models={models}
+              onCreateTone={createToneDefinition}
               onSave={(rule) => void saveRule(rule)}
               onCancel={closeProfileWindow}
               saveError={saveError}
@@ -276,7 +288,6 @@ export const WriteRulesSettings: React.FC = () => {
             variant="primary-soft"
             onClick={openAddProfileWindow}
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
             {t("refine.writeRules.newRule")}
           </Button>
           <SegmentedControl<ViewMode>
@@ -337,23 +348,21 @@ export const WriteRulesSettings: React.FC = () => {
               models={models}
               activeRuleId={activeRuleId}
               onEdit={openEditProfileWindow}
-              onDelete={(id) => void deleteRule(id)}
+              onDelete={(id) => deleteRule(id)}
             />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 2xl:grid-cols-7">
           {sortedRules.map((rule) => (
             <WriteRuleRow
               key={rule.id}
               rule={rule}
               apps={apps}
               tones={tones}
-              prompts={prompts}
-              models={models}
               isActive={rule.id === activeRuleId}
               onEdit={() => openEditProfileWindow(rule)}
-              onDelete={() => void deleteRule(rule.id)}
+              onDelete={() => deleteRule(rule.id)}
             />
           ))}
         </div>

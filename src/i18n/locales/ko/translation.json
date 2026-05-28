@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "메모",
           "description": "항상 후행 공백을 사용하여 다듬습니다."
+        },
+        "concise": {
+          "label": "간결",
+          "description": "더 짧고 명확하게 다시 씁니다."
         }
+      },
+      "customTone": {
+        "open": "사용자 지정 톤 만들기",
+        "nameLabel": "톤 이름",
+        "instructionLabel": "지침",
+        "save": "톤 저장",
+        "createFailed": "톤을 만들 수 없습니다."
       },
       "overrideGroups": {
         "speech": "연설",

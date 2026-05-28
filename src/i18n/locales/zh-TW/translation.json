@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "註解",
           "description": "始終拋光，並帶有尾隨空格。"
+        },
+        "concise": {
+          "label": "簡潔",
+          "description": "更短、更清楚的改寫。"
         }
+      },
+      "customTone": {
+        "open": "建立自訂語氣",
+        "nameLabel": "語氣名稱",
+        "instructionLabel": "指示",
+        "save": "儲存語氣",
+        "createFailed": "無法建立語氣。"
       },
       "overrideGroups": {
         "speech": "演講",

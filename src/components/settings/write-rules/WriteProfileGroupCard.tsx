@@ -1,5 +1,5 @@
 import React from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
   InstalledApp,
@@ -34,7 +34,7 @@ interface WriteProfileGroupCardProps {
   models: ModelInfo[];
   activeRuleId: string | null;
   onEdit: (rule: WriteRule) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
 }
 
 const writeRuleGroupKey = (overrides: WriteRuleOverrides): string => {
@@ -91,6 +91,9 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const [confirmingDeleteId, setConfirmingDeleteId] = React.useState<
+    string | null
+  >(null);
   const appsByBundleId = React.useMemo(
     () => new Map(apps.map((app) => [app.bundle_id, app.name])),
     [apps],
@@ -225,14 +228,39 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
                   >
                     <Pencil aria-hidden />
                   </ActionIconButton>
-                  <ActionIconButton
-                    tone="danger"
-                    onClick={() => onDelete(rule.id)}
-                    aria-label={`Delete ${rule.name}`}
-                    title={`Delete ${rule.name}`}
-                  >
-                    <Trash2 aria-hidden />
-                  </ActionIconButton>
+                  {confirmingDeleteId === rule.id ? (
+                    <>
+                      <ActionIconButton
+                        tone="confirm"
+                        onClick={async () => {
+                          await onDelete(rule.id);
+                          setConfirmingDeleteId(null);
+                        }}
+                        aria-label={t("refine.writeRules.row.deleteProfile")}
+                        title={t("refine.writeRules.row.deleteProfile")}
+                      >
+                        <Trash2 aria-hidden />
+                      </ActionIconButton>
+                      <ActionIconButton
+                        onClick={() => setConfirmingDeleteId(null)}
+                        aria-label={t("common.cancel", {
+                          defaultValue: "Cancel",
+                        })}
+                        title={t("common.cancel", { defaultValue: "Cancel" })}
+                      >
+                        <X aria-hidden />
+                      </ActionIconButton>
+                    </>
+                  ) : (
+                    <ActionIconButton
+                      tone="danger"
+                      onClick={() => setConfirmingDeleteId(rule.id)}
+                      aria-label={`Delete ${rule.name}`}
+                      title={`Delete ${rule.name}`}
+                    >
+                      <Trash2 aria-hidden />
+                    </ActionIconButton>
+                  )}
                 </div>
               );
             })}

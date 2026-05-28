@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Note",
           "description": "Lucidare sempre, con spazio finale."
+        },
+        "concise": {
+          "label": "Conciso",
+          "description": "Riscritture più brevi e più chiare."
         }
+      },
+      "customTone": {
+        "open": "Crea tono personalizzato",
+        "nameLabel": "Nome del tono",
+        "instructionLabel": "Istruzione",
+        "save": "Salva tono",
+        "createFailed": "Impossibile creare il tono."
       },
       "overrideGroups": {
         "speech": "Discorso",

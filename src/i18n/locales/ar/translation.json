@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "ملاحظات",
           "description": "قم بالتلميع دائمًا، مع وجود مسافة زائدة."
+        },
+        "concise": {
+          "label": "موجز",
+          "description": "إعادة صياغة أقصر وأكثر وضوحًا."
         }
+      },
+      "customTone": {
+        "open": "إنشاء نبرة مخصصة",
+        "nameLabel": "اسم النبرة",
+        "instructionLabel": "التعليمات",
+        "save": "حفظ النبرة",
+        "createFailed": "تعذر إنشاء النبرة."
       },
       "overrideGroups": {
         "speech": "خطاب",

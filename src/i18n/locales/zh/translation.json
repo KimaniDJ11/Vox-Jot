@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "注释",
           "description": "始终抛光，并带有尾随空格。"
+        },
+        "concise": {
+          "label": "简洁",
+          "description": "更短、更清晰的改写。"
         }
+      },
+      "customTone": {
+        "open": "创建自定义语气",
+        "nameLabel": "语气名称",
+        "instructionLabel": "说明",
+        "save": "保存语气",
+        "createFailed": "无法创建语气。"
       },
       "overrideGroups": {
         "speech": "演讲",

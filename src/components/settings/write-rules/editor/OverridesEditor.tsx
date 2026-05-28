@@ -28,6 +28,8 @@ import type {
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import {
   countActiveOverrides,
   OVERRIDE_REGISTRY,
@@ -41,6 +43,10 @@ interface OverridesEditorProps {
   models: ModelInfo[];
   tones: ToneDefinition[];
   prompts: LLMPrompt[];
+  onCreateTone?: (draft: {
+    label: string;
+    instruction: string;
+  }) => Promise<ToneDefinition>;
   onChange: (overrides: WriteRuleOverrides) => void;
 }
 
@@ -60,6 +66,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
   models,
   tones,
   prompts,
+  onCreateTone,
   onChange,
 }) => {
   const { t } = useTranslation();
@@ -89,6 +96,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
               spec={spec}
               overrides={overrides}
               context={ctx}
+              onCreateTone={onCreateTone}
               onChange={onChange}
             />
           ))}
@@ -125,8 +133,12 @@ const OverrideRow: React.FC<{
     tones: ToneDefinition[];
     prompts: LLMPrompt[];
   };
+  onCreateTone?: (draft: {
+    label: string;
+    instruction: string;
+  }) => Promise<ToneDefinition>;
   onChange: (overrides: WriteRuleOverrides) => void;
-}> = ({ spec, overrides, context, onChange }) => {
+}> = ({ spec, overrides, context, onCreateTone, onChange }) => {
   const { t } = useTranslation();
   const options = spec.options(context).map((option) => {
     const translated = t(overrideOptionKey(spec, option.value), {
@@ -137,38 +149,149 @@ const OverrideRow: React.FC<{
   const specLabel = t(overrideLabelKey(spec));
   const specDescription = t(overrideDescriptionKey(spec));
   return (
-    <li className="grid items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-[var(--text)]">
-          {specLabel}
-        </p>
-        <p className="truncate text-[11px] text-[var(--muted)]">
-          {t(overrideGroupKey(spec.group))}
-          {spec.description ? ` · ${specDescription}` : ""}
-        </p>
+    <li className="px-3 py-2.5">
+      <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-[var(--text)]">
+            {specLabel}
+          </p>
+          <p className="truncate text-[11px] text-[var(--muted)]">
+            {t(overrideGroupKey(spec.group))}
+            {spec.description ? ` · ${specDescription}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 justify-self-start sm:justify-self-end">
+          <Dropdown
+            options={options}
+            selectedValue={spec.readValue(overrides)}
+            onSelect={(value) => onChange(spec.applyValue(overrides, value))}
+            className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
+          />
+          <ActionIconButton
+            tone="danger"
+            onClick={() => onChange(spec.reset(overrides))}
+            aria-label={t(
+              "refine.writeRules.overridesEditor.removeOverrideAria",
+              {
+                label: specLabel,
+              },
+            )}
+            title={t("refine.writeRules.overridesEditor.removeOverride")}
+          >
+            <X aria-hidden />
+          </ActionIconButton>
+        </div>
       </div>
-      <div className="flex items-center gap-2 justify-self-start sm:justify-self-end">
-        <Dropdown
-          options={options}
-          selectedValue={spec.readValue(overrides)}
-          onSelect={(value) => onChange(spec.applyValue(overrides, value))}
-          className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
+      {spec.key === "tone_id" && onCreateTone ? (
+        <CustomToneCreator
+          onCreateTone={onCreateTone}
+          onCreated={(tone) => onChange({ ...overrides, tone_id: tone.id })}
         />
-        <ActionIconButton
-          tone="danger"
-          onClick={() => onChange(spec.reset(overrides))}
-          aria-label={t(
-            "refine.writeRules.overridesEditor.removeOverrideAria",
-            {
-              label: specLabel,
-            },
-          )}
-          title={t("refine.writeRules.overridesEditor.removeOverride")}
-        >
-          <X aria-hidden />
-        </ActionIconButton>
-      </div>
+      ) : null}
     </li>
+  );
+};
+
+const CustomToneCreator: React.FC<{
+  onCreateTone: (draft: {
+    label: string;
+    instruction: string;
+  }) => Promise<ToneDefinition>;
+  onCreated: (tone: ToneDefinition) => void;
+}> = ({ onCreateTone, onCreated }) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [instruction, setInstruction] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canSave = label.trim().length > 0 && instruction.trim().length > 0;
+
+  const save = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const tone = await onCreateTone({ label, instruction });
+      onCreated(tone);
+      setLabel("");
+      setInstruction("");
+      setOpen(false);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("refine.writeRules.customTone.createFailed"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 text-xs font-medium text-[var(--accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
+      >
+        {t("refine.writeRules.customTone.open")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+        <label className="space-y-1">
+          <span className="text-[11px] font-medium text-[var(--muted)]">
+            {t("refine.writeRules.customTone.nameLabel")}
+          </span>
+          <Input
+            value={label}
+            placeholder="Founder voice"
+            variant="compact"
+            onChange={(event) => setLabel(event.target.value)}
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] font-medium text-[var(--muted)]">
+            {t("refine.writeRules.customTone.instructionLabel")}
+          </span>
+          <Textarea
+            value={instruction}
+            placeholder="Rewrite in a warm, concise voice. Preserve technical terms and avoid hype."
+            variant="compact"
+            onChange={(event) => setInstruction(event.target.value)}
+            className="min-h-[72px]"
+          />
+        </label>
+      </div>
+      {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setOpen(false);
+            setError(null);
+          }}
+        >
+          {t("common.cancel", { defaultValue: "Cancel" })}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={save}
+          disabled={!canSave || saving}
+        >
+          {saving
+            ? t("common.saving", { defaultValue: "Saving..." })
+            : t("refine.writeRules.customTone.save")}
+        </Button>
+      </div>
+    </div>
   );
 };
 

@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Notatki",
           "description": "Zawsze poleruj, ze spacją na końcu."
+        },
+        "concise": {
+          "label": "Zwięzły",
+          "description": "Krótsze i jaśniejsze przeredagowania."
         }
+      },
+      "customTone": {
+        "open": "Utwórz własny ton",
+        "nameLabel": "Nazwa tonu",
+        "instructionLabel": "Instrukcja",
+        "save": "Zapisz ton",
+        "createFailed": "Nie można utworzyć tonu."
       },
       "overrideGroups": {
         "speech": "Mowa",

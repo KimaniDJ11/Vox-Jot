@@ -3,6 +3,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WriteRule } from "@/bindings";
 import { UrlPatternList } from "./matchers/UrlPatternList";
+import {
+  groupWriteRules,
+  WriteProfileGroupCard,
+} from "./WriteProfileGroupCard";
 import { WriteRuleEditor } from "./WriteRuleEditor";
 
 vi.mock("@/bindings", async () => {
@@ -128,5 +132,58 @@ describe("Write Profiles rule UI", () => {
     });
 
     expect(view.textContent).toContain(invalidPatternMessage);
+  });
+
+  it("requires inline confirmation before deleting a grouped profile", async () => {
+    const onDelete = vi.fn();
+    const rule: WriteRule = {
+      id: "rule-1",
+      name: "Code profile",
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: ["com.microsoft.VSCode"],
+        url_patterns: [],
+      },
+      overrides: {
+        tone_id: "coding",
+      },
+    };
+    const group = groupWriteRules([rule])[0];
+    if (!group) throw new Error("Expected grouped write profile");
+
+    const view = await render(
+      <WriteProfileGroupCard
+        group={group}
+        apps={[
+          {
+            bundle_id: "com.microsoft.VSCode",
+            name: "Code",
+          },
+        ]}
+        tones={[{ id: "coding", label: "Coding", instruction: "" }]}
+        prompts={[]}
+        models={[]}
+        activeRuleId={null}
+        onEdit={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    const firstDeleteButton = view.querySelector(
+      'button[aria-label="Delete Code profile"]',
+    ) as HTMLButtonElement;
+    expect(firstDeleteButton).toBeDefined();
+
+    await act(async () => {
+      firstDeleteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onDelete).not.toHaveBeenCalled();
+
+    const buttons = Array.from(view.querySelectorAll("button"));
+    await act(async () => {
+      buttons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onDelete).toHaveBeenCalledWith("rule-1");
   });
 });

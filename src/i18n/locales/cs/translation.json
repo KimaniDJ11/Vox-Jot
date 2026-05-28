@@ -2038,7 +2038,18 @@
         "notes": {
           "label": "Poznámky",
           "description": "Vždy leštěte s mezerou na konci."
+        },
+        "concise": {
+          "label": "Stručný",
+          "description": "Kratší a jasnější přepisy."
         }
+      },
+      "customTone": {
+        "open": "Vytvořit vlastní tón",
+        "nameLabel": "Název tónu",
+        "instructionLabel": "Instrukce",
+        "save": "Uložit tón",
+        "createFailed": "Tón se nepodařilo vytvořit."
       },
       "overrideGroups": {
         "speech": "Řeč",

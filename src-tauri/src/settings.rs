@@ -1193,6 +1193,13 @@ fn default_tone_definitions() -> Vec<ToneDefinition> {
                     .to_string(),
         },
         ToneDefinition {
+            id: "concise".to_string(),
+            label: "Concise".to_string(),
+            instruction:
+                "Make the text shorter and clearer while preserving the speaker's meaning, important details, names, code terms, and requested formatting."
+                    .to_string(),
+        },
+        ToneDefinition {
             id: "coding".to_string(),
             label: "Coding".to_string(),
             instruction:
@@ -2939,6 +2946,10 @@ mod tests {
             .tone_definitions
             .iter()
             .any(|tone| tone.id == "casual"));
+        assert!(settings
+            .tone_definitions
+            .iter()
+            .any(|tone| tone.id == "concise"));
     }
 
     #[test]

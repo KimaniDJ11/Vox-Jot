@@ -13,7 +13,6 @@ import {
   Pencil,
   Check,
   WholeWord,
-  Plus,
   Upload,
   FileJson,
 } from "lucide-react";
@@ -276,7 +275,6 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           onClick={openAddDialog}
           aria-haspopup="dialog"
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.snippets.list.add")}
         </Button>
         <SegmentedControl

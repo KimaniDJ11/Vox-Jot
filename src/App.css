@@ -1690,10 +1690,29 @@ input[type="range"]:disabled::-moz-range-thumb {
     background: transparent;
   }
 
-  /* Match macOS traffic-light control size (~12×12pt) */
-  .app-macos-titlebar-overlay__leading svg {
+  /* Match macOS traffic-light control size (~12×12pt) for plain glyphs. */
+  .app-macos-titlebar-overlay__leading svg:not(.sidebar-toggle-icon) {
     width: 14px;
     height: 14px;
+  }
+
+  .sidebar-toggle-button {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 9px;
+    background: transparent !important;
+    box-shadow: none;
+  }
+
+  .sidebar-toggle-button:hover {
+    background: transparent !important;
+  }
+
+  .sidebar-toggle-icon {
+    width: 25px;
+    height: 25px;
+    filter: drop-shadow(0 1px 0 rgba(20, 64, 62, 0.12));
   }
 
   /* Same sidebar column color as the rail below (continuous strip under traffic lights) */

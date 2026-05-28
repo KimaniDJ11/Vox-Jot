@@ -16,6 +16,7 @@ vi.mock("@/bindings", async () => {
     ...actual,
     commands: {
       ...actual.commands,
+      getAppIcon: vi.fn(async () => ({ status: "ok", data: null })),
       getAvailableModels: vi.fn(async () => ({ status: "ok", data: [] })),
       listInstalledApps: vi.fn(async () => ({ status: "ok", data: [] })),
     },
@@ -180,10 +181,175 @@ describe("Write Profiles rule UI", () => {
     });
     expect(onDelete).not.toHaveBeenCalled();
 
-    const buttons = Array.from(view.querySelectorAll("button"));
+    const confirmDeleteButton = view.querySelector(
+      'button[aria-label="refine.writeRules.row.deleteProfile"]',
+    ) as HTMLButtonElement;
+    expect(confirmDeleteButton).toBeDefined();
     await act(async () => {
-      buttons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      confirmDeleteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onDelete).toHaveBeenCalledWith("rule-1");
+  });
+
+  it("uses the tone value as the grouped card heading without redundant labels", async () => {
+    const rule: WriteRule = {
+      id: "rule-1",
+      name: "Messages profile",
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: ["com.apple.MobileSMS"],
+        url_patterns: [],
+      },
+      overrides: {
+        tone_id: "casual",
+      },
+    };
+    const group = groupWriteRules([rule])[0];
+    if (!group) throw new Error("Expected grouped write profile");
+    const toneInstruction =
+      "Use a casual, conversational tone suitable for quick chat messages while preserving meaning.";
+    const toneSummary =
+      "Casual, conversational wording for quick chat messages.";
+
+    const view = await render(
+      <WriteProfileGroupCard
+        group={group}
+        apps={[
+          {
+            bundle_id: "com.apple.MobileSMS",
+            name: "Messages",
+          },
+        ]}
+        tones={[{ id: "casual", label: "Casual", instruction: toneInstruction }]}
+        prompts={[]}
+        models={[]}
+        activeRuleId={null}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const heading = view.querySelector("h3");
+    expect(heading?.textContent).toBe("Casual");
+    expect(heading?.classList.contains("heading-display")).toBe(true);
+    expect(heading?.classList.contains("write-profile-group-title")).toBe(true);
+    expect(heading?.classList.contains("text-2xl")).toBe(true);
+    expect(heading?.classList.contains("font-bold")).toBe(true);
+    expect(view.querySelector("p")?.classList.contains("line-clamp-3")).toBe(
+      true,
+    );
+    expect(view.querySelector("p")?.classList.contains("font-normal")).toBe(
+      true,
+    );
+    expect(
+      view
+        .querySelector("p")
+        ?.classList.contains("write-profile-group-description"),
+    ).toBe(true);
+    expect(view.querySelector("p")?.classList.contains("font-bold")).toBe(false);
+    expect(view.querySelector("p")?.classList.contains("text-sm")).toBe(true);
+    expect(view.querySelector("p")?.classList.contains("text-[var(--text)]")).toBe(
+      true,
+    );
+    expect(view.textContent).toContain(toneSummary);
+    expect(view.textContent).not.toContain(toneInstruction);
+    expect(view.textContent).not.toContain("Tone · Casual");
+    expect(view.textContent).not.toContain("1 profile");
+  });
+
+  it("uses a short card summary for the built-in coding tone", async () => {
+    const rule: WriteRule = {
+      id: "rule-1",
+      name: "Code profile",
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: ["com.microsoft.VSCode"],
+        url_patterns: [],
+      },
+      overrides: {
+        tone_id: "coding",
+      },
+    };
+    const group = groupWriteRules([rule])[0];
+    if (!group) throw new Error("Expected grouped write profile");
+    const longInstruction =
+      "Format the text as precise technical writing suited for code editors and terminals. Use exact technical terms, preserve variable and function names verbatim, format code snippets with proper syntax, and keep comments concise.";
+
+    const view = await render(
+      <WriteProfileGroupCard
+        group={group}
+        apps={[
+          {
+            bundle_id: "com.microsoft.VSCode",
+            name: "Code",
+          },
+        ]}
+        tones={[{ id: "coding", label: "Coding", instruction: longInstruction }]}
+        prompts={[]}
+        models={[]}
+        activeRuleId={null}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(view.querySelector("h3")?.textContent).toBe("Coding");
+    expect(view.textContent).toContain(
+      "Precise technical writing for code editors and terminals.",
+    );
+    expect(view.textContent).not.toContain("Use exact technical terms");
+  });
+
+  it("collapses large grouped app sets behind a plus icon", async () => {
+    const rules: WriteRule[] = Array.from({ length: 6 }, (_, index) => ({
+      id: `rule-${index + 1}`,
+      name: `Profile ${index + 1}`,
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: [`com.example.App${index + 1}`],
+        url_patterns: [],
+      },
+      overrides: {
+        tone_id: "casual",
+      },
+    }));
+    const group = groupWriteRules(rules)[0];
+    if (!group) throw new Error("Expected grouped write profile");
+
+    const view = await render(
+      <WriteProfileGroupCard
+        group={group}
+        apps={rules.map((rule, index) => ({
+          bundle_id: rule.matchers.bundle_ids?.[0] ?? "",
+          name: `App ${index + 1}`,
+        }))}
+        tones={[{ id: "casual", label: "Casual", instruction: "" }]}
+        prompts={[]}
+        models={[]}
+        activeRuleId={null}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const showMoreButton = view.querySelector(
+      'button[aria-label="Show 1 more profiles"]',
+    ) as HTMLButtonElement;
+    expect(showMoreButton).toBeDefined();
+    expect(view.querySelector('button[aria-label="Edit Profile 6"]')).toBeNull();
+
+    await act(async () => {
+      showMoreButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(
+      view.querySelector('button[aria-label="Edit Profile 6"]'),
+    ).toBeDefined();
+    expect(
+      view.querySelector('button[aria-label="Show fewer profiles"]'),
+    ).toBeDefined();
   });
 });

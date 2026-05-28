@@ -1,5 +1,5 @@
 import React from "react";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
   InstalledApp,
@@ -23,8 +23,26 @@ const activeNowLabel = "Active now";
 const anyAppLabel = "Any app";
 const noOverridesLabel = "Inherits global settings";
 const urlChipPrefix = "URL ·";
-const profilesLabel = (count: number) =>
-  count === 1 ? "1 profile" : `${count} profiles`;
+const collapsedIconLimit = 5;
+const builtInToneSummaries: Record<string, string> = {
+  casual: "Casual, conversational wording for quick chat messages.",
+  coding: "Precise technical writing for code editors and terminals.",
+  concise: "Shorter, clearer wording that preserves important details.",
+  neutral: "Neutral wording close to what was spoken.",
+  professional: "Polished professional wording for email and documents.",
+};
+
+const toneCardDescription = (tone: ToneDefinition): string | null =>
+  builtInToneSummaries[tone.id] ?? (tone.instruction.trim() || null);
+
+const initialsFor = (label: string): string =>
+  label
+    .split(/[\s._/:+-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2) || "?";
 
 interface WriteProfileGroupCardProps {
   group: WriteRuleGroup;
@@ -94,12 +112,13 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
   const [confirmingDeleteId, setConfirmingDeleteId] = React.useState<
     string | null
   >(null);
+  const [showAllRules, setShowAllRules] = React.useState(false);
   const appsByBundleId = React.useMemo(
     () => new Map(apps.map((app) => [app.bundle_id, app.name])),
     [apps],
   );
   const toneById = React.useMemo(
-    () => new Map(tones.map((tone) => [tone.id, tone.label || tone.id])),
+    () => new Map(tones.map((tone) => [tone.id, tone])),
     [tones],
   );
   const promptById = React.useMemo(
@@ -117,6 +136,13 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     [appsByBundleId],
   );
   const activeRule = group.rules.find((rule) => rule.id === activeRuleId);
+  const visibleRules = showAllRules
+    ? group.rules
+    : group.rules.slice(0, collapsedIconLimit);
+  const hiddenRuleCount = Math.max(group.rules.length - collapsedIconLimit, 0);
+  const confirmingRule = group.rules.find(
+    (rule) => rule.id === confirmingDeleteId,
+  );
 
   const targetForRule = React.useCallback(
     (rule: WriteRule) => {
@@ -139,11 +165,12 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     },
     [appNameFor],
   );
+  const confirmingTarget = confirmingRule ? targetForRule(confirmingRule) : null;
 
   const overridesSummary = React.useMemo(() => {
     const o = group.overrides;
     const parts: string[] = [];
-    if (o.tone_id) parts.push(`Tone · ${toneById.get(o.tone_id) ?? o.tone_id}`);
+    if (o.tone_id) parts.push(toneById.get(o.tone_id)?.label || o.tone_id);
     if (o.stt_model_id)
       parts.push(`Engine · ${modelById.get(o.stt_model_id) ?? o.stt_model_id}`);
     if (o.stt_language) parts.push(`Lang · ${o.stt_language}`);
@@ -166,6 +193,12 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     if (o.mute_while_recording === true) parts.push("Mute while recording");
     return parts;
   }, [group.overrides, modelById, promptById, toneById]);
+  const toneDescription = React.useMemo(() => {
+    const toneId = group.overrides.tone_id?.trim();
+    if (!toneId) return null;
+    const tone = toneById.get(toneId);
+    return tone ? toneCardDescription(tone) : null;
+  }, [group.overrides.tone_id, toneById]);
 
   return (
     <div
@@ -179,14 +212,11 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
       <div className="flex flex-1 flex-col">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="truncate text-sm font-semibold text-[var(--text)]">
+            <h3 className="write-profile-group-title heading-display min-w-0 truncate text-2xl font-bold leading-tight text-[var(--text)]">
               {overridesSummary.length === 0
                 ? noOverridesLabel
                 : overridesSummary.join(" · ")}
             </h3>
-            <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
-              {profilesLabel(group.rules.length)}
-            </span>
             {activeRule ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                 <span className="h-1.5 w-1.5 rounded-full bg-white" />
@@ -194,77 +224,122 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
               </span>
             ) : null}
           </div>
+          {toneDescription ? (
+            <p className="write-profile-group-description mt-1 line-clamp-3 text-sm font-normal leading-6 text-[var(--text)]">
+              {toneDescription}
+            </p>
+          ) : null}
 
-          <div className="mt-3 space-y-1.5">
-            {group.rules.map((rule) => {
+          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-y-2 pl-1">
+            {visibleRules.map((rule, index) => {
               const target = targetForRule(rule);
               return (
                 <div
                   key={rule.id}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1.5"
+                  className={[
+                    "group/app relative",
+                    index === 0 ? "" : "-ml-3",
+                  ].join(" ")}
                 >
-                  {target.firstBundleId ? (
-                    <AppMonogram
-                      bundleId={target.firstBundleId}
-                      name={appNameFor(target.firstBundleId)}
-                      size="sm"
-                    />
-                  ) : null}
-                  <span
-                    className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text)]"
-                    title={target.label}
-                  >
-                    {target.label}
-                  </span>
-                  {!rule.enabled ? (
-                    <span className="rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[var(--muted)]">
-                      {t("refine.writeRules.disabled")}
-                    </span>
-                  ) : null}
-                  <ActionIconButton
+                  <button
+                    type="button"
                     onClick={() => onEdit(rule)}
                     aria-label={`Edit ${rule.name}`}
-                    title={`Edit ${rule.name}`}
+                    title={`Edit ${target.label}`}
+                    className={[
+                      "relative flex h-14 w-14 items-center justify-center rounded-full border-4 bg-[color-mix(in_srgb,var(--text),transparent_82%)] shadow-[var(--shadow-sm)] transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+                      rule.id === activeRuleId
+                        ? "z-10 border-[var(--accent)]"
+                        : "border-[color-mix(in_srgb,var(--text),transparent_72%)]",
+                      rule.enabled ? "" : "opacity-55",
+                    ].join(" ")}
                   >
-                    <Pencil aria-hidden />
-                  </ActionIconButton>
-                  {confirmingDeleteId === rule.id ? (
-                    <>
-                      <ActionIconButton
-                        tone="confirm"
-                        onClick={async () => {
-                          await onDelete(rule.id);
-                          setConfirmingDeleteId(null);
-                        }}
-                        aria-label={t("refine.writeRules.row.deleteProfile")}
-                        title={t("refine.writeRules.row.deleteProfile")}
-                      >
-                        <Trash2 aria-hidden />
-                      </ActionIconButton>
-                      <ActionIconButton
-                        onClick={() => setConfirmingDeleteId(null)}
-                        aria-label={t("common.cancel", {
-                          defaultValue: "Cancel",
-                        })}
-                        title={t("common.cancel", { defaultValue: "Cancel" })}
-                      >
-                        <X aria-hidden />
-                      </ActionIconButton>
-                    </>
-                  ) : (
-                    <ActionIconButton
-                      tone="danger"
-                      onClick={() => setConfirmingDeleteId(rule.id)}
-                      aria-label={`Delete ${rule.name}`}
-                      title={`Delete ${rule.name}`}
-                    >
-                      <Trash2 aria-hidden />
-                    </ActionIconButton>
-                  )}
+                    {target.firstBundleId ? (
+                      <AppMonogram
+                        bundleId={target.firstBundleId}
+                        name={appNameFor(target.firstBundleId)}
+                        size="lg"
+                        className="rounded-xl"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-sm font-bold text-[var(--text)]">
+                        {initialsFor(target.label)}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDeleteId(rule.id)}
+                    aria-label={`Delete ${rule.name}`}
+                    title={`Delete ${rule.name}`}
+                    className="absolute -right-0.5 -top-0.5 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--danger)] opacity-0 shadow-[var(--shadow-sm)] transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] group-hover/app:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
                 </div>
               );
             })}
+            {hiddenRuleCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAllRules((value) => !value);
+                  setConfirmingDeleteId(null);
+                }}
+                aria-label={
+                  showAllRules
+                    ? "Show fewer profiles"
+                    : `Show ${hiddenRuleCount} more profiles`
+                }
+                title={
+                  showAllRules
+                    ? "Show fewer"
+                    : `Show ${hiddenRuleCount} more profiles`
+                }
+                className="-ml-3 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[color-mix(in_srgb,var(--text),transparent_72%)] bg-[color-mix(in_srgb,var(--text),transparent_82%)] text-[var(--text)] shadow-[var(--shadow-sm)] transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              >
+                {showAllRules ? (
+                  <X className="h-6 w-6" aria-hidden />
+                ) : (
+                  <Plus className="h-7 w-7" aria-hidden />
+                )}
+              </button>
+            ) : null}
           </div>
+
+          {confirmingRule && confirmingTarget ? (
+            <div className="mt-3 flex min-w-0 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+              <span
+                className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text)]"
+                title={confirmingTarget.label}
+              >
+                {t("refine.writeRules.row.confirmDeleteProfile", {
+                  defaultValue: "Delete {{label}}?",
+                  label: confirmingTarget.label,
+                })}
+              </span>
+              <ActionIconButton
+                tone="confirm"
+                onClick={async () => {
+                  await onDelete(confirmingRule.id);
+                  setConfirmingDeleteId(null);
+                }}
+                aria-label={t("refine.writeRules.row.deleteProfile")}
+                title={t("refine.writeRules.row.deleteProfile")}
+              >
+                <Trash2 aria-hidden />
+              </ActionIconButton>
+              <ActionIconButton
+                onClick={() => setConfirmingDeleteId(null)}
+                aria-label={t("common.cancel", {
+                  defaultValue: "Cancel",
+                })}
+                title={t("common.cancel", { defaultValue: "Cancel" })}
+              >
+                <X aria-hidden />
+              </ActionIconButton>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

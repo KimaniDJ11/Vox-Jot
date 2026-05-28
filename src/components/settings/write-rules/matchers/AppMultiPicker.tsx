@@ -13,23 +13,29 @@ import { useTranslation } from "react-i18next";
 import { commands, type InstalledApp } from "@/bindings";
 import { Input } from "@/components/ui/Input";
 import { AppMonogram } from "../AppMonogram";
+import { isSupportedBrowserBundleId } from "../lib/browserMatchers";
 
 const matchAnyChip = "Any app";
+const matchAnyBrowserChip = "All browsers";
 const fieldLabel = "Apps";
 const helpHint =
   "Leave empty to match any app. Typing a name shows suggestions.";
+const browserOnlyHelpHint =
+  "URL rules only work in supported browsers. Search is limited to browser apps.";
 const removeAppLabel = "Remove app";
 
 interface AppMultiPickerProps {
   bundleIds: string[];
   onChange: (bundleIds: string[]) => void;
   compact?: boolean;
+  browserOnly?: boolean;
 }
 
 export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
   bundleIds,
   onChange,
   compact = false,
+  browserOnly = false,
 }) => {
   const { t } = useTranslation();
   const [apps, setApps] = useState<InstalledApp[]>([]);
@@ -57,11 +63,12 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
       .filter(
         (app) =>
           !bundleIds.includes(app.bundle_id) &&
+          (!browserOnly || isSupportedBrowserBundleId(app.bundle_id)) &&
           (app.name.toLowerCase().includes(q) ||
             app.bundle_id.toLowerCase().includes(q)),
       )
       .slice(0, 8);
-  }, [apps, bundleIds, query]);
+  }, [apps, browserOnly, bundleIds, query]);
 
   // Click-outside dismiss for the suggestion popover.
   useEffect(() => {
@@ -86,6 +93,7 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
   };
 
   const shouldShowChips = !compact || bundleIds.length > 0;
+  const emptyAppLabel = browserOnly ? matchAnyBrowserChip : matchAnyChip;
 
   return (
     <div ref={containerRef} className={compact ? "space-y-1.5" : "space-y-2"}>
@@ -95,11 +103,13 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
         </label>
         {compact && bundleIds.length === 0 ? (
           <span className="text-xs italic text-[var(--muted)]">
-            {matchAnyChip}
+            {emptyAppLabel}
           </span>
         ) : null}
         {!compact ? (
-          <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+          <span className="text-[11px] text-[var(--muted)]">
+            {browserOnly ? browserOnlyHelpHint : helpHint}
+          </span>
         ) : null}
       </div>
 
@@ -119,7 +129,11 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
               setShowSuggestions(false);
             }
           }}
-          placeholder={t("refine.writeRules.matchers.searchAppsPlaceholder")}
+          placeholder={
+            browserOnly
+              ? "Search browsers..."
+              : t("refine.writeRules.matchers.searchAppsPlaceholder")
+          }
           className="w-full"
         />
         {showSuggestions && suggestions.length > 0 ? (
@@ -156,7 +170,7 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
         <div className="flex min-h-[26px] flex-wrap items-center gap-2">
           {bundleIds.length === 0 ? (
             <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-              {matchAnyChip}
+              {emptyAppLabel}
             </span>
           ) : (
             bundleIds.map((bundleId) => {
@@ -164,14 +178,16 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
               return (
                 <span
                   key={bundleId}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
-                  title={bundleId}
+                  className="inline-flex max-w-[180px] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
+                  title={app?.name ? `${app.name} (${bundleId})` : bundleId}
                 >
                   <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
-                  {app?.name ?? bundleId}
+                  <span className="min-w-0 truncate">
+                    {app?.name ?? bundleId}
+                  </span>
                   <button
                     type="button"
-                    className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
+                    className="ml-0.5 shrink-0 text-[var(--muted)] hover:text-[var(--danger)]"
                     onClick={() =>
                       onChange(bundleIds.filter((id) => id !== bundleId))
                     }

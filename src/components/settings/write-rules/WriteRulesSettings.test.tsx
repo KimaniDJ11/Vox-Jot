@@ -8,6 +8,7 @@ import {
   WriteProfileGroupCard,
 } from "./WriteProfileGroupCard";
 import { WriteRuleEditor } from "./WriteRuleEditor";
+import { WriteRuleRow } from "./WriteRuleRow";
 
 vi.mock("@/bindings", async () => {
   const actual =
@@ -18,6 +19,17 @@ vi.mock("@/bindings", async () => {
       ...actual.commands,
       getAppIcon: vi.fn(async () => ({ status: "ok", data: null })),
       getAvailableModels: vi.fn(async () => ({ status: "ok", data: [] })),
+      getFrontmostAppForExclusion: vi.fn(async () => ({
+        status: "ok",
+        data: {
+          bundle_id: "com.apple.Safari",
+          localized_name: "Safari",
+        },
+      })),
+      getFrontmostUrlForWriteRules: vi.fn(async () => ({
+        status: "ok",
+        data: "https://mail.google.com",
+      })),
       listInstalledApps: vi.fn(async () => ({ status: "ok", data: [] })),
     },
   };
@@ -99,11 +111,11 @@ describe("Write Profiles rule UI", () => {
     await inputValue(nameInput, editedName);
 
     // The new editor has many buttons (sticky header + tabs + URL
-    // example chips), so we resolve "Save profile" by text. This also
+    // example chips), so we resolve "Save mode" by text. This also
     // documents the contract: the editor's primary CTA must be labelled
-    // "Save profile" so the user can find it without scanning icons.
+    // "Save mode" so the user can find it without scanning icons.
     const saveButton = Array.from(view.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Save profile",
+      (button) => button.textContent?.trim() === "Save mode",
     ) as HTMLButtonElement | undefined;
     expect(saveButton).toBeDefined();
     await act(async () => {
@@ -191,7 +203,7 @@ describe("Write Profiles rule UI", () => {
     expect(onDelete).toHaveBeenCalledWith("rule-1");
   });
 
-  it("uses the tone value as the grouped card heading without redundant labels", async () => {
+  it("uses the mode name as the grouped card heading with override details below", async () => {
     const rule: WriteRule = {
       id: "rule-1",
       name: "Messages profile",
@@ -231,7 +243,7 @@ describe("Write Profiles rule UI", () => {
     );
 
     const heading = view.querySelector("h3");
-    expect(heading?.textContent).toBe("Casual");
+    expect(heading?.textContent).toBe("Messages profile");
     expect(heading?.classList.contains("heading-display")).toBe(true);
     expect(heading?.classList.contains("write-profile-group-title")).toBe(true);
     expect(heading?.classList.contains("text-2xl")).toBe(true);
@@ -252,6 +264,7 @@ describe("Write Profiles rule UI", () => {
     expect(view.querySelector("p")?.classList.contains("text-[var(--text)]")).toBe(
       true,
     );
+    expect(view.textContent).toContain("Casual");
     expect(view.textContent).toContain(toneSummary);
     expect(view.textContent).not.toContain(toneInstruction);
     expect(view.textContent).not.toContain("Tone · Casual");
@@ -295,7 +308,8 @@ describe("Write Profiles rule UI", () => {
       />,
     );
 
-    expect(view.querySelector("h3")?.textContent).toBe("Coding");
+    expect(view.querySelector("h3")?.textContent).toBe("Code profile");
+    expect(view.textContent).toContain("Coding");
     expect(view.textContent).toContain(
       "Precise technical writing for code editors and terminals.",
     );
@@ -351,5 +365,78 @@ describe("Write Profiles rule UI", () => {
     expect(
       view.querySelector('button[aria-label="Show fewer profiles"]'),
     ).toBeDefined();
+  });
+
+  it("hides preview on modes that do not change text cleanup", async () => {
+    const rule: WriteRule = {
+      id: "rule-1",
+      name: "Safari engine",
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: ["com.apple.Safari"],
+        url_patterns: ["apple.com"],
+      },
+      overrides: {
+        stt_model_id: "whisper-medium",
+        force_post_process: false,
+      },
+    };
+    const group = groupWriteRules([rule])[0];
+    if (!group) throw new Error("Expected grouped write profile");
+
+    const view = await render(
+      <WriteProfileGroupCard
+        group={group}
+        apps={[{ bundle_id: "com.apple.Safari", name: "Safari" }]}
+        tones={[]}
+        prompts={[]}
+        models={[]}
+        activeRuleId={null}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onTry={vi.fn()}
+      />,
+    );
+
+    expect(view.textContent).not.toContain("Preview mode");
+  });
+
+  it("uses a generic browser icon for URL rules targeting multiple browsers", async () => {
+    const rule: WriteRule = {
+      id: "rule-1",
+      name: "Browser sites",
+      enabled: true,
+      priority: 80,
+      matchers: {
+        bundle_ids: ["com.apple.Safari", "com.google.Chrome"],
+        url_patterns: ["apple.com"],
+      },
+      overrides: {
+        tone_id: "neutral",
+      },
+    };
+
+    const view = await render(
+      <WriteRuleRow
+        rule={rule}
+        apps={[
+          { bundle_id: "com.apple.Safari", name: "Safari" },
+          { bundle_id: "com.google.Chrome", name: "Chrome" },
+        ]}
+        tones={[{ id: "neutral", label: "Neutral", instruction: "" }]}
+        prompts={[]}
+        models={[]}
+        isActive={false}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const iconButton = view.querySelector(
+      'button[aria-label$="URL · apple.com"]',
+    );
+    expect(iconButton?.querySelector("svg")).toBeDefined();
+    expect(iconButton?.textContent).toBe("");
   });
 });

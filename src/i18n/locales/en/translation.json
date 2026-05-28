@@ -95,9 +95,9 @@
   },
   "refine": {
     "writeRules": {
-      "title": "Write Profiles",
+      "title": "Dictation Modes",
       "description": "Pick the right tone, engine, and shortcuts based on which app or website you're dictating into.",
-      "newRule": "New profile",
+      "newRule": "New mode",
       "edit": "Edit",
       "delete": "Delete",
       "enabled": "Enabled",
@@ -105,8 +105,8 @@
       "priority": "Priority",
       "urlCaptureLabel": "Capture browser URL for website rules",
       "view": {
-        "individual": "Individual",
-        "grouped": "Grouped"
+        "individual": "Apps & Sites",
+        "grouped": "Modes"
       },
       "matchers": {
         "appsLabel": "Apps",
@@ -125,7 +125,7 @@
         },
         "stt_language": {
           "label": "Language",
-          "description": "Force a specific input language for this profile."
+          "description": "Force a specific input language for this mode."
         },
         "translate_to_english": {
           "label": "Translate to English",
@@ -133,15 +133,15 @@
         },
         "tone_id": {
           "label": "Tone",
-          "description": ""
+          "description": "Choose the writing voice used during cleanup."
         },
         "post_process_prompt_id": {
           "label": "Post-process prompt",
-          "description": ""
+          "description": "Use a specific cleanup prompt for this mode."
         },
         "force_post_process": {
           "label": "Post-processing",
-          "description": "Force AI post-processing on or off when this profile matches."
+          "description": "Force AI post-processing on or off when this mode matches."
         },
         "auto_submit": {
           "label": "Auto-submit",
@@ -176,6 +176,7 @@
         "multipleApps": "{{count}} apps",
         "moreApps": "+{{count}}",
         "inheritsGlobal": "Inherits global settings",
+        "tryMode": "Preview mode",
         "editProfile": "Edit profile",
         "deleteProfile": "Delete profile",
         "overrideTone": "Tone",
@@ -190,6 +191,20 @@
         "trailingSpace": "Trailing space",
         "noTrailingSpace": "No trailing space",
         "muteWhileRecording": "Mute while recording"
+      },
+      "preview": {
+        "title": "Preview mode",
+        "description": "This previews text cleanup for {{name}}. Live dictation still applies the mode automatically when {{target}} is focused.",
+        "multipleApps": "{{count}} apps",
+        "urlOnly": "This preview forces the selected website mode. In live dictation, open {{target}}, focus a text field, then use your dictation shortcut.",
+        "inputLabel": "Sample dictation",
+        "outputLabel": "Mode output",
+        "outputPlaceholder": "Preview output appears here.",
+        "run": "Run preview",
+        "running": "Previewing…",
+        "appliedTone": "Applied tone: {{tone}}",
+        "unchanged": "Preview completed with unchanged text. That can happen when the sample is already clean or cleanup is not configured; live dictation still uses this mode's app, model, tone, and output settings.",
+        "error": "Could not preview this mode."
       },
       "templates": {
         "heading": "Start from a template",
@@ -603,6 +618,16 @@
       "title": "Try your first dictation in any text field",
       "description": "Put the cursor where you want words to land, use the regular dictation shortcut, speak naturally, then stop. Vox Jot will enter the text into the focused app.",
       "cta": "Open Vox Jot",
+      "ctaSuccess": "Finish setup",
+      "ctaWaiting": "Waiting for dictation",
+      "skip": "Skip for now",
+      "troubleshoot": "Troubleshoot",
+      "testField": {
+        "label": "Transcript test field",
+        "placeholder": "Your first successful dictation will appear here.",
+        "success": "Dictation received. Setup can finish.",
+        "waiting": "Use the shortcut once. If nothing appears, check microphone, permissions, and model setup."
+      },
       "steps": [
         "Place your cursor in any text field where you want the transcript to go.",
         "Use your dictation shortcut to start recording, then stop when you are done speaking.",
@@ -656,6 +681,18 @@
     "deleteConfirm": "Delete {{modelName}}? Files will be removed from disk.",
     "deleteActiveConfirm": "Delete {{modelName}}? It is the active model — you'll need to pick another to dictate.",
     "confirmDelete": "Delete",
+    "downloadModel": "Download {{modelName}} ({{size}})",
+    "largeDownloadWarning": "Large download: {{size}}. Keep Vox Jot open until install finishes.",
+    "badges": {
+      "bestQuality": "Best Quality",
+      "bestQualityDetail": "Highest ranked speech model in the current suite.",
+      "fastest": "Fastest",
+      "fastestDetail": "Very low measured p50 latency.",
+      "balanced": "Balanced",
+      "balancedDetail": "Recommended balance of speed, quality, and setup.",
+      "smallest": "Smallest",
+      "smallestDetail": "Small download and disk footprint."
+    },
     "downloadSpeed": "{{speed}} MB/s",
     "cancel": "Cancel",
     "cancelDownload": "Cancel download",
@@ -864,17 +901,17 @@
       }
     },
     "styles": {
-      "title": "Write profiles",
+      "title": "Dictation Modes",
       "description": "Don't sound like a robot in Slack or too casual in emails. Vox Jot can switch tone, model, and output behavior based on the app or website you're dictating into.",
-      "disabledMessage": "Enable write profiles to automatically match tone to the app you are dictating into.",
+      "disabledMessage": "Enable Dictation Modes to automatically match tone to the app you are dictating into.",
       "toggle": {
         "label": "Auto-match writing style by app",
         "description": "Use different writing behavior for chat, email, notes, and other apps based on where you dictate."
       },
-      "empty": "No write profiles yet.",
-      "emptyDescription": "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
+      "empty": "No Dictation Modes yet.",
+      "emptyDescription": "Create a mode to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
       "emptyExample": "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
-      "createFirstProfile": "Create your first profile",
+      "createFirstProfile": "Create your first mode",
       "tones": {
         "title": "Starter profiles",
         "description": "Start with built-in presets, adjust their instructions as needed, and add custom profiles only when you want something extra.",
@@ -2328,8 +2365,8 @@
       "openLogs": "Open logs folder",
       "openAppData": "Open app data folder",
       "switchTheme": "Switch theme → {{name}}",
-      "applyWriteProfile": "Apply write profile → Write profiles",
-      "applyWriteProfileSubtitle": "Jump to write profiles",
+      "applyWriteProfile": "Apply Dictation Mode → Dictation Modes",
+      "applyWriteProfileSubtitle": "Jump to Dictation Modes",
       "insertPhraseKey": "Insert phrase key → Phrase keys",
       "insertPhraseKeySubtitle": "Jump to phrase key settings",
       "jumpTo": "Jump to {{label}}"
@@ -2652,7 +2689,7 @@
         "fileTranscription": "File Transcription"
       },
       "refine": {
-        "writeProfiles": "Write Profiles",
+        "writeProfiles": "Dictation Modes",
         "phraseKeys": "Phrase Keys",
         "translation": "Translation"
       },
@@ -2687,7 +2724,7 @@
     },
     "cross": {
       "writeProfiles": {
-        "title": "Manage write profiles",
+        "title": "Manage Dictation Modes",
         "description": "App-aware tone, rewrites, and Phrase Keys",
         "destination": "Refine"
       },

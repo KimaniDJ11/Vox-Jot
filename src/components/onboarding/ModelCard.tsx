@@ -25,6 +25,7 @@ import {
   providerDisplayName,
   resolveModelProviderId,
 } from "../ui/ProviderIcon";
+import { getSttEvaluationResult } from "@/lib/sttEvaluationResults";
 import {
   buildModelIdentityChips,
   inferArchitectureLabel,
@@ -192,6 +193,54 @@ const ModelCard: React.FC<ModelCardProps> = ({
     model.engine_type === "AppleSpeechStreaming" ||
     displayName.toLowerCase().includes("realtime") ||
     model.id.toLowerCase().includes("realtime");
+  const evaluation = getSttEvaluationResult(model.id);
+  const plainModelBadge: CompactBadgeItem | null =
+    evaluation?.rank === 1
+      ? {
+          id: "plain-best-quality",
+          label: t("modelSelector.badges.bestQuality", {
+            defaultValue: "Best Quality",
+          }),
+          variant: "primary" as const,
+          detail: t("modelSelector.badges.bestQualityDetail", {
+            defaultValue: "Highest ranked speech model in the current suite.",
+          }),
+        }
+      : evaluation?.latencyP50Ms !== undefined && evaluation.latencyP50Ms <= 80
+        ? {
+            id: "plain-fastest",
+            label: t("modelSelector.badges.fastest", {
+              defaultValue: "Fastest",
+            }),
+            variant: "primary" as const,
+            detail: t("modelSelector.badges.fastestDetail", {
+              defaultValue: "Very low measured p50 latency.",
+            }),
+          }
+        : model.is_recommended
+          ? {
+              id: "plain-balanced",
+              label: t("modelSelector.badges.balanced", {
+                defaultValue: "Balanced",
+              }),
+              variant: "primary" as const,
+              detail: t("modelSelector.badges.balancedDetail", {
+                defaultValue:
+                  "Recommended balance of speed, quality, and setup.",
+              }),
+            }
+          : Number(model.size_mb) > 0 && Number(model.size_mb) <= 200
+            ? {
+                id: "plain-smallest",
+                label: t("modelSelector.badges.smallest", {
+                  defaultValue: "Smallest",
+                }),
+                variant: "primary" as const,
+                detail: t("modelSelector.badges.smallestDetail", {
+                  defaultValue: "Small download and disk footprint.",
+                }),
+              }
+            : null;
 
   const identityChips = buildModelIdentityChips({
     params: inferParameterClass([displayName, model.id, model.filename]),
@@ -224,6 +273,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   // Capability chips — fact-style differentiators above the divider. Cap at 4.
   const capabilityChips: CompactBadgeItem[] = [
+    plainModelBadge,
     ...mergeSizeWithIdentityChips(identityChips, sizeChip),
     languagesSummary
       ? {
@@ -280,8 +330,10 @@ const ModelCard: React.FC<ModelCardProps> = ({
     trailing = {
       kind: "acquire",
       onClick: onDownload ? () => onDownload(model.id) : undefined,
+      sizeLabel,
       label: t("modelSelector.downloadModel", {
         modelName: displayName,
+        size: sizeLabel,
         defaultValue: `Download ${displayName}`,
       }),
     };
@@ -365,6 +417,19 @@ const ModelCard: React.FC<ModelCardProps> = ({
       </div>
     ) : null;
 
+  const largeDownloadNotice =
+    !confirmDeleteNode &&
+    status === "downloadable" &&
+    Number(model.size_mb) > 500 ? (
+      <div className="rounded-lg border border-[color-mix(in_srgb,var(--warning),transparent_68%)] bg-[var(--warning-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--warning)]">
+        {t("modelSelector.largeDownloadWarning", {
+          size: sizeLabel,
+          defaultValue:
+            "Large download: {{size}}. Keep Vox Jot open until install finishes.",
+        })}
+      </div>
+    ) : null;
+
   const downloadState: HubDownloadState | undefined =
     status === "downloading"
       ? {
@@ -418,7 +483,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       footerOverflowLabel={`${displayName} model details`}
       trailing={trailing}
       downloadState={downloadState}
-      footerExtra={confirmDeleteNode}
+      footerExtra={confirmDeleteNode ?? largeDownloadNotice}
       onClick={isClickable ? handleCardClick : undefined}
       disabled={disabled}
       variant={variant}

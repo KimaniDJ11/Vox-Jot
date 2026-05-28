@@ -1628,6 +1628,14 @@ async deleteWriteRule(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async previewWriteRuleText(ruleId: string, text: string) : Promise<Result<PostProcessResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_write_rule_text", { ruleId, text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async reorderWriteRules(orderedIds: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("reorder_write_rules", { orderedIds }) };

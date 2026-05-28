@@ -62,6 +62,7 @@ mod sanitize;
 
 pub(crate) use post_process::{
     maybe_convert_chinese_variant, post_process_transcription, preview_post_process,
+    preview_write_rule,
 };
 pub use route::{analyze_post_process_route, PostProcessRouteDebug};
 pub(crate) use sanitize::{

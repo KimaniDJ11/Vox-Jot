@@ -19,6 +19,7 @@ import { useSettingAccessibilityContext } from "./settingAccessibilityContext";
 export interface DropdownOption {
   value: string;
   label: string;
+  icon?: React.ReactNode;
   disabled?: boolean;
 }
 
@@ -253,7 +254,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
               onClick={() => handleSelect(option.value)}
               disabled={option.disabled}
             >
-              <span className="truncate">{option.label}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                {option.icon}
+                <span className="truncate">{option.label}</span>
+              </span>
             </button>
           ))
         )}
@@ -279,8 +283,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
         aria-controls={isOpen ? listboxId : undefined}
         aria-label={triggerAccessibleName}
       >
-        <span className="truncate">
-          {selectedOption?.label || resolvedPlaceholder}
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          {selectedOption?.icon}
+          <span className="truncate">
+            {selectedOption?.label || resolvedPlaceholder}
+          </span>
         </span>
         <svg
           className={`w-4 h-4 ms-2 transition-transform duration-200 ${isOpen ? "transform rotate-180" : ""}`}

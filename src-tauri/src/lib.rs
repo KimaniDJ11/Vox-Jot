@@ -889,6 +889,7 @@ pub fn run(cli_args: CliArgs) {
         commands::write_rules::list_write_rules,
         commands::write_rules::upsert_write_rule,
         commands::write_rules::delete_write_rule,
+        commands::write_rules::preview_write_rule_text,
         commands::write_rules::reorder_write_rules,
         commands::write_rules::test_resolve_write_rule,
         commands::write_rules::get_frontmost_url_for_write_rules,

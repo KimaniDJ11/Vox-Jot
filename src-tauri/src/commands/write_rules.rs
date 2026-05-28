@@ -42,6 +42,21 @@ pub fn delete_write_rule(app: AppHandle, id: String) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
+pub async fn preview_write_rule_text(
+    app: AppHandle,
+    rule_id: String,
+    text: String,
+) -> Result<crate::post_processing::PostProcessResult, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Sample text is required.".to_string());
+    }
+
+    crate::actions::preview_write_rule(&app, &rule_id, trimmed).await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn reorder_write_rules(app: AppHandle, ordered_ids: Vec<String>) -> Result<(), String> {
     let mut settings = get_settings(&app);
     let mut priority = (ordered_ids.len() as i32) * 10;

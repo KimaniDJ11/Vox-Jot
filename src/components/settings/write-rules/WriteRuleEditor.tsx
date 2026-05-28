@@ -20,7 +20,7 @@
 //                sticky footer, anchored Cancel + Save.
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import {
   commands,
   type LLMPrompt,
@@ -28,7 +28,6 @@ import {
   type ToneDefinition,
   type WriteRule,
 } from "@/bindings";
-import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SwitchControl } from "@/components/ui/SwitchControl";
@@ -37,26 +36,30 @@ import { UrlPatternList } from "./matchers/UrlPatternList";
 import { OverridesEditor } from "./editor/OverridesEditor";
 import { TemplatesRow } from "./editor/TemplatesRow";
 import { LiveMatchHint } from "./editor/LiveMatchHint";
+import { hasNonBrowserAppMatcher } from "./lib/browserMatchers";
 import { PROFILE_TEMPLATES, type ProfileTemplateId } from "./lib/templates";
-import { countActiveOverrides } from "./lib/overrideRegistry";
+import { countActiveOverrides, resetAllOverrides } from "./lib/overrideRegistry";
 
 const backLabel = "Back to profiles";
-const newProfileTitle = "New profile";
-const editProfileTitle = "Edit profile";
-const newProfileSubtitle =
-  "Run different dictation behavior in different apps and URLs.";
-const nameLabel = "Profile name";
+const newProfileTitle = "New mode";
+const editProfileTitle = "Edit mode";
+const nameLabel = "Mode name";
 const enabledLabel = "Enabled";
 const triggersHeading = "Where it runs";
 const triggersHelp =
-  "Pick the apps and URL patterns this profile fires on. Leave both blank to match anything.";
+  "Pick the apps and URL patterns this mode fires on. Leave both blank to match anything.";
 const overridesHeading = "What it changes";
 const overridesHelp =
   "Only the settings you add here are overridden — everything else keeps your global setting.";
 const cancelLabel = "Cancel";
-const saveLabel = "Save profile";
-const nameRequiredHelp = "Give the profile a short, descriptive name.";
-const createNamePlaceholder = "Create a profile name";
+const saveLabel = "Save mode";
+const nameRequiredHelp = "Give the mode a short, descriptive name.";
+const createNamePlaceholder = "Name this mode";
+const templateLabels = new Set(PROFILE_TEMPLATES.map((template) => template.label));
+const nonBrowserUrlConflictMessage =
+  "URL filters only work with browsers. Remove the non-browser app or remove the URL filter.";
+const urlDisabledByNonBrowserAppMessage =
+  "Remove the non-browser app before adding URL filters.";
 
 interface WriteRuleEditorProps {
   rule?: WriteRule;
@@ -68,6 +71,7 @@ interface WriteRuleEditorProps {
     instruction: string;
   }) => Promise<ToneDefinition>;
   onSave: (rule: WriteRule) => void;
+  onDraftChange?: () => void;
   onCancel: () => void;
   saveError?: string | null;
   presentation?: "page" | "dialog";
@@ -90,6 +94,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   models: modelsProp,
   onCreateTone,
   onSave,
+  onDraftChange,
   onCancel,
   saveError,
   presentation = "page",
@@ -111,10 +116,19 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   }, [modelsProp]);
   const models = modelsProp ?? fetchedModels;
 
+  useEffect(() => {
+    onDraftChange?.();
+  }, [draft, onDraftChange]);
+
   const isNew = !rule;
   const isDialog = presentation === "dialog";
   const trimmedName = draft.name.trim();
-  const canSave = trimmedName.length > 0;
+  const selectedBundleIds = draft.matchers.bundle_ids ?? [];
+  const selectedUrlPatterns = draft.matchers.url_patterns ?? [];
+  const hasUrlPatterns = selectedUrlPatterns.length > 0;
+  const hasNonBrowserApp = hasNonBrowserAppMatcher(selectedBundleIds);
+  const hasMatcherConflict = hasUrlPatterns && hasNonBrowserApp;
+  const canSave = trimmedName.length > 0 && !hasMatcherConflict;
   const overrideCount = useMemo(
     () => countActiveOverrides(draft.overrides),
     [draft.overrides],
@@ -128,7 +142,26 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     const template = PROFILE_TEMPLATES.find((entry) => entry.id === id);
     if (!template) return;
     setSelectedTemplateId(id);
-    setDraft((prev) => template.apply(prev));
+    setDraft((prev) => {
+      const currentName = prev.name.trim();
+      const shouldReplaceName =
+        currentName.length === 0 || templateLabels.has(currentName);
+      const base: WriteRule = {
+        ...prev,
+        name: shouldReplaceName ? "" : prev.name,
+        overrides: resetAllOverrides(prev.overrides),
+      };
+      const next = template.apply(base);
+      return {
+        ...next,
+        name:
+          id === "blank" && shouldReplaceName
+            ? ""
+            : shouldReplaceName
+              ? next.name
+              : prev.name,
+      };
+    });
   };
 
   const saveButton = (
@@ -161,6 +194,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             value={draft.name}
             placeholder={namePlaceholder}
             aria-label={nameLabel}
+            className="w-full"
             onChange={(event) =>
               setDraft({ ...draft, name: event.target.value })
             }
@@ -190,16 +224,23 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
 
       {/* Triggers card — apps + URLs under one heading */}
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-        <header className="mb-3">
-          <h3 className="text-sm font-semibold text-[var(--text)]">
-            {triggersHeading}
-          </h3>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">{triggersHelp}</p>
+        <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[var(--text)]">
+              {triggersHeading}
+            </h3>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {triggersHelp}
+            </p>
+          </div>
+          <LiveMatchHint matchers={draft.matchers} />
         </header>
+        <StrictMatchWarning matchers={draft.matchers} />
         <div className="grid gap-4 md:grid-cols-2">
           <AppMultiPicker
-            bundleIds={draft.matchers.bundle_ids ?? []}
+            bundleIds={selectedBundleIds}
             compact={isDialog}
+            browserOnly={hasUrlPatterns}
             onChange={(bundle_ids) =>
               setDraft({
                 ...draft,
@@ -208,8 +249,10 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             }
           />
           <UrlPatternList
-            patterns={draft.matchers.url_patterns ?? []}
+            patterns={selectedUrlPatterns}
             compact={isDialog}
+            disabled={hasNonBrowserApp}
+            disabledReason={urlDisabledByNonBrowserAppMessage}
             onChange={(url_patterns) =>
               setDraft({
                 ...draft,
@@ -253,32 +296,16 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   if (isDialog) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-start gap-3 border-b border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
-          <div className="min-w-0 flex-1">
-            <h2
-              id={titleId}
-              className="truncate text-base font-semibold text-[var(--text)]"
-            >
-              {title}
-            </h2>
-            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-              {newProfileSubtitle}
-            </p>
-          </div>
-          <ActionIconButton
-            onClick={onCancel}
-            aria-label={cancelLabel}
-            title={cancelLabel}
-          >
-            <X aria-hidden />
-          </ActionIconButton>
-        </header>
+        {titleId ? (
+          <h2 id={titleId} className="sr-only">
+            {title}
+          </h2>
+        ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{body}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{body}</div>
 
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
-          <LiveMatchHint matchers={draft.matchers} />
-          <div className="flex items-center gap-2">
+        <footer className="flex shrink-0 justify-end border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
               {cancelLabel}
             </Button>
@@ -320,6 +347,23 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
       </div>
 
       {body}
+    </div>
+  );
+};
+
+const StrictMatchWarning: React.FC<{
+  matchers: WriteRule["matchers"];
+}> = ({ matchers }) => {
+  const bundleIds = matchers.bundle_ids ?? [];
+  const urlPatterns = matchers.url_patterns ?? [];
+  if (bundleIds.length === 0 || urlPatterns.length === 0) return null;
+
+  const includesNonBrowserApp = hasNonBrowserAppMatcher(bundleIds);
+  if (!includesNonBrowserApp) return null;
+
+  return (
+    <div className="mb-3 rounded-xl border border-[color-mix(in_srgb,var(--warning),transparent_70%)] bg-[var(--warning-soft)] px-3 py-2 text-xs leading-5 text-[var(--warning)]">
+      {nonBrowserUrlConflictMessage}
     </div>
   );
 };

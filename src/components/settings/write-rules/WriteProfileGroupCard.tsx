@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Globe, Plus, Trash2, WandSparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
   InstalledApp,
@@ -10,6 +10,11 @@ import type {
   WriteRuleOverrides,
 } from "@/bindings";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
+import {
+  engineTypeToProviderId,
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
@@ -21,6 +26,7 @@ interface WriteRuleGroup {
 
 const activeNowLabel = "Active now";
 const anyAppLabel = "Any app";
+const anyBrowserLabel = "All browsers";
 const noOverridesLabel = "Inherits global settings";
 const urlChipPrefix = "URL ·";
 const collapsedIconLimit = 5;
@@ -34,6 +40,13 @@ const builtInToneSummaries: Record<string, string> = {
 
 const toneCardDescription = (tone: ToneDefinition): string | null =>
   builtInToneSummaries[tone.id] ?? (tone.instruction.trim() || null);
+
+const hasPreviewableCleanup = (overrides: WriteRuleOverrides): boolean =>
+  Boolean(
+    overrides.tone_id ||
+      overrides.post_process_prompt_id ||
+      overrides.force_post_process === true,
+  );
 
 const initialsFor = (label: string): string =>
   label
@@ -53,6 +66,7 @@ interface WriteProfileGroupCardProps {
   activeRuleId: string | null;
   onEdit: (rule: WriteRule) => void;
   onDelete: (id: string) => void | Promise<void>;
+  onTry?: (rule: WriteRule) => void | Promise<void>;
 }
 
 const writeRuleGroupKey = (overrides: WriteRuleOverrides): string => {
@@ -107,6 +121,7 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
   activeRuleId,
   onEdit,
   onDelete,
+  onTry,
 }) => {
   const { t } = useTranslation();
   const [confirmingDeleteId, setConfirmingDeleteId] = React.useState<
@@ -129,6 +144,10 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     () => new Map(models.map((model) => [model.id, model.name])),
     [models],
   );
+  const sttModelById = React.useMemo(
+    () => new Map(models.map((model) => [model.id, model])),
+    [models],
+  );
 
   const appNameFor = React.useCallback(
     (bundleId: string) =>
@@ -136,6 +155,9 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     [appsByBundleId],
   );
   const activeRule = group.rules.find((rule) => rule.id === activeRuleId);
+  const tryRule = activeRule ?? group.rules[0] ?? null;
+  const canPreviewMode =
+    Boolean(onTry && tryRule) && hasPreviewableCleanup(group.overrides);
   const visibleRules = showAllRules
     ? group.rules
     : group.rules.slice(0, collapsedIconLimit);
@@ -166,6 +188,59 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     [appNameFor],
   );
   const confirmingTarget = confirmingRule ? targetForRule(confirmingRule) : null;
+  const cardTitle =
+    group.rules.length === 1
+      ? (group.rules[0]?.name.trim() ?? "")
+      : "";
+  const targetChips = React.useMemo(() => {
+    const hasUrlTarget = group.rules.some(
+      (rule) => (rule.matchers.url_patterns ?? []).length > 0,
+    );
+    if (!hasUrlTarget) return [];
+
+    const chips: Array<{
+      key: string;
+      label: string;
+      kind: "app" | "url" | "any-browser" | "any-app";
+      bundleId?: string;
+    }> = [];
+    const seen = new Set<string>();
+    for (const rule of group.rules) {
+      const bundleIds = rule.matchers.bundle_ids ?? [];
+      const urls = rule.matchers.url_patterns ?? [];
+      if (urls.length > 0 && bundleIds.length === 0) {
+        const key = "any-browser";
+        if (!seen.has(key)) {
+          chips.push({ key, label: anyBrowserLabel, kind: "any-browser" });
+          seen.add(key);
+        }
+      } else if (bundleIds.length === 0 && urls.length === 0) {
+        const key = "any-app";
+        if (!seen.has(key)) {
+          chips.push({ key, label: anyAppLabel, kind: "any-app" });
+          seen.add(key);
+        }
+      }
+      for (const bundleId of bundleIds) {
+        const key = `app:${bundleId}`;
+        if (seen.has(key)) continue;
+        chips.push({
+          key,
+          label: appNameFor(bundleId),
+          kind: "app",
+          bundleId,
+        });
+        seen.add(key);
+      }
+      for (const url of urls) {
+        const key = `url:${url}`;
+        if (seen.has(key)) continue;
+        chips.push({ key, label: url, kind: "url" });
+        seen.add(key);
+      }
+    }
+    return chips;
+  }, [appNameFor, group.rules]);
 
   const overridesSummary = React.useMemo(() => {
     const o = group.overrides;
@@ -199,11 +274,61 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     const tone = toneById.get(toneId);
     return tone ? toneCardDescription(tone) : null;
   }, [group.overrides.tone_id, toneById]);
+  const cardDisplayTitle =
+    cardTitle ||
+    (overridesSummary.length === 0
+      ? noOverridesLabel
+      : overridesSummary.join(" · "));
+  const targetDescription = React.useMemo(() => {
+    if (group.rules.length !== 1) return null;
+    const rule = group.rules[0];
+    if (!rule) return null;
+    const bundleIds = rule.matchers.bundle_ids ?? [];
+    const urls = rule.matchers.url_patterns ?? [];
+    const urlLabel =
+      urls.length === 0
+        ? null
+        : `${urls[0]}${urls.length > 1 ? ` +${urls.length - 1}` : ""}`;
+
+    if (urlLabel && bundleIds.length === 0) {
+      return `Runs on ${urlLabel} in any supported browser.`;
+    }
+    if (urlLabel && bundleIds.length === 1) {
+      return `Runs in ${appNameFor(bundleIds[0] ?? "")} when the URL matches ${urlLabel}.`;
+    }
+    if (urlLabel && bundleIds.length > 1) {
+      return `Runs in ${bundleIds.length} browsers when the URL matches ${urlLabel}.`;
+    }
+    if (bundleIds.length === 1) {
+      return `Runs in ${appNameFor(bundleIds[0] ?? "")}.`;
+    }
+    if (bundleIds.length > 1) {
+      return `Runs in ${bundleIds.length} apps.`;
+    }
+    return "Runs in any app.";
+  }, [appNameFor, group.rules]);
+  const cardDescription = [
+    cardTitle && overridesSummary.length > 0 ? overridesSummary.join(" · ") : null,
+    toneDescription,
+    targetDescription,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const engineProviderId = React.useMemo(() => {
+    const modelId = group.overrides.stt_model_id?.trim();
+    if (!modelId) return null;
+    const model = sttModelById.get(modelId);
+    if (!model) return null;
+    return resolveModelProviderId(
+      `${model.name} ${model.id}`,
+      engineTypeToProviderId(model.engine_type),
+    );
+  }, [group.overrides.stt_model_id, sttModelById]);
 
   return (
     <div
       className={[
-        "group flex h-full min-h-[160px] flex-col rounded-2xl border bg-[var(--card)] px-4 py-3 transition-shadow",
+        "group flex h-full min-h-[330px] flex-col rounded-2xl border bg-[var(--card)] px-4 py-3 transition-shadow",
         activeRule
           ? "border-[var(--accent)] shadow-[0_0_0_1px_var(--accent)]"
           : "border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
@@ -213,9 +338,7 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="write-profile-group-title heading-display min-w-0 truncate text-2xl font-bold leading-tight text-[var(--text)]">
-              {overridesSummary.length === 0
-                ? noOverridesLabel
-                : overridesSummary.join(" · ")}
+              {cardDisplayTitle}
             </h3>
             {activeRule ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
@@ -224,33 +347,41 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
               </span>
             ) : null}
           </div>
-          {toneDescription ? (
+          {cardDescription ? (
             <p className="write-profile-group-description mt-1 line-clamp-3 text-sm font-normal leading-6 text-[var(--text)]">
-              {toneDescription}
+              {cardDescription}
             </p>
           ) : null}
 
-          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-y-2 pl-1">
-            {visibleRules.map((rule, index) => {
+          {targetChips.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {targetChips.map((chip) => (
+                <TargetChip
+                  key={chip.key}
+                  label={chip.label}
+                  kind={chip.kind}
+                  bundleId={chip.bundleId}
+                  appNameFor={appNameFor}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-3">
+            {visibleRules.map((rule) => {
               const target = targetForRule(rule);
               return (
-                <div
-                  key={rule.id}
-                  className={[
-                    "group/app relative",
-                    index === 0 ? "" : "-ml-3",
-                  ].join(" ")}
-                >
+                <div key={rule.id} className="group/app relative">
                   <button
                     type="button"
                     onClick={() => onEdit(rule)}
                     aria-label={`Edit ${rule.name}`}
                     title={`Edit ${target.label}`}
                     className={[
-                      "relative flex h-14 w-14 items-center justify-center rounded-full border-4 bg-[color-mix(in_srgb,var(--text),transparent_82%)] shadow-[var(--shadow-sm)] transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+                      "relative flex h-14 w-14 items-center justify-center rounded-2xl border border-transparent transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                       rule.id === activeRuleId
-                        ? "z-10 border-[var(--accent)]"
-                        : "border-[color-mix(in_srgb,var(--text),transparent_72%)]",
+                        ? "z-10 bg-[var(--accent-soft)]"
+                        : "bg-transparent",
                       rule.enabled ? "" : "opacity-55",
                     ].join(" ")}
                   >
@@ -261,6 +392,8 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
                         size="lg"
                         className="rounded-xl"
                       />
+                    ) : engineProviderId ? (
+                      <ProviderIcon providerId={engineProviderId} size="xl" />
                     ) : (
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-sm font-bold text-[var(--text)]">
                         {initialsFor(target.label)}
@@ -296,7 +429,7 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
                     ? "Show fewer"
                     : `Show ${hiddenRuleCount} more profiles`
                 }
-                className="-ml-3 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[color-mix(in_srgb,var(--text),transparent_72%)] bg-[color-mix(in_srgb,var(--text),transparent_82%)] text-[var(--text)] shadow-[var(--shadow-sm)] transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] shadow-[var(--shadow-sm)] transition-transform hover:z-20 hover:-translate-y-0.5 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
               >
                 {showAllRules ? (
                   <X className="h-6 w-6" aria-hidden />
@@ -340,8 +473,45 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
               </ActionIconButton>
             </div>
           ) : null}
+          {canPreviewMode && tryRule ? (
+            <div className="mt-auto pt-4">
+              <button
+                type="button"
+                onClick={() => void onTry?.(tryRule)}
+                className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-3 text-xs font-bold text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+              >
+                <WandSparkles className="h-3.5 w-3.5" aria-hidden />
+                {t("refine.writeRules.row.tryMode", {
+                  defaultValue: "Preview mode",
+                })}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   );
 };
+
+const TargetChip: React.FC<{
+  label: string;
+  kind: "app" | "url" | "any-browser" | "any-app";
+  bundleId?: string;
+  appNameFor: (bundleId: string) => string;
+}> = ({ label, kind, bundleId, appNameFor }) => (
+  <span
+    className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-xs font-medium text-[var(--text)]"
+    title={label}
+  >
+    {kind === "app" && bundleId ? (
+      <AppMonogram
+        bundleId={bundleId}
+        name={appNameFor(bundleId)}
+        size="xs"
+      />
+    ) : (
+      <Globe className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" aria-hidden />
+    )}
+    <span className="min-w-0 truncate">{label}</span>
+  </span>
+);

@@ -8,6 +8,7 @@
 use crate::apple_intelligence;
 use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, ActiveAppContext, PostProcessResult,
+    ResolvedWriteRule,
 };
 use crate::screen_context::{ContextImpactMetadata, DictationContextPacket};
 use crate::settings::{
@@ -687,6 +688,82 @@ pub(crate) async fn preview_post_process(
     .await
     .map(|execution| execution.result)
     .ok_or_else(|| "Post-processing did not produce a result".to_string())
+}
+
+pub(crate) async fn preview_write_rule(
+    app: &AppHandle,
+    rule_id: &str,
+    transcription: &str,
+) -> Result<PostProcessResult, String> {
+    let settings = get_settings(app);
+    let rule = settings
+        .write_rules
+        .iter()
+        .find(|rule| rule.id == rule_id)
+        .cloned()
+        .ok_or_else(|| "Dictation Mode was not found.".to_string())?;
+
+    let preview_bundle_id = rule
+        .matchers
+        .bundle_ids
+        .iter()
+        .find(|bundle_id| !bundle_id.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| "voxjot.preview-mode".to_string());
+    let active_app_context = ActiveAppContext {
+        bundle_id: preview_bundle_id.clone(),
+        localized_name: rule.name.clone(),
+    };
+    let resolved = ResolvedWriteRule {
+        rule_id: rule.id.clone(),
+        rule_name: rule.name.clone(),
+        matched_bundle_id: Some(preview_bundle_id.clone()),
+        matched_app_name: Some(rule.name.clone()),
+        matched_url: rule.matchers.url_patterns.first().cloned(),
+        matched_url_pattern: rule.matchers.url_patterns.first().cloned(),
+        overrides: rule.overrides.clone(),
+    };
+
+    let mut preview_settings =
+        crate::write_rules::apply_resolved_rule_to_settings(&settings, Some(&resolved));
+    let mut forced_rule = rule.clone();
+    forced_rule.enabled = true;
+    forced_rule.matchers.bundle_ids = vec![preview_bundle_id];
+    forced_rule.matchers.url_patterns.clear();
+    preview_settings.write_rules = vec![forced_rule];
+    if rule.overrides.tone_id.is_some() {
+        preview_settings.app_aware_tone_enabled = true;
+    }
+
+    let base_text = maybe_convert_chinese_variant(&preview_settings, transcription)
+        .await
+        .unwrap_or_else(|| transcription.to_string());
+    let dictionary_result =
+        apply_personal_dictionary(&base_text, &preview_settings.personal_dictionary);
+
+    if let Some(execution) = post_process_transcription(
+        &preview_settings,
+        &dictionary_result.text,
+        None,
+        None,
+        Some(active_app_context.clone()),
+        Some(app),
+    )
+    .await
+    {
+        return Ok(execution.result);
+    }
+
+    Ok(build_post_process_result(
+        &preview_settings,
+        transcription,
+        dictionary_result.text.clone(),
+        dictionary_result.text,
+        dictionary_result.hits,
+        None,
+        Some(active_app_context),
+        rule.overrides.tone_id.clone(),
+    ))
 }
 
 pub(crate) async fn maybe_convert_chinese_variant(

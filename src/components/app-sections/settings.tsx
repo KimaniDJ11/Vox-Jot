@@ -594,22 +594,150 @@ const ShortcutsHero: React.FC = () => {
   );
 };
 
+const formatShortcutBinding = (binding: string | undefined): string =>
+  binding
+    ? binding
+        .split("+")
+        .map((part) => {
+          const normalized = part.trim().toLowerCase();
+          switch (normalized) {
+            case "cmd":
+            case "command":
+              return "⌘";
+            case "ctrl":
+            case "control":
+              return "⌃";
+            case "option":
+            case "opt":
+            case "alt":
+              return "⌥";
+            case "shift":
+              return "⇧";
+            case "space":
+              return "Space";
+            default:
+              return normalized.length === 1
+                ? normalized.toUpperCase()
+                : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+          }
+        })
+        .join(" ")
+    : "Not set";
+
+const ShortcutCheatSheet: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const bindings = getSetting("bindings");
+  const rows = [
+    {
+      id: "transcribe",
+      label: t("appSections.shortcuts.cheat.raw", {
+        defaultValue: "Raw dictation",
+      }),
+    },
+    {
+      id: "transcribe_with_post_process",
+      label: t("appSections.shortcuts.cheat.polished", {
+        defaultValue: "Post-process dictation",
+      }),
+    },
+    {
+      id: "rewrite_selection",
+      label: t("appSections.shortcuts.cheat.rewrite", {
+        defaultValue: "Rewrite selection",
+      }),
+    },
+    {
+      id: "translate_selection",
+      label: t("appSections.shortcuts.cheat.translate", {
+        defaultValue: "Translate selection",
+      }),
+    },
+    {
+      id: "cancel",
+      label: t("appSections.shortcuts.cheat.cancel", {
+        defaultValue: "Cancel",
+      }),
+    },
+  ];
+
+  const focusShortcut = (id: string) => {
+    const target = document.getElementById(`shortcut-remap-${id}`);
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    window.setTimeout(() => {
+      target?.querySelector<HTMLButtonElement>("button")?.focus();
+    }, 180);
+  };
+
+  return (
+    <SettingsGroup
+      title={t("appSections.shortcuts.cheat.title", {
+        defaultValue: "Shortcut cheat sheet",
+      })}
+      description={t("appSections.shortcuts.cheat.description", {
+        defaultValue:
+          "Current bindings for the shortcuts most people need day to day.",
+      })}
+    >
+      <div className="grid gap-2 px-5 py-4 sm:grid-cols-2">
+        {rows.map((row) => {
+          const binding =
+            bindings?.[row.id]?.current_binding ||
+            bindings?.[row.id]?.default_binding;
+          return (
+            <div
+              key={row.id}
+              className="flex min-h-[3.25rem] items-center justify-between gap-3 rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-2"
+            >
+              <span className="min-w-0 text-sm font-semibold text-[var(--text)]">
+                {row.label}
+              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <kbd className="rounded-md border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-1 font-mono text-xs font-bold text-[var(--text)]">
+                  {formatShortcutBinding(binding)}
+                </kbd>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => focusShortcut(row.id)}
+                >
+                  {t("appSections.shortcuts.cheat.remap", {
+                    defaultValue: "Remap",
+                  })}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </SettingsGroup>
+  );
+};
+
 export const ShortcutsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <ShortcutsHero />
+      <ShortcutCheatSheet />
 
       <SettingsGroup
         title={t("appSections.shortcuts.groups.dictate.title")}
         description={t("appSections.shortcuts.groups.dictate.description")}
       >
-        <ShortcutInput shortcutId="transcribe" grouped={true} />
-        <ShortcutInput
-          shortcutId="transcribe_with_post_process"
-          grouped={true}
-        />
-        <ShortcutInput shortcutId="cancel" grouped={true} />
+        <div id="shortcut-remap-transcribe">
+          <ShortcutInput shortcutId="transcribe" grouped={true} />
+        </div>
+        <div id="shortcut-remap-transcribe_with_post_process">
+          <ShortcutInput
+            shortcutId="transcribe_with_post_process"
+            grouped={true}
+          />
+        </div>
+        <div id="shortcut-remap-cancel">
+          <ShortcutInput shortcutId="cancel" grouped={true} />
+        </div>
         <ShortcutInput shortcutId="toggle_command_menu" grouped={true} />
         <PushToTalk descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
@@ -618,8 +746,12 @@ export const ShortcutsSettingsSection: React.FC = () => {
         title={t("appSections.shortcuts.groups.refine.title")}
         description={t("appSections.shortcuts.groups.refine.description")}
       >
-        <ShortcutInput shortcutId="rewrite_selection" grouped={true} />
-        <ShortcutInput shortcutId="translate_selection" grouped={true} />
+        <div id="shortcut-remap-rewrite_selection">
+          <ShortcutInput shortcutId="rewrite_selection" grouped={true} />
+        </div>
+        <div id="shortcut-remap-translate_selection">
+          <ShortcutInput shortcutId="translate_selection" grouped={true} />
+        </div>
       </SettingsGroup>
 
       <SettingsGroup
@@ -2344,6 +2476,51 @@ export const AboutSection: React.FC = () => {
               hint={highlight.detail}
             />
           ))}
+        </div>
+      </BoardList>
+
+      <BoardList
+        title={t("appSections.about.comparisonTitle", {
+          defaultValue: "Vox Jot vs. cloud dictation",
+        })}
+      >
+        <div className="overflow-x-auto rounded-lg border border-[var(--ring-hairline)]">
+          <div className="min-w-[42rem]">
+            <div className="grid grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] gap-3 bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-bold text-[var(--text)]">
+              <span>
+                {t("appSections.about.comparisonFeature", {
+                  defaultValue: "Feature",
+                })}
+              </span>
+              <span>
+                {t("appSections.about.comparisonVoxJot", {
+                  defaultValue: "Vox Jot",
+                })}
+              </span>
+              <span>
+                {t("appSections.about.comparisonCloud", {
+                  defaultValue: "Cloud dictation",
+                })}
+              </span>
+            </div>
+            {[
+              ["Privacy", "Local-first dictation", "Audio commonly leaves device"],
+              ["Offline", "Offline-capable after model install", "Network required"],
+              ["Source", "Open source app", "Closed service"],
+              ["Models", "User chooses local model", "Provider chooses backend"],
+              ["Downloads", "Model size shown before install", "No local model choice"],
+              ["Cleanup", "Optional cloud cleanup", "Cloud cleanup by default"],
+            ].map(([label, voxJot, cloud]) => (
+              <div
+                key={label}
+                className="grid grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-t border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-2.5 text-sm text-[var(--muted)]"
+              >
+                <span>{label}</span>
+                <span className="text-[var(--text)]">{voxJot}</span>
+                <span>{cloud}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </BoardList>
 

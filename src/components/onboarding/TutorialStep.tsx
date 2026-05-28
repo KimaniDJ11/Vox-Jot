@@ -1,8 +1,18 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Check, Keyboard, Mic, Sparkles } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Keyboard,
+  Mic,
+  Sparkles,
+} from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
 import { useSettings } from "../../hooks/useSettings";
+import { commands } from "@/bindings";
 
 interface TutorialStepProps {
   onComplete: () => void;
@@ -44,6 +54,8 @@ const formatShortcut = (binding: string | undefined): string => {
 const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
+  const [testText, setTestText] = useState("");
+  const [testSucceeded, setTestSucceeded] = useState(false);
   const bindings = getSetting("bindings");
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
 
@@ -55,6 +67,39 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
     bindings?.transcribe_with_post_process?.current_binding ||
       bindings?.transcribe_with_post_process?.default_binding,
   );
+
+  const refreshTestTranscript = useCallback(async () => {
+    const result = await commands.getLatestHistoryEntry();
+    if (result.status !== "ok" || !result.data) return;
+    const text =
+      result.data.pasted_text?.trim() ||
+      result.data.post_processed_text?.trim() ||
+      result.data.transcription_text.trim();
+    if (!text) return;
+    setTestText(text);
+    setTestSucceeded(true);
+  }, []);
+
+  useEffect(() => {
+    void refreshTestTranscript();
+    const cleanupPromise = listen("history-updated", () => {
+      void refreshTestTranscript();
+    });
+    return () => {
+      cleanupPromise.then((cleanup) => cleanup());
+    };
+  }, [refreshTestTranscript]);
+
+  const openTroubleshooting = () => {
+    onComplete();
+    window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("vox-jot:navigate", {
+          detail: { view: "settings", section: "recording-devices" },
+        }),
+      );
+    }, 0);
+  };
 
   return (
     <OnboardingLayout
@@ -99,10 +144,27 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
           </div>
 
           <div className="ob-bottom-actions">
-            <button className="ob-btn-primary" onClick={onComplete}>
-              {t("onboarding.firstDictation.cta")}
+            <button
+              className="ob-btn-primary"
+              onClick={onComplete}
+              disabled={!testSucceeded}
+            >
+              {testSucceeded
+                ? t("onboarding.firstDictation.ctaSuccess", {
+                    defaultValue: "Finish setup",
+                  })
+                : t("onboarding.firstDictation.ctaWaiting", {
+                    defaultValue: "Waiting for dictation",
+                  })}
               <ArrowRight size={18} aria-hidden />
             </button>
+            {!testSucceeded ? (
+              <button className="ob-btn-secondary" onClick={onComplete}>
+                {t("onboarding.firstDictation.skip", {
+                  defaultValue: "Skip for now",
+                })}
+              </button>
+            ) : null}
           </div>
         </>
       }
@@ -138,6 +200,52 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                 })}
               </p>
             </div>
+            <label className="ob-test-field-label" htmlFor="first-run-test">
+              {t("onboarding.firstDictation.testField.label", {
+                defaultValue: "Transcript test field",
+              })}
+            </label>
+            <textarea
+              id="first-run-test"
+              className="ob-test-field"
+              value={testText}
+              readOnly
+              placeholder={t("onboarding.firstDictation.testField.placeholder", {
+                defaultValue:
+                  "Your first successful dictation will appear here.",
+              })}
+            />
+            <div
+              className={
+                testSucceeded
+                  ? "ob-test-status ob-test-status-success"
+                  : "ob-test-status"
+              }
+              role="status"
+            >
+              {testSucceeded ? (
+                <CheckCircle2 size={15} aria-hidden />
+              ) : (
+                <AlertCircle size={15} aria-hidden />
+              )}
+              <span>
+                {testSucceeded
+                  ? t("onboarding.firstDictation.testField.success", {
+                      defaultValue: "Dictation received. Setup can finish.",
+                    })
+                  : t("onboarding.firstDictation.testField.waiting", {
+                      defaultValue:
+                        "Use the shortcut once. If nothing appears, check microphone, permissions, and model setup.",
+                    })}
+              </span>
+            </div>
+            {!testSucceeded ? (
+              <button className="ob-btn-secondary" onClick={openTroubleshooting}>
+                {t("onboarding.firstDictation.troubleshoot", {
+                  defaultValue: "Troubleshoot",
+                })}
+              </button>
+            ) : null}
           </div>
 
           <div className="ob-card-row ob-first-run-card">

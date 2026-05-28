@@ -9,8 +9,9 @@
 //                           by example.
 
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
 const fieldLabel = "URLs";
@@ -25,6 +26,8 @@ interface UrlPatternListProps {
   patterns: string[];
   onChange: (patterns: string[]) => void;
   compact?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 const validatePattern = (pattern: string) => {
@@ -40,6 +43,8 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   patterns,
   onChange,
   compact = false,
+  disabled = false,
+  disabledReason,
 }) => {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
@@ -47,6 +52,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   const shouldShowChips = !compact || patterns.length > 0;
 
   const addPattern = (raw: string) => {
+    if (disabled) return;
     const next = raw.trim();
     const validation = validatePattern(next);
     if (validation) {
@@ -76,6 +82,42 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
         ) : null}
       </div>
 
+      <div className="flex min-w-0 items-center gap-2">
+        <Input
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addPattern(draft);
+            }
+          }}
+          placeholder={t("refine.writeRules.matchers.addUrlPattern")}
+          className="w-full"
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="secondary"
+          onClick={() => addPattern(draft)}
+          disabled={disabled || !draft.trim()}
+          aria-label={t("refine.writeRules.matchers.addUrlPattern", {
+            defaultValue: "Add URL pattern",
+          })}
+          title={t("common.add", { defaultValue: "Add" })}
+        >
+          <Plus aria-hidden />
+        </Button>
+      </div>
+
+      {disabled && disabledReason ? (
+        <p className="text-xs text-[var(--muted)]">{disabledReason}</p>
+      ) : null}
+
       {shouldShowChips ? (
         <div className="flex min-h-[26px] flex-wrap items-center gap-2">
           {patterns.length === 0 ? (
@@ -86,12 +128,13 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
             patterns.map((pattern) => (
               <span
                 key={pattern}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-3 pr-2 text-xs font-medium text-[var(--text)]"
+                className="inline-flex max-w-[200px] items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-3 pr-2 text-xs font-medium text-[var(--text)]"
+                title={pattern}
               >
-                {pattern}
+                <span className="min-w-0 truncate">{pattern}</span>
                 <button
                   type="button"
-                  className="text-[var(--muted)] hover:text-[var(--danger)]"
+                  className="shrink-0 text-[var(--muted)] hover:text-[var(--danger)]"
                   onClick={() =>
                     onChange(patterns.filter((item) => item !== pattern))
                   }
@@ -105,22 +148,6 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
         </div>
       ) : null}
 
-      <Input
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value);
-          if (error) setError(null);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            addPattern(draft);
-          }
-        }}
-        placeholder={t("refine.writeRules.matchers.addUrlPattern")}
-        className="w-full"
-      />
-
       {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
 
       {!compact ? (
@@ -131,7 +158,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
               key={example}
               type="button"
               onClick={() => addPattern(example)}
-              disabled={patterns.includes(example)}
+              disabled={disabled || patterns.includes(example)}
               className="rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
             >
               {example}

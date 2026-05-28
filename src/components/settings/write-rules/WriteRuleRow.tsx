@@ -10,20 +10,29 @@
 //                          the icon.
 
 import React from "react";
-import { AppWindow, Pencil, Trash2, X } from "lucide-react";
+import { AppWindow, Globe, Pencil, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { InstalledApp, ToneDefinition, WriteRule } from "@/bindings";
+import type {
+  InstalledApp,
+  LLMPrompt,
+  ModelInfo,
+  ToneDefinition,
+  WriteRule,
+} from "@/bindings";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
 const urlChipPrefix = "URL ·";
 const moreSuffix = (n: number) => ` +${n}`;
+const anyBrowserLabel = "All browsers";
 
 interface WriteRuleRowProps {
   rule: WriteRule;
   apps: InstalledApp[];
   tones: ToneDefinition[];
+  prompts: LLMPrompt[];
+  models: ModelInfo[];
   isActive?: boolean;
   onEdit: () => void;
   onDelete: () => void | Promise<void>;
@@ -33,6 +42,8 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   rule,
   apps,
   tones,
+  prompts,
+  models,
   isActive,
   onEdit,
   onDelete,
@@ -50,6 +61,14 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   const toneById = React.useMemo(
     () => new Map(tones.map((tone) => [tone.id, tone.label || tone.id])),
     [tones],
+  );
+  const promptById = React.useMemo(
+    () => new Map(prompts.map((prompt) => [prompt.id, prompt.name])),
+    [prompts],
+  );
+  const modelById = React.useMemo(
+    () => new Map(models.map((model) => [model.id, model.name])),
+    [models],
   );
 
   const appNameFor = React.useCallback(
@@ -76,16 +95,53 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
     return t("refine.writeRules.row.anyApp");
   }, [appNameFor, bundleIds, primaryBundleId, t, urls]);
 
-  const showPrimaryAppIcon =
-    bundleIds.length === 1 && urls.length === 0 && primaryBundleId !== null;
-  const toneLabel = rule.overrides.tone_id
-    ? (toneById.get(rule.overrides.tone_id) ?? rule.overrides.tone_id)
-    : t("refine.writeRules.row.inheritsGlobal");
+  const isUrlSpecific = urls.length > 0;
+  const hasSingleAppTarget = bundleIds.length === 1 && primaryBundleId !== null;
+  const showPrimaryAppIcon = hasSingleAppTarget;
+  const showBrowserIcon = isUrlSpecific && !hasSingleAppTarget;
+  const overrideSummary = React.useMemo(() => {
+    const o = rule.overrides;
+    const parts: string[] = [];
+    if (o.tone_id) parts.push(toneById.get(o.tone_id) ?? o.tone_id);
+    const hasOtherSummary =
+      o.tone_id ||
+      o.post_process_prompt_id ||
+      typeof o.force_post_process === "boolean";
+    if (o.stt_model_id && (!isUrlSpecific || !hasOtherSummary)) {
+      parts.push(modelById.get(o.stt_model_id) ?? o.stt_model_id);
+    }
+    if (o.post_process_prompt_id)
+      parts.push(promptById.get(o.post_process_prompt_id) ?? o.post_process_prompt_id);
+    if (o.force_post_process === true) parts.push("Always post-process");
+    if (o.force_post_process === false) parts.push("Skip post-process");
+    return parts.length > 0
+      ? parts.join(" · ")
+      : t("refine.writeRules.row.inheritsGlobal");
+  }, [isUrlSpecific, modelById, promptById, rule.overrides, t, toneById]);
+  const targetChips = React.useMemo(() => {
+    if (urls.length === 0) return [];
+
+    const chips: Array<{ key: string; label: string; kind: "app" | "url" | "any-browser" }> = [];
+    if (urls.length > 0 && bundleIds.length === 0) {
+      chips.push({ key: "any-browser", label: anyBrowserLabel, kind: "any-browser" });
+    }
+    for (const bundleId of bundleIds) {
+      chips.push({
+        key: `app:${bundleId}`,
+        label: appNameFor(bundleId),
+        kind: "app",
+      });
+    }
+    for (const url of urls) {
+      chips.push({ key: `url:${url}`, label: url, kind: "url" });
+    }
+    return chips;
+  }, [appNameFor, bundleIds, urls]);
 
   return (
     <div
       className={[
-        "group flex min-h-[136px] flex-col items-center justify-start text-center",
+        "group flex min-h-[178px] flex-col items-center justify-start text-center",
         rule.enabled ? "" : "opacity-60",
       ].join(" ")}
       title={primaryTarget}
@@ -113,6 +169,15 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
               size="hero"
             />
           </button>
+        ) : showBrowserIcon ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-[var(--input)] text-[var(--text)] transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+            aria-label={`${t("refine.writeRules.row.editProfile")}: ${primaryTarget}`}
+          >
+            <Globe className="h-9 w-9" aria-hidden />
+          </button>
         ) : (
           <button
             type="button"
@@ -129,7 +194,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
         {!confirmingDelete ? (
           <>
             <p className="max-w-full truncate px-1 text-base font-medium leading-6 text-[var(--text)] group-hover:hidden group-focus-within:hidden">
-              {toneLabel}
+              {rule.name}
             </p>
             <div className="hidden items-center justify-center gap-1 group-hover:flex group-focus-within:flex">
               <ActionIconButton
@@ -176,6 +241,35 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
           </div>
         )}
       </div>
+
+      {!confirmingDelete ? (
+        <p className="max-w-full truncate px-1 text-xs leading-5 text-[var(--muted)]">
+          {overrideSummary}
+        </p>
+      ) : null}
+
+      {!confirmingDelete && targetChips.length > 0 ? (
+        <div className="mt-1 flex max-w-full flex-wrap justify-center gap-1">
+          {targetChips.map((chip) => (
+            <span
+              key={chip.key}
+              title={chip.label}
+              className="inline-flex max-w-[150px] items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--text)]"
+            >
+              {chip.kind === "app" && primaryBundleId ? (
+                <AppMonogram
+                  bundleId={chip.key.replace(/^app:/, "")}
+                  name={chip.label}
+                  size="xs"
+                />
+              ) : (
+                <Globe className="h-3 w-3 shrink-0 text-[var(--muted)]" aria-hidden />
+              )}
+              <span className="min-w-0 truncate">{chip.label}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {!rule.enabled ? (
         <span className="mt-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">

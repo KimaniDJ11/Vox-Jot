@@ -136,7 +136,7 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     key: "stt_language",
     group: "speech",
     label: "Language",
-    description: "Force a specific input language for this profile.",
+    description: "Force a specific input language for this mode.",
     isActive: (o) => Boolean(o.stt_language),
     currentValueLabel: (o) =>
       LANGUAGES.find((l) => l.value === o.stt_language)?.label ??
@@ -174,6 +174,7 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     key: "tone_id",
     group: "refine",
     label: "Tone",
+    description: "Choose the writing voice used during cleanup.",
     isActive: (o) => Boolean(o.tone_id),
     currentValueLabel: (o, { tones }) =>
       tones.find((t) => t.id === o.tone_id)?.label ?? o.tone_id ?? "",
@@ -191,6 +192,7 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     key: "post_process_prompt_id",
     group: "refine",
     label: "Post-process prompt",
+    description: "Use a specific cleanup prompt for this mode.",
     isActive: (o) => Boolean(o.post_process_prompt_id),
     currentValueLabel: (o, { prompts }) =>
       prompts.find((p) => p.id === o.post_process_prompt_id)?.name ??
@@ -213,8 +215,7 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     key: "force_post_process",
     group: "refine",
     label: "Post-processing",
-    description:
-      "Force AI post-processing on or off when this profile matches.",
+    description: "Force AI post-processing on or off when this mode matches.",
     isActive: (o) => typeof o.force_post_process === "boolean",
     currentValueLabel: (o) =>
       o.force_post_process

@@ -17,7 +17,7 @@
 // the empty-state hint so the user knows what's happening.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, RotateCcw, X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
   LLMPrompt,
@@ -29,6 +29,11 @@ import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { Input } from "@/components/ui/Input";
+import {
+  engineTypeToProviderId,
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 import { Textarea } from "@/components/ui/Textarea";
 import {
   countActiveOverrides,
@@ -140,11 +145,26 @@ const OverrideRow: React.FC<{
   onChange: (overrides: WriteRuleOverrides) => void;
 }> = ({ spec, overrides, context, onCreateTone, onChange }) => {
   const { t } = useTranslation();
+  const [isCreatingCustomTone, setIsCreatingCustomTone] = useState(false);
+  const modelById = useMemo(
+    () => new Map(context.models.map((model) => [model.id, model])),
+    [context.models],
+  );
   const options = spec.options(context).map((option) => {
     const translated = t(overrideOptionKey(spec, option.value), {
       defaultValue: option.label,
     });
-    return { ...option, label: translated };
+    const model = spec.key === "stt_model_id" ? modelById.get(option.value) : null;
+    if (!model) return { ...option, label: translated };
+    const providerId = resolveModelProviderId(
+      `${model.name} ${model.id}`,
+      engineTypeToProviderId(model.engine_type),
+    );
+    return {
+      ...option,
+      label: translated,
+      icon: <ProviderIcon providerId={providerId} size="sm" />,
+    };
   });
   const specLabel = t(overrideLabelKey(spec));
   const specDescription = t(overrideDescriptionKey(spec));
@@ -161,12 +181,14 @@ const OverrideRow: React.FC<{
           </p>
         </div>
         <div className="flex items-center gap-2 justify-self-start sm:justify-self-end">
-          <Dropdown
-            options={options}
-            selectedValue={spec.readValue(overrides)}
-            onSelect={(value) => onChange(spec.applyValue(overrides, value))}
-            className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
-          />
+          {spec.key === "tone_id" && isCreatingCustomTone ? null : (
+            <Dropdown
+              options={options}
+              selectedValue={spec.readValue(overrides)}
+              onSelect={(value) => onChange(spec.applyValue(overrides, value))}
+              className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
+            />
+          )}
           <ActionIconButton
             tone="danger"
             onClick={() => onChange(spec.reset(overrides))}
@@ -186,6 +208,7 @@ const OverrideRow: React.FC<{
         <CustomToneCreator
           onCreateTone={onCreateTone}
           onCreated={(tone) => onChange({ ...overrides, tone_id: tone.id })}
+          onOpenChange={setIsCreatingCustomTone}
         />
       ) : null}
     </li>
@@ -198,7 +221,8 @@ const CustomToneCreator: React.FC<{
     instruction: string;
   }) => Promise<ToneDefinition>;
   onCreated: (tone: ToneDefinition) => void;
-}> = ({ onCreateTone, onCreated }) => {
+  onOpenChange?: (open: boolean) => void;
+}> = ({ onCreateTone, onCreated, onOpenChange }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
@@ -217,6 +241,7 @@ const CustomToneCreator: React.FC<{
       setLabel("");
       setInstruction("");
       setOpen(false);
+      onOpenChange?.(false);
     } catch (err) {
       setError(
         err instanceof Error
@@ -232,7 +257,10 @@ const CustomToneCreator: React.FC<{
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          onOpenChange?.(true);
+        }}
         className="mt-2 text-xs font-medium text-[var(--accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
       >
         {t("refine.writeRules.customTone.open")}
@@ -242,8 +270,8 @@ const CustomToneCreator: React.FC<{
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
-        <label className="space-y-1">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+        <label className="min-w-0 space-y-1">
           <span className="text-[11px] font-medium text-[var(--muted)]">
             {t("refine.writeRules.customTone.nameLabel")}
           </span>
@@ -251,10 +279,11 @@ const CustomToneCreator: React.FC<{
             value={label}
             placeholder="Founder voice"
             variant="compact"
+            className="w-full"
             onChange={(event) => setLabel(event.target.value)}
           />
         </label>
-        <label className="space-y-1">
+        <label className="min-w-0 space-y-1">
           <span className="text-[11px] font-medium text-[var(--muted)]">
             {t("refine.writeRules.customTone.instructionLabel")}
           </span>
@@ -263,7 +292,7 @@ const CustomToneCreator: React.FC<{
             placeholder="Rewrite in a warm, concise voice. Preserve technical terms and avoid hype."
             variant="compact"
             onChange={(event) => setInstruction(event.target.value)}
-            className="min-h-[72px]"
+            className="min-h-[72px] w-full"
           />
         </label>
       </div>
@@ -275,6 +304,7 @@ const CustomToneCreator: React.FC<{
           variant="ghost"
           onClick={() => {
             setOpen(false);
+            onOpenChange?.(false);
             setError(null);
           }}
         >
@@ -349,7 +379,6 @@ const AddOverrideMenu: React.FC<{
         variant="ghost"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <Plus className="h-3.5 w-3.5" aria-hidden />
         {t("refine.writeRules.overridesEditor.addOverride")}
       </Button>
       {open ? (
@@ -387,20 +416,22 @@ const AddOverrideMenu: React.FC<{
                         setOpen(false);
                       }}
                       className={[
-                        "flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm",
+                        "flex w-full items-start justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm",
                         disabled
                           ? "cursor-not-allowed text-[var(--muted)] opacity-50"
                           : "text-[var(--text)] hover:bg-[var(--input)]",
                       ].join(" ")}
-                      title={
-                        disabled
-                          ? t("refine.writeRules.overridesEditor.notAvailable")
-                          : specDescription
-                      }
                     >
-                      <span>{specLabel}</span>
+                      <span className="min-w-0">
+                        <span className="block font-medium">{specLabel}</span>
+                        {spec.description ? (
+                          <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                            {specDescription}
+                          </span>
+                        ) : null}
+                      </span>
                       {disabled ? (
-                        <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                        <span className="shrink-0 text-[10px] uppercase tracking-wider text-[var(--muted)]">
                           {t(
                             "refine.writeRules.overridesEditor.notAvailableShort",
                           )}

@@ -31,7 +31,6 @@ import {
 } from "@/components/ui";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import {
   MetricTile,
   PreviewSlate,
@@ -169,6 +168,8 @@ const ScreenContextSettingsSection: React.FC = () => {
   const [resolvedAppNames, setResolvedAppNames] = useState<
     Record<string, string>
   >({});
+  const [confirmingRemoveExclusionId, setConfirmingRemoveExclusionId] =
+    useState<string | null>(null);
   const [addAppError, setAddAppError] = useState<string | null>(null);
   const [addingApp, setAddingApp] = useState(false);
 
@@ -268,24 +269,11 @@ const ScreenContextSettingsSection: React.FC = () => {
   }, [excluded, installedApps, resolvedAppNames]);
 
   const removeExcludedApp = async (bundleId: string) => {
-    const appName =
-      excludedEntries.find((entry) => entry.bundle_id === bundleId)?.name ??
-      bundleId;
-    if (
-      !confirmDestructiveAction(
-        t("settings.screenContext.removeExclusionConfirm", {
-          appName,
-          defaultValue: 'Remove "{{appName}}" from screen context exclusions?',
-        }),
-      )
-    ) {
-      return;
-    }
-
     const next = excludedEntries
       .filter((entry) => entry.bundle_id !== bundleId)
       .map((entry) => entry.bundle_id);
     await updateSetting("screen_context_excluded_bundle_ids", next as never);
+    setConfirmingRemoveExclusionId(null);
   };
 
   const addCurrentApp = async () => {
@@ -647,17 +635,58 @@ const ScreenContextSettingsSection: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <ActionIconButton
-                    tone="danger"
-                    onClick={() => void removeExcludedApp(entry.bundle_id)}
-                    aria-label={t(
-                      "settings.screenContext.removeExclusionLabel",
+                  <div className="flex shrink-0 items-center gap-1">
+                    {confirmingRemoveExclusionId === entry.bundle_id ? (
+                      <>
+                        <ActionIconButton
+                          tone="confirm"
+                          onClick={() => void removeExcludedApp(entry.bundle_id)}
+                          aria-label={t(
+                            "settings.screenContext.removeExclusionConfirm",
+                            {
+                              appName: entry.name || entry.bundle_id,
+                              defaultValue:
+                                'Remove "{{appName}}" from screen context exclusions?',
+                            },
+                          )}
+                          title={t("settings.screenContext.removeExclusionLabel")}
+                          disabled={isUpdating(
+                            "screen_context_excluded_bundle_ids",
+                          )}
+                        >
+                          <Trash2 aria-hidden />
+                        </ActionIconButton>
+                        <ActionIconButton
+                          onClick={() => setConfirmingRemoveExclusionId(null)}
+                          aria-label={t("common.cancel", {
+                            defaultValue: "Cancel",
+                          })}
+                          title={t("common.cancel", { defaultValue: "Cancel" })}
+                          disabled={isUpdating(
+                            "screen_context_excluded_bundle_ids",
+                          )}
+                        >
+                          <XCircle aria-hidden />
+                        </ActionIconButton>
+                      </>
+                    ) : (
+                      <ActionIconButton
+                        tone="danger"
+                        onClick={() =>
+                          setConfirmingRemoveExclusionId(entry.bundle_id)
+                        }
+                        aria-label={t(
+                          "settings.screenContext.removeExclusionLabel",
+                        )}
+                        title={t("settings.screenContext.removeExclusionLabel")}
+                        disabled={isUpdating(
+                          "screen_context_excluded_bundle_ids",
+                        )}
+                      >
+                        <Trash2 aria-hidden />
+                      </ActionIconButton>
                     )}
-                    title={t("settings.screenContext.removeExclusionLabel")}
-                    disabled={isUpdating("screen_context_excluded_bundle_ids")}
-                  >
-                    <Trash2 aria-hidden />
-                  </ActionIconButton>
+                  </div>
                 </li>
               ))}
             </ul>

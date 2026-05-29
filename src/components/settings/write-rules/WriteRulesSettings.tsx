@@ -18,7 +18,13 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, WandSparkles } from "lucide-react";
+import {
+  AppWindow,
+  Palette,
+  Plus,
+  SlidersHorizontal,
+  WandSparkles,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   commands,
@@ -55,6 +61,20 @@ const createFirstLabel = "Create your first mode";
 const previewSampleText =
   "rewrite this to be concise: quick note, please follow up with Alex tomorrow about the launch checklist and send me the final blocker list";
 type ViewMode = "individual" | "grouped";
+
+const cardEntrance = {
+  hidden: { opacity: 0, y: 10, scale: 0.98 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.04,
+      duration: 0.32,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  }),
+};
 
 export const WriteRulesSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -317,6 +337,48 @@ export const WriteRulesSettings: React.FC = () => {
     }
   };
 
+  const modeFeatureCards = [
+    {
+      label: t("refine.writeRules.featureCards.match.label", {
+        defaultValue: "Match context",
+      }),
+      value: t("refine.writeRules.featureCards.match.value", {
+        defaultValue: "Apps & websites",
+      }),
+      detail: t("refine.writeRules.featureCards.match.detail", {
+        defaultValue: "Use different behavior in Mail, Slack, browsers, or any app.",
+      }),
+      icon: <AppWindow className="h-4.5 w-4.5" strokeWidth={2} />,
+      accentColor: "var(--accent)",
+    },
+    {
+      label: t("refine.writeRules.featureCards.cleanup.label", {
+        defaultValue: "Cleanup level",
+      }),
+      value: t("refine.writeRules.featureCards.cleanup.value", {
+        defaultValue: "Raw to High",
+      }),
+      detail: t("refine.writeRules.featureCards.cleanup.detail", {
+        defaultValue: "Choose how much Vox Jot can edit each matched dictation.",
+      }),
+      icon: <SlidersHorizontal className="h-4.5 w-4.5" strokeWidth={2} />,
+      accentColor: "var(--voice)",
+    },
+    {
+      label: t("refine.writeRules.featureCards.tone.label", {
+        defaultValue: "Tone & prompt",
+      }),
+      value: t("refine.writeRules.featureCards.tone.value", {
+        defaultValue: "Casual, pro, code",
+      }),
+      detail: t("refine.writeRules.featureCards.tone.detail", {
+        defaultValue: "Apply a writing voice or custom cleanup prompt per mode.",
+      }),
+      icon: <Palette className="h-4.5 w-4.5" strokeWidth={2} />,
+      accentColor: "var(--accent-gold, #d89a5c)",
+    },
+  ];
+
   const profileWindow = createPortal(
     <AnimatePresence>
       {isProfileWindowOpen ? (
@@ -530,10 +592,62 @@ export const WriteRulesSettings: React.FC = () => {
     <div className="space-y-7">
       {profileWindow}
       {previewWindow}
+      <section
+        className="grid gap-3 md:grid-cols-3"
+        aria-label={t("refine.writeRules.featureCards.ariaLabel", {
+          defaultValue: "Dictation Mode capabilities",
+        })}
+      >
+        {modeFeatureCards.map((card, index) => (
+          <motion.div
+            key={card.label}
+            variants={cardEntrance}
+            initial="hidden"
+            animate="visible"
+            custom={index}
+            whileHover={{
+              y: -3,
+              boxShadow: "var(--shadow-md)",
+              borderColor: card.accentColor,
+              transition: { duration: 0.2, ease: "easeOut" },
+            }}
+            className="flat-card group relative flex min-h-[6.75rem] flex-col justify-between overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-sm)] transition-colors duration-300"
+          >
+            <span
+              className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-40 transition-opacity duration-300 group-hover:opacity-100"
+              style={{ background: card.accentColor }}
+              aria-hidden
+            />
+            <div className="flex items-start gap-3">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
+                style={{
+                  background: `color-mix(in srgb, ${card.accentColor} 13%, transparent)`,
+                  color: card.accentColor,
+                }}
+                aria-hidden
+              >
+                {card.icon}
+              </span>
+              <div className="min-w-0 flex-1 text-right">
+                <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  {card.label}
+                </p>
+                <p className="mt-0.5 truncate text-base font-semibold leading-6 text-[var(--text)]">
+                  {card.value}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+              {card.detail}
+            </p>
+          </motion.div>
+        ))}
+      </section>
       <SettingsGroup
         noCard
         title={t("refine.writeRules.title")}
-        description={t("refine.writeRules.description")}
+        description=""
         showTitle={false}
         descriptionOnlyGap="controls"
       >

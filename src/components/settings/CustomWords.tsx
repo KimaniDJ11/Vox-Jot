@@ -5,7 +5,6 @@ import { useSettings } from "../../hooks/useSettings";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { SettingContainer } from "../ui/SettingContainer";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 interface CustomWordsProps {
   descriptionMode?: "inline" | "tooltip";
@@ -32,6 +31,9 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
     const { t } = useTranslation();
     const { getSetting, updateSetting, isUpdating } = useSettings();
     const [newWord, setNewWord] = useState("");
+    const [confirmingRemoveWord, setConfirmingRemoveWord] = useState<
+      string | null
+    >(null);
     const customWords = getSetting("custom_words") || [];
 
     const handleAddWord = () => {
@@ -58,21 +60,11 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
     };
 
     const handleRemoveWord = (wordToRemove: string) => {
-      if (
-        !confirmDestructiveAction(
-          t("settings.advanced.customWords.removeConfirm", {
-            word: wordToRemove,
-            defaultValue: 'Remove custom word "{{word}}"?',
-          }),
-        )
-      ) {
-        return;
-      }
-
       updateSetting(
         "custom_words",
         customWords.filter((word) => word !== wordToRemove),
       );
+      setConfirmingRemoveWord(null);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -123,36 +115,65 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
           <div
             className={`px-4 p-2 ${grouped ? "" : "rounded-2xl border border-mid-gray/20 bg-[var(--card)] shadow-[var(--shadow-sm)]"} flex flex-wrap gap-1`}
           >
-            {customWords.map((word) => (
-              <Button
-                key={word}
-                onClick={() => handleRemoveWord(word)}
-                disabled={isUpdating("custom_words")}
-                variant="secondary"
-                size="sm"
-                className="inline-flex items-center gap-1 cursor-pointer"
-                aria-label={
-                  formatRemoveLabel
-                    ? formatRemoveLabel(word)
-                    : t("settings.advanced.customWords.remove", { word })
-                }
-              >
-                <span>{word}</span>
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            {customWords.map((word) =>
+              confirmingRemoveWord === word ? (
+                <span
+                  key={word}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-2 text-xs font-medium text-[var(--text)]"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </Button>
-            ))}
+                  <span>{word}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    className="min-h-8 px-2 py-1"
+                    onClick={() => handleRemoveWord(word)}
+                    disabled={isUpdating("custom_words")}
+                  >
+                    {t("common.remove", { defaultValue: "Remove" })}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-8 px-2 py-1"
+                    onClick={() => setConfirmingRemoveWord(null)}
+                    disabled={isUpdating("custom_words")}
+                  >
+                    {t("common.cancel", { defaultValue: "Cancel" })}
+                  </Button>
+                </span>
+              ) : (
+                <Button
+                  key={word}
+                  onClick={() => setConfirmingRemoveWord(word)}
+                  disabled={isUpdating("custom_words")}
+                  variant="secondary"
+                  size="sm"
+                  className="inline-flex cursor-pointer items-center gap-1"
+                  aria-label={
+                    formatRemoveLabel
+                      ? formatRemoveLabel(word)
+                      : t("settings.advanced.customWords.remove", { word })
+                  }
+                >
+                  <span>{word}</span>
+                  <svg
+                    className="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </Button>
+              ),
+            )}
           </div>
         )}
       </>

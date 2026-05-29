@@ -43,7 +43,8 @@ const toneCardDescription = (tone: ToneDefinition): string | null =>
 
 const hasPreviewableCleanup = (overrides: WriteRuleOverrides): boolean =>
   Boolean(
-    overrides.tone_id ||
+    (overrides.cleanup_level && overrides.cleanup_level !== "raw") ||
+      overrides.tone_id ||
       overrides.post_process_prompt_id ||
       overrides.force_post_process === true,
   );
@@ -56,6 +57,21 @@ const initialsFor = (label: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("")
     .slice(0, 2) || "?";
+
+function cleanupLevelLabel(level: string): string {
+  switch (level) {
+    case "raw":
+      return "Raw cleanup";
+    case "light":
+      return "Light cleanup";
+    case "medium":
+      return "Medium cleanup";
+    case "high":
+      return "High cleanup";
+    default:
+      return level;
+  }
+}
 
 interface WriteProfileGroupCardProps {
   group: WriteRuleGroup;
@@ -76,6 +92,7 @@ const writeRuleGroupKey = (overrides: WriteRuleOverrides): string => {
     translate_to_english: overrides.translate_to_english ?? null,
     tone_id: overrides.tone_id?.trim() || null,
     post_process_prompt_id: overrides.post_process_prompt_id?.trim() || null,
+    cleanup_level: overrides.cleanup_level ?? null,
     auto_submit: overrides.auto_submit ?? null,
     paste_method: overrides.paste_method ?? null,
     append_trailing_space: overrides.append_trailing_space ?? null,
@@ -107,6 +124,7 @@ export const groupWriteRules = (rules: WriteRule[]): WriteRuleGroup[] => {
 };
 
 const groupSortLabel = (group: WriteRuleGroup): string =>
+  group.overrides.cleanup_level ??
   group.overrides.tone_id ??
   group.overrides.stt_model_id ??
   group.rules[0]?.name ??
@@ -245,6 +263,7 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
   const overridesSummary = React.useMemo(() => {
     const o = group.overrides;
     const parts: string[] = [];
+    if (o.cleanup_level) parts.push(cleanupLevelLabel(o.cleanup_level));
     if (o.tone_id) parts.push(toneById.get(o.tone_id)?.label || o.tone_id);
     if (o.stt_model_id)
       parts.push(`Engine · ${modelById.get(o.stt_model_id) ?? o.stt_model_id}`);

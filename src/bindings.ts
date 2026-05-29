@@ -456,6 +456,14 @@ async changePostProcessModeSetting(mode: string) : Promise<Result<null, string>>
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessCleanupLevelSetting(level: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_cleanup_level_setting", { level }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeExperimentalEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_experimental_enabled_setting", { enabled }) };
@@ -2645,7 +2653,7 @@ export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding
  * the catalog UI today — actual neural inference is gated on a
  * follow-up backend (see `ocr_models::OcrBackendKind`).
  */
-screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean;
+screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_cleanup_level?: PostProcessCleanupLevel; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean;
 /**
  * Master toggle for the Write Profiles rule engine. Decoupled
  * from `app_aware_tone_enabled` so users can keep tone mappings
@@ -2829,10 +2837,11 @@ export type OllamaStatus = { installed: boolean; running: boolean; models: strin
 export type OverlayPosition = "none" | "top" | "bottom"
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
+export type PostProcessCleanupLevel = "raw" | "light" | "medium" | "high"
 export type PostProcessEdits = { removed_false_starts: boolean; removed_fillers: boolean; added_bullets: boolean; added_paragraphs: boolean }
 export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
-export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
+export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; cleanup_level: PostProcessCleanupLevel; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type PrepareStableAudio3Request = { mode: StorySoundMode }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
@@ -3002,7 +3011,7 @@ bundle_ids?: string[];
  * Empty means no URL constraint. Patterns match normalized host+path.
  */
 url_patterns?: string[] }
-export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null;
+export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; cleanup_level?: PostProcessCleanupLevel | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null;
 /**
  * Force post-processing on/off when this rule matches, regardless of
  * which shortcut was pressed. `None` keeps the action's default behavior

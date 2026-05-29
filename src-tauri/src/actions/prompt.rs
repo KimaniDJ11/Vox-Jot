@@ -5,7 +5,7 @@
 //! instruction. Also handles dictionary surfacing and contextual entity
 //! corrections from screen context.
 
-use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
+use crate::post_processing::{ActiveAppContext, DictionaryEntry};
 use crate::screen_context::{summarize_packet_for_prompt, DictationContextPacket};
 use crate::settings::AppSettings;
 
@@ -105,9 +105,15 @@ pub(super) fn build_apple_system_prompt(
     rewrite_strength: u8,
     _conservative_gate_active: bool,
 ) -> String {
-    let mode_label = match settings.post_process_mode {
-        PostProcessMode::Literal => "literal",
-        PostProcessMode::Intent => "intent",
+    let mode_label = match settings.post_process_cleanup_level.mode() {
+        crate::post_processing::PostProcessMode::Literal => "literal",
+        crate::post_processing::PostProcessMode::Intent => "intent",
+    };
+    let cleanup_level_label = match settings.post_process_cleanup_level {
+        crate::post_processing::PostProcessCleanupLevel::Raw => "raw",
+        crate::post_processing::PostProcessCleanupLevel::Light => "light",
+        crate::post_processing::PostProcessCleanupLevel::Medium => "medium",
+        crate::post_processing::PostProcessCleanupLevel::High => "high",
     };
     let tone_rule = if let Some(tone_context) = tone_context {
         format!(
@@ -140,6 +146,7 @@ pub(super) fn build_apple_system_prompt(
 Task:\n\
 Clean speech-to-text output while preserving the speaker's meaning exactly.\n\
 \n\
+Cleanup level: {cleanup_level_label}\n\
 Active mode: {mode_label}\n\
 Rewrite strength: {} (0=conservative, 2=aggressive)\n\
 \n\
@@ -162,8 +169,11 @@ Rules:\n\
 - Use numbering only for clear sequence words or ordered cues such as \"one\", \"two\", \"three\", \"first\", \"second\", \"next\", or \"finally\".\n\
 - If punctuation words are spoken explicitly, such as \"period\", \"comma\", \"question mark\", \"exclamation point\", or \"colon\", respect them when they appear intentional.\n\
 - If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.\n\
+- In light cleanup, fix punctuation, capitalization, fillers, and obvious grammar while staying very close to the original wording.\n\
+- In medium cleanup, improve clarity and concision without changing meaning, adding facts, or formalizing unnecessarily.\n\
+- In high cleanup, rewrite for brevity and polish while preserving intent, facts, names, requests, and constraints.\n\
 - In literal mode, stay very close to the original wording.\n\
-- In intent mode, lightly clean for readability without summarizing or formalizing.\n\
+- In intent mode, clean for readability without summarizing or changing meaning.\n\
 - When a correction cue appears inside a list or sequence of short items, replace only the corrected item and keep the surrounding items.\n\
 - If a correction is unclear, preserve the original wording instead of guessing.\n\
 - Return only the final processed text with no commentary.\n\
@@ -259,9 +269,15 @@ pub(super) fn build_apple_user_content(
     screen_context: Option<&DictationContextPacket>,
     redact_for_external: bool,
 ) -> String {
-    let mode_label = match settings.post_process_mode {
-        PostProcessMode::Literal => "literal",
-        PostProcessMode::Intent => "intent",
+    let mode_label = match settings.post_process_cleanup_level.mode() {
+        crate::post_processing::PostProcessMode::Literal => "literal",
+        crate::post_processing::PostProcessMode::Intent => "intent",
+    };
+    let cleanup_level_label = match settings.post_process_cleanup_level {
+        crate::post_processing::PostProcessCleanupLevel::Raw => "raw",
+        crate::post_processing::PostProcessCleanupLevel::Light => "light",
+        crate::post_processing::PostProcessCleanupLevel::Medium => "medium",
+        crate::post_processing::PostProcessCleanupLevel::High => "high",
     };
 
     let relevant_dictionary_entries = relevant_dictionary_entries(settings, normalized_text);
@@ -306,7 +322,8 @@ pub(super) fn build_apple_user_content(
         .unwrap_or_default();
 
     format!(
-        "Mode: {mode_label}\n\
+        "Cleanup level: {cleanup_level_label}\n\
+Mode: {mode_label}\n\
 Rewrite strength: {}\n\
 {conservative_gate_note}\n\
 \n\

@@ -26,7 +26,6 @@ import {
 import { ShortcutInput } from "../ShortcutInput";
 import { PostProcessingToggle } from "../PostProcessingToggle";
 import { useSettings } from "../../../hooks/useSettings";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 interface ProviderSectionProps {
   disabled?: boolean;
@@ -207,6 +206,9 @@ const PostProcessingSettingsPromptsComponent: React.FC<
   const [isCreating, setIsCreating] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [confirmingDeletePromptId, setConfirmingDeletePromptId] = useState<
+    string | null
+  >(null);
 
   const prompts = getSetting("post_process_prompts") || [];
   const selectedPromptId = getSetting("post_process_selected_prompt_id") || "";
@@ -234,6 +236,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
     if (!promptId || disabled) return;
     void updateSetting("post_process_selected_prompt_id", promptId);
     setIsCreating(false);
+    setConfirmingDeletePromptId(null);
   };
 
   const handleCreatePrompt = async () => {
@@ -248,6 +251,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
         await refreshSettings();
         await updateSetting("post_process_selected_prompt_id", result.data.id);
         setIsCreating(false);
+        setConfirmingDeletePromptId(null);
       }
     } catch (error) {
       console.error("Failed to create prompt:", error);
@@ -280,24 +284,13 @@ const PostProcessingSettingsPromptsComponent: React.FC<
 
   const handleDeletePrompt = async (promptId: string) => {
     if (!promptId || disabled) return;
-    const promptName =
-      prompts.find((prompt) => prompt.id === promptId)?.name ?? draftName;
-    if (
-      !confirmDestructiveAction(
-        t("settings.postProcessing.prompts.deleteConfirm", {
-          promptName,
-          defaultValue: 'Delete post-processing prompt "{{promptName}}"?',
-        }),
-      )
-    ) {
-      return;
-    }
 
     try {
       const result = await commands.deletePostProcessPrompt(promptId);
       if (result.status === "ok") {
         await refreshSettings();
         setIsCreating(false);
+        setConfirmingDeletePromptId(null);
       }
     } catch (error) {
       console.error("Failed to delete prompt:", error);
@@ -306,6 +299,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
 
   const handleCancelCreate = () => {
     setIsCreating(false);
+    setConfirmingDeletePromptId(null);
     if (selectedPrompt) {
       setDraftName(selectedPrompt.name);
       setDraftText(selectedPrompt.prompt);
@@ -318,6 +312,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
   const handleStartCreate = () => {
     if (disabled) return;
     setIsCreating(true);
+    setConfirmingDeletePromptId(null);
     setDraftName("");
     setDraftText("");
   };
@@ -413,14 +408,37 @@ const PostProcessingSettingsPromptsComponent: React.FC<
               >
                 {t("settings.postProcessing.prompts.updatePrompt")}
               </Button>
-              <Button
-                onClick={() => handleDeletePrompt(selectedPromptId)}
-                variant="secondary"
-                size="md"
-                disabled={disabled || !selectedPromptId || prompts.length <= 1}
-              >
-                {t("settings.postProcessing.prompts.deletePrompt")}
-              </Button>
+              {confirmingDeletePromptId === selectedPromptId ? (
+                <>
+                  <Button
+                    onClick={() => handleDeletePrompt(selectedPromptId)}
+                    variant="danger"
+                    size="md"
+                    disabled={
+                      disabled || !selectedPromptId || prompts.length <= 1
+                    }
+                  >
+                    {t("settings.postProcessing.prompts.deletePrompt")}
+                  </Button>
+                  <Button
+                    onClick={() => setConfirmingDeletePromptId(null)}
+                    variant="secondary"
+                    size="md"
+                    disabled={disabled}
+                  >
+                    {t("common.cancel", { defaultValue: "Cancel" })}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => setConfirmingDeletePromptId(selectedPromptId)}
+                  variant="secondary"
+                  size="md"
+                  disabled={disabled || !selectedPromptId || prompts.length <= 1}
+                >
+                  {t("settings.postProcessing.prompts.deletePrompt")}
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -509,6 +527,7 @@ const PostProcessSetupStatus: React.FC<{
   const { getSetting } = useSettings();
 
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
+  const cleanupLevel = getSetting("post_process_cleanup_level") || "light";
   const prompts = getSetting("post_process_prompts") || [];
   const selectedPromptId = getSetting("post_process_selected_prompt_id") || "";
   const selectedPromptExists = prompts.some(
@@ -523,7 +542,7 @@ const PostProcessSetupStatus: React.FC<{
   ];
 
   const setupStatus = useMemo<SetupStatus>(() => {
-    if (!postProcessEnabled) {
+    if (!postProcessEnabled || cleanupLevel === "raw") {
       return {
         variant: "info",
         message: t("settings.postProcessing.status.disabled"),
@@ -596,6 +615,7 @@ const PostProcessSetupStatus: React.FC<{
     };
   }, [
     hasApiKey,
+    cleanupLevel,
     postProcessEnabled,
     providerState.appleIntelligenceUnavailable,
     providerState.baseUrl,
@@ -640,6 +660,53 @@ const PostProcessReviewSettings: React.FC<ProviderSectionProps> = ({
   );
 };
 
+const CleanupLevelSettings: React.FC<{ disabled?: boolean }> = ({
+  disabled = false,
+}) => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+  const cleanupLevel = getSetting("post_process_cleanup_level") || "light";
+
+  return (
+    <SettingContainer
+      title={t("settings.postProcessing.cleanupLevel.title")}
+      description={t("settings.postProcessing.cleanupLevel.description")}
+      descriptionMode="inline"
+      grouped={true}
+      disabled={disabled}
+    >
+      <Dropdown
+        selectedValue={cleanupLevel}
+        onSelect={(value) =>
+          void updateSetting(
+            "post_process_cleanup_level",
+            value as "raw" | "light" | "medium" | "high",
+          )
+        }
+        options={[
+          {
+            value: "raw",
+            label: t("settings.postProcessing.cleanupLevel.raw"),
+          },
+          {
+            value: "light",
+            label: t("settings.postProcessing.cleanupLevel.light"),
+          },
+          {
+            value: "medium",
+            label: t("settings.postProcessing.cleanupLevel.medium"),
+          },
+          {
+            value: "high",
+            label: t("settings.postProcessing.cleanupLevel.high"),
+          },
+        ]}
+        disabled={disabled || isUpdating("post_process_cleanup_level")}
+      />
+    </SettingContainer>
+  );
+};
+
 const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
   disabled = false,
   providerState,
@@ -651,8 +718,6 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
     return null;
   }
 
-  const selectedMode = getSetting("post_process_mode") || "literal";
-  const rewriteStrength = getSetting("max_rewrite_strength") || 0;
   const fallbackToRaw = getSetting("fallback_to_raw_on_failure") ?? true;
 
   return (
@@ -660,73 +725,6 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
       <Alert variant="info" contained>
         {t("settings.postProcessing.apple.description")}
       </Alert>
-
-      <SettingContainer
-        title={t("settings.postProcessing.apple.mode.title")}
-        description={t("settings.postProcessing.apple.mode.description")}
-        descriptionMode="inline"
-        grouped={true}
-        disabled={disabled}
-      >
-        <Dropdown
-          selectedValue={selectedMode}
-          onSelect={(value) =>
-            void updateSetting(
-              "post_process_mode",
-              value as "literal" | "intent",
-            )
-          }
-          options={[
-            {
-              value: "literal",
-              label: t("settings.postProcessing.apple.mode.literal"),
-            },
-            {
-              value: "intent",
-              label: t("settings.postProcessing.apple.mode.intent"),
-            },
-          ]}
-          disabled={disabled || isUpdating("post_process_mode")}
-        />
-      </SettingContainer>
-
-      <SettingContainer
-        title={t("settings.postProcessing.apple.rewriteStrength.title")}
-        description={t(
-          "settings.postProcessing.apple.rewriteStrength.description",
-        )}
-        descriptionMode="inline"
-        grouped={true}
-        disabled={disabled}
-      >
-        <Dropdown
-          selectedValue={String(rewriteStrength)}
-          onSelect={(value) =>
-            void updateSetting("max_rewrite_strength", Number(value))
-          }
-          options={[
-            {
-              value: "0",
-              label: t(
-                "settings.postProcessing.apple.rewriteStrength.conservative",
-              ),
-            },
-            {
-              value: "1",
-              label: t(
-                "settings.postProcessing.apple.rewriteStrength.balanced",
-              ),
-            },
-            {
-              value: "2",
-              label: t(
-                "settings.postProcessing.apple.rewriteStrength.aggressive",
-              ),
-            },
-          ]}
-          disabled={disabled || isUpdating("max_rewrite_strength")}
-        />
-      </SettingContainer>
 
       <ToggleSwitch
         checked={fallbackToRaw}
@@ -926,6 +924,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
     <div className="w-full space-y-6">
       <SettingsGroup title={t("settings.postProcessing.sections.setup.title")}>
         <PostProcessingToggle descriptionMode="inline" grouped={true} />
+        <CleanupLevelSettings disabled={controlsDisabled} />
         {!omitLocalPrivacy && (
           <>
             <ToggleSwitch

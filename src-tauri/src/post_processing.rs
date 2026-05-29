@@ -26,6 +26,36 @@ pub enum PostProcessMode {
     Intent,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum PostProcessCleanupLevel {
+    Raw,
+    Light,
+    Medium,
+    High,
+}
+
+impl PostProcessCleanupLevel {
+    pub fn should_run(self) -> bool {
+        !matches!(self, Self::Raw)
+    }
+
+    pub fn mode(self) -> PostProcessMode {
+        match self {
+            Self::Raw | Self::Light => PostProcessMode::Literal,
+            Self::Medium | Self::High => PostProcessMode::Intent,
+        }
+    }
+
+    pub fn rewrite_strength(self) -> u8 {
+        match self {
+            Self::Raw | Self::Light => 0,
+            Self::Medium => 1,
+            Self::High => 2,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, Type)]
 pub struct PostProcessEdits {
     pub removed_false_starts: bool,
@@ -44,6 +74,7 @@ pub struct PostProcessResult {
     pub context_impact: Option<ContextImpactMetadata>,
     pub edits: PostProcessEdits,
     pub mode: PostProcessMode,
+    pub cleanup_level: PostProcessCleanupLevel,
     pub active_app_context: Option<ActiveAppContext>,
     pub applied_tone_id: Option<String>,
 }
@@ -99,6 +130,8 @@ pub struct WriteRuleOverrides {
     pub tone_id: Option<String>,
     #[serde(default)]
     pub post_process_prompt_id: Option<String>,
+    #[serde(default)]
+    pub cleanup_level: Option<PostProcessCleanupLevel>,
     #[serde(default)]
     pub auto_submit: Option<bool>,
     #[serde(default)]

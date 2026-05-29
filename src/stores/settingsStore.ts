@@ -272,6 +272,8 @@ const settingUpdaters: {
     commands.changeScreenContextStaleThresholdMsSetting(value as number),
   post_process_mode: (value) =>
     commands.changePostProcessModeSetting(value as string),
+  post_process_cleanup_level: (value) =>
+    commands.changePostProcessCleanupLevelSetting(value as string),
   post_process_selected_prompt_id: (value) =>
     commands.setPostProcessSelectedPrompt(value as string),
   personal_dictionary: (value) =>

@@ -79,11 +79,12 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
         }
 
         if (!acknowledged) {
-          const confirmed = confirmDestructiveAction(
+          const confirmed = await confirmDestructiveAction(
             t("settings.diagnostics.localApi.enableConfirm", {
               defaultValue:
                 "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private.",
             }),
+            { okLabel: t("common.enable", { defaultValue: "Enable" }) },
           );
           if (!confirmed) return;
 

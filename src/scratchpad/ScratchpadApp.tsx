@@ -11,7 +11,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { toast, Toaster } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Pin, PinOff, FileText, Pencil } from "lucide-react";
+import { Plus, Trash2, Pin, PinOff, FileText, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -20,7 +20,6 @@ import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { useSettingsSlice } from "@/hooks/useSettings";
 import { commands } from "@/bindings";
 import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { formatTime } from "@/utils/dateFormat";
 import { useNotesStore } from "./notesStore";
 
@@ -103,6 +102,9 @@ const ScratchpadApp: React.FC = () => {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [confirmingDeleteNoteId, setConfirmingDeleteNoteId] = useState<
+    number | null
+  >(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -389,12 +391,8 @@ const ScratchpadApp: React.FC = () => {
   };
 
   const handleDeleteNote = async (id: number) => {
-    const note = notes.find((candidate) => candidate.id === id);
-    const noteTitle = note?.title.trim() || t("jotPad.untitledNote");
-    if (!confirmDestructiveAction(t("jotPad.deleteConfirm", { noteTitle }))) {
-      return;
-    }
     await deleteNote(id);
+    setConfirmingDeleteNoteId((current) => (current === id ? null : current));
   };
 
   const focusContentEndSoon = useCallback(() => {
@@ -523,20 +521,55 @@ const ScratchpadApp: React.FC = () => {
               <Pin className="h-3 w-3" />
             )}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className="border-transparent bg-[color-mix(in_srgb,var(--bg)_70%,transparent)] backdrop-blur hover:text-[var(--danger)]"
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleDeleteNote(note.id);
-            }}
-            aria-label={t("common.delete")}
-            title={t("common.delete")}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          {confirmingDeleteNoteId === note.id ? (
+            <>
+              <Button
+                type="button"
+                variant="danger-ghost"
+                size="icon-xs"
+                className="border-transparent bg-[var(--danger-soft)] backdrop-blur text-[var(--danger)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDeleteNote(note.id);
+                }}
+                aria-label={t("jotPad.deleteConfirm", {
+                  noteTitle: displayTitle,
+                })}
+                title={t("common.delete")}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="border-transparent bg-[color-mix(in_srgb,var(--bg)_70%,transparent)] backdrop-blur"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmingDeleteNoteId(null);
+                }}
+                aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+                title={t("common.cancel", { defaultValue: "Cancel" })}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="border-transparent bg-[color-mix(in_srgb,var(--bg)_70%,transparent)] backdrop-blur hover:text-[var(--danger)]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmingDeleteNoteId(note.id);
+              }}
+              aria-label={t("common.delete")}
+              title={t("common.delete")}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
     );

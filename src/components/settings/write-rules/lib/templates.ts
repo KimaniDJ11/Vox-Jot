@@ -54,9 +54,9 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
       name: draft.name || "Email",
       overrides: {
         ...draft.overrides,
+        cleanup_level: "medium",
         auto_submit: false,
         append_trailing_space: true,
-        force_post_process: true,
       },
     }),
   },
@@ -102,7 +102,7 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
       name: draft.name || "Notes",
       overrides: {
         ...draft.overrides,
-        force_post_process: true,
+        cleanup_level: "medium",
         append_trailing_space: true,
         auto_submit: false,
       },
@@ -118,8 +118,8 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
       name: draft.name || "Concise",
       overrides: {
         ...draft.overrides,
+        cleanup_level: "high",
         tone_id: "concise",
-        force_post_process: true,
         append_trailing_space: true,
         auto_submit: false,
       },

@@ -75,7 +75,8 @@ pub(super) fn build_post_process_result(
         dictionary_hits,
         context_impact,
         edits,
-        mode: settings.post_process_mode,
+        mode: settings.post_process_cleanup_level.mode(),
+        cleanup_level: settings.post_process_cleanup_level,
         active_app_context,
         applied_tone_id,
     }
@@ -168,6 +169,10 @@ pub(crate) async fn post_process_transcription(
     app_handle: Option<&AppHandle>,
 ) -> Option<PostProcessExecution> {
     let mut context_impact = context_impact.unwrap_or_default();
+    if !settings.post_process_cleanup_level.should_run() {
+        debug!("Skipping post-process because cleanup level is raw");
+        return None;
+    }
     let route_features = extract_route_features(transcription);
     let selected_pass = choose_post_process_pass(transcription);
 
@@ -182,17 +187,18 @@ pub(crate) async fn post_process_transcription(
     let force_conservative_rewrite = should_force_conservative_rewrite(transcription);
     let prefers_stronger_list_rewrite = route_features.has_list_cue
         && (route_features.has_correction_cue || route_features.word_count >= 10);
+    let cleanup_rewrite_strength = settings.post_process_cleanup_level.rewrite_strength();
     let effective_rewrite_strength = if force_conservative_rewrite {
         0
     } else {
         match selected_pass {
             PostProcessPass::Skip => unreachable!(),
-            PostProcessPass::Pass1 => settings.max_rewrite_strength.min(1),
+            PostProcessPass::Pass1 => cleanup_rewrite_strength.min(1),
             PostProcessPass::Pass2 => {
                 if prefers_stronger_list_rewrite {
-                    settings.max_rewrite_strength.max(2)
+                    cleanup_rewrite_strength.max(2)
                 } else {
-                    settings.max_rewrite_strength
+                    cleanup_rewrite_strength
                 }
             }
             PostProcessPass::Command => 2,

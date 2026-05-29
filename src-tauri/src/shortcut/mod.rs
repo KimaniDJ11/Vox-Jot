@@ -22,7 +22,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::managers::audio::AudioRecordingManager;
-use crate::post_processing::{DictionaryEntry, PostProcessMode, ToneDefinition};
+use crate::post_processing::{
+    DictionaryEntry, PostProcessCleanupLevel, PostProcessMode, ToneDefinition,
+};
 use crate::secret_store;
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
@@ -1508,6 +1510,27 @@ pub fn change_post_process_mode_setting(app: AppHandle, mode: String) -> Result<
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_post_process_cleanup_level_setting(
+    app: AppHandle,
+    level: String,
+) -> Result<(), String> {
+    let cleanup_level = match level.as_str() {
+        "raw" => PostProcessCleanupLevel::Raw,
+        "light" => PostProcessCleanupLevel::Light,
+        "medium" => PostProcessCleanupLevel::Medium,
+        "high" => PostProcessCleanupLevel::High,
+        other => return Err(format!("Invalid cleanup level '{}'", other)),
+    };
+    let mut settings = settings::get_settings(&app);
+    settings.post_process_cleanup_level = cleanup_level;
+    settings.post_process_mode = cleanup_level.mode();
+    settings.max_rewrite_strength = cleanup_level.rewrite_strength();
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn update_personal_dictionary(
     app: AppHandle,
     entries: Vec<DictionaryEntry>,
@@ -2007,31 +2030,34 @@ pub fn update_snippets(
 #[tauri::command]
 #[specta::specta]
 pub fn import_snippets(app: AppHandle, json: String) -> Result<usize, String> {
-    let imported: Vec<crate::snippets::Snippet> =
-        serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
-
-    if imported.len() > 1000 {
-        return Err("Import limit is 1,000 snippets".to_string());
-    }
+    let imported = crate::snippets::parse_snippet_import_json(&json)?;
 
     let mut settings = settings::get_settings(&app);
-    let existing_triggers: std::collections::HashSet<String> = settings
+    let mut existing_triggers: std::collections::HashSet<String> = settings
         .snippets
         .iter()
-        .map(|s| s.trigger.to_lowercase())
+        .map(|s| s.trigger.trim().to_lowercase())
         .collect();
+    let mut existing_ids: std::collections::HashSet<String> =
+        settings.snippets.iter().map(|s| s.id.clone()).collect();
+    let import_id_prefix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
 
     let mut added = 0;
-    for snippet in imported {
-        if snippet.trigger.is_empty() || snippet.expansion.is_empty() {
+    for mut snippet in imported {
+        let normalized_trigger = snippet.trigger.trim().to_lowercase();
+        if existing_triggers.contains(&normalized_trigger) {
             continue;
         }
-        if snippet.trigger.len() > 60 || snippet.expansion.len() > 4000 {
-            continue;
+
+        if snippet.id.trim().is_empty() || existing_ids.contains(&snippet.id) {
+            snippet.id = format!("snippet_import_{}_{}", import_id_prefix, added);
         }
-        if existing_triggers.contains(&snippet.trigger.to_lowercase()) {
-            continue;
-        }
+
+        existing_triggers.insert(normalized_trigger);
+        existing_ids.insert(snippet.id.clone());
         settings.snippets.push(snippet);
         added += 1;
     }

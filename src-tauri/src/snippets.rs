@@ -1,5 +1,6 @@
 use log::debug;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use specta::Type;
 
 /// A text expansion snippet: when the trigger phrase is spoken,
@@ -20,6 +21,113 @@ fn default_enabled() -> bool {
 pub struct SnippetExpansionResult {
     pub text: String,
     pub hits: Vec<String>,
+}
+
+const MAX_IMPORT_SNIPPETS: usize = 1000;
+const MAX_TRIGGER_CHARS: usize = 60;
+const MAX_EXPANSION_CHARS: usize = 4000;
+
+#[derive(Deserialize)]
+struct LooseSnippet {
+    #[serde(default)]
+    id: String,
+    #[serde(default, alias = "phrase", alias = "shortcut", alias = "key")]
+    trigger: String,
+    #[serde(default, alias = "text", alias = "replacement", alias = "value")]
+    expansion: String,
+    #[serde(default = "default_enabled")]
+    enabled: bool,
+}
+
+fn import_array_value(value: &Value) -> Option<&Vec<Value>> {
+    if let Some(array) = value.as_array() {
+        return Some(array);
+    }
+
+    value
+        .get("snippets")
+        .or_else(|| value.get("phraseKeys"))
+        .or_else(|| value.get("phrase_keys"))
+        .or_else(|| value.get("entries"))
+        .and_then(Value::as_array)
+}
+
+/// Parse phrase-key imports from Vox Jot exports and common JSON shapes.
+///
+/// Supported shapes:
+/// - `[{"trigger":"my email","expansion":"me@example.com"}]`
+/// - `{"snippets":[...]}`
+/// - `{"phraseKeys":[...]}`
+/// - `{"my email":"me@example.com"}`
+pub fn parse_snippet_import_json(json: &str) -> Result<Vec<Snippet>, String> {
+    let value: Value = serde_json::from_str(json).map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    let loose_snippets: Vec<LooseSnippet> = if let Some(array) = import_array_value(&value) {
+        if array.len() > MAX_IMPORT_SNIPPETS {
+            return Err("Import limit is 1,000 phrase keys".to_string());
+        }
+
+        array
+            .iter()
+            .cloned()
+            .map(serde_json::from_value)
+            .collect::<Result<Vec<LooseSnippet>, _>>()
+            .map_err(|e| format!("Invalid phrase key format: {}", e))?
+    } else if let Some(object) = value.as_object() {
+        if object.len() > MAX_IMPORT_SNIPPETS {
+            return Err("Import limit is 1,000 phrase keys".to_string());
+        }
+
+        let snippets = object
+            .iter()
+            .filter_map(|(trigger, expansion)| {
+                expansion.as_str().map(|expansion| LooseSnippet {
+                    id: String::new(),
+                    trigger: trigger.clone(),
+                    expansion: expansion.to_string(),
+                    enabled: true,
+                })
+            })
+            .collect::<Vec<_>>();
+        if snippets.is_empty() && !object.is_empty() {
+            return Err("Expected phrase-key object values to be text expansions".to_string());
+        }
+        snippets
+    } else {
+        return Err(
+            "Expected a JSON array, an object with a snippets array, or a trigger-to-expansion object"
+                .to_string(),
+        );
+    };
+
+    let mut snippets = Vec::new();
+    for (index, imported) in loose_snippets.into_iter().enumerate() {
+        let trigger = imported.trigger.trim().to_string();
+        let expansion = imported.expansion.trim().to_string();
+        if trigger.is_empty() || expansion.is_empty() {
+            continue;
+        }
+        if trigger.chars().count() > MAX_TRIGGER_CHARS
+            || expansion.chars().count() > MAX_EXPANSION_CHARS
+        {
+            continue;
+        }
+
+        let id = if imported.id.trim().is_empty() {
+            format!("snippet_import_{}", index)
+        } else {
+            imported.id.trim().to_string()
+        };
+
+        snippets.push(Snippet {
+            id,
+            trigger,
+            expansion,
+            enabled: imported.enabled,
+        });
+    }
+
+    Ok(snippets)
 }
 
 /// Strip punctuation from edges of a word for matching purposes.
@@ -268,5 +376,43 @@ mod tests {
         let result = apply_snippets("my email and my phone", &snippets);
         assert_eq!(result.text, "user@example.com and 555-0100");
         assert_eq!(result.hits.len(), 2);
+    }
+
+    #[test]
+    fn import_accepts_export_array_without_ids() {
+        let parsed = parse_snippet_import_json(
+            r#"[{"trigger":" my email ","expansion":" user@example.com "}]"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].trigger, "my email");
+        assert_eq!(parsed[0].expansion, "user@example.com");
+        assert!(parsed[0].enabled);
+        assert!(!parsed[0].id.is_empty());
+    }
+
+    #[test]
+    fn import_accepts_wrapped_snippets_array() {
+        let parsed =
+            parse_snippet_import_json(r#"{"snippets":[{"trigger":"my phone","expansion":"555"}]}"#)
+                .unwrap();
+        assert_eq!(parsed[0].trigger, "my phone");
+    }
+
+    #[test]
+    fn import_accepts_trigger_expansion_object() {
+        let parsed = parse_snippet_import_json(r#"{"my email":"user@example.com"}"#).unwrap();
+        assert_eq!(parsed[0].trigger, "my email");
+        assert_eq!(parsed[0].expansion, "user@example.com");
+    }
+
+    #[test]
+    fn import_rejects_unrecognized_root() {
+        assert!(parse_snippet_import_json(r#""not an import""#).is_err());
+    }
+
+    #[test]
+    fn import_rejects_object_without_text_expansions() {
+        assert!(parse_snippet_import_json(r#"{"snippets":{}}"#).is_err());
     }
 }

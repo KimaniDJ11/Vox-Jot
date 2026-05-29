@@ -84,7 +84,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
     spec.isActive(overrides),
   );
   const inactiveSpecs = OVERRIDE_REGISTRY.filter(
-    (spec) => !spec.isActive(overrides),
+    (spec) => !spec.isActive(overrides) && spec.allowAdd !== false,
   );
 
   return (

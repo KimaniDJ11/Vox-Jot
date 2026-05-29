@@ -1,4 +1,6 @@
-use crate::post_processing::{ActiveAppContext, ResolvedWriteRule, WriteRule, WriteRuleOverrides};
+use crate::post_processing::{
+    ActiveAppContext, PostProcessCleanupLevel, ResolvedWriteRule, WriteRule, WriteRuleOverrides,
+};
 use crate::settings::{
     AppSettings, PasteMethod, TranslationOutputMode, TranslationRoutePreference,
 };
@@ -11,6 +13,7 @@ pub struct EffectiveSessionSettings {
     pub translate_to_english: bool,
     pub tone_id: Option<String>,
     pub post_process_prompt_id: Option<String>,
+    pub cleanup_level: PostProcessCleanupLevel,
     pub auto_submit: bool,
     pub paste_method: PasteMethod,
     pub append_trailing_space: bool,
@@ -144,6 +147,7 @@ pub fn apply_overrides(base: &AppSettings, ov: &WriteRuleOverrides) -> Effective
             .clone()
             .filter(|value| !value.trim().is_empty())
             .or_else(|| base.post_process_selected_prompt_id.clone()),
+        cleanup_level: ov.cleanup_level.unwrap_or(base.post_process_cleanup_level),
         auto_submit: ov.auto_submit.unwrap_or(base.auto_submit),
         paste_method: ov.paste_method.unwrap_or(base.paste_method),
         append_trailing_space: ov
@@ -179,6 +183,9 @@ pub fn apply_resolved_rule_to_settings(
     if effective.tone_id.is_some() {
         next.app_aware_tone_enabled = true;
     }
+    next.post_process_cleanup_level = effective.cleanup_level;
+    next.post_process_mode = effective.cleanup_level.mode();
+    next.max_rewrite_strength = effective.cleanup_level.rewrite_strength();
     next.post_process_selected_prompt_id = effective.post_process_prompt_id;
     next.auto_submit = effective.auto_submit;
     next.paste_method = effective.paste_method;
@@ -523,6 +530,7 @@ mod tests {
                 translate_to_english: Some(true),
                 tone_id: Some("coding".to_string()),
                 post_process_prompt_id: Some("code".to_string()),
+                cleanup_level: None,
                 auto_submit: Some(true),
                 paste_method: Some(PasteMethod::Direct),
                 append_trailing_space: Some(true),

@@ -743,6 +743,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_screen_context_token_budget_setting,
         shortcut::change_screen_context_stale_threshold_ms_setting,
         shortcut::change_post_process_mode_setting,
+        shortcut::change_post_process_cleanup_level_setting,
         shortcut::change_experimental_enabled_setting,
         shortcut::change_post_process_base_url_setting,
         shortcut::change_post_process_api_key_setting,

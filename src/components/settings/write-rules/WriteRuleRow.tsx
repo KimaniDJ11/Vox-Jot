@@ -102,8 +102,10 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   const overrideSummary = React.useMemo(() => {
     const o = rule.overrides;
     const parts: string[] = [];
+    if (o.cleanup_level) parts.push(cleanupLevelLabel(o.cleanup_level));
     if (o.tone_id) parts.push(toneById.get(o.tone_id) ?? o.tone_id);
     const hasOtherSummary =
+      o.cleanup_level ||
       o.tone_id ||
       o.post_process_prompt_id ||
       typeof o.force_post_process === "boolean";
@@ -279,3 +281,18 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
     </div>
   );
 };
+
+function cleanupLevelLabel(level: string): string {
+  switch (level) {
+    case "raw":
+      return "Raw cleanup";
+    case "light":
+      return "Light cleanup";
+    case "medium":
+      return "Medium cleanup";
+    case "high":
+      return "High cleanup";
+    default:
+      return level;
+  }
+}

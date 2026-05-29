@@ -9,6 +9,7 @@ import {
   Dna,
   Globe,
   HardDrive,
+  Languages,
   Loader2,
   Mic2,
   SlidersHorizontal,
@@ -283,7 +284,7 @@ const SpeechModelLibraryCard: React.FC<{
           id: "capability-languages",
           label: languageCoverage,
           variant: "secondary" as const,
-          icon: <Globe className="h-3 w-3" />,
+          icon: <Languages className="h-3 w-3" />,
           detail: getModelLanguageItems(model).join(" · "),
         }
       : null,
@@ -1004,12 +1005,13 @@ export const EngineLibraryPanel: React.FC<{
   const clearHfToken = useCallback(async () => {
     if (savingHfToken) return;
     if (
-      !confirmDestructiveAction(
+      !(await confirmDestructiveAction(
         t("modelHub.analysis.hfAccess.clearTokenConfirm", {
           defaultValue:
             "Clear the saved Hugging Face token from Vox Jot? Gated model downloads will need a token again.",
         }),
-      )
+        { okLabel: t("common.clear", { defaultValue: "Clear" }) },
+      ))
     ) {
       return;
     }

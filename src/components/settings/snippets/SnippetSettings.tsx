@@ -8,34 +8,36 @@ import React, {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowRight,
+  Ban,
   Trash2,
-  X,
   Pencil,
   Check,
   WholeWord,
   Upload,
   FileJson,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
 import { ActionIconButton } from "../../ui/ActionIconButton";
 import { Button } from "../../ui/Button";
-import { EmptyState } from "../../ui/EmptyState";
-import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { subtleCardClassName } from "../../ui/subtleCard";
 import { useSettings } from "../../../hooks/useSettings";
 import { PhraseKeysEnabledToggle } from "../PhraseKeysEnabledToggle";
 import { pickJsonFileText } from "@/lib/fileIo";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
 const IMPORT_MAX_BYTES = 3 * 1024 * 1024;
+const phraseKeysEmptySurfaceClassName =
+  "flex min-h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-5 py-8 text-center";
 
 type PhraseKeysView = "myKeys" | "importedKeys";
 
@@ -66,9 +68,14 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   const [isImportDragOver, setIsImportDragOver] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [openDisableId, setOpenDisableId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
+    null,
+  );
   const triggerInputRef = useRef<HTMLInputElement>(null);
   const newTriggerRef = useRef<HTMLInputElement>(null);
   const addDialogRef = useRef<HTMLDivElement>(null);
+  const disablePopoverRef = useRef<HTMLDivElement>(null);
 
   useDialogFocusTrap({
     enabled: adding,
@@ -100,6 +107,26 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     }
   }, [editingId]);
 
+  useEffect(() => {
+    if (!openDisableId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        disablePopoverRef.current?.contains(event.target as Node) ||
+        (event.target as HTMLElement).closest(
+          "[data-phrase-key-disable-trigger]",
+        )
+      ) {
+        return;
+      }
+
+      setOpenDisableId(null);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openDisableId]);
+
   const saveSnippets = useCallback(
     async (updated: Snippet[]) => {
       await updateSetting("snippets", updated);
@@ -124,27 +151,22 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   };
 
   const handleDelete = async (snippet: Snippet) => {
-    if (
-      !confirmDestructiveAction(
-        t("settings.snippets.list.deleteConfirm", {
-          trigger: snippet.trigger,
-          defaultValue: 'Delete phrase key "{{trigger}}"?',
-        }),
-      )
-    ) {
-      return;
-    }
-
     await saveSnippets(snippets.filter((s) => s.id !== snippet.id));
+    setConfirmingDeleteId((current) =>
+      current === snippet.id ? null : current,
+    );
   };
 
   const handleToggle = async (id: string, enabled: boolean) => {
     await saveSnippets(
       snippets.map((s) => (s.id === id ? { ...s, enabled } : s)),
     );
+    setOpenDisableId((current) => (current === id ? null : current));
   };
 
   const startEdit = (snippet: Snippet) => {
+    setOpenDisableId(null);
+    setConfirmingDeleteId(null);
     setEditingId(snippet.id);
     setEditTrigger(snippet.trigger);
     setEditExpansion(snippet.expansion);
@@ -186,9 +208,17 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
 
         await updateSetting("snippets", settingsResult.data.snippets);
         setImportMessage(
-          t("settings.snippets.list.importSuccess", {
-            defaultValue: "Phrase keys imported.",
-          }),
+          result.data > 0
+            ? t("settings.snippets.list.importSuccess", {
+                count: result.data,
+                defaultValue:
+                  result.data === 1
+                    ? "Imported 1 phrase key."
+                    : "Imported {{count}} phrase keys.",
+              })
+            : t("settings.snippets.list.importNoNewKeys", {
+                defaultValue: "No new phrase keys to import.",
+              }),
         );
       } catch (error) {
         console.error("Failed to import snippets:", error);
@@ -311,7 +341,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
             ref={addDialogRef}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="add-phrase-key-title"
+            aria-label={t("settings.snippets.list.add")}
             className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -322,63 +352,36 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
               handleDialogKeyDown(event, addDialogRef.current, closeAddDialog)
             }
           >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2
-                id="add-phrase-key-title"
-                className="min-w-0 truncate text-base font-semibold text-[var(--text)]"
-              >
-                {t("settings.snippets.list.add")}
-              </h2>
-              <ActionIconButton
-                onClick={closeAddDialog}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </ActionIconButton>
-            </div>
             <div className="space-y-3">
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   {t("settings.snippets.list.trigger")}
                 </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={newTriggerRef}
-                    data-add-phrase-key-trigger="true"
-                    type="text"
-                    value={newTrigger}
-                    onChange={(e) =>
-                      setNewTrigger(e.target.value.slice(0, TRIGGER_MAX))
-                    }
-                    placeholder={t("settings.snippets.list.triggerPlaceholder")}
-                    className="min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-                  />
-                  <span className="shrink-0 text-xs text-[var(--muted)]">
-                    {newTrigger.length}/{TRIGGER_MAX}
-                  </span>
-                </div>
+                <input
+                  ref={newTriggerRef}
+                  data-add-phrase-key-trigger="true"
+                  type="text"
+                  value={newTrigger}
+                  onChange={(e) =>
+                    setNewTrigger(e.target.value.slice(0, TRIGGER_MAX))
+                  }
+                  placeholder={t("settings.snippets.list.triggerPlaceholder")}
+                  className="w-full rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                />
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   {t("settings.snippets.list.expansion")}
                 </span>
-                <div className="flex items-start gap-2">
-                  <textarea
-                    value={newExpansion}
-                    onChange={(e) =>
-                      setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
-                    }
-                    placeholder={t(
-                      "settings.snippets.list.expansionPlaceholder",
-                    )}
-                    rows={5}
-                    className="min-w-0 flex-1 resize-y rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-                  />
-                  <span className="shrink-0 pt-2 text-xs text-[var(--muted)]">
-                    {newExpansion.length}/{EXPANSION_MAX}
-                  </span>
-                </div>
+                <textarea
+                  value={newExpansion}
+                  onChange={(e) =>
+                    setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
+                  }
+                  placeholder={t("settings.snippets.list.expansionPlaceholder")}
+                  rows={5}
+                  className="w-full resize-y rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                />
               </label>
               {duplicateNewTrigger ? (
                 <div className="text-xs text-[var(--danger)]" role="alert">
@@ -420,35 +423,57 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   );
 
   const renderMyKeys = () => (
-    <div className="flat-card overflow-visible">
+    <div className={[subtleCardClassName, "overflow-visible"].join(" ")}>
       {snippets.length === 0 ? (
-        <EmptyState
-          framed={false}
-          icon={<WholeWord className="h-5 w-5" aria-hidden />}
-          title={t("settings.snippets.list.empty")}
-          description={t("settings.snippets.list.emptyDescription")}
-          example={t("settings.snippets.list.emptyExample")}
-          action={
+        <div className={phraseKeysEmptySurfaceClassName}>
+          <div
+            className="flex size-11 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+            aria-hidden="true"
+          >
+            <WholeWord size={20} />
+          </div>
+          <div className="mt-6 text-sm font-semibold text-[var(--text)]">
+            {t("settings.snippets.list.empty")}
+          </div>
+          <p className="mt-3 max-w-md text-xs leading-5 text-[var(--muted)]">
+            {t("settings.snippets.list.emptyExample")}
+          </p>
+          <div className="mt-5">
             <Button
               type="button"
               size="sm"
-              variant="primary-soft"
+              variant="secondary"
               onClick={openAddDialog}
             >
               {t("settings.snippets.list.add")}
             </Button>
-          }
-        />
+          </div>
+        </div>
       ) : (
-        <div className="divide-y divide-[var(--border)]">
+        <div className="-mx-5 -my-4 divide-y divide-[var(--border)]">
           {snippets.map((snippet) => {
             const snippetEnabled = snippet.enabled ?? true;
+            const disableOpen = openDisableId === snippet.id;
+            const confirmingDelete = confirmingDeleteId === snippet.id;
+            const actionClusterClassName = "flex shrink-0 items-center gap-1.5";
+            const revealedActionClassName = `transition-opacity duration-150 ${
+              disableOpen || confirmingDelete
+                ? "opacity-100"
+                : "opacity-0 group-hover/phrase-key-row:opacity-100 group-focus-within/phrase-key-row:opacity-100"
+            }`;
+            const disableActionClassName = `transition-opacity duration-150 ${
+              !snippetEnabled || disableOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover/phrase-key-row:opacity-100 group-focus-within/phrase-key-row:opacity-100"
+            }`;
 
             return (
               <div
                 key={snippet.id}
-                className={`space-y-1.5 px-5 py-3 transition-opacity ${
-                  !snippetEnabled ? "opacity-50" : ""
+                className={`group/phrase-key-row relative space-y-1.5 overflow-visible px-5 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] ${
+                  !snippetEnabled
+                    ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
+                    : ""
                 }`}
               >
                 {editingId === snippet.id ? (
@@ -509,75 +534,200 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                        {t("settings.snippets.list.trigger")}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                        {snippet.trigger}
-                      </span>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <ActionIconButton
-                          onClick={() => startEdit(snippet)}
-                          title={t("common.edit", {
-                            defaultValue: "Edit",
-                          })}
-                          aria-label={t("common.edit", {
-                            defaultValue: "Edit",
-                          })}
-                        >
-                          <Pencil aria-hidden />
-                        </ActionIconButton>
-                        <SwitchControl
-                          checked={snippetEnabled}
-                          onChange={(checked) =>
-                            void handleToggle(snippet.id, checked)
-                          }
-                          size="compact"
-                          frame="icon"
-                          title={
-                            snippetEnabled
-                              ? t("common.disable", {
-                                  defaultValue: "Disable",
-                                })
-                              : t("common.enable", {
-                                  defaultValue: "Enable",
-                                })
-                          }
-                          ariaLabel={
-                            snippetEnabled
-                              ? t("settings.snippets.list.disableAriaLabel", {
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                      {t("settings.snippets.list.trigger")}
+                    </span>
+                    <span className="min-w-[4rem] max-w-[35%] truncate text-sm font-semibold text-[var(--text)]">
+                      {snippet.trigger}
+                    </span>
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-[var(--muted)]"
+                      aria-hidden
+                    />
+                    <span className="sr-only">
+                      {t("settings.snippets.list.expansion")}
+                    </span>
+                    <span
+                      className="min-w-0 flex-1 truncate text-sm text-[var(--muted)]"
+                      title={snippet.expansion}
+                    >
+                      {snippet.expansion}
+                    </span>
+                    <div className={actionClusterClassName}>
+                      {confirmingDelete ? (
+                        <>
+                          <ActionIconButton
+                            tone="confirm"
+                            onClick={() => void handleDelete(snippet)}
+                            title={t("common.delete")}
+                            aria-label={t(
+                              "settings.snippets.list.deleteConfirm",
+                              {
+                                trigger: snippet.trigger,
+                                defaultValue:
+                                  'Delete phrase key "{{trigger}}"?',
+                              },
+                            )}
+                          >
+                            <Trash2 aria-hidden />
+                          </ActionIconButton>
+                          <ActionIconButton
+                            onClick={() => setConfirmingDeleteId(null)}
+                            title={t("common.cancel")}
+                            aria-label={t("common.cancel")}
+                          >
+                            <X aria-hidden />
+                          </ActionIconButton>
+                        </>
+                      ) : (
+                        <>
+                          <ActionIconButton
+                            className={revealedActionClassName}
+                            onClick={() => startEdit(snippet)}
+                            title={t("common.edit", {
+                              defaultValue: "Edit",
+                            })}
+                            aria-label={t("common.edit", {
+                              defaultValue: "Edit",
+                            })}
+                          >
+                            <Pencil aria-hidden />
+                          </ActionIconButton>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              data-phrase-key-disable-trigger
+                              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${disableActionClassName} ${
+                                disableOpen
+                                  ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                                  : "text-[var(--text)]"
+                              }`}
+                              onClick={() =>
+                                setOpenDisableId((current) =>
+                                  current === snippet.id ? null : snippet.id,
+                                )
+                              }
+                              aria-haspopup="dialog"
+                              aria-expanded={disableOpen}
+                              aria-label={t(
+                                "settings.snippets.list.disableMenu.open",
+                                {
                                   trigger: snippet.trigger,
-                                  defaultValue:
-                                    "Disable phrase key: {{trigger}}",
-                                })
-                              : t("settings.snippets.list.enableAriaLabel", {
+                                  defaultValue: "Phrase key disable options",
+                                },
+                              )}
+                              title={t(
+                                "settings.snippets.list.disableMenu.open",
+                                {
                                   trigger: snippet.trigger,
-                                  defaultValue:
-                                    "Enable phrase key: {{trigger}}",
-                                })
-                          }
-                        />
-                        <ActionIconButton
-                          tone="danger"
-                          onClick={() => void handleDelete(snippet)}
-                          title={t("common.delete")}
-                          aria-label={t("common.delete")}
-                        >
-                          <Trash2 aria-hidden />
-                        </ActionIconButton>
-                      </div>
+                                  defaultValue: "Phrase key disable options",
+                                },
+                              )}
+                            >
+                              {snippetEnabled ? (
+                                <SlidersHorizontal
+                                  className="h-[18px] w-[18px]"
+                                  aria-hidden
+                                />
+                              ) : (
+                                <Ban
+                                  className="h-[18px] w-[18px]"
+                                  aria-hidden
+                                />
+                              )}
+                            </button>
+                            {disableOpen ? (
+                              <div
+                                ref={disablePopoverRef}
+                                role="dialog"
+                                aria-label={t(
+                                  "settings.snippets.list.disableMenu.title",
+                                  {
+                                    defaultValue: "Disable options",
+                                  },
+                                )}
+                                className="absolute right-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-3rem))] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-left shadow-[var(--shadow-lg)]"
+                              >
+                                <div className="mb-3 flex items-center justify-between gap-2">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                                    {t(
+                                      "settings.snippets.list.disableMenu.title",
+                                      {
+                                        defaultValue: "Disable options",
+                                      },
+                                    )}
+                                  </p>
+                                  <ActionIconButton
+                                    type="button"
+                                    onClick={() => setOpenDisableId(null)}
+                                    aria-label={t("common.close", {
+                                      defaultValue: "Close",
+                                    })}
+                                    title={t("common.close", {
+                                      defaultValue: "Close",
+                                    })}
+                                  >
+                                    <X aria-hidden />
+                                  </ActionIconButton>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                                  onClick={() =>
+                                    void handleToggle(
+                                      snippet.id,
+                                      !snippetEnabled,
+                                    )
+                                  }
+                                >
+                                  <span>
+                                    {snippetEnabled
+                                      ? t(
+                                          "settings.snippets.list.disableMenu.disable",
+                                          {
+                                            defaultValue: "Disable phrase key",
+                                          },
+                                        )
+                                      : t(
+                                          "settings.snippets.list.disableMenu.enable",
+                                          {
+                                            defaultValue: "Enable phrase key",
+                                          },
+                                        )}
+                                  </span>
+                                  <Ban
+                                    className="h-4 w-4 text-[var(--muted)]"
+                                    aria-hidden
+                                  />
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                          <ActionIconButton
+                            tone="danger"
+                            className={revealedActionClassName}
+                            onClick={() => {
+                              setOpenDisableId(null);
+                              setConfirmingDeleteId(snippet.id);
+                            }}
+                            title={t("common.delete")}
+                            aria-label={t(
+                              "settings.snippets.list.deleteConfirm",
+                              {
+                                trigger: snippet.trigger,
+                                defaultValue:
+                                  'Delete phrase key "{{trigger}}"?',
+                              },
+                            )}
+                          >
+                            <Trash2 aria-hidden />
+                          </ActionIconButton>
+                        </>
+                      )}
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                        {t("settings.snippets.list.expansion")}
-                      </span>
-                      <span className="line-clamp-2 min-w-0 text-xs leading-relaxed text-[var(--muted)]">
-                        {snippet.expansion}
-                      </span>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
             );
@@ -588,59 +738,61 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   );
 
   const renderImportedKeys = () => (
-    <div
-      className={[
-        subtleCardClassName,
-        "flex flex-col items-center justify-center gap-3 border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150",
-        isImportDragOver
-          ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
-          : "",
-      ].join(" ")}
-      style={{ minHeight: 220 }}
-      onDragEnter={(event) => {
-        event.preventDefault();
-        setIsImportDragOver(true);
-      }}
-      onDragOver={(event) => {
-        event.preventDefault();
-        setIsImportDragOver(true);
-      }}
-      onDragLeave={(event) => {
-        event.preventDefault();
-        setIsImportDragOver(false);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        setIsImportDragOver(false);
-        void handleDroppedImport(event.dataTransfer.files?.[0]);
-      }}
-    >
+    <div className={[subtleCardClassName, "space-y-3"].join(" ")}>
       <div
-        className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
-        aria-hidden="true"
+        className={[
+          phraseKeysEmptySurfaceClassName,
+          "gap-3 transition-[border-color,background-color,box-shadow] duration-150",
+          isImportDragOver
+            ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
+            : "",
+        ].join(" ")}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          setIsImportDragOver(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsImportDragOver(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsImportDragOver(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsImportDragOver(false);
+          void handleDroppedImport(event.dataTransfer.files?.[0]);
+        }}
       >
-        {isImportDragOver ? <Upload size={22} /> : <FileJson size={22} />}
-      </div>
-      <div className="space-y-1">
-        <div className="text-sm font-medium text-[var(--text)]">
-          {t("settings.snippets.list.importDropHint", {
-            defaultValue: "Drag & drop a phrase keys JSON file here",
+        <div
+          className="flex size-11 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+          aria-hidden="true"
+        >
+          {isImportDragOver ? <Upload size={20} /> : <FileJson size={20} />}
+        </div>
+        <div className="space-y-1">
+          <div className="text-sm font-semibold text-[var(--text)]">
+            {t("settings.snippets.list.importDropHint", {
+              defaultValue: "Drag & drop a phrase keys JSON file here",
+            })}
+          </div>
+          <div className="text-xs text-[var(--muted)]">
+            {t("dictate.fileTranscription.orLabel", { defaultValue: "or" })}
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={handleImport}
+          disabled={snippetsUpdating}
+        >
+          {t("settings.snippets.list.pickImportFile", {
+            defaultValue: "Pick JSON file",
           })}
-        </div>
-        <div className="text-xs text-[var(--muted)]">
-          {t("dictate.fileTranscription.orLabel", { defaultValue: "or" })}
-        </div>
+        </Button>
       </div>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={handleImport}
-        disabled={snippetsUpdating}
-      >
-        {t("settings.snippets.list.pickImportFile", {
-          defaultValue: "Pick JSON file",
-        })}
-      </Button>
       {importMessage ? (
         <div className="text-xs font-medium text-[var(--accent)]" role="status">
           {importMessage}

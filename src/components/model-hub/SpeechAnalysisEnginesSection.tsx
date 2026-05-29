@@ -624,12 +624,13 @@ const SpeechAnalysisEnginesSection: React.FC<
   const clearHfToken = useCallback(async () => {
     if (savingHfToken) return;
     if (
-      !confirmDestructiveAction(
+      !(await confirmDestructiveAction(
         t("modelHub.analysis.hfAccess.clearTokenConfirm", {
           defaultValue:
             "Clear the saved Hugging Face token from Vox Jot? Gated model downloads will need a token again.",
         }),
-      )
+        { okLabel: t("common.clear", { defaultValue: "Clear" }) },
+      ))
     ) {
       return;
     }

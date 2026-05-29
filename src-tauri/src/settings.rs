@@ -1,5 +1,7 @@
 use crate::portable;
-use crate::post_processing::{DictionaryEntry, PostProcessMode, ToneDefinition, WriteRule};
+use crate::post_processing::{
+    DictionaryEntry, PostProcessCleanupLevel, PostProcessMode, ToneDefinition, WriteRule,
+};
 use crate::secret_store;
 use crate::snippets::Snippet;
 use log::{debug, error, warn};
@@ -314,6 +316,7 @@ impl Default for PasteMethod {
 }
 
 impl ModelUnloadTimeout {
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn to_minutes(self) -> Option<u64> {
         match self {
             ModelUnloadTimeout::Never => None,
@@ -327,6 +330,7 @@ impl ModelUnloadTimeout {
         }
     }
 
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn to_seconds(self) -> Option<u64> {
         match self {
             ModelUnloadTimeout::Never => None,
@@ -757,6 +761,8 @@ pub struct AppSettings {
     pub screen_context_stale_threshold_ms: u32,
     #[serde(default = "default_post_process_mode")]
     pub post_process_mode: PostProcessMode,
+    #[serde(default = "default_post_process_cleanup_level")]
+    pub post_process_cleanup_level: PostProcessCleanupLevel,
     #[serde(default = "default_post_process_provider_id")]
     pub post_process_provider_id: String,
     #[serde(default = "default_post_process_providers")]
@@ -1148,6 +1154,10 @@ fn default_screen_context_idle_threshold_ms() -> u32 {
 
 fn default_post_process_mode() -> PostProcessMode {
     PostProcessMode::Literal
+}
+
+fn default_post_process_cleanup_level() -> PostProcessCleanupLevel {
+    PostProcessCleanupLevel::Light
 }
 
 fn default_max_rewrite_strength() -> u8 {
@@ -2043,6 +2053,7 @@ pub fn get_default_settings() -> AppSettings {
         screen_context_token_budget: default_screen_context_token_budget(),
         screen_context_stale_threshold_ms: default_screen_context_stale_threshold_ms(),
         post_process_mode: default_post_process_mode(),
+        post_process_cleanup_level: default_post_process_cleanup_level(),
         post_process_provider_id: default_post_process_provider_id(),
         post_process_providers: default_post_process_providers(),
         post_process_api_keys: default_post_process_api_keys(),

@@ -17,6 +17,7 @@ import type {
   LLMPrompt,
   ModelInfo,
   PasteMethod,
+  PostProcessCleanupLevel,
   ToneDefinition,
   WriteRuleOverrides,
 } from "@/bindings";
@@ -28,6 +29,7 @@ export type OverrideKey =
   | "translate_to_english"
   | "tone_id"
   | "post_process_prompt_id"
+  | "cleanup_level"
   | "force_post_process"
   | "auto_submit"
   | "paste_method"
@@ -48,6 +50,8 @@ export interface OverrideSpec {
   label: string;
   /** Short hint shown next to the editor when active. */
   description?: string;
+  /** Existing legacy overrides may render, but not every field should be addable. */
+  allowAdd?: boolean;
   isActive: (overrides: WriteRuleOverrides) => boolean;
   /** Human-readable label for the *current* value of this override. */
   currentValueLabel: (
@@ -212,10 +216,37 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     },
   },
   {
+    key: "cleanup_level",
+    group: "refine",
+    label: "Cleanup level",
+    description: "Choose how much Vox Jot can edit what you said.",
+    isActive: (o) => Boolean(o.cleanup_level),
+    currentValueLabel: (o) => cleanupLevelLabel(o.cleanup_level),
+    options: () => [
+      { value: "raw", label: "Raw" },
+      { value: "light", label: "Light" },
+      { value: "medium", label: "Medium" },
+      { value: "high", label: "High" },
+    ],
+    readValue: (o) => o.cleanup_level ?? "",
+    applyValue: (o, value) => ({
+      ...o,
+      cleanup_level: (value || null) as PostProcessCleanupLevel | null,
+      force_post_process: null,
+    }),
+    reset: (o) => ({ ...o, cleanup_level: null }),
+    defaultValueWhenAdded: (o) => ({
+      ...o,
+      cleanup_level: "medium",
+      force_post_process: null,
+    }),
+  },
+  {
     key: "force_post_process",
     group: "refine",
     label: "Post-processing",
     description: "Force AI post-processing on or off when this mode matches.",
+    allowAdd: false,
     isActive: (o) => typeof o.force_post_process === "boolean",
     currentValueLabel: (o) =>
       o.force_post_process
@@ -305,6 +336,21 @@ export const OVERRIDE_REGISTRY: OverrideSpec[] = [
     defaultValueWhenAdded: (o) => ({ ...o, mute_while_recording: true }),
   },
 ];
+
+function cleanupLevelLabel(level?: PostProcessCleanupLevel | null): string {
+  switch (level) {
+    case "raw":
+      return "Raw";
+    case "light":
+      return "Light";
+    case "medium":
+      return "Medium";
+    case "high":
+      return "High";
+    default:
+      return "";
+  }
+}
 
 export const GROUP_LABELS: Record<OverrideGroup, string> = {
   speech: "Speech",

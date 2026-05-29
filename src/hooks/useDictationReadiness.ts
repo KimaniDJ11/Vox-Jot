@@ -98,6 +98,7 @@ export function useDictationReadiness(): DictationReadiness {
     const clipboardOnlyEnabled =
       pasteMethod === "none" && clipboardHandling === "copy_to_clipboard";
     const postProcessingEnabled = settings?.post_process_enabled ?? false;
+    const cleanupLevel = settings?.post_process_cleanup_level ?? "light";
     const postProvider = settings?.post_process_provider_id ?? "";
     const postKeyReady = postProvider
       ? (settings?.post_process_api_key_status?.[postProvider] ?? true)
@@ -176,12 +177,15 @@ export function useDictationReadiness(): DictationReadiness {
       {
         id: "post_processing",
         label: t("appSections.readiness.gates.postProcessing.label"),
-        detail: postProcessingEnabled
+        detail: postProcessingEnabled && cleanupLevel !== "raw"
           ? postKeyReady
             ? t("appSections.readiness.gates.postProcessing.ready")
             : t("appSections.readiness.gates.postProcessing.missingCredentials")
           : t("appSections.readiness.gates.postProcessing.off"),
-        state: postProcessingEnabled && !postKeyReady ? "warning" : "ready",
+        state:
+          postProcessingEnabled && cleanupLevel !== "raw" && !postKeyReady
+            ? "warning"
+            : "ready",
       },
       {
         id: "screen_context",

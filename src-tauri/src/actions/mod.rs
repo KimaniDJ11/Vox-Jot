@@ -990,10 +990,17 @@ impl ShortcutAction for TranscribeAction {
                 // A rule may force post-processing on/off regardless of which
                 // shortcut the user pressed. This shapes the action, not the
                 // settings, so we override the local `post_process` flag.
-                let post_process = resolved_rule
+                let post_process = if let Some(cleanup_level) = resolved_rule
                     .as_ref()
-                    .and_then(|rule| rule.overrides.force_post_process)
-                    .unwrap_or(post_process);
+                    .and_then(|rule| rule.overrides.cleanup_level)
+                {
+                    cleanup_level.should_run()
+                } else {
+                    resolved_rule
+                        .as_ref()
+                        .and_then(|rule| rule.overrides.force_post_process)
+                        .unwrap_or(post_process)
+                };
 
                 let transcription_result = {
                     let tm_for_transcription = Arc::clone(&tm);
@@ -1059,6 +1066,7 @@ impl ShortcutAction for TranscribeAction {
                             // Uses final_text which may already have Chinese conversion applied
                             let should_post_process = post_process
                                 && effective_settings.post_process_enabled
+                                && effective_settings.post_process_cleanup_level.should_run()
                                 && !rewrite_selection;
                             // Always capture app context — needed for correction tracking
                             // and field snapshots, not just post-processing.
@@ -1919,7 +1927,7 @@ mod tests {
         should_force_conservative_rewrite, ModelPromptProfile, PostProcessPass,
     };
     use crate::post_processing::{
-        ActiveAppContext, DictionaryEntry, PostProcessMode, WriteRule, WriteRuleMatchers,
+        ActiveAppContext, DictionaryEntry, PostProcessCleanupLevel, WriteRule, WriteRuleMatchers,
         WriteRuleOverrides,
     };
     use crate::settings::{get_default_settings, AutoSubmitKey};
@@ -1927,18 +1935,18 @@ mod tests {
     #[test]
     fn apple_prompt_uses_selected_mode_and_strength() {
         let mut settings = get_default_settings();
-        settings.post_process_mode = PostProcessMode::Intent;
-        settings.max_rewrite_strength = 2;
+        settings.post_process_cleanup_level = PostProcessCleanupLevel::High;
 
         let prompt = build_apple_system_prompt(
             &settings,
             None,
             false,
             PostProcessPass::Pass2,
-            settings.max_rewrite_strength,
+            settings.post_process_cleanup_level.rewrite_strength(),
             false,
         );
 
+        assert!(prompt.contains("Cleanup level: high"));
         assert!(prompt.contains("Active mode: intent"));
         assert!(prompt.contains("Rewrite strength: 2"));
         assert!(prompt.contains("Return only the final text."));
@@ -1946,7 +1954,7 @@ mod tests {
         assert!(prompt.contains("Make the smallest possible change"));
         assert!(prompt.contains("Do not force bullets, numbering, or heavy formatting"));
         assert!(prompt.contains("verification requests"));
-        assert!(prompt.contains("lightly clean for readability"));
+        assert!(prompt.contains("clean for readability"));
     }
 
     #[test]

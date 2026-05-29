@@ -324,6 +324,44 @@ describe("CreateVoiceModelHubPicker", () => {
     await view.cleanup();
   });
 
+  it("shows expression and prompt chips on voice hub cards", async () => {
+    const expressiveModel = model({
+      capabilities: {
+        ...model().capabilities,
+        supports_instruction_prompt: true,
+        supports_inline_tags: true,
+      },
+    });
+    const savedPreset = preset();
+    const view = await render({
+      models: [expressiveModel],
+      orderedModels: [expressiveModel],
+      speech: {
+        ...speech,
+        presets: [savedPreset],
+      } as unknown as ListenSpeechState,
+    });
+
+    await flushPickerEffects();
+
+    expect(document.body.textContent).toContain("Expressions");
+    expect(document.body.textContent).toContain("Prompts");
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "My Voices",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Warm narrator");
+    expect(document.body.textContent).toContain("Expressions");
+    expect(document.body.textContent).toContain("Prompts");
+
+    await view.cleanup();
+  });
+
   it("filters voices by provider", async () => {
     const firstModel = model();
     const secondModel = model({

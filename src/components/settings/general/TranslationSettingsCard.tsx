@@ -7,7 +7,6 @@ import {
   Cpu,
   Eye,
   FileText,
-  Globe2,
   HardDrive,
   Languages,
   NotebookText,
@@ -517,7 +516,7 @@ export const TranslationSettingsCard: React.FC = () => {
           <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Globe2 className="h-5 w-5" aria-hidden />
+                <Languages className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--text)]">

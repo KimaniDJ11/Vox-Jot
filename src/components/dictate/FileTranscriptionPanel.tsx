@@ -423,7 +423,7 @@ export const FileTranscriptionPanel: React.FC = () => {
 
             <div
               className={[
-                "flex flex-col items-center justify-center gap-1.5 rounded-xl py-8 text-center transition-all duration-200",
+                "mt-4 flex flex-col items-center justify-center gap-1.5 rounded-xl py-8 text-center transition-all duration-200",
                 isDragOver
                   ? "bg-[var(--accent-soft,transparent)] shadow-[inset_0_0_0_2px_var(--accent)]"
                   : "bg-[var(--surface-muted,var(--bg))]",
@@ -1248,12 +1248,6 @@ const WatchedFoldersGroup: React.FC<{
               defaultValue: "No watched folders yet.",
             })}
           </div>
-          <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
-            {t("dictate.watchFolders.emptyDescription", {
-              defaultValue:
-                "Add a folder to transcribe audio files automatically when you drop them in.",
-            })}
-          </p>
           <p className="mt-3 max-w-md text-xs leading-5 text-[var(--muted)]">
             {t("dictate.watchFolders.emptyExample", {
               defaultValue:

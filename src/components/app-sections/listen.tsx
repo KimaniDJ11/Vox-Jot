@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   CreateVoicesSection as CreateVoicesPanel,
   MyVoicesSection as MyVoicesPanel,
+  VoiceDesignSection as VoiceDesignPanel,
   ListenVoiceCloningSection as VoiceCloningPanel,
   ListenVoiceChangerSection as VoiceChangerPanel,
 } from "@/components/settings/general/ListenSections";
@@ -45,6 +46,28 @@ export const ListenCreateVoicesSection: React.FC = () => {
         descriptionOnlyGap="controls"
       >
         <CreateVoicesPanel showGroupTitle={false} />
+      </SettingsGroup>
+    </div>
+  );
+};
+
+export const ListenVoiceDesignSection: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-6">
+      <SettingsGroup
+        noCard
+        title={t("listen.voiceDesign.title", {
+          defaultValue: "Voice Design",
+        })}
+        description={t("listen.voiceDesign.description", {
+          defaultValue:
+            "Tune saved voices and browse voice presets without generating speech audio.",
+        })}
+        showTitle={false}
+        descriptionOnlyGap="controls"
+      >
+        <VoiceDesignPanel showGroupTitle={false} />
       </SettingsGroup>
     </div>
   );

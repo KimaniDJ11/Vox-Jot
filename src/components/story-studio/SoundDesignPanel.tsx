@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
   AlertCircle,
+  Check,
   Loader2,
   FileMusic,
   Pencil,
@@ -740,8 +741,15 @@ const ProjectSoundRow: React.FC<{
   const [isBusy, setIsBusy] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(sound.title);
   const playbackRunIdRef = useRef(0);
   const expectedStopRef = useRef(false);
+
+  useEffect(() => {
+    setRenameDraft(sound.title);
+  }, [isRenaming, sound.title]);
 
   useEffect(() => {
     const stopIfDifferentSoundStarted = (event: Event) => {
@@ -811,34 +819,35 @@ const ProjectSoundRow: React.FC<{
   }, [isLoadingPreview, isPlaying, sound.id, sound.output_path]);
 
   const rename = useCallback(async () => {
-    const nextTitle = window.prompt("Rename sound", sound.title)?.trim();
+    const nextTitle = renameDraft.trim();
     if (!nextTitle || nextTitle === sound.title) return;
     setIsBusy(true);
     try {
       await invoke("rename_story_audio", { id: sound.id, title: nextTitle });
       onSoundsChanged();
+      setIsRenaming(false);
     } catch (error) {
       console.error("Failed to rename project sound:", error);
       toast.error("Could not rename sound.");
     } finally {
       setIsBusy(false);
     }
-  }, [onSoundsChanged, sound.id, sound.title]);
+  }, [onSoundsChanged, renameDraft, sound.id, sound.title]);
 
   const remove = useCallback(async () => {
-    if (!window.confirm(`Delete "${sound.title}" from this project?`)) return;
     setIsBusy(true);
     try {
       await invoke("delete_story_audio", { id: sound.id });
       onSoundsChanged();
       toast.message("Sound deleted.");
+      setShowDeleteConfirm(false);
     } catch (error) {
       console.error("Failed to delete project sound:", error);
       toast.error("Could not delete sound.");
     } finally {
       setIsBusy(false);
     }
-  }, [onSoundsChanged, sound.id, sound.title]);
+  }, [onSoundsChanged, sound.id]);
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
@@ -861,32 +870,114 @@ const ProjectSoundRow: React.FC<{
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-[var(--text)]">
-          {sound.title}
-        </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--muted)]">
-          <span>{soundModeLabel(sound.sound_mode ?? "sfx", t)}</span>
-          <span aria-hidden>·</span>
-          <span>{formatDuration(sound.duration_ms)}</span>
-        </p>
+        {isRenaming ? (
+          <Input
+            autoFocus
+            value={renameDraft}
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void rename();
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                setRenameDraft(sound.title);
+                setIsRenaming(false);
+              }
+            }}
+            disabled={isBusy}
+            aria-label={t("storyStudio.soundDesign.renameSound", {
+              defaultValue: "Rename sound",
+            })}
+            className="h-9 w-full"
+          />
+        ) : (
+          <p className="truncate text-sm font-semibold text-[var(--text)]">
+            {sound.title}
+          </p>
+        )}
+        {!isRenaming ? (
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--muted)]">
+            <span>{soundModeLabel(sound.sound_mode ?? "sfx", t)}</span>
+            <span aria-hidden>·</span>
+            <span>{formatDuration(sound.duration_ms)}</span>
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <ActionIconButton
-          onClick={() => void rename()}
-          disabled={isBusy}
-          aria-label="Rename sound"
-          title="Rename sound"
-        >
-          <Pencil aria-hidden />
-        </ActionIconButton>
-        <ActionIconButton
-          tone="danger"
-          onClick={() => void remove()}
-          disabled={isBusy}
-          aria-label="Delete sound"
-        >
-          <Trash2 aria-hidden />
-        </ActionIconButton>
+        {isRenaming ? (
+          <>
+            <ActionIconButton
+              tone="confirm"
+              onClick={() => void rename()}
+              disabled={isBusy || !renameDraft.trim()}
+              aria-label={t("common.save", { defaultValue: "Save" })}
+              title={t("common.save", { defaultValue: "Save" })}
+            >
+              <Check aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
+              onClick={() => {
+                setRenameDraft(sound.title);
+                setIsRenaming(false);
+              }}
+              disabled={isBusy}
+              aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+              title={t("common.cancel", { defaultValue: "Cancel" })}
+            >
+              <X aria-hidden />
+            </ActionIconButton>
+          </>
+        ) : (
+          <ActionIconButton
+            onClick={() => {
+              setShowDeleteConfirm(false);
+              setIsRenaming(true);
+            }}
+            disabled={isBusy}
+            aria-label={t("storyStudio.soundDesign.renameSound", {
+              defaultValue: "Rename sound",
+            })}
+            title={t("storyStudio.soundDesign.renameSound", {
+              defaultValue: "Rename sound",
+            })}
+          >
+            <Pencil aria-hidden />
+          </ActionIconButton>
+        )}
+        {!isRenaming && showDeleteConfirm ? (
+          <>
+            <ActionIconButton
+              tone="confirm"
+              onClick={() => void remove()}
+              disabled={isBusy}
+              aria-label={t("storyStudio.soundDesign.deleteConfirm", {
+                title: sound.title,
+                defaultValue: 'Delete "{{title}}" from this project?',
+              })}
+              title={t("common.delete", { defaultValue: "Delete" })}
+            >
+              <Trash2 aria-hidden />
+            </ActionIconButton>
+            <ActionIconButton
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isBusy}
+              aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+              title={t("common.cancel", { defaultValue: "Cancel" })}
+            >
+              <X aria-hidden />
+            </ActionIconButton>
+          </>
+        ) : !isRenaming ? (
+          <ActionIconButton
+            tone="danger"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isBusy}
+            aria-label="Delete sound"
+          >
+            <Trash2 aria-hidden />
+          </ActionIconButton>
+        ) : null}
       </div>
     </div>
   );

@@ -3,11 +3,15 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowUpDown,
   Check,
+  Languages,
   Loader2,
+  MapPin,
   Mars,
   Play,
   Search,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
   Venus,
@@ -15,8 +19,6 @@ import {
 } from "lucide-react";
 import { commands, type VoiceInfo } from "@/bindings";
 import ModelListControls from "@/components/model-hub/ModelListControls";
-import { ActionIconButton } from "@/components/ui/ActionIconButton";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
@@ -25,6 +27,7 @@ import type {
   CatalogModelDescriptor,
   ProviderDescriptor,
 } from "@/lib/modelPlatform";
+import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import { modal } from "@/motion/springs";
 import {
   buildCreateVoiceHubRows,
@@ -42,8 +45,14 @@ import {
   ttsPreviewSampleForLocale,
 } from "../utils";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
+import { VoiceCapabilityChips } from "../VoiceCapabilityChips";
+import {
+  voiceCapabilityFlagsForPreset,
+  type VoiceCapabilityFlags,
+} from "../voiceCapabilities";
 
 type PickerView = "voices" | "my-voices" | "models";
+type CreateVoiceModelHubMode = "full" | "voice-design";
 
 const VOICE_INVENTORY_LOAD_CONCURRENCY = 2;
 const PREVIEW_RUNNING_DELAY_MS = 1500;
@@ -77,6 +86,7 @@ interface CreateVoiceModelHubPickerProps {
   onSortModeChange: (value: ModelSortMode) => void;
   orderedModels: CatalogModelDescriptor[];
   filteredModelCount: number;
+  mode?: CreateVoiceModelHubMode;
   onSelectVoice: (selection: {
     model: CatalogModelDescriptor;
     voiceId: string | null;
@@ -94,8 +104,9 @@ const VoiceFilterSelect: React.FC<{
   onChange: (value: string) => void;
   label: string;
   ariaLabel: string;
+  icon: React.ReactNode;
   show?: boolean;
-}> = ({ value, options, onChange, label, ariaLabel, show = true }) => {
+}> = ({ value, options, onChange, label, ariaLabel, icon, show = true }) => {
   if (!show) return null;
   const active = value !== "all";
   const optionsWithCurrent = options.some((option) => option.value === value)
@@ -104,7 +115,7 @@ const VoiceFilterSelect: React.FC<{
   return (
     <label
       className={[
-        "relative inline-flex h-10 shrink-0 items-center rounded-full border px-3 text-sm font-semibold shadow-[var(--shadow-sm)] transition-colors",
+        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-[var(--shadow-sm)] transition-colors",
         active
           ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
           : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]",
@@ -112,7 +123,7 @@ const VoiceFilterSelect: React.FC<{
       aria-label={ariaLabel}
       title={label}
     >
-      <span className="max-w-[9rem] truncate">{label}</span>
+      <span aria-hidden>{icon}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -218,6 +229,7 @@ const VoiceRow: React.FC<{
               <span className="truncate text-sm font-semibold text-[var(--text)]">
                 {row.voiceLabel}
               </span>
+              <VoiceCapabilityChips capabilities={row.capabilities} />
               {row.gender === "female" ? (
                 <Venus
                   className="h-4 w-4 shrink-0 text-[var(--voice)]"
@@ -267,6 +279,7 @@ const MyVoiceRow: React.FC<{
   preset: TtsVoicePreset;
   selected: boolean;
   disabled: boolean;
+  capabilities: VoiceCapabilityFlags;
   previewStatus: "idle" | "preparing" | "running";
   selectedLabel: string;
   cloneLabel: string;
@@ -282,6 +295,7 @@ const MyVoiceRow: React.FC<{
   preset,
   selected,
   disabled,
+  capabilities,
   previewStatus,
   selectedLabel,
   cloneLabel,
@@ -375,6 +389,7 @@ const MyVoiceRow: React.FC<{
             <span className="truncate text-sm font-semibold text-[var(--text)]">
               {preset.label}
             </span>
+            <VoiceCapabilityChips capabilities={capabilities} />
           </span>
           <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
             {description}
@@ -432,12 +447,14 @@ export const CreateVoiceModelHubPicker: React.FC<
   onSortModeChange,
   orderedModels,
   filteredModelCount,
+  mode = "full",
   onSelectVoice,
   selectedVoiceProfileId,
   onSelectPreset,
   onClose,
 }) => {
   const { t } = useTranslation();
+  const voiceDesignMode = mode === "voice-design";
   const [view, setView] = useState<PickerView>("voices");
   const [selectedModelFilterKey, setSelectedModelFilterKey] = useState<
     string | null
@@ -468,6 +485,12 @@ export const CreateVoiceModelHubPicker: React.FC<
       setLoadingVoiceKeys(new Set());
     }
   }, [open]);
+
+  useEffect(() => {
+    if (voiceDesignMode && view !== "voices") {
+      setView("voices");
+    }
+  }, [view, voiceDesignMode]);
 
   useEffect(() => {
     setPreviewRunning(false);
@@ -726,33 +749,61 @@ export const CreateVoiceModelHubPicker: React.FC<
     t("listen.createVoices.voiceAccent", {
       defaultValue: "Accent",
     });
+  const selectedVoiceProviderLabel =
+    providerOptions.find((option) => option.value === providerFilter)?.label ??
+    t("listen.createVoices.providerFilter", {
+      defaultValue: "Provider",
+    });
   const isSelectedVoiceRow = (row: CreateVoiceHubVoiceRow) =>
     row.providerId === selectedProviderId &&
     row.modelId === selectedModelId &&
     (row.voiceId ?? "__auto__") === selectedVoiceId;
-  const filteredVoiceRows = orderCreateVoiceHubRows(
-    voiceRows.filter((row) => {
-      if (
-        selectedModelFilterKey &&
-        `${row.providerId}::${row.modelId}` !== selectedModelFilterKey
-      ) {
-        return false;
-      }
-      if (providerFilter !== "all" && row.providerId !== providerFilter) {
-        return false;
-      }
-      if (languageFilter !== "all" && row.language !== languageFilter) {
-        return false;
-      }
-      if (voiceGenderFilter !== "all" && row.gender !== voiceGenderFilter) {
-        return false;
-      }
-      if (voiceAccentFilter !== "all" && row.accent !== voiceAccentFilter) {
-        return false;
-      }
-      return !normalizedQuery || row.searchText.includes(normalizedQuery);
-    }),
-  ).sort(
+  const filteredVoiceRows = voiceRows.filter((row) => {
+    if (
+      selectedModelFilterKey &&
+      `${row.providerId}::${row.modelId}` !== selectedModelFilterKey
+    ) {
+      return false;
+    }
+    if (providerFilter !== "all" && row.providerId !== providerFilter) {
+      return false;
+    }
+    if (languageFilter !== "all" && row.language !== languageFilter) {
+      return false;
+    }
+    if (voiceGenderFilter !== "all" && row.gender !== voiceGenderFilter) {
+      return false;
+    }
+    if (voiceAccentFilter !== "all" && row.accent !== voiceAccentFilter) {
+      return false;
+    }
+    return !normalizedQuery || row.searchText.includes(normalizedQuery);
+  });
+  const orderedVoiceRows =
+    sortMode === "alphabetical"
+      ? [...filteredVoiceRows].sort(
+          (left, right) =>
+            left.voiceLabel.localeCompare(right.voiceLabel) ||
+            left.modelLabel.localeCompare(right.modelLabel) ||
+            left.id.localeCompare(right.id),
+        )
+      : sortMode === "test_score"
+        ? [...filteredVoiceRows].sort((left, right) => {
+            const leftRank =
+              getTtsEvaluationResult(left.modelId)?.rank ??
+              Number.MAX_SAFE_INTEGER;
+            const rightRank =
+              getTtsEvaluationResult(right.modelId)?.rank ??
+              Number.MAX_SAFE_INTEGER;
+            return (
+              leftRank - rightRank ||
+              left.voiceLabel.localeCompare(right.voiceLabel) ||
+              left.modelLabel.localeCompare(right.modelLabel) ||
+              left.id.localeCompare(right.id)
+            );
+          })
+        : orderCreateVoiceHubRows(filteredVoiceRows);
+  const displayedVoiceRows = orderedVoiceRows.sort(
     (left, right) =>
       Number(isSelectedVoiceRow(right)) - Number(isSelectedVoiceRow(left)),
   );
@@ -800,6 +851,18 @@ export const CreateVoiceModelHubPicker: React.FC<
       return Number(rightSelected) - Number(leftSelected);
     });
   }, [orderedModels, selectedModelFilterKey]);
+  const dialogLabel =
+    view === "voices"
+      ? t("listen.createVoices.voices", {
+          defaultValue: "Voices",
+        })
+      : view === "my-voices"
+        ? t("listen.createVoices.myVoices", {
+            defaultValue: "My Voices",
+          })
+        : t("listen.createVoices.models", {
+            defaultValue: "Models",
+          });
 
   return createPortal(
     <AnimatePresence>
@@ -820,186 +883,110 @@ export const CreateVoiceModelHubPicker: React.FC<
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="create-voice-model-title"
+            aria-label={dialogLabel}
             className="relative flex h-[min(88vh,920px)] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !event.defaultPrevented) {
+                onClose();
+              }
+            }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <h3
-                  id="create-voice-model-title"
-                  className="truncate text-sm font-semibold text-[var(--text)]"
-                >
-                  {view === "voices"
-                    ? t("listen.createVoices.voices", {
-                        defaultValue: "Voices",
-                      })
-                    : view === "my-voices"
-                      ? t("listen.createVoices.myVoices", {
-                          defaultValue: "My Voices",
-                        })
-                      : t("listen.createVoices.models", {
-                          defaultValue: "Models",
-                        })}
-                </h3>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {view === "voices"
-                    ? t("listen.createVoices.draftVoicePickerDetail", {
-                        defaultValue:
-                          "Choose a voice for this draft without changing the active app voice.",
-                      })
-                    : view === "my-voices"
-                      ? t("listen.createVoices.draftMyVoicesPickerDetail", {
-                          defaultValue:
-                            "Reuse a saved tuned voice for this draft.",
-                        })
-                      : t("listen.createVoices.draftModelPickerDetail", {
-                          defaultValue:
-                            "Choose a model to filter available voices for this draft.",
-                        })}
-                </p>
-              </div>
-              <ActionIconButton
-                type="button"
-                onClick={onClose}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </ActionIconButton>
-            </div>
-
             <div className="space-y-3 border-b border-[var(--border)] px-4 py-3">
-              <label
-                className="relative flex h-10 min-w-[220px] flex-1 items-center"
-                aria-label={
-                  view === "voices"
-                    ? t("listen.createVoices.searchVoicesAriaLabel", {
-                        defaultValue: "Search voices",
-                      })
-                    : view === "my-voices"
-                      ? t("listen.createVoices.searchMyVoicesAriaLabel", {
-                          defaultValue: "Search my voices",
-                        })
-                      : t("listen.createVoices.searchModelsAriaLabel", {
-                          defaultValue: "Search voice models",
-                        })
-                }
-              >
-                <Search
-                  className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                  aria-hidden
-                />
-                <Input
-                  type="text"
-                  role="searchbox"
-                  autoComplete="off"
-                  value={searchQuery}
-                  onChange={(event) => onSearchQueryChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape" && searchQuery) {
-                      onSearchQueryChange("");
-                      event.preventDefault();
-                    }
-                  }}
-                  placeholder={
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className="relative flex h-10 min-w-[220px] flex-1 items-center"
+                  aria-label={
                     view === "voices"
-                      ? t("listen.createVoices.searchVoices", {
+                      ? t("listen.createVoices.searchVoicesAriaLabel", {
                           defaultValue: "Search voices",
                         })
                       : view === "my-voices"
-                        ? t("listen.createVoices.searchMyVoices", {
+                        ? t("listen.createVoices.searchMyVoicesAriaLabel", {
                             defaultValue: "Search my voices",
                           })
-                        : t("listen.createVoices.searchModels", {
-                            defaultValue: "Search TTS models",
+                        : t("listen.createVoices.searchModelsAriaLabel", {
+                            defaultValue: "Search voice models",
                           })
                   }
-                  className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                />
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    onClick={() => onSearchQueryChange("")}
-                    aria-label={
+                >
+                  <Search
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <Input
+                    type="text"
+                    role="searchbox"
+                    autoComplete="off"
+                    value={searchQuery}
+                    onChange={(event) =>
+                      onSearchQueryChange(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && searchQuery) {
+                        onSearchQueryChange("");
+                        event.preventDefault();
+                      }
+                    }}
+                    placeholder={
                       view === "voices"
-                        ? t("listen.createVoices.clearVoiceSearch", {
-                            defaultValue: "Clear voice search",
+                        ? t("listen.createVoices.searchVoices", {
+                            defaultValue: "Search voices",
                           })
                         : view === "my-voices"
-                          ? t("listen.createVoices.clearMyVoicesSearch", {
-                              defaultValue: "Clear my voices search",
+                          ? t("listen.createVoices.searchMyVoices", {
+                              defaultValue: "Search my voices",
                             })
-                          : t("listen.createVoices.clearModelSearch", {
-                              defaultValue: "Clear model search",
+                          : t("listen.createVoices.searchModels", {
+                              defaultValue: "Search TTS models",
                             })
                     }
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                ) : null}
-              </label>
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <SegmentedControl<PickerView>
-                  value={view}
-                  onChange={setView}
-                  layoutId="create-voice-model-hub-toggle"
-                  ariaLabel={t("listen.createVoices.modelHubView", {
-                    defaultValue: "Model hub view",
-                  })}
-                  items={[
-                    {
-                      value: "voices",
-                      label: t("listen.createVoices.voices", {
-                        defaultValue: "Voices",
-                      }),
-                    },
-                    {
-                      value: "my-voices",
-                      label: t("listen.createVoices.myVoices", {
-                        defaultValue: "My Voices",
-                      }),
-                    },
-                    {
-                      value: "models",
-                      label: t("listen.createVoices.models", {
-                        defaultValue: "Models",
-                      }),
-                    },
-                  ]}
-                />
-
-                {view === "models" ? (
-                  <ModelListControls
-                    provider={{
-                      value: providerFilter,
-                      options: providerOptions,
-                      onChange: onProviderFilterChange,
-                      label: selectedProviderLabel,
-                      show: providerOptions.length > 2,
-                    }}
-                    language={{
-                      value: languageFilter,
-                      options: languageOptions,
-                      onChange: onLanguageFilterChange,
-                      label: selectedLanguageLabel,
-                      show: true,
-                    }}
-                    sort={{
-                      value: sortMode,
-                      options: sortOptions,
-                      onChange: onSortModeChange,
-                      label: selectedSortLabel,
-                    }}
+                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
                   />
-                ) : view === "voices" ? (
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => onSearchQueryChange("")}
+                      aria-label={
+                        view === "voices"
+                          ? t("listen.createVoices.clearVoiceSearch", {
+                              defaultValue: "Clear voice search",
+                            })
+                          : view === "my-voices"
+                            ? t("listen.createVoices.clearMyVoicesSearch", {
+                                defaultValue: "Clear my voices search",
+                              })
+                            : t("listen.createVoices.clearModelSearch", {
+                                defaultValue: "Clear model search",
+                              })
+                      }
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                {view === "voices" ? (
+                  <>
+                    <VoiceFilterSelect
+                      value={providerFilter}
+                      options={providerOptions}
+                      onChange={onProviderFilterChange}
+                      label={selectedVoiceProviderLabel}
+                      ariaLabel={t(
+                        "listen.createVoices.filterVoicesByProvider",
+                        {
+                          label: selectedVoiceProviderLabel,
+                          defaultValue: "Filter voices by provider: {{label}}",
+                        },
+                      )}
+                      icon={<SlidersHorizontal className="h-4 w-4" />}
+                      show={providerOptions.length > 2}
+                    />
                     <VoiceFilterSelect
                       value={languageFilter}
                       options={voiceLanguageOptions}
@@ -1012,6 +999,7 @@ export const CreateVoiceModelHubPicker: React.FC<
                           defaultValue: "Filter voices by language: {{label}}",
                         },
                       )}
+                      icon={<Languages className="h-4 w-4" />}
                       show={voiceLanguageOptions.length > 1}
                     />
                     <VoiceFilterSelect
@@ -1023,6 +1011,7 @@ export const CreateVoiceModelHubPicker: React.FC<
                         label: selectedVoiceGenderLabel,
                         defaultValue: "Filter voices by gender: {{label}}",
                       })}
+                      icon={<UserRound className="h-4 w-4" />}
                       show={voiceGenderOptions.length > 1}
                     />
                     <VoiceFilterSelect
@@ -1034,11 +1023,83 @@ export const CreateVoiceModelHubPicker: React.FC<
                         label: selectedVoiceAccentLabel,
                         defaultValue: "Filter voices by accent: {{label}}",
                       })}
+                      icon={<MapPin className="h-4 w-4" />}
                       show={voiceAccentOptions.length > 1}
                     />
-                  </div>
+                    <VoiceFilterSelect
+                      value={sortMode}
+                      options={sortOptions}
+                      onChange={(value) =>
+                        onSortModeChange(value as ModelSortMode)
+                      }
+                      label={selectedSortLabel}
+                      ariaLabel={t("listen.createVoices.sortVoices", {
+                        label: selectedSortLabel,
+                        defaultValue: "Sort voices: {{label}}",
+                      })}
+                      icon={<ArrowUpDown className="h-4 w-4" />}
+                    />
+                  </>
                 ) : null}
               </div>
+
+              {!voiceDesignMode ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <SegmentedControl<PickerView>
+                    value={view}
+                    onChange={setView}
+                    layoutId="create-voice-model-hub-toggle"
+                    ariaLabel={t("listen.createVoices.modelHubView", {
+                      defaultValue: "Model hub view",
+                    })}
+                    items={[
+                      {
+                        value: "voices",
+                        label: t("listen.createVoices.voices", {
+                          defaultValue: "Voices",
+                        }),
+                      },
+                      {
+                        value: "my-voices",
+                        label: t("listen.createVoices.myVoices", {
+                          defaultValue: "My Voices",
+                        }),
+                      },
+                      {
+                        value: "models",
+                        label: t("listen.createVoices.models", {
+                          defaultValue: "Models",
+                        }),
+                      },
+                    ]}
+                  />
+
+                  {view === "models" ? (
+                    <ModelListControls
+                      provider={{
+                        value: providerFilter,
+                        options: providerOptions,
+                        onChange: onProviderFilterChange,
+                        label: selectedProviderLabel,
+                        show: providerOptions.length > 2,
+                      }}
+                      language={{
+                        value: languageFilter,
+                        options: languageOptions,
+                        onChange: onLanguageFilterChange,
+                        label: selectedLanguageLabel,
+                        show: true,
+                      }}
+                      sort={{
+                        value: sortMode,
+                        options: sortOptions,
+                        onChange: onSortModeChange,
+                        label: selectedSortLabel,
+                      }}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -1056,6 +1117,12 @@ export const CreateVoiceModelHubPicker: React.FC<
                           preset={preset}
                           selected={selected}
                           disabled={!modelAvailable || !speech.ttsEnabled}
+                          capabilities={voiceCapabilityFlagsForPreset(
+                            preset,
+                            modelByKey.get(
+                              `${preset.provider_id}::${preset.model_id}`,
+                            ),
+                          )}
                           previewStatus={
                             speech.previewingPresetId === preset.id
                               ? previewRunning
@@ -1181,9 +1248,9 @@ export const CreateVoiceModelHubPicker: React.FC<
                     </p>
                   </div>
                 )
-              ) : filteredVoiceRows.length > 0 ? (
+              ) : displayedVoiceRows.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {filteredVoiceRows.map((row) => {
+                  {displayedVoiceRows.map((row) => {
                     const model = modelByKey.get(
                       `${row.providerId}::${row.modelId}`,
                     );

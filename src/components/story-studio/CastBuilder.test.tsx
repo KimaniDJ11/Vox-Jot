@@ -2,12 +2,14 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 
+import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
+import type { CreateVoiceHubVoiceRow } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import { CastBuilder } from "./CastBuilder";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { defaultValue?: string }) => {
       const labels: Record<string, string> = {
         "storyStudio.cast.action": "Action",
         "storyStudio.cast.addCharacter": "Add Character",
@@ -23,7 +25,7 @@ vi.mock("react-i18next", () => ({
         "storyStudio.cast.title": "Cast",
         "storyStudio.cast.voicePreset": "Voice Preset",
       };
-      return labels[key] ?? key;
+      return labels[key] ?? options?.defaultValue ?? key;
     },
   }),
 }));
@@ -46,6 +48,73 @@ const preset = (patch: Partial<TtsVoicePreset> = {}): TtsVoicePreset => ({
     stability: 0.5,
     repetition_penalty: 1.2,
   },
+  ...patch,
+});
+
+const model = (
+  patch: Partial<CatalogModelDescriptor> = {},
+): CatalogModelDescriptor => ({
+  id: "openvoice",
+  provider_id: "openvoice",
+  domain: "tts",
+  source_kind: "runtime",
+  label: "OpenVoice",
+  description: "Test model",
+  installed: true,
+  selected: false,
+  active: false,
+  runnable: true,
+  downloadable: false,
+  source_label: "Test",
+  runtime: {
+    id: "test",
+    label: "Test",
+    engine_family: "test",
+    auto_routed: true,
+  },
+  license_label: null,
+  locale: "en-US",
+  supported_languages: ["en"],
+  readiness_status: "ready",
+  readiness_issues: [],
+  capabilities: {
+    downloadable: false,
+    loadable: true,
+    local_only: true,
+    supports_translation: false,
+    supports_streaming: false,
+    supports_voice_cloning: false,
+    supports_instruction_prompt: true,
+    supports_inline_tags: true,
+  },
+  delivery_support: {
+    expressiveness_mode: "unsupported",
+    advanced_controls: [],
+  },
+  ...patch,
+});
+
+const presetVoice = (
+  patch: Partial<CreateVoiceHubVoiceRow> = {},
+): CreateVoiceHubVoiceRow => ({
+  id: "openvoice::openvoice::nora",
+  providerId: "openvoice",
+  modelId: "openvoice",
+  modelLabel: "OpenVoice",
+  voiceId: "nora",
+  voiceLabel: "Nora",
+  locale: "en-US",
+  language: "en",
+  accent: "US",
+  countryFlag: "🇺🇸",
+  gender: "female",
+  description: "female voice preset for English (US), from OpenVoice.",
+  avatarGradient: "linear-gradient(135deg, #4f46e5, #ec4899)",
+  capabilities: {
+    supportsExpressions: true,
+    supportsPrompts: true,
+  },
+  searchText: "nora openvoice expressions prompts",
   ...patch,
 });
 
@@ -116,6 +185,55 @@ describe("CastBuilder", () => {
     expect(listbox?.parentElement).toBe(document.body);
     expect(view.container.contains(listbox)).toBe(false);
     expect(listbox?.textContent).toContain("Dia");
+
+    await view.cleanup();
+  });
+
+  it("shows expression and prompt chips in the Studio voice picker", async () => {
+    const view = await render(
+      <CastBuilder
+        cast={[
+          {
+            id: "narrator",
+            characterName: "Narrator",
+            presetId: "preset-bark",
+          },
+        ]}
+        presets={[preset()]}
+        presetVoices={[presetVoice()]}
+        ttsModels={[model()]}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+        onUpdate={vi.fn()}
+        onCreatePresetFromVoice={vi.fn()}
+      />,
+    );
+
+    const trigger = view.container.querySelector<HTMLButtonElement>(
+      'button[aria-haspopup="listbox"]',
+    );
+    expect(trigger).not.toBeNull();
+    trigger!.getBoundingClientRect = () =>
+      ({
+        bottom: 140,
+        height: 40,
+        left: 240,
+        right: 640,
+        top: 100,
+        width: 400,
+        x: 240,
+        y: 100,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    await act(async () => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const listbox = document.body.querySelector('[role="listbox"]');
+    expect(listbox?.textContent).toContain("Nora");
+    expect(listbox?.textContent).toContain("Expressions");
+    expect(listbox?.textContent).toContain("Prompts");
 
     await view.cleanup();
   });

@@ -1139,10 +1139,16 @@ export const CorrectionDictionaryView: React.FC<
           const disableOpen = openDisableKey === groupKey;
           const hasAppDisables = group.disabledBundleIds.length > 0;
           const isDisabled = !group.allActive || hasAppDisables;
-          const actionsVisible =
+          const rowActionsVisible =
             originalsOpen || disableOpen || confirmingDelete;
-          const actionClusterClassName = `inline-flex items-center gap-2 transition-opacity duration-150 ${
-            actionsVisible
+          const actionClusterClassName = "inline-flex items-center gap-2";
+          const revealedActionClassName = `transition-opacity duration-150 ${
+            rowActionsVisible
+              ? "opacity-100"
+              : "opacity-0 group-hover/dictionary-row:opacity-100 group-focus-within/dictionary-row:opacity-100"
+          }`;
+          const disableActionClassName = `transition-opacity duration-150 ${
+            isDisabled || rowActionsVisible
               ? "opacity-100"
               : "opacity-0 group-hover/dictionary-row:opacity-100 group-focus-within/dictionary-row:opacity-100"
           }`;
@@ -1220,6 +1226,7 @@ export const CorrectionDictionaryView: React.FC<
                     <ActionIconButton
                       data-originals-trigger
                       active={originalsOpen}
+                      className={revealedActionClassName}
                       onClick={() => {
                         setOpenDisableKey(null);
                         setDisableAppQuery("");
@@ -1341,7 +1348,7 @@ export const CorrectionDictionaryView: React.FC<
                     <button
                       type="button"
                       data-disable-trigger
-                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${disableActionClassName} ${
                         disableOpen
                           ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                           : "text-[var(--text)]"
@@ -1561,6 +1568,7 @@ export const CorrectionDictionaryView: React.FC<
                     ) : null}
                     <ActionIconButton
                       tone="danger"
+                      className={revealedActionClassName}
                       onClick={() => setConfirmingDeleteGroupKey(groupKey)}
                       title={t("common.delete")}
                       aria-label={t("common.delete")}

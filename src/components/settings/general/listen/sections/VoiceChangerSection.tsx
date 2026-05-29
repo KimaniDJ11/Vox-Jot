@@ -16,6 +16,7 @@ import {
   Layers,
   Loader2,
   Mic,
+  Search,
   Square,
   WandSparkles,
   X,
@@ -23,8 +24,10 @@ import {
 
 import { commands, type TtsPackInfo } from "@/bindings";
 import { convertVoiceRecording, convertVoiceSample } from "@/lib/voiceChanger";
+import ModelListControls from "@/components/model-hub/ModelListControls";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import {
@@ -32,6 +35,14 @@ import {
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import { LANGUAGES } from "@/lib/constants/languages";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import { modal } from "@/motion/springs";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
@@ -42,6 +53,7 @@ import {
   type VoiceChangerModelSelection,
   voiceChangerModelKey,
 } from "../voiceChangerModels";
+import { getModelLanguageItems, ttsModelSupportsLanguage } from "../utils";
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/);
@@ -152,6 +164,11 @@ export const VoiceChangerSection: React.FC<{
   const [isConverting, setIsConverting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [modelProviderFilter, setModelProviderFilter] = useState("all");
+  const [modelLanguageFilter, setModelLanguageFilter] = useState("all");
+  const [modelSortMode, setModelSortMode] =
+    useState<ModelSortMode>("best_match");
   const [status, setStatus] = useState<string | null>(null);
   const [waitPhase, setWaitPhase] = useState<WaitPhase | null>(null);
   const [waitStartedAt, setWaitStartedAt] = useState<number | null>(null);
@@ -647,6 +664,115 @@ export const VoiceChangerSection: React.FC<{
         selectedVoiceChangerModel.id,
       )
     : "";
+  const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
+  const modelProviderOptions = useMemo(
+    () => [
+      { value: "all", label: "Provider" },
+      ...speech.visibleProviders.map((provider) => ({
+        value: provider.id,
+        label: provider.label,
+      })),
+    ],
+    [speech.visibleProviders],
+  );
+  const selectedModelProviderLabel = useMemo(
+    () =>
+      modelProviderOptions.find(
+        (option) => option.value === modelProviderFilter,
+      )?.label ?? "Provider",
+    [modelProviderFilter, modelProviderOptions],
+  );
+  const modelLanguageOptions = useMemo(
+    () => [
+      { value: "all", label: "Language" },
+      ...LANGUAGES.filter((language) => language.value !== "auto").map(
+        (language) => ({
+          value: language.value,
+          label: language.label,
+        }),
+      ),
+    ],
+    [],
+  );
+  const selectedModelLanguageLabel = useMemo(
+    () =>
+      modelLanguageOptions.find(
+        (option) => option.value === modelLanguageFilter,
+      )?.label ?? "Language",
+    [modelLanguageFilter, modelLanguageOptions],
+  );
+  const modelSortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedModelSortLabel = useMemo(
+    () =>
+      modelSortOptions.find((option) => option.value === modelSortMode)
+        ?.label ?? "Best Match",
+    [modelSortMode, modelSortOptions],
+  );
+  const modelProviderRankById = useMemo(
+    () =>
+      new Map(
+        speech.visibleProviders.map((provider, index) => [provider.id, index]),
+      ),
+    [speech.visibleProviders],
+  );
+  const filteredVoiceChangerModels = voiceChangerModels.filter((model) => {
+    if (
+      modelProviderFilter !== "all" &&
+      model.provider_id !== modelProviderFilter
+    ) {
+      return false;
+    }
+    if (
+      modelLanguageFilter !== "all" &&
+      !ttsModelSupportsLanguage(model, modelLanguageFilter)
+    ) {
+      return false;
+    }
+    if (!normalizedModelSearch) return true;
+
+    const providerLabel =
+      speech.visibleProviders.find(
+        (provider) => provider.id === model.provider_id,
+      )?.label ?? "";
+    const haystack = [
+      model.label,
+      model.id,
+      model.description,
+      providerLabel,
+      model.runtime.label,
+      model.source_label,
+      model.locale,
+      ...getModelLanguageItems(model),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(normalizedModelSearch);
+  });
+  const orderedVoiceChangerModels = orderModelList(
+    filteredVoiceChangerModels,
+    "downloaded",
+    modelSortMode,
+    {
+      label: (model: CatalogModelDescriptor) => model.label,
+      active: (model: CatalogModelDescriptor) =>
+        voiceChangerModelKey(model.provider_id, model.id) ===
+        selectedVoiceChangerKey,
+      installed: (model: CatalogModelDescriptor) =>
+        modelInstalled(model, speech.packs),
+      runnable: (model: CatalogModelDescriptor) => model.runnable,
+      recommended: (model: CatalogModelDescriptor) =>
+        isVoiceChangerCapableModel(model),
+      rank: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.rank,
+      latencyMs: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.latencyP50Ms,
+      providerRank: (model: CatalogModelDescriptor) =>
+        modelProviderRankById.get(model.provider_id),
+    },
+  );
   const handleSelectVoiceChangerModel = useCallback(
     (model: CatalogModelDescriptor) => {
       setDraftProviderId(model.provider_id);
@@ -683,7 +809,9 @@ export const VoiceChangerSection: React.FC<{
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="voice-changer-model-hub-title"
+            aria-label={t("listen.voiceChanger.modelHubTitle", {
+              defaultValue: "Voice Changer Model Hub",
+            })}
             className="relative flex max-h-[min(88vh,920px)] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -691,37 +819,79 @@ export const VoiceChangerSection: React.FC<{
             transition={modal}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <h3
-                  id="voice-changer-model-hub-title"
-                  className="truncate text-sm font-semibold text-[var(--text)]"
+            <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className="relative flex h-10 min-w-[220px] flex-1 items-center"
+                  aria-label={t("listen.voiceChanger.searchModelsAriaLabel", {
+                    defaultValue: "Search voice changer models",
+                  })}
                 >
-                  {t("listen.voiceChanger.modelHubTitle", {
-                    defaultValue: "Voice Changer Model Hub",
-                  })}
-                </h3>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {t("listen.voiceChanger.modelPickerDetail", {
-                    defaultValue:
-                      "Only audio-to-audio voice conversion models are shown. This draft selection does not change the active app voice.",
-                  })}
-                </p>
+                  <Search
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <Input
+                    type="text"
+                    role="searchbox"
+                    autoComplete="off"
+                    value={modelSearchQuery}
+                    onChange={(event) =>
+                      setModelSearchQuery(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && modelSearchQuery) {
+                        setModelSearchQuery("");
+                        event.preventDefault();
+                      }
+                    }}
+                    placeholder={t("listen.voiceChanger.searchModels", {
+                      defaultValue: "Search voice changer models",
+                    })}
+                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                  />
+                  {modelSearchQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => setModelSearchQuery("")}
+                      aria-label={t("listen.createVoices.clearModelSearch", {
+                        defaultValue: "Clear model search",
+                      })}
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                <ModelListControls
+                  provider={{
+                    value: modelProviderFilter,
+                    options: modelProviderOptions,
+                    onChange: setModelProviderFilter,
+                    label: selectedModelProviderLabel,
+                    show: modelProviderOptions.length > 2,
+                  }}
+                  language={{
+                    value: modelLanguageFilter,
+                    options: modelLanguageOptions,
+                    onChange: setModelLanguageFilter,
+                    label: selectedModelLanguageLabel,
+                    show: true,
+                  }}
+                  sort={{
+                    value: modelSortMode,
+                    options: modelSortOptions,
+                    onChange: setModelSortMode,
+                    label: selectedModelSortLabel,
+                  }}
+                />
               </div>
-              <ActionIconButton
-                type="button"
-                onClick={() => setModelPickerOpen(false)}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </ActionIconButton>
             </div>
 
             <div className="overflow-y-auto p-4">
-              {voiceChangerModels.length > 0 ? (
+              {orderedVoiceChangerModels.length > 0 ? (
                 <div className="flex flex-col gap-3">
-                  {voiceChangerModels.map((model) => {
+                  {orderedVoiceChangerModels.map((model) => {
                     const modelKey = voiceChangerModelKey(
                       model.provider_id,
                       model.id,
@@ -757,10 +927,15 @@ export const VoiceChangerSection: React.FC<{
                 </div>
               ) : (
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-6 text-sm text-[var(--muted)]">
-                  {t("listen.voiceChanger.noVoiceChangerModels", {
-                    defaultValue:
-                      "No voice-changing models are available in the local catalog.",
-                  })}
+                  {voiceChangerModels.length > 0
+                    ? t("listen.voiceChanger.noVoiceChangerModelMatches", {
+                        defaultValue:
+                          "No voice-changing models match the current filters.",
+                      })
+                    : t("listen.voiceChanger.noVoiceChangerModels", {
+                        defaultValue:
+                          "No voice-changing models are available in the local catalog.",
+                      })}
                 </div>
               )}
             </div>

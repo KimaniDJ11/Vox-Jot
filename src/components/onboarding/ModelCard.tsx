@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Check,
   Clock,
-  Globe,
   HardDrive,
   Languages,
   Loader2,
@@ -280,7 +279,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
           id: "capability-languages",
           label: languagesSummary,
           variant: "secondary" as const,
-          icon: <Globe className="h-3 w-3" />,
+          icon: <Languages className="h-3 w-3" />,
           detail: languagesDetail,
         }
       : null,

@@ -104,7 +104,13 @@ describe("createVoiceVoiceHub", () => {
   });
 
   it("builds rows from preset voice inventory", () => {
-    const sourceModel = model();
+    const sourceModel = model({
+      capabilities: {
+        ...model().capabilities,
+        supports_instruction_prompt: true,
+        supports_inline_tags: true,
+      },
+    });
     const rows = buildCreateVoiceHubRows(
       [sourceModel],
       new Map([[`${sourceModel.provider_id}::${sourceModel.id}`, [voice()]]]),
@@ -115,6 +121,10 @@ describe("createVoiceVoiceHub", () => {
       voiceLabel: "Heart",
       gender: "female",
       description: "female voice preset for English (US), from Kokoro 82M.",
+      capabilities: {
+        supportsExpressions: true,
+        supportsPrompts: true,
+      },
     });
   });
 

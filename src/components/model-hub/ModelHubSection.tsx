@@ -169,7 +169,7 @@ const ModelHubSection: React.FC = () => {
   });
 
   const searchField = (
-    <label className="relative flex h-10 w-full min-w-0 items-center rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 shadow-sm focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
+    <label className="relative flex h-10 min-w-[220px] flex-1 items-center rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 shadow-sm focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
       <Search
         className="me-2 h-4 w-4 shrink-0 text-[var(--muted)]"
         strokeWidth={2}
@@ -186,6 +186,15 @@ const ModelHubSection: React.FC = () => {
         className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none"
       />
     </label>
+  );
+  const modelHubToolbar = (
+    <div className="app-no-drag flex w-full min-w-0 items-center gap-2">
+      {searchField}
+      <div
+        id="model-hub-section-actions"
+        className="flex shrink-0 items-center justify-end gap-2"
+      />
+    </div>
   );
 
   const renderTabPanel = (tabId: ModelHubTabId) => {
@@ -253,7 +262,16 @@ const ModelHubSection: React.FC = () => {
         key={tabId}
         id={`model-hub-panel-${tabId}`}
         role="tabpanel"
-        aria-labelledby={`model-hub-tab-${tabId}`}
+        aria-labelledby={
+          scope === "creative_audio" ? undefined : `model-hub-tab-${tabId}`
+        }
+        aria-label={
+          scope === "creative_audio" && tabId === "creative_audio"
+            ? t("modelHub.tabs.creativeAudio", {
+                defaultValue: "Creative Audio",
+              })
+            : undefined
+        }
         hidden={!isActive}
         className="min-w-0 flex-1 pt-3"
       >
@@ -265,107 +283,95 @@ const ModelHubSection: React.FC = () => {
   return (
     <div className="flex min-h-0 flex-col gap-3 pt-2">
       {searchPortalTarget
-        ? createPortal(searchField, searchPortalTarget)
-        : null}
+        ? createPortal(modelHubToolbar, searchPortalTarget)
+        : modelHubToolbar}
 
       <div className="flex min-h-0 flex-col">
-        <div
-          data-model-hub-sticky-header=""
-          className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"
-        >
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
-              {scope === "analysis" ? (
-                <div
-                  id="model-hub-tab-analysis"
-                  aria-label={t("modelHub.tabs.analysis", {
-                    defaultValue: "Speech Analysis",
-                  })}
-                  className="app-no-drag flex min-w-0 items-center"
-                >
-                  <div id={MODEL_HUB_ANALYSIS_TITLE_SLOT_ID} />
-                </div>
-              ) : scope === "creative_audio" ? (
-                <h2
-                  id="model-hub-tab-creative_audio"
-                  className="text-sm font-semibold text-[var(--text)]"
-                >
-                  {t("modelHub.tabs.creativeAudio", {
-                    defaultValue: "Creative Audio",
-                  })}
-                </h2>
-              ) : (
-                <LayoutGroup id="model-hub-tabs">
+        {scope !== "creative_audio" ? (
+          <div
+            data-model-hub-sticky-header=""
+            className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"
+          >
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+                {scope === "analysis" ? (
                   <div
-                    role="tablist"
-                    aria-label={t("modelHub.tabs.ariaLabel", {
-                      defaultValue: "Model categories",
+                    id="model-hub-tab-analysis"
+                    aria-label={t("modelHub.tabs.analysis", {
+                      defaultValue: "Speech Analysis",
                     })}
-                    onKeyDown={(event) =>
-                      handleHorizontalTabListKeyDown(event, {
-                        direction: document.dir === "rtl" ? "rtl" : "ltr",
-                      })
-                    }
-                    className="relative inline-flex items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
+                    className="app-no-drag flex min-w-0 items-center"
                   >
-                    {tabs.map((tab) => {
-                      const isActive = visibleTab === tab.id;
-                      return (
-                        <motion.button
-                          key={tab.id}
-                          type="button"
-                          role="tab"
-                          aria-selected={isActive}
-                          aria-controls={`model-hub-panel-${tab.id}`}
-                          id={`model-hub-tab-${tab.id}`}
-                          tabIndex={isActive ? 0 : -1}
-                          whileTap={{ scale: 0.97 }}
-                          transition={press}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`relative whitespace-nowrap px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-                          style={{
-                            color: isActive
-                              ? "var(--accent-foreground)"
-                              : "var(--muted)",
-                            transition: "color 160ms var(--spring-crisp)",
-                          }}
-                        >
-                          {isActive && (
-                            <motion.span
-                              layoutId="model-hub-tab-indicator"
-                              transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 32,
-                                mass: 0.9,
-                              }}
-                              className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
-                              aria-hidden
-                            />
-                          )}
-                          <span className="relative z-10">
-                            {tab.id === "analysis" &&
-                            isActive &&
-                            analysisTabLabelOverride
-                              ? analysisTabLabelOverride
-                              : t(tab.labelKey, {
-                                  defaultValue: tab.defaultLabel,
-                                })}
-                          </span>
-                        </motion.button>
-                      );
-                    })}
+                    <div id={MODEL_HUB_ANALYSIS_TITLE_SLOT_ID} />
                   </div>
-                </LayoutGroup>
-              )}
+                ) : (
+                  <LayoutGroup id="model-hub-tabs">
+                    <div
+                      role="tablist"
+                      aria-label={t("modelHub.tabs.ariaLabel", {
+                        defaultValue: "Model categories",
+                      })}
+                      onKeyDown={(event) =>
+                        handleHorizontalTabListKeyDown(event, {
+                          direction: document.dir === "rtl" ? "rtl" : "ltr",
+                        })
+                      }
+                      className="relative inline-flex items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
+                    >
+                      {tabs.map((tab) => {
+                        const isActive = visibleTab === tab.id;
+                        return (
+                          <motion.button
+                            key={tab.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={isActive}
+                            aria-controls={`model-hub-panel-${tab.id}`}
+                            id={`model-hub-tab-${tab.id}`}
+                            tabIndex={isActive ? 0 : -1}
+                            whileTap={{ scale: 0.97 }}
+                            transition={press}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`relative whitespace-nowrap px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
+                            style={{
+                              color: isActive
+                                ? "var(--accent-foreground)"
+                                : "var(--muted)",
+                              transition: "color 160ms var(--spring-crisp)",
+                            }}
+                          >
+                            {isActive && (
+                              <motion.span
+                                layoutId="model-hub-tab-indicator"
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 400,
+                                  damping: 32,
+                                  mass: 0.9,
+                                }}
+                                className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
+                                aria-hidden
+                              />
+                            )}
+                            <span className="relative z-10">
+                              {tab.id === "analysis" &&
+                              isActive &&
+                              analysisTabLabelOverride
+                                ? analysisTabLabelOverride
+                                : t(tab.labelKey, {
+                                    defaultValue: tab.defaultLabel,
+                                  })}
+                            </span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </LayoutGroup>
+                )}
+              </div>
             </div>
-            {/* STT/TTS: Provider + Language filters (inline with tabs); LLM: empty */}
-            <div
-              id="model-hub-section-actions"
-              className="app-no-drag flex shrink-0 items-center justify-end gap-2"
-            />
           </div>
-        </div>
+        ) : null}
 
         {tabs.map((tab) => renderTabPanel(tab.id))}
       </div>

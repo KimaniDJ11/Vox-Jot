@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import {
   getModelPlatformOverview,
   setTtsPlatformSelection,
@@ -349,20 +348,6 @@ export function useListenSpeechState() {
 
   const removePreset = useCallback(
     async (presetId: string) => {
-      const presetLabel =
-        presets.find((preset) => preset.id === presetId)?.label ??
-        t("listen.myVoices.voiceFallback", { defaultValue: "this voice" });
-      if (
-        !confirmDestructiveAction(
-          t("listen.myVoices.deletePresetConfirm", {
-            presetLabel,
-            defaultValue: 'Delete voice "{{presetLabel}}"?',
-          }),
-        )
-      ) {
-        return;
-      }
-
       try {
         await deleteTtsVoicePreset(presetId);
         await refreshAll();
@@ -377,7 +362,7 @@ export function useListenSpeechState() {
         );
       }
     },
-    [presets, refreshAll, t],
+    [refreshAll, t],
   );
 
   const ensureModelInstalled = useCallback(

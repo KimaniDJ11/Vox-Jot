@@ -1,5 +1,9 @@
 import type { VoiceInfo } from "@/bindings";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import {
+  voiceCapabilityFlagsForModel,
+  type VoiceCapabilityFlags,
+} from "./voiceCapabilities";
 
 export type InferredVoiceGender = "female" | "male";
 
@@ -17,6 +21,7 @@ export interface CreateVoiceHubVoiceRow {
   gender: InferredVoiceGender | null;
   description: string;
   avatarGradient: string;
+  capabilities: VoiceCapabilityFlags;
   searchText: string;
 }
 
@@ -186,6 +191,7 @@ export function buildCreateVoiceHubRows(
       const gender = voiceId ? inferVoiceGender(voiceId) : null;
       const countryFlag = countryFlagFromLocale(locale);
       const seed = `${model.provider_id}::${model.id}::${voiceId ?? "__model__"}`;
+      const capabilities = voiceCapabilityFlagsForModel(model);
       const description = voiceDescription({
         gender,
         language,
@@ -206,6 +212,7 @@ export function buildCreateVoiceHubRows(
         gender,
         description,
         avatarGradient: voiceAvatarGradient(seed),
+        capabilities,
         searchText: [
           voiceLabel,
           voiceId,
@@ -216,6 +223,8 @@ export function buildCreateVoiceHubRows(
           language,
           accent,
           gender,
+          capabilities.supportsExpressions ? "expressions" : null,
+          capabilities.supportsPrompts ? "prompts" : null,
           description,
         ]
           .filter(Boolean)

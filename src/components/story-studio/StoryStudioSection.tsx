@@ -904,6 +904,7 @@ export const StoryStudioSection: React.FC = () => {
                 cast={cast}
                 presets={presets}
                 presetVoices={presetVoices}
+                ttsModels={ttsModels}
                 isLoadingVoiceChoices={isLoadingVoiceChoices}
                 disabled={isLoadingPresets}
                 onAdd={addCharacter}

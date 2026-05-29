@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Globe,
   HardDrive,
+  Languages,
   Loader2,
   ScanSearch,
   Trash2,
@@ -750,7 +751,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             defaultValue: "OS built-in",
           }),
           variant: "secondary",
-          icon: <Globe className="h-3 w-3" />,
+          icon: <Languages className="h-3 w-3" />,
           detail: t("modelHub.ocr.languages.nativeOnly", {
             defaultValue:
               "Follows your OS language and regional text recognition settings.",
@@ -896,7 +897,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         id: "capability-languages",
         label: model.languages_label,
         variant: "secondary",
-        icon: <Globe className="h-3 w-3" />,
+        icon: <Languages className="h-3 w-3" />,
         detail: t("modelHub.ocr.languages.tesseract", {
           defaultValue:
             "Depends on installed tessdata packs (often English-first unless you add more).",

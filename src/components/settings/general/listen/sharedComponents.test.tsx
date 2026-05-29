@@ -122,4 +122,73 @@ describe("VoiceTuningCard", () => {
 
     await view.cleanup();
   });
+
+  it("uses a preview play control instead of a visible title when preview is available", async () => {
+    const onPreview = vi.fn();
+
+    const view = await render(
+      <VoiceTuningCard
+        preset={buildPreset()}
+        onUpdatePreset={vi.fn()}
+        ttsEnabled
+        controls={[]}
+        supportsExpressiveness={false}
+        title="Tuning"
+        modelLabel="Chatterbox"
+        previewButtonGradient="linear-gradient(135deg, #4f46e5, #ec4899)"
+        onPreview={onPreview}
+      />,
+    );
+
+    const previewButton = view.container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Preview current tuning"]',
+    );
+    expect(previewButton).not.toBeNull();
+    expect(view.container.querySelector("h3")?.textContent).not.toBe(
+      "Tuning",
+    );
+    expect(view.container.textContent).toContain("Chatterbox");
+
+    await act(async () => {
+      previewButton?.click();
+    });
+
+    expect(onPreview).toHaveBeenCalledOnce();
+
+    await view.cleanup();
+  });
+
+  it("keeps the preview control tappable and shows a status chip while previewing", async () => {
+    const onPreview = vi.fn();
+
+    const view = await render(
+      <VoiceTuningCard
+        preset={buildPreset()}
+        onUpdatePreset={vi.fn()}
+        ttsEnabled
+        controls={[]}
+        supportsExpressiveness={false}
+        title="Tuning"
+        modelLabel="Chatterbox"
+        previewing
+        previewRunning
+        onPreview={onPreview}
+      />,
+    );
+
+    const stopButton = view.container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Stop tuning preview"]',
+    );
+    expect(stopButton).not.toBeNull();
+    expect(stopButton?.disabled).toBe(false);
+    expect(view.container.textContent).toContain("Preview running");
+
+    await act(async () => {
+      stopButton?.click();
+    });
+
+    expect(onPreview).toHaveBeenCalledOnce();
+
+    await view.cleanup();
+  });
 });

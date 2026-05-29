@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, Globe, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, Languages, SlidersHorizontal } from "lucide-react";
 import type { ModelSortMode, ModelSortOption } from "@/lib/modelListOrdering";
 
 export interface ModelListControlOption {
@@ -130,7 +130,7 @@ export const ModelListControls: React.FC<ModelListControlsProps> = ({
           selectedLabel={language.label}
           active={language.value !== "all"}
         >
-          <Globe className="h-4 w-4 text-[var(--text)]" />
+          <Languages className="h-4 w-4 text-[var(--text)]" />
         </SelectControl>
       ) : null}
 

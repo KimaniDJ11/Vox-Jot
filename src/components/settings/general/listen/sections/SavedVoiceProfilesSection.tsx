@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Play, Trash2 } from "lucide-react";
+import { Loader2, Play, Trash2, X } from "lucide-react";
 import { commands } from "@/bindings";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import Badge from "@/components/ui/Badge";
@@ -9,15 +9,21 @@ import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { ttsPreviewSampleForLocale } from "../utils";
+import { VoiceCapabilityChips } from "../VoiceCapabilityChips";
+import { voiceCapabilityFlagsForPreset } from "../voiceCapabilities";
 
 const PREVIEW_RUNNING_DELAY_MS = 1500;
 
 export const SavedVoiceProfilesSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
-}> = ({ speech, showTitle = true }) => {
+  revealDeleteOnHover?: boolean;
+}> = ({ speech, showTitle = true, revealDeleteOnHover = false }) => {
   const { t } = useTranslation();
   const [previewRunning, setPreviewRunning] = useState(false);
+  const [confirmingDeletePresetId, setConfirmingDeletePresetId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setPreviewRunning(false);
@@ -68,6 +74,7 @@ export const SavedVoiceProfilesSection: React.FC<{
             automaticVoiceLabel;
           const isClone = Boolean(preset.voice_profile_id);
           const isPreviewing = speech.previewingPresetId === preset.id;
+          const confirmingDelete = confirmingDeletePresetId === preset.id;
           const previewStatusLabel = isPreviewing
             ? previewRunning
               ? runningPreviewLabel
@@ -79,6 +86,16 @@ export const SavedVoiceProfilesSection: React.FC<{
               preset.model_id,
               preset.voice_id ?? preset.voice_profile_id ?? preset.id,
             ].join("::"),
+          );
+          const presetModel =
+            speech.allModels.find(
+              (model) =>
+                model.provider_id === preset.provider_id &&
+                model.id === preset.model_id,
+            ) ?? null;
+          const capabilities = voiceCapabilityFlagsForPreset(
+            preset,
+            presetModel,
           );
           const canActivate = !isActive && speech.ttsEnabled;
           const activate = () => void speech.setActivePreset(preset.id);
@@ -157,6 +174,7 @@ export const SavedVoiceProfilesSection: React.FC<{
                   <span className="truncate text-sm font-semibold text-[var(--text)]">
                     {preset.label}
                   </span>
+                  <VoiceCapabilityChips capabilities={capabilities} />
                   {isActive ? (
                     <Badge
                       variant="primary"
@@ -190,15 +208,47 @@ export const SavedVoiceProfilesSection: React.FC<{
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <ActionIconButton
-                  tone="danger"
-                  onClick={() => void speech.removePreset(preset.id)}
-                  disabled={!speech.ttsEnabled || speech.presets.length <= 1}
-                  title={`${deleteLabel} ${preset.label}`}
-                  aria-label={`${deleteLabel} ${preset.label}`}
-                >
-                  <Trash2 aria-hidden />
-                </ActionIconButton>
+                {confirmingDelete ? (
+                  <>
+                    <ActionIconButton
+                      tone="confirm"
+                      onClick={async () => {
+                        await speech.removePreset(preset.id);
+                        setConfirmingDeletePresetId(null);
+                      }}
+                      disabled={!speech.ttsEnabled || speech.presets.length <= 1}
+                      title={`${deleteLabel} ${preset.label}`}
+                      aria-label={t("listen.myVoices.deletePresetConfirm", {
+                        presetLabel: preset.label,
+                        defaultValue: 'Delete voice "{{presetLabel}}"?',
+                      })}
+                    >
+                      <Trash2 aria-hidden />
+                    </ActionIconButton>
+                    <ActionIconButton
+                      onClick={() => setConfirmingDeletePresetId(null)}
+                      title={t("common.cancel", { defaultValue: "Cancel" })}
+                      aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+                    >
+                      <X aria-hidden />
+                    </ActionIconButton>
+                  </>
+                ) : (
+                  <ActionIconButton
+                    tone="danger"
+                    className={
+                      revealDeleteOnHover
+                        ? "opacity-0 transition-opacity group-hover/profile-card:opacity-100 group-focus-within/profile-card:opacity-100"
+                        : ""
+                    }
+                    onClick={() => setConfirmingDeletePresetId(preset.id)}
+                    disabled={!speech.ttsEnabled || speech.presets.length <= 1}
+                    title={`${deleteLabel} ${preset.label}`}
+                    aria-label={`${deleteLabel} ${preset.label}`}
+                  >
+                    <Trash2 aria-hidden />
+                  </ActionIconButton>
+                )}
               </div>
             </div>
           );

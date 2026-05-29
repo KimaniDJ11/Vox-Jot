@@ -27,6 +27,7 @@ import {
   Languages,
   Monitor,
   NotebookPen,
+  Paintbrush,
   Play,
   Scale,
   Shield,
@@ -214,6 +215,11 @@ const RefineTranslationSection = lazy(() =>
 const ListenCreateVoicesSection = lazy(() =>
   import("@/components/app-sections/listen").then((module) => ({
     default: module.ListenCreateVoicesSection,
+  })),
+);
+const ListenVoiceDesignSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.ListenVoiceDesignSection,
   })),
 );
 const ListenVoiceCloningSection = lazy(() =>
@@ -513,8 +519,11 @@ function App() {
       content: React.ReactNode,
       iconTone: SidebarItem["iconTone"] = "accent",
       groupLabel?: string,
+      defaultLabel?: string,
     ): ViewSection => {
-      const label = t(i18nKey);
+      const label = defaultLabel
+        ? t(i18nKey, { defaultValue: defaultLabel })
+        : t(i18nKey);
       return { id, label, icon, iconTone, groupLabel, title: label, content };
     };
 
@@ -587,11 +596,27 @@ function App() {
       ],
       listen: [
         makeSection(
+          "story-studio",
+          "appSections.nav.listen.studio",
+          BookOpen,
+          <StoryStudioAppSection />,
+          "green",
+        ),
+        makeSection(
           "create-voices",
           "appSections.nav.listen.createVoices",
           WandSparkles,
           <ListenCreateVoicesSection />,
           "gold",
+        ),
+        makeSection(
+          "voice-design",
+          "appSections.nav.listen.voiceDesign",
+          Paintbrush,
+          <ListenVoiceDesignSection />,
+          "blue",
+          undefined,
+          "Voice Design",
         ),
         makeSection(
           "voice-cloning",
@@ -606,13 +631,6 @@ function App() {
           SlidersHorizontal,
           <ListenVoiceChangerSection />,
           "violet",
-        ),
-        makeSection(
-          "story-studio",
-          "appSections.nav.listen.studio",
-          BookOpen,
-          <StoryStudioAppSection />,
-          "green",
         ),
         makeSection(
           "story-audio-history",

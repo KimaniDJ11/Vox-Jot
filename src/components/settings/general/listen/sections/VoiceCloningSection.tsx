@@ -145,6 +145,9 @@ export const VoiceCloningSection: React.FC<{
   const [profileDescriptionDraft, setProfileDescriptionDraft] = useState(
     initialDraft.profileDescriptionDraft,
   );
+  const [confirmingClearProfileId, setConfirmingClearProfileId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     writeVoiceCloningDraft({
@@ -594,6 +597,7 @@ export const VoiceCloningSection: React.FC<{
       await clearProfileCollectedData(profileId);
       await speech.refreshProfiles();
       speech.setStatusMessage("Collected improvement audio was cleared.");
+      setConfirmingClearProfileId(null);
     } catch (error) {
       speech.setStatusMessage(
         error instanceof Error
@@ -624,46 +628,21 @@ export const VoiceCloningSection: React.FC<{
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="voice-clone-model-title"
+            aria-label={t("listen.createVoices.models", {
+              defaultValue: "Models",
+            })}
             className="relative max-h-[min(88vh,920px)] w-full max-w-[980px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !event.defaultPrevented) {
+                setModelWindowOpen(false);
+              }
+            }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h3
-                    id="voice-clone-model-title"
-                    className="truncate text-sm font-semibold text-[var(--text)]"
-                  >
-                    {t("listen.createVoices.models", {
-                      defaultValue: "Models",
-                    })}
-                  </h3>
-                  <Badge variant="secondary">
-                    {t("modelHub.chips.cloning", { defaultValue: "Cloning" })}
-                  </Badge>
-                </div>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {t("listen.voiceCloning.draftModelPickerDetail", {
-                    defaultValue:
-                      "Choose a clone-capable model for this draft without changing the active app voice.",
-                  })}
-                </p>
-              </div>
-              <ActionIconButton
-                type="button"
-                onClick={() => setModelWindowOpen(false)}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </ActionIconButton>
-            </div>
-
             <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <label
@@ -733,7 +712,7 @@ export const VoiceCloningSection: React.FC<{
               </div>
             </div>
 
-            <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
+            <div className="max-h-[calc(min(88vh,920px)-80px)] overflow-y-auto p-4">
               {filteredCloneModels.length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex flex-col gap-3">
@@ -1005,6 +984,8 @@ export const VoiceCloningSection: React.FC<{
                   profile.collected_audio_duration_secs ?? 0,
                 );
                 const isActive = profile.continuous_improvement_enabled;
+                const confirmingClear =
+                  confirmingClearProfileId === profile.id;
                 return (
                   <div
                     key={profile.id}
@@ -1035,20 +1016,60 @@ export const VoiceCloningSection: React.FC<{
                       </Button>
                     </div>
                     {collectedSeconds > 0 ? (
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={speech.busyProfileAction === "improvement"}
-                          onClick={() =>
-                            void clearCollectedProfileAudio(profile.id)
-                          }
-                        >
-                          {t("listen.voiceCloning.clearCollectedAudio", {
-                            defaultValue: "Clear collected audio",
-                          })}
-                        </Button>
+                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                        {confirmingClear ? (
+                          <>
+                            <span className="text-xs font-medium text-[var(--text)]">
+                              {t(
+                                "listen.voiceCloning.clearCollectedAudioConfirm",
+                                {
+                                  defaultValue:
+                                    "Clear collected improvement audio for this voice?",
+                                },
+                              )}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              disabled={
+                                speech.busyProfileAction === "improvement"
+                              }
+                              onClick={() =>
+                                void clearCollectedProfileAudio(profile.id)
+                              }
+                            >
+                              {t("common.clear", { defaultValue: "Clear" })}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={
+                                speech.busyProfileAction === "improvement"
+                              }
+                              onClick={() => setConfirmingClearProfileId(null)}
+                            >
+                              {t("common.cancel", { defaultValue: "Cancel" })}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={
+                              speech.busyProfileAction === "improvement"
+                            }
+                            onClick={() =>
+                              setConfirmingClearProfileId(profile.id)
+                            }
+                          >
+                            {t("listen.voiceCloning.clearCollectedAudio", {
+                              defaultValue: "Clear collected audio",
+                            })}
+                          </Button>
+                        )}
                       </div>
                     ) : null}
                   </div>

@@ -6,6 +6,9 @@ import {
   Dna,
   Globe,
   HardDrive,
+  Languages,
+  Loader2,
+  Play,
   SlidersHorizontal,
   Sparkles,
   X,
@@ -280,7 +283,7 @@ export const DraftVoiceModelLibraryCard: React.FC<{
           id: "capability-languages",
           label: languageCoverage,
           variant: "secondary",
-          icon: <Globe className="h-3 w-3" />,
+          icon: <Languages className="h-3 w-3" />,
           detail: getModelLanguageItems(model).join(" · "),
         }
       : null,
@@ -381,6 +384,11 @@ export const VoiceTuningCard: React.FC<{
   surfaceClassName?: string;
   modelLabel?: string | null;
   titleAccessory?: React.ReactNode;
+  previewButtonGradient?: string;
+  previewDisabled?: boolean;
+  previewing?: boolean;
+  previewRunning?: boolean;
+  onPreview?: () => void | Promise<void>;
   onResetAll?: () => void;
   onClose?: () => void;
   footerSlot?: React.ReactNode;
@@ -395,6 +403,11 @@ export const VoiceTuningCard: React.FC<{
   surfaceClassName = workflowCardClassName,
   modelLabel,
   titleAccessory,
+  previewButtonGradient,
+  previewDisabled = false,
+  previewing = false,
+  previewRunning = false,
+  onPreview,
   onResetAll,
   onClose,
   footerSlot,
@@ -500,26 +513,97 @@ export const VoiceTuningCard: React.FC<{
   return (
     <div className={embedded ? "space-y-4" : surfaceClassName}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-base font-semibold text-[var(--text)]">
-            {title}
-          </h3>
-          {titleAccessory}
-          {trimmedModelLabel ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]"
-              title={t("listen.tuning.appliedTo", {
-                defaultValue: "Tuning applies to {{model}}",
-                model: trimmedModelLabel,
-              })}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {onPreview ? (
+            <button
+              type="button"
+              onClick={() => void onPreview()}
+              disabled={!ttsEnabled || previewDisabled}
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-[0_12px_28px_color-mix(in_srgb,var(--accent),transparent_72%)] transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:scale-100"
+              style={{ background: previewButtonGradient ?? "var(--accent)" }}
+              aria-label={
+                previewing
+                  ? t("listen.tuning.stopPreview", {
+                      defaultValue: "Stop tuning preview",
+                    })
+                  : t("listen.tuning.previewCurrent", {
+                      defaultValue: "Preview current tuning",
+                    })
+              }
+              title={
+                previewing
+                  ? t("listen.tuning.stopPreview", {
+                      defaultValue: "Stop tuning preview",
+                    })
+                  : t("listen.tuning.previewCurrent", {
+                      defaultValue: "Preview current tuning",
+                    })
+              }
             >
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
-                aria-hidden
-              />
-              {trimmedModelLabel}
-            </span>
-          ) : null}
+              {previewing ? (
+                <Loader2
+                  className="h-5 w-5 animate-[spin_1s_linear_infinite]"
+                  aria-hidden
+                />
+              ) : (
+                <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden />
+              )}
+            </button>
+          ) : (
+            <h3 className="text-base font-semibold text-[var(--text)]">
+              {title}
+            </h3>
+          )}
+          <div className="min-w-0">
+            {onPreview ? (
+              <span className="sr-only">{title}</span>
+            ) : null}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {trimmedModelLabel ? (
+                <p
+                  className={
+                    onPreview
+                      ? "truncate text-xl font-semibold leading-tight text-[var(--text)]"
+                      : "inline-flex items-center gap-1 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]"
+                  }
+                  title={t("listen.tuning.appliedTo", {
+                    defaultValue: "Tuning applies to {{model}}",
+                    model: trimmedModelLabel,
+                  })}
+                >
+                  {!onPreview ? (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
+                      aria-hidden
+                    />
+                  ) : null}
+                  {trimmedModelLabel}
+                </p>
+              ) : null}
+              {onPreview && previewing ? (
+                <span
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] shadow-[var(--shadow-sm)]"
+                  aria-live="polite"
+                  role="status"
+                >
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]"
+                    aria-hidden
+                  />
+                  <span>
+                    {previewRunning
+                      ? t("listen.createVoices.previewRunning", {
+                          defaultValue: "Preview running",
+                        })
+                      : t("listen.createVoices.preparingPreview", {
+                          defaultValue: "Preparing preview",
+                        })}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+            {titleAccessory}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           {onResetAll ? (

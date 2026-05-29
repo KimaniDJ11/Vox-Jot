@@ -84,6 +84,19 @@ export const CreateVoicesSection: React.FC<{
   return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
+export const VoiceDesignSection: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
+  const speech = useListenSpeechState();
+  return (
+    <VoiceArchitectSection
+      speech={speech}
+      showTitle={showGroupTitle}
+      mode="voice-design"
+    />
+  );
+};
+
 export const EngineLibrarySection: React.FC<{
   showGroupTitle?: boolean;
   titleActionTargetId?: string;

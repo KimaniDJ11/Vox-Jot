@@ -60,12 +60,20 @@ import {
 import type { TtsVoicePresetPatch } from "../types";
 import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
+import { SavedVoiceProfilesSection } from "./SavedVoiceProfilesSection";
+
+type VoiceArchitectMode = "create-speech" | "voice-design";
+type VoiceArchitectTool = "audio" | "my-voices" | "tuning";
+
+const PREVIEW_RUNNING_DELAY_MS = 1500;
 
 export const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
-}> = ({ speech, showTitle = true }) => {
+  mode?: VoiceArchitectMode;
+}> = ({ speech, showTitle = true, mode = "create-speech" }) => {
   const { t } = useTranslation();
+  const voiceDesignMode = mode === "voice-design";
   const initialDraft = useMemo(() => {
     const cached = getCachedVoiceArchitectDraft();
     if (cached && cached.presetId === (speech.activePreset?.id ?? null)) {
@@ -94,6 +102,7 @@ export const VoiceArchitectSection: React.FC<{
     initialUiDraft.previewTextDraft,
   );
   const [generatingSpeech, setGeneratingSpeech] = useState(false);
+  const [draftPreviewRunning, setDraftPreviewRunning] = useState(false);
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
   const [saveTunedVoiceWindowOpen, setSaveTunedVoiceWindowOpen] =
     useState(false);
@@ -104,8 +113,8 @@ export const VoiceArchitectSection: React.FC<{
   const [modelLanguageFilter, setModelLanguageFilter] = useState("all");
   const [modelSortMode, setModelSortMode] =
     useState<ModelSortMode>("best_match");
-  const [createVoiceTool, setCreateVoiceTool] = useState<"audio" | "tuning">(
-    initialUiDraft.createVoiceTool,
+  const [createVoiceTool, setCreateVoiceTool] = useState<VoiceArchitectTool>(
+    voiceDesignMode ? "my-voices" : initialUiDraft.createVoiceTool,
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
   const hasTunedVoiceChanges = useMemo(
@@ -122,7 +131,7 @@ export const VoiceArchitectSection: React.FC<{
       saveProfileNameDraft,
       previewTextDraft,
       modelSearchQuery,
-      createVoiceTool,
+      createVoiceTool: createVoiceTool === "tuning" ? "tuning" : "audio",
     });
   }, [
     createVoiceTool,
@@ -154,6 +163,17 @@ export const VoiceArchitectSection: React.FC<{
       setSaveTunedVoiceWindowOpen(false);
     }
   }, [hasTunedVoiceChanges]);
+
+  useEffect(() => {
+    setDraftPreviewRunning(false);
+    if (speech.previewingPresetId !== "__draft__") return;
+
+    const timeoutId = window.setTimeout(() => {
+      setDraftPreviewRunning(true);
+    }, PREVIEW_RUNNING_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [speech.previewingPresetId]);
 
   useEffect(() => {
     if (!speech.activePreset) return;
@@ -571,6 +591,29 @@ export const VoiceArchitectSection: React.FC<{
   const resetDraftTuning = () => {
     setDraftTuning(defaultVoiceTuning());
   };
+  const handlePreviewDraftTuning = async () => {
+    if (speech.previewingPresetId === "__draft__") {
+      const result = await commands.ttsStop();
+      if (result.status === "error") {
+        speech.setStatusMessage(result.error);
+      }
+      setDraftPreviewRunning(false);
+      return;
+    }
+
+    if (
+      !speech.ttsEnabled ||
+      !draftProviderIdForControls ||
+      !draftModelIdForControls
+    ) {
+      return;
+    }
+
+    await speech.previewPresetDraft(
+      buildDraftPresetInput(),
+      previewTextDraft.trim() ? previewTextDraft : DEFAULT_TTS_PREVIEW_TEXT,
+    );
+  };
   const handleGenerateSpeech = async () => {
     if (
       generatingSpeech ||
@@ -692,7 +735,7 @@ export const VoiceArchitectSection: React.FC<{
     speech.setStatusMessage(null);
   };
 
-  const handleCreateVoiceToolChange = (value: "audio" | "tuning") => {
+  const handleCreateVoiceToolChange = (value: VoiceArchitectTool) => {
     setCreateVoiceTool(value);
   };
 
@@ -754,7 +797,21 @@ export const VoiceArchitectSection: React.FC<{
           title={t("listen.createVoices.tuning", {
             defaultValue: "Tuning",
           })}
-          titleAccessory={selectedVoiceChip}
+          titleAccessory={voiceDesignMode ? undefined : selectedVoiceChip}
+          modelLabel={voiceDesignMode ? draftPreviewVoiceName : undefined}
+          previewButtonGradient={
+            voiceDesignMode ? draftPreviewVoiceAvatar : undefined
+          }
+          previewing={
+            voiceDesignMode ? speech.previewingPresetId === "__draft__" : false
+          }
+          previewRunning={voiceDesignMode ? draftPreviewRunning : false}
+          previewDisabled={
+            voiceDesignMode
+              ? !draftProviderIdForControls || !draftModelIdForControls
+              : false
+          }
+          onPreview={voiceDesignMode ? handlePreviewDraftTuning : undefined}
           embedded
           onResetAll={resetDraftTuning}
         />
@@ -996,6 +1053,7 @@ export const VoiceArchitectSection: React.FC<{
         onSortModeChange={setModelSortMode}
         orderedModels={orderedDraftModels}
         filteredModelCount={filteredDraftModels.length}
+        mode={voiceDesignMode ? "voice-design" : "full"}
         onSelectVoice={handleSelectDraftVoice}
         selectedVoiceProfileId={
           draftVoiceProfileId === "__none__" ? null : draftVoiceProfileId
@@ -1009,50 +1067,81 @@ export const VoiceArchitectSection: React.FC<{
         }`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="primary-soft"
-            size="sm"
-            onClick={() => void handleGenerateSpeech()}
-            disabled={
-              generatingSpeech ||
-              !speech.ttsEnabled ||
-              !previewTextDraft.trim() ||
-              !draftProviderIdForControls ||
-              !draftModelIdForControls
-            }
-          >
-            {generatingSpeech ? (
-              <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-            ) : (
-              <WandSparkles className="h-3.5 w-3.5" />
-            )}
-            {generatingSpeech
-              ? t("listen.myVoices.generating", { defaultValue: "Generating…" })
-              : t("storyStudio.generate", { defaultValue: "Generate" })}
-          </Button>
+          {!voiceDesignMode ? (
+            <Button
+              type="button"
+              variant="primary-soft"
+              size="sm"
+              onClick={() => void handleGenerateSpeech()}
+              disabled={
+                generatingSpeech ||
+                !speech.ttsEnabled ||
+                !previewTextDraft.trim() ||
+                !draftProviderIdForControls ||
+                !draftModelIdForControls
+              }
+            >
+              {generatingSpeech ? (
+                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+              ) : (
+                <WandSparkles className="h-3.5 w-3.5" />
+              )}
+              {generatingSpeech
+                ? t("listen.myVoices.generating", {
+                    defaultValue: "Generating…",
+                  })
+                : t("storyStudio.generate", { defaultValue: "Generate" })}
+            </Button>
+          ) : null}
 
-          <SegmentedControl<"audio" | "tuning">
+          <SegmentedControl<VoiceArchitectTool>
             value={createVoiceTool}
             onChange={handleCreateVoiceToolChange}
-            layoutId="create-voice-tool-toggle"
-            ariaLabel={t("listen.createVoices.toolAriaLabel", {
-              defaultValue: "Create Speech tools",
-            })}
-            items={[
-              {
-                value: "audio",
-                label: t("listen.createVoices.audioTab", {
-                  defaultValue: "Speech",
-                }),
-              },
-              {
-                value: "tuning",
-                label: t("listen.createVoices.tuning", {
-                  defaultValue: "Tuning",
-                }),
-              },
-            ]}
+            layoutId={
+              voiceDesignMode
+                ? "voice-design-tool-toggle"
+                : "create-voice-tool-toggle"
+            }
+            ariaLabel={
+              voiceDesignMode
+                ? t("listen.voiceDesign.toolAriaLabel", {
+                    defaultValue: "Voice Design tools",
+                  })
+                : t("listen.createVoices.toolAriaLabel", {
+                    defaultValue: "Create Speech tools",
+                  })
+            }
+            items={
+              voiceDesignMode
+                ? [
+                    {
+                      value: "my-voices",
+                      label: t("listen.createVoices.myVoices", {
+                        defaultValue: "My Voices",
+                      }),
+                    },
+                    {
+                      value: "tuning",
+                      label: t("listen.createVoices.tuning", {
+                        defaultValue: "Tuning",
+                      }),
+                    },
+                  ]
+                : [
+                    {
+                      value: "audio",
+                      label: t("listen.createVoices.audioTab", {
+                        defaultValue: "Speech",
+                      }),
+                    },
+                    {
+                      value: "tuning",
+                      label: t("listen.createVoices.tuning", {
+                        defaultValue: "Tuning",
+                      }),
+                    },
+                  ]
+            }
           />
 
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -1085,7 +1174,17 @@ export const VoiceArchitectSection: React.FC<{
           </div>
         </div>
 
-        {createVoiceTool === "audio" ? audioView : tuningView}
+        {createVoiceTool === "my-voices" ? (
+          <SavedVoiceProfilesSection
+            speech={speech}
+            showTitle={false}
+            revealDeleteOnHover
+          />
+        ) : createVoiceTool === "audio" ? (
+          audioView
+        ) : (
+          tuningView
+        )}
       </div>
     </>
   );
@@ -1095,7 +1194,15 @@ export const VoiceArchitectSection: React.FC<{
   }
 
   return (
-    <SettingsGroup title={t("appSections.nav.listen.createVoices")}>
+    <SettingsGroup
+      title={
+        voiceDesignMode
+          ? t("appSections.nav.listen.voiceDesign", {
+              defaultValue: "Voice Design",
+            })
+          : t("appSections.nav.listen.createVoices")
+      }
+    >
       {content}
     </SettingsGroup>
   );

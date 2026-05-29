@@ -28,6 +28,7 @@ impl TimedSegment {
     /// Build a `TimedSegment` from floating-point seconds. Negative
     /// values are clamped to 0 and `end` is forced to be `>= start` so
     /// the resulting timestamps are always well-ordered.
+    #[cfg(any(test, not(feature = "ci-mock-transcription")))]
     pub fn from_seconds(start: f32, end: f32, text: impl Into<String>) -> Self {
         let start_ms = (start.max(0.0) * 1000.0).round() as u64;
         let mut end_ms = (end.max(0.0) * 1000.0).round() as u64;

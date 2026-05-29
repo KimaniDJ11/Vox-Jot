@@ -308,6 +308,16 @@
       "tip": {
         "title": "Einfach anfangen, später optimieren",
         "description": "Der schnellste Weg besteht darin, zunächst das Rohdiktat zum Laufen zu bringen. Sobald sich das gut anfühlt, verfeinern Sie die Einfügeeinstellungen und verfeinern Sie das Diktat in der Haupt-App."
+      },
+      "ctaSuccess": "Beenden Sie die Einrichtung",
+      "ctaWaiting": "Warten auf Diktat",
+      "skip": "Überspringen Sie es vorerst",
+      "troubleshoot": "Fehlerbehebung",
+      "testField": {
+        "label": "Testfeld Transkript",
+        "placeholder": "Hier erscheint Ihr erstes erfolgreiches Diktat.",
+        "success": "Diktat erhalten. Das Setup kann abgeschlossen werden.",
+        "waiting": "Benutzen Sie die Verknüpfung einmal. Wenn nichts angezeigt wird, überprüfen Sie Mikrofon, Berechtigungen und Modelleinrichtung."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Modell {{modelId}} wird heruntergeladen",
     "downloadProgress": "Modell-Downloadfortschritt",
     "switcherAriaLabel": "Aktuelles Modell: {{model}}. Modellauswahl öffnen.",
-    "waitingForData": "Warten auf Daten..."
+    "waitingForData": "Warten auf Daten...",
+    "downloadModel": "{{modelName}} ({{size}}) herunterladen",
+    "largeDownloadWarning": "Großer Download: {{size}}. Lassen Sie Vox Jot geöffnet, bis die Installation abgeschlossen ist.",
+    "badges": {
+      "bestQuality": "Beste Qualität",
+      "bestQualityDetail": "Höchstbewertetes Sprachmodell in der aktuellen Suite.",
+      "fastest": "Am schnellsten",
+      "fastestDetail": "Sehr niedrige gemessene p50-Latenz.",
+      "balanced": "Ausgewogen",
+      "balancedDetail": "Empfohlenes Gleichgewicht zwischen Geschwindigkeit, Qualität und Einrichtung.",
+      "smallest": "Kleinste",
+      "smallestDetail": "Geringer Download- und Festplatten-Footprint."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Ansicht der Phrasenschlüssel",
         "importDropHint": "Ziehen Sie eine Phrasenschlüssel-JSON-Datei per Drag & Drop hierher",
         "pickImportFile": "Wählen Sie die Datei JSON aus",
-        "importSuccess": "Phrasenschlüssel importiert.",
+        "importSuccess": "Importierte {{count}}-Phrasenschlüssel.",
         "importFailed": "Phrasenschlüssel konnten nicht importiert werden.",
         "importJsonOnly": "Wählen Sie eine JSON Phrasenschlüsseldatei.",
         "importTooLarge": "Diese Datei ist zu groß zum Importieren.",
         "duplicateTrigger": "Ein Phrasenschlüssel verwendet diesen gesprochenen Auslöser bereits.",
         "deleteConfirm": "Phrasenschlüssel „{{trigger}}“ löschen?",
         "disableAriaLabel": "Phrasenschlüssel deaktivieren: {{trigger}}",
-        "enableAriaLabel": "Phrasenschlüssel aktivieren: {{trigger}}"
+        "enableAriaLabel": "Phrasenschlüssel aktivieren: {{trigger}}",
+        "importNoNewKeys": "Es müssen keine neuen Phrasenschlüssel importiert werden.",
+        "disableMenu": {
+          "open": "Optionen zum Deaktivieren der Phrasentaste für {{trigger}}",
+          "title": "Optionen deaktivieren",
+          "disable": "Phrasenschlüssel deaktivieren",
+          "enable": "Phrasenschlüssel aktivieren"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Lokaler Datenschutzmodus",
         "description": "Erzwingen Sie, dass die gesamte Nachbearbeitung nur auf dem Gerät ausgeführt wird. Während diese Option aktiviert ist, werden Cloud-Anbieter deaktiviert.",
         "cloudDisabled": "Cloud-Nachbearbeitungsanbieter sind deaktiviert, während der lokale Datenschutzmodus aktiviert ist."
+      },
+      "cleanupLevel": {
+        "title": "Reinigungsstufe",
+        "description": "Wählen Sie aus, wie stark Vox Jot jedes Diktat vor dem Einfügen bearbeitet. Diktiermodi können dies pro App oder Website überschreiben.",
+        "raw": "Raw: Genaues Transkript einfügen",
+        "light": "Leicht: Füllwörter und Grammatik korrigieren",
+        "medium": "Medium: Klarheit und Prägnanz verbessern",
+        "high": "Hoch: Zur Kürze und Verfeinerung neu schreiben"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Stummschaltung während der Aufnahme",
           "description": "Schalten Sie den Ton anderer Apps stumm, während dieses Profil aufzeichnet."
+        },
+        "cleanup_level": {
+          "label": "Reinigungsstufe",
+          "description": "Wählen Sie aus, wie stark Vox Jot das, was Sie gesagt haben, bearbeiten kann."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Nachbearbeitung überspringen",
         "trailingSpace": "Nachgestelltes Leerzeichen",
         "noTrailingSpace": "Kein nachgestelltes Leerzeichen",
-        "muteWhileRecording": "Stummschaltung während der Aufnahme"
+        "muteWhileRecording": "Stummschaltung während der Aufnahme",
+        "tryMode": "Vorschaumodus"
       },
       "templates": {
         "heading": "Beginnen Sie mit einer Vorlage",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Stummschaltung während der Aufnahme",
           "off": "Lassen Sie die Audiowiedergabe laufen"
+        },
+        "cleanup_level": {
+          "raw": "Roh",
+          "light": "Licht",
+          "medium": "Medium (de)",
+          "high": "Hoch"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Funktionen des Diktiermodus",
+        "match": {
+          "label": "Kontext anpassen",
+          "value": "Apps und Websites",
+          "detail": "Verwenden Sie unterschiedliche Verhaltensweisen in Mail, Slack, Browsern oder einer beliebigen App."
+        },
+        "cleanup": {
+          "label": "Reinigungsstufe",
+          "value": "Roh bis hoch",
+          "detail": "Wählen Sie aus, wie stark Vox Jot jedes übereinstimmende Diktat bearbeiten kann."
+        },
+        "tone": {
+          "label": "Ton und Aufforderung",
+          "value": "Lässig, Profi, Code",
+          "detail": "Wenden Sie pro Modus eine Schreibstimme oder eine benutzerdefinierte Reinigungsaufforderung an."
+        }
+      },
+      "preview": {
+        "title": "Vorschaumodus",
+        "description": "Dies zeigt eine Vorschau der Textbereinigung für {{name}}. Beim Live-Diktieren wird der Modus weiterhin automatisch angewendet, wenn {{target}} fokussiert ist.",
+        "multipleApps": "{{count}}-Apps",
+        "urlOnly": "Diese Vorschau erzwingt den ausgewählten Website-Modus. Öffnen Sie beim Live-Diktieren {{target}}, fokussieren Sie ein Textfeld und verwenden Sie dann Ihre Diktierverknüpfung.",
+        "inputLabel": "Beispieldiktat",
+        "outputLabel": "Modusausgabe",
+        "outputPlaceholder": "Hier erscheint die Vorschauausgabe.",
+        "run": "Vorschau ausführen",
+        "running": "Vorschau...",
+        "appliedTone": "Angewandter Ton: {{tone}}",
+        "unchanged": "Vorschau mit unverändertem Text abgeschlossen. Dies kann passieren, wenn die Probe bereits bereinigt ist oder die Bereinigung nicht konfiguriert ist; Beim Live-Diktieren werden weiterhin die App-, Modell-, Ton- und Ausgabeeinstellungen dieses Modus verwendet.",
+        "error": "Dieser Modus konnte nicht in der Vorschau angezeigt werden."
       }
     }
   },

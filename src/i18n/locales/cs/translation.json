@@ -308,6 +308,16 @@
       "tip": {
         "title": "Začněte jednoduše, nalaďte později",
         "description": "Nejrychlejší cestou je nejprve zprovoznit nezpracovaný diktát. Jakmile se budete cítit dobře, upravte nastavení vkládání a vylepšete diktování z hlavní aplikace."
+      },
+      "ctaSuccess": "Dokončete nastavení",
+      "ctaWaiting": "Čekání na diktát",
+      "skip": "Prozatím přeskočit",
+      "troubleshoot": "Odstraňte problémy",
+      "testField": {
+        "label": "Testovací pole přepisu",
+        "placeholder": "Zde se objeví váš první úspěšný diktát.",
+        "success": "Diktát přijat. Nastavení může být dokončeno.",
+        "waiting": "Použijte zkratku jednou. Pokud se nic nezobrazí, zkontrolujte mikrofon, oprávnění a nastavení modelu."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Stahuje se model {{modelId}}",
     "downloadProgress": "Průběh stahování modelu",
     "switcherAriaLabel": "Aktuální model: {{model}}. Otevřít přepínač modelů.",
-    "waitingForData": "Čeká se na data..."
+    "waitingForData": "Čeká se na data...",
+    "downloadModel": "Stáhnout {{modelName}} ({{size}})",
+    "largeDownloadWarning": "Velké stahování: {{size}}. Ponechejte Vox Jot otevřený, dokud instalace nedokončí.",
+    "badges": {
+      "bestQuality": "Nejlepší kvalita",
+      "bestQualityDetail": "Nejvýše hodnocený model řeči v aktuální sadě.",
+      "fastest": "Nejrychlejší",
+      "fastestDetail": "Velmi nízká naměřená latence p50.",
+      "balanced": "Vyrovnaný",
+      "balancedDetail": "Doporučená rovnováha mezi rychlostí, kvalitou a nastavením.",
+      "smallest": "Nejmenší",
+      "smallestDetail": "Malé stahování a velikost disku."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Zobrazení frázových kláves",
         "importDropHint": "Přetáhněte sem frázové klíče JSON",
         "pickImportFile": "Vyberte soubor JSON",
-        "importSuccess": "Byly importovány frázové klíče.",
+        "importSuccess": "Importované frázové klíče {{count}}.",
         "importFailed": "Import frázových klíčů se nezdařil.",
         "importJsonOnly": "Vyberte soubor klíčů frází JSON.",
         "importTooLarge": "Tento soubor je pro import příliš velký.",
         "duplicateTrigger": "Frázový klíč již tento mluvený spouštěč používá.",
         "deleteConfirm": "Smazat klíč fráze „{{trigger}}“?",
         "disableAriaLabel": "Zakázat klíč fráze: {{trigger}}",
-        "enableAriaLabel": "Povolit klíč fráze: {{trigger}}"
+        "enableAriaLabel": "Povolit klíč fráze: {{trigger}}",
+        "importNoNewKeys": "Žádné nové frázové klíče k importu.",
+        "disableMenu": {
+          "open": "Možnosti deaktivace frázových kláves pro {{trigger}}",
+          "title": "Zakázat možnosti",
+          "disable": "Zakázat klíč fráze",
+          "enable": "Povolit klíč fráze"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Místní režim soukromí",
         "description": "Vynutit, aby se veškeré následné zpracování spouštělo pouze na zařízení. Během této doby budou poskytovatelé cloudu deaktivováni.",
         "cloudDisabled": "Poskytovatelé cloudového následného zpracování jsou deaktivováni, když je povolen místní režim ochrany osobních údajů."
+      },
+      "cleanupLevel": {
+        "title": "Úroveň čištění",
+        "description": "Zvolte, jak moc Vox Jot upraví každý diktát před vložením. Režimy diktování mohou toto nastavení u jednotlivých aplikací nebo webových stránek přepsat.",
+        "raw": "Raw: vložte přesný přepis",
+        "light": "Světlo: opravte výplně a gramatiku",
+        "medium": "Střední: zlepšit srozumitelnost a stručnost",
+        "high": "Vysoká: přepsat pro stručnost a lesk"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Ztlumit během nahrávání",
           "description": "Při nahrávání tohoto profilu ztišit zvuk ostatních aplikací."
+        },
+        "cleanup_level": {
+          "label": "Úroveň čištění",
+          "description": "Vyberte, do jaké míry může Vox Jot upravit, co jste řekli."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Přeskočit post-process",
         "trailingSpace": "Koncový prostor",
         "noTrailingSpace": "Bez mezery na konci",
-        "muteWhileRecording": "Ztlumit během nahrávání"
+        "muteWhileRecording": "Ztlumit během nahrávání",
+        "tryMode": "Režim náhledu"
       },
       "templates": {
         "heading": "Začněte od šablony",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Ztlumit během nahrávání",
           "off": "Pokračujte v přehrávání zvuku"
+        },
+        "cleanup_level": {
+          "raw": "Syrový",
+          "light": "Světlo",
+          "medium": "Střední",
+          "high": "Vysoký"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Možnosti režimu diktování",
+        "match": {
+          "label": "Kontext zápasu",
+          "value": "Aplikace a webové stránky",
+          "detail": "Použijte jiné chování v Mailu, Slacku, prohlížečích nebo jakékoli aplikaci."
+        },
+        "cleanup": {
+          "label": "Úroveň čištění",
+          "value": "Syrové až vysoké",
+          "detail": "Vyberte, jak moc může Vox Jot upravovat každý odpovídající diktát."
+        },
+        "tone": {
+          "label": "Tón a výzva",
+          "value": "Neformální, profík, kód",
+          "detail": "V každém režimu použijte hlas pro psaní nebo vlastní výzvu k vyčištění."
+        }
+      },
+      "preview": {
+        "title": "Režim náhledu",
+        "description": "Toto zobrazí náhled čištění textu pro {{name}}. Živé diktování stále používá režim automaticky, když je zaostřeno {{target}}.",
+        "multipleApps": "aplikace {{count}}",
+        "urlOnly": "Tento náhled vynutí zvolený režim webu. V živém diktování otevřete {{target}}, zaměřte textové pole a poté použijte svou zkratku pro diktování.",
+        "inputLabel": "Ukázka diktátu",
+        "outputLabel": "Výstup režimu",
+        "outputPlaceholder": "Zde se zobrazí náhled výstupu.",
+        "run": "Spustit náhled",
+        "running": "Náhled…",
+        "appliedTone": "Použitý tón: {{tone}}",
+        "unchanged": "Náhled dokončen s nezměněným textem. To se může stát, když je vzorek již čistý nebo čištění není nakonfigurováno; živé diktování stále používá nastavení aplikace, modelu, tónu a výstupu tohoto režimu.",
+        "error": "Náhled tohoto režimu nelze zobrazit."
       }
     }
   },

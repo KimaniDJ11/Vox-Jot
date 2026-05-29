@@ -308,6 +308,16 @@
       "tip": {
         "title": "Comece de forma simples, ajuste mais tarde",
         "description": "O caminho mais rápido é fazer com que o ditado bruto funcione primeiro. Quando estiver bom, refine as configurações de colagem e o ditado refinado do aplicativo principal."
+      },
+      "ctaSuccess": "Concluir configuração",
+      "ctaWaiting": "Esperando pelo ditado",
+      "skip": "Pular por enquanto",
+      "troubleshoot": "Solucionar problemas",
+      "testField": {
+        "label": "Campo de teste de transcrição",
+        "placeholder": "Seu primeiro ditado bem-sucedido aparecerá aqui.",
+        "success": "Ditado recebido. A configuração pode ser concluída.",
+        "waiting": "Use o atalho uma vez. Se nada aparecer, verifique o microfone, as permissões e a configuração do modelo."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Baixando modelo {{modelId}}",
     "downloadProgress": "Progresso do download do modelo",
     "switcherAriaLabel": "Modelo atual: {{model}}. Abrir seletor de modelos.",
-    "waitingForData": "Aguardando dados..."
+    "waitingForData": "Aguardando dados...",
+    "downloadModel": "Baixar{{modelName}} ({{size}})",
+    "largeDownloadWarning": "Download grande: {{size}}. Mantenha o Vox Jot aberto até a instalação terminar.",
+    "badges": {
+      "bestQuality": "Melhor qualidade",
+      "bestQualityDetail": "Modelo de fala com melhor classificação no conjunto atual.",
+      "fastest": "Mais rápido",
+      "fastestDetail": "Latência p50 medida muito baixa.",
+      "balanced": "Equilibrado",
+      "balancedDetail": "Equilíbrio recomendado de velocidade, qualidade e configuração.",
+      "smallest": "Menor",
+      "smallestDetail": "Download pequeno e pegada em disco."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Visualização de teclas de frase",
         "importDropHint": "Arraste e solte um arquivo JSON de chaves de frase aqui",
         "pickImportFile": "Escolha o arquivo JSON",
-        "importSuccess": "Chaves de frase importadas.",
+        "importSuccess": "Chaves de frase {{count}} importadas.",
         "importFailed": "Falha ao importar chaves de frase.",
         "importJsonOnly": "Escolha um arquivo de chaves de frase JSON.",
         "importTooLarge": "Esse arquivo é muito grande para importar.",
         "duplicateTrigger": "Uma chave de frase já usa esse gatilho falado.",
         "deleteConfirm": "Excluir chave de frase \"{{trigger}}\"?",
         "disableAriaLabel": "Desativar chave de frase: {{trigger}}",
-        "enableAriaLabel": "Ativar chave de frase: {{trigger}}"
+        "enableAriaLabel": "Ativar chave de frase: {{trigger}}",
+        "importNoNewKeys": "Nenhuma nova chave de frase para importar.",
+        "disableMenu": {
+          "open": "Opções de desativação de chave de frase para {{trigger}}",
+          "title": "Desativar opções",
+          "disable": "Desativar chave de frase",
+          "enable": "Ativar chave de frase"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Modo de privacidade local",
         "description": "Força todo o pós-processamento a ser executado apenas no dispositivo. Os provedores de nuvem serão desativados enquanto esta opção estiver ativada.",
         "cloudDisabled": "Os provedores de pós-processamento em nuvem são desativados enquanto o Modo de privacidade local está ativado."
+      },
+      "cleanupLevel": {
+        "title": "Nível de limpeza",
+        "description": "Escolha quanto o Vox Jot edita cada ditado antes de colar. Os modos de ditado podem substituir isso por aplicativo ou site.",
+        "raw": "Raw: cole a transcrição exata",
+        "light": "Leve: corrija preenchimentos e gramática",
+        "medium": "Médio: melhore a clareza e a concisão",
+        "high": "Alto: reescrever para ser breve e polir"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Silenciar durante a gravação",
           "description": "Silencie o áudio de outros aplicativos enquanto este perfil grava."
+        },
+        "cleanup_level": {
+          "label": "Nível de limpeza",
+          "description": "Escolha o quanto o Vox Jot pode editar o que você disse."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Pular pós-processo",
         "trailingSpace": "Espaço final",
         "noTrailingSpace": "Sem espaço à direita",
-        "muteWhileRecording": "Silenciar durante a gravação"
+        "muteWhileRecording": "Silenciar durante a gravação",
+        "tryMode": "Modo de visualização"
       },
       "templates": {
         "heading": "Comece a partir de um modelo",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Silenciar durante a gravação",
           "off": "Continue reproduzindo o áudio"
+        },
+        "cleanup_level": {
+          "raw": "Cru",
+          "light": "Luz",
+          "medium": "Médio",
+          "high": "Alto"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Capacidades do modo de ditado",
+        "match": {
+          "label": "Contexto de correspondência",
+          "value": "Aplicativos e sites",
+          "detail": "Use um comportamento diferente no Mail, Slack, navegadores ou qualquer aplicativo."
+        },
+        "cleanup": {
+          "label": "Nível de limpeza",
+          "value": "Cru para alto",
+          "detail": "Escolha quanto o Vox Jot pode editar cada ditado correspondente."
+        },
+        "tone": {
+          "label": "Tom e aviso",
+          "value": "Casual, profissional, código",
+          "detail": "Aplique uma voz escrita ou um prompt de limpeza personalizado por modo."
+        }
+      },
+      "preview": {
+        "title": "Modo de visualização",
+        "description": "Isso visualiza a limpeza de texto para {{name}}. O ditado ao vivo ainda aplica o modo automaticamente quando o {{target}} está focado.",
+        "multipleApps": "Aplicativos {{count}}",
+        "urlOnly": "Esta visualização força o modo de site selecionado. No ditado ao vivo, abra o {{target}}, foque um campo de texto e use o atalho de ditado.",
+        "inputLabel": "Exemplo de ditado",
+        "outputLabel": "Saída de modo",
+        "outputPlaceholder": "A saída de visualização aparece aqui.",
+        "run": "Executar visualização",
+        "running": "Visualizando…",
+        "appliedTone": "Tom aplicado: {{tone}}",
+        "unchanged": "Visualização concluída com texto inalterado. Isso pode acontecer quando a amostra já está limpa ou a limpeza não está configurada; o ditado ao vivo ainda usa as configurações de aplicativo, modelo, tom e saída deste modo.",
+        "error": "Não foi possível visualizar este modo."
       }
     }
   },

@@ -1,3 +1,4 @@
+#[cfg(not(feature = "ci-mock-transcription"))]
 pub mod apple_speech;
 pub mod audio;
 pub mod continuous_cloning;

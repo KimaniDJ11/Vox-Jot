@@ -308,6 +308,16 @@
       "tip": {
         "title": "從簡單開始，稍後調整",
         "description": "最快的方法是先讓原始聽寫工作。一旦感覺良好，就可以從主應用程式中完善貼上設定和完善聽寫。"
+      },
+      "ctaSuccess": "完成設定",
+      "ctaWaiting": "等待聽寫",
+      "skip": "暫時跳過",
+      "troubleshoot": "故障排除",
+      "testField": {
+        "label": "成績單測試場",
+        "placeholder": "您的第一次成功聽寫將會出現在這裡。",
+        "success": "收到聽寫。設定即可完成。",
+        "waiting": "使用快捷方式一次。如果沒有出現任何內容，請檢查麥克風、權限和型號設定。"
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "正在下載模型 {{modelId}}",
     "downloadProgress": "模型下載進度",
     "switcherAriaLabel": "目前模型：{{model}}。開啟模型切換器。",
-    "waitingForData": "正在等待資料..."
+    "waitingForData": "正在等待資料...",
+    "downloadModel": "下載{{modelName}} ({{size}})",
+    "largeDownloadWarning": "大量下載：{{size}}。保持 Vox Jot 打開，直到安裝完成。",
+    "badges": {
+      "bestQuality": "極品",
+      "bestQualityDetail": "目前套件中排名最高的語音模型。",
+      "fastest": "最快",
+      "fastestDetail": "測得的 p50 潛伏期非常低。",
+      "balanced": "均衡",
+      "balancedDetail": "建議平衡速度、品質和設定。",
+      "smallest": "最小",
+      "smallestDetail": "下載和磁碟佔用空間小。"
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "樂句鍵視圖",
         "importDropHint": "將短語鍵 JSON 檔案拖放到此處",
         "pickImportFile": "選擇JSON文件",
-        "importSuccess": "已導入樂句鍵。",
+        "importSuccess": "導入 {{count}} 短語鍵。",
         "importFailed": "導入短語鍵失敗。",
         "importJsonOnly": "選擇 JSON 短語鍵檔。",
         "importTooLarge": "該文件太大而無法匯入。",
         "duplicateTrigger": "短語鍵已使用該語音觸發器。",
         "deleteConfirm": "刪除短語鍵「{{trigger}}」？",
         "disableAriaLabel": "停用短語鍵：{{trigger}}",
-        "enableAriaLabel": "啟用短語鍵：{{trigger}}"
+        "enableAriaLabel": "啟用短語鍵：{{trigger}}",
+        "importNoNewKeys": "無需導入新的短語鍵。",
+        "disableMenu": {
+          "open": "{{trigger}} 的樂句鍵停用選項",
+          "title": "停用選項",
+          "disable": "停用短語鍵",
+          "enable": "啟用短語鍵"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "本地隱私模式",
         "description": "強制所有後處理僅在設備上運行。開啟此功能時，雲端提供者將被停用。",
         "cloudDisabled": "啟用本地隱私模式時，雲端後處理提供者將會停用。"
+      },
+      "cleanupLevel": {
+        "title": "清理等級",
+        "description": "選擇貼上前 Vox Jot 對每個聽寫內容的編輯程度。聽寫模式可以覆蓋每個應用程式或網站的此設定。",
+        "raw": "原文：貼上準確的轉錄本",
+        "light": "Light：修復填充詞和語法",
+        "medium": "中：提高清晰度和簡潔性",
+        "high": "高：為了簡潔優美而重寫"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "錄音時靜音",
           "description": "在此設定檔錄製時，使其他應用程式的音訊靜音。"
+        },
+        "cleanup_level": {
+          "label": "清理等級",
+          "description": "選擇 Vox Jot 可以編輯您所說內容的程度。"
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "跳過後處理",
         "trailingSpace": "尾隨空格",
         "noTrailingSpace": "沒有尾隨空格",
-        "muteWhileRecording": "錄音時靜音"
+        "muteWhileRecording": "錄音時靜音",
+        "tryMode": "預覽模式"
       },
       "templates": {
         "heading": "從模板開始",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "錄音時靜音",
           "off": "保持音訊播放"
+        },
+        "cleanup_level": {
+          "raw": "生的",
+          "light": "光",
+          "medium": "中等的",
+          "high": "高的"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "聽寫模式功能",
+        "match": {
+          "label": "匹配上下文",
+          "value": "應用程式和網站",
+          "detail": "在 Mail、Slack、瀏覽器或任何應用程式中使用不同的行為。"
+        },
+        "cleanup": {
+          "label": "清理等級",
+          "value": "原始到高",
+          "detail": "選擇 Vox Jot 可以編輯每個符合聽寫的程度。"
+        },
+        "tone": {
+          "label": "提示音和提示音",
+          "value": "休閒、專業、代碼",
+          "detail": "在每種模式下套用書寫語音或自訂清理提示。"
+        }
+      },
+      "preview": {
+        "title": "預覽模式",
+        "description": "這預覽了 {{name}} 的文字清理。當 {{target}} 聚焦時，即時聽寫仍會自動套用此模式。",
+        "multipleApps": "{{count}}應用程式",
+        "urlOnly": "此預覽強制選擇所選的網站模式。在即時聽寫中，開啟 {{target}}，將焦點置於文字字段，然後使用聽寫捷徑。",
+        "inputLabel": "聽寫樣本",
+        "outputLabel": "模式輸出",
+        "outputPlaceholder": "預覽輸出出現在此。",
+        "run": "運行預覽",
+        "running": "正在預覽...",
+        "appliedTone": "適用音調：{{tone}}",
+        "unchanged": "預覽完成，文字未更改。當樣本已經乾淨或未配置清理時，可能會發生這種情況；即時聽寫仍然使用此模式的應用程式、模型、語氣和輸出設定。",
+        "error": "無法預覽此模式。"
       }
     }
   },

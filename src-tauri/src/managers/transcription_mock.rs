@@ -7,29 +7,15 @@ use crate::managers::audio::AudioRecordingManager;
 use crate::managers::model::ModelManager;
 use crate::settings::AppSettings;
 use anyhow::Result;
-use serde::Serialize;
 use std::sync::Arc;
 use tauri::AppHandle;
 
-#[derive(Clone, Debug, Serialize)]
-pub struct ModelStateEvent {
-    pub event_type: String,
-    pub model_id: Option<String>,
-    pub model_name: Option<String>,
-    pub error: Option<String>,
-}
-
 #[derive(Clone)]
-pub struct TranscriptionManager {
-    #[allow(dead_code)]
-    app_handle: AppHandle,
-}
+pub struct TranscriptionManager;
 
 impl TranscriptionManager {
-    pub fn new(app_handle: &AppHandle, _model_manager: Arc<ModelManager>) -> Result<Self> {
-        Ok(Self {
-            app_handle: app_handle.clone(),
-        })
+    pub fn new(_app_handle: &AppHandle, _model_manager: Arc<ModelManager>) -> Result<Self> {
+        Ok(Self)
     }
 
     pub fn is_model_loaded(&self) -> bool {
@@ -94,30 +80,6 @@ impl TranscriptionManager {
 
     pub fn is_processing_cancelled(&self, _generation: u64) -> bool {
         false
-    }
-
-    pub fn maybe_emit_partial_transcription(&self, _generation: u64, _text: &str) {}
-
-    pub fn maybe_emit_partial_error(&self, _generation: u64, _error: &str) {}
-
-    pub fn cancel_partial_provider(&self) {
-        self.stop_partial_provider();
-    }
-
-    pub fn active_partial_binding_id(&self) -> Option<String> {
-        None
-    }
-
-    pub fn finish_active_partial_provider(&self) {}
-
-    pub fn set_model_unload_timeout(&self, _timeout: crate::settings::ModelUnloadTimeout) {}
-
-    pub fn schedule_model_unload_if_idle(&self, _context: &str) {}
-
-    pub fn update_model_runtime_settings(&self, _settings: &AppSettings) {}
-
-    pub fn warm_selected_model(&self) -> Result<()> {
-        Ok(())
     }
 
     pub fn shutdown(&self) {}

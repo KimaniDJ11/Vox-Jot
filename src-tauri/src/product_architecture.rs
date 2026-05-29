@@ -1,11 +1,10 @@
-// The catalog is intentionally ahead of runtime wiring so new providers and
-// modules have one contract to attach to as they graduate from lab features.
-#![allow(dead_code)]
-
+#[cfg(test)]
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
 use specta::Type;
 use std::time::Duration;
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductModuleTier {
@@ -14,6 +13,7 @@ pub enum ProductModuleTier {
     Lab,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductModuleDomain {
@@ -26,6 +26,7 @@ pub enum ProductModuleDomain {
     ModelTesting,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ProductModuleDescriptor {
     pub id: &'static str,
@@ -35,6 +36,7 @@ pub struct ProductModuleDescriptor {
     pub enabled_by_default: bool,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RuntimeArtifactDomain {
@@ -46,6 +48,7 @@ pub enum RuntimeArtifactDomain {
     SpeechAnalysis,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RuntimeExecutionMode {
@@ -55,6 +58,7 @@ pub enum RuntimeExecutionMode {
     RemoteProvider,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RuntimeProviderContract {
     pub id: &'static str,
@@ -89,6 +93,7 @@ pub const DICTATION_LATENCY_BUDGETS: &[LatencyBudget] = &[
     },
 ];
 
+#[cfg(test)]
 pub fn builtin_product_modules() -> &'static [ProductModuleDescriptor] {
     &[
         ProductModuleDescriptor {
@@ -143,6 +148,7 @@ pub fn builtin_product_modules() -> &'static [ProductModuleDescriptor] {
     ]
 }
 
+#[cfg(test)]
 pub fn builtin_runtime_provider_contracts() -> &'static [RuntimeProviderContract] {
     &[
         RuntimeProviderContract {

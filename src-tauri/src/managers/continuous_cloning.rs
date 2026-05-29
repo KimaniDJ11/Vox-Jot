@@ -1,34 +1,53 @@
+#[cfg(not(feature = "ci-mock-transcription"))]
 use crate::settings::get_settings;
+#[cfg(not(feature = "ci-mock-transcription"))]
 use crate::tts_profiles::{
     append_reference_audio, find_active_improvement_profile, resample_linear,
 };
+#[cfg(not(feature = "ci-mock-transcription"))]
 use log::{debug, info, warn};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
+#[cfg(not(feature = "ci-mock-transcription"))]
+use tauri::Emitter;
 
+#[cfg(not(feature = "ci-mock-transcription"))]
 const MIN_AUDIO_DURATION_SECS: f32 = 3.0;
+#[cfg(not(feature = "ci-mock-transcription"))]
 const STT_SAMPLE_RATE: u32 = 16_000;
+#[cfg(not(feature = "ci-mock-transcription"))]
 const TTS_SAMPLE_RATE: u32 = 24_000;
 
 /// Filler words that indicate low-quality transcription segments.
+#[cfg(not(feature = "ci-mock-transcription"))]
 const FILLER_WORDS: &[&str] = &[
     "um", "uh", "hmm", "hm", "ah", "eh", "er", "like", "you know", "so", "well", "okay", "ok",
 ];
 
 #[derive(Clone)]
 pub struct ContinuousCloningManager {
+    #[cfg(not(feature = "ci-mock-transcription"))]
     app_handle: AppHandle,
 }
 
 impl ContinuousCloningManager {
     pub fn new(app_handle: &AppHandle) -> Self {
-        Self {
-            app_handle: app_handle.clone(),
+        #[cfg(not(feature = "ci-mock-transcription"))]
+        {
+            return Self {
+                app_handle: app_handle.clone(),
+            };
+        }
+        #[cfg(feature = "ci-mock-transcription")]
+        {
+            let _ = app_handle;
+            Self {}
         }
     }
 
     /// Process a successful STT result for continuous voice improvement.
     /// `audio_16k` is the audio buffer at 16kHz (post-STT resample).
     /// `transcript` is the text produced by STT.
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn process_stt_result(&self, audio_16k: &[f32], transcript: &str) {
         // Quick check: is there an active improvement profile?
         let active_profile_id = match find_active_improvement_profile(&self.app_handle) {
@@ -116,6 +135,7 @@ impl ContinuousCloningManager {
 }
 
 /// Returns true if the transcript contains meaningful content beyond filler words.
+#[cfg(not(feature = "ci-mock-transcription"))]
 fn is_quality_transcript(transcript: &str) -> bool {
     let trimmed = transcript.trim();
     if trimmed.is_empty() {
@@ -141,6 +161,7 @@ fn is_quality_transcript(transcript: &str) -> bool {
     meaningful_count >= 2
 }
 
+#[cfg(not(feature = "ci-mock-transcription"))]
 fn is_profile_fully_optimized(app_handle: &AppHandle, profile_id: &str) -> bool {
     match crate::tts_profiles::get_profile_progress(app_handle, profile_id) {
         Ok(descriptor) => descriptor.fully_optimized,

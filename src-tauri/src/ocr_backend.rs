@@ -10,8 +10,6 @@
 //! macOS uses a capture-only Swift bridge when a selected OCR backend needs
 //! pixels. If that backend returns nothing or fails, the fused Vision path
 //! remains the fallback.
-#![cfg_attr(target_os = "macos", allow(dead_code))]
-
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -33,9 +31,6 @@ pub struct NeuralRoute {
 
 #[derive(Debug)]
 pub enum OcrError {
-    /// Backend is blocked in this build. Caller should fall through to
-    /// the existing native/backup path.
-    NotImplemented(OcrBackendKind),
     /// Backend ran but failed (timeout, missing files, malformed output).
     Backend(String),
 }
@@ -43,9 +38,6 @@ pub enum OcrError {
 impl std::fmt::Display for OcrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OcrError::NotImplemented(kind) => {
-                write!(f, "neural OCR backend blocked: {:?}", kind)
-            }
             OcrError::Backend(msg) => write!(f, "{}", msg),
         }
     }

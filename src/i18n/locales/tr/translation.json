@@ -308,6 +308,16 @@
       "tip": {
         "title": "Basit başlayın, daha sonra ayarlayın",
         "description": "En hızlı yol, önce ham diktenin çalışmasını sağlamaktır. Bu iyi hissettirdiğinde, ana uygulamadan yapıştırma ayarlarını hassaslaştırın ve dikteyi iyileştirin."
+      },
+      "ctaSuccess": "Kurulumu bitir",
+      "ctaWaiting": "Dikte bekleniyor",
+      "skip": "Şimdilik atla",
+      "troubleshoot": "Sorun giderme",
+      "testField": {
+        "label": "Transkript test alanı",
+        "placeholder": "İlk başarılı dikteniz burada görünecektir.",
+        "success": "Dikte alındı. Kurulum tamamlanabilir.",
+        "waiting": "Kısayolu bir kez kullanın. Hiçbir şey görünmüyorsa mikrofonu, izinleri ve model kurulumunu kontrol edin."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "{{modelId}} modeli indiriliyor",
     "downloadProgress": "Model indirme ilerlemesi",
     "switcherAriaLabel": "Geçerli model: {{model}}. Model değiştiriciyi aç.",
-    "waitingForData": "Veri bekleniyor..."
+    "waitingForData": "Veri bekleniyor...",
+    "downloadModel": "{{modelName}}'i indirin ({{size}})",
+    "largeDownloadWarning": "Büyük indirme: {{size}}. Kurulum bitene kadar Vox Jot'u açık tutun.",
+    "badges": {
+      "bestQuality": "En İyi Kalite",
+      "bestQualityDetail": "Mevcut paketteki en yüksek dereceli konuşma modeli.",
+      "fastest": "En hızlı",
+      "fastestDetail": "Çok düşük ölçülen p50 gecikmesi.",
+      "balanced": "Dengeli",
+      "balancedDetail": "Hız, kalite ve kurulum arasında önerilen denge.",
+      "smallest": "En küçük",
+      "smallestDetail": "Küçük indirme ve disk alanı."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "İfade tuşları görünümü",
         "importDropHint": "Bir cümle anahtarını JSON dosyasını buraya sürükleyip bırakın",
         "pickImportFile": "JSON dosyasını seçin",
-        "importSuccess": "İfade anahtarları içe aktarıldı.",
+        "importSuccess": "İçe aktarılan {{count}} cümle anahtarları.",
         "importFailed": "İfade anahtarları içe aktarılamadı.",
         "importJsonOnly": "Bir JSON ifade anahtarları dosyası seçin.",
         "importTooLarge": "Bu dosya içe aktarılamayacak kadar büyük.",
         "duplicateTrigger": "Bir cümle anahtarı zaten bu sözlü tetikleyiciyi kullanıyor.",
         "deleteConfirm": "\"{{trigger}}\" ifade anahtarı silinsin mi?",
         "disableAriaLabel": "İfade anahtarını devre dışı bırak: {{trigger}}",
-        "enableAriaLabel": "İfade anahtarını etkinleştir: {{trigger}}"
+        "enableAriaLabel": "İfade anahtarını etkinleştir: {{trigger}}",
+        "importNoNewKeys": "İçe aktarılacak yeni ifade anahtarı yok.",
+        "disableMenu": {
+          "open": "{{trigger}} için cümle anahtarı devre dışı bırakma seçenekleri",
+          "title": "Seçenekleri devre dışı bırak",
+          "disable": "Cümle anahtarını devre dışı bırak",
+          "enable": "İfade anahtarını etkinleştir"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Yerel Gizlilik Modu",
         "description": "Tüm son işlemleri yalnızca cihazda çalışmaya zorlayın. Bu açıkken bulut sağlayıcıları devre dışı bırakılacak.",
         "cloudDisabled": "Yerel Gizlilik Modu etkinken bulut işlem sonrası sağlayıcıları devre dışı bırakılır."
+      },
+      "cleanupLevel": {
+        "title": "Temizleme düzeyi",
+        "description": "Yapıştırmadan önce Vox Jot'un her dikteyi ne kadar düzenleyeceğini seçin. Dikte Modları, uygulama veya web sitesi başına bunu geçersiz kılabilir.",
+        "raw": "Ham: tam transkript yapıştırın",
+        "light": "Hafif: dolguları ve dilbilgisini düzeltin",
+        "medium": "Orta: netliği ve netliği artırın",
+        "high": "Yüksek: Kısalık ve cila için yeniden yazın"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Kayıt sırasında sesi kapat",
           "description": "Bu profil kayıt yaparken diğer uygulamaların sesini kapatın."
+        },
+        "cleanup_level": {
+          "label": "Temizleme düzeyi",
+          "description": "Vox Jot'un söylediklerinizi ne kadar düzenleyebileceğini seçin."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "İşlem sonrası atla",
         "trailingSpace": "Takip alanı",
         "noTrailingSpace": "Sonda boşluk yok",
-        "muteWhileRecording": "Kayıt sırasında sesi kapat"
+        "muteWhileRecording": "Kayıt sırasında sesi kapat",
+        "tryMode": "Önizleme modu"
       },
       "templates": {
         "heading": "Bir şablondan başlayın",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Kayıt sırasında sesi kapat",
           "off": "Ses çalmaya devam et"
+        },
+        "cleanup_level": {
+          "raw": "Çiğ",
+          "light": "Işık",
+          "medium": "Orta",
+          "high": "Yüksek"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Dikte Modu yetenekleri",
+        "match": {
+          "label": "Bağlamı eşleştir",
+          "value": "Uygulamalar ve web siteleri",
+          "detail": "Mail'de, Slack'te, tarayıcılarda veya herhangi bir uygulamada farklı davranışlar kullanın."
+        },
+        "cleanup": {
+          "label": "Temizleme düzeyi",
+          "value": "Hamdan Yükseğe",
+          "detail": "Vox Jot'un eşleşen her dikteyi ne kadar düzenleyebileceğini seçin."
+        },
+        "tone": {
+          "label": "Ton ve istem",
+          "value": "Günlük, profesyonel, kod",
+          "detail": "Her moda bir yazma sesi veya özel temizleme istemi uygulayın."
+        }
+      },
+      "preview": {
+        "title": "Önizleme modu",
+        "description": "Bu, {{name}} için metin temizlemenin önizlemesini gösterir. Canlı dikte, {{target}} odaklandığında modu otomatik olarak uygulamaya devam eder.",
+        "multipleApps": "{{count}} uygulamaları",
+        "urlOnly": "Bu önizleme seçilen web sitesi modunu zorlar. Canlı diktede {{target}}'i açın, bir metin alanına odaklanın ve ardından dikte kısayolunuzu kullanın.",
+        "inputLabel": "Örnek dikte",
+        "outputLabel": "Mod çıkışı",
+        "outputPlaceholder": "Önizleme çıktısı burada görünür.",
+        "run": "Önizlemeyi çalıştır",
+        "running": "Önizleniyor…",
+        "appliedTone": "Uygulanan ton: {{tone}}",
+        "unchanged": "Önizleme değiştirilmemiş metinle tamamlandı. Bu, numune zaten temiz olduğunda veya temizleme yapılandırılmadığında meydana gelebilir; canlı dikte hala bu modun uygulamasını, modelini, tonunu ve çıkış ayarlarını kullanıyor.",
+        "error": "Bu modun önizlemesi yapılamadı."
       }
     }
   },

@@ -647,6 +647,7 @@ impl AudioRecordingManager {
         }
     }
 
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn snapshot_recording(&self) -> Option<Vec<f32>> {
         if !self.is_recording() {
             return None;

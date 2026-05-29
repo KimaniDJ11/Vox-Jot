@@ -28,9 +28,7 @@ use windows::Graphics::Imaging::{
     BitmapAlphaMode, BitmapDecoder, BitmapEncoder, BitmapPixelFormat, SoftwareBitmap,
 };
 use windows::Media::Ocr::OcrEngine;
-use windows::Storage::Streams::{
-    DataReader, DataWriter, InMemoryRandomAccessStream, InputStreamOptions,
-};
+use windows::Storage::Streams::InMemoryRandomAccessStream;
 use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
     BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
@@ -89,12 +87,6 @@ pub(crate) fn native_capture_screen_context(
             Ok(_) => {
                 debug!(
                     "Neural OCR backend ({}) returned no snippets — falling back to native/backup",
-                    route.catalog_id
-                );
-            }
-            Err(crate::ocr_backend::OcrError::NotImplemented(_)) => {
-                debug!(
-                    "Neural OCR backend blocked for {} — using native/backup",
                     route.catalog_id
                 );
             }
@@ -475,13 +467,4 @@ pub(crate) fn check_capture_permission() -> bool {
         let monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
         !monitor.is_invalid()
     }
-}
-
-// Suppress unused-import warnings when the surrounding cfg disables the
-// stream helpers above (kept around for future PNG variant).
-#[allow(dead_code)]
-fn _silence_unused() {
-    let _: Option<DataReader> = None;
-    let _: Option<DataWriter> = None;
-    let _ = InputStreamOptions::default();
 }

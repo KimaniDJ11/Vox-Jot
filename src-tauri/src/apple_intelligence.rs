@@ -3,6 +3,7 @@ use std::ffi::{CStr, CString};
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::os::raw::{c_char, c_int};
 
+#[cfg(not(feature = "ci-mock-transcription"))]
 use crate::helpers::subtitles::TimedSegment;
 use crate::post_processing::ActiveAppContext;
 
@@ -24,7 +25,11 @@ pub struct FrontmostAppResponse {
     pub error_message: *mut c_char,
 }
 
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[cfg(all(
+    target_os = "macos",
+    target_arch = "aarch64",
+    not(feature = "ci-mock-transcription")
+))]
 #[repr(C)]
 pub struct AppleSpeechTranscriptionResponse {
     pub json_payload: *mut c_char,
@@ -32,6 +37,7 @@ pub struct AppleSpeechTranscriptionResponse {
     pub error_message: *mut c_char,
 }
 
+#[cfg(not(feature = "ci-mock-transcription"))]
 #[derive(Debug, serde::Deserialize)]
 pub struct AppleSpeechTranscriptionPayload {
     pub text: String,
@@ -47,7 +53,9 @@ extern "C" {
     pub fn get_frontmost_app_context_apple() -> *mut FrontmostAppResponse;
     pub fn free_frontmost_app_response(response: *mut FrontmostAppResponse);
     pub fn is_apple_speech_analyzer_available() -> c_int;
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn is_apple_speech_locale_installed(locale_identifier: *const c_char) -> c_int;
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn transcribe_with_apple_speech(
         samples: *const f32,
         sample_count: c_int,
@@ -55,6 +63,7 @@ extern "C" {
         locale_identifier: *const c_char,
         progressive: c_int,
     ) -> *mut AppleSpeechTranscriptionResponse;
+    #[cfg(not(feature = "ci-mock-transcription"))]
     pub fn free_apple_speech_transcription_response(
         response: *mut AppleSpeechTranscriptionResponse,
     );
@@ -86,7 +95,11 @@ pub fn check_apple_speech_analyzer_availability() -> bool {
 /// is the only authoritative source — `SpeechTranscriber.isAvailable`
 /// is a global flag and lies for uninstalled locales (the cause of
 /// the EXC_BREAKPOINT crash we hit in production).
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[cfg(all(
+    target_os = "macos",
+    target_arch = "aarch64",
+    not(feature = "ci-mock-transcription")
+))]
 pub fn is_apple_speech_locale_ready(locale_identifier: Option<&str>) -> bool {
     let cstr = match CString::new(locale_identifier.unwrap_or("")) {
         Ok(s) => s,
@@ -95,12 +108,19 @@ pub fn is_apple_speech_locale_ready(locale_identifier: Option<&str>) -> bool {
     unsafe { is_apple_speech_locale_installed(cstr.as_ptr()) == 1 }
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(all(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    not(feature = "ci-mock-transcription")
+))]
 pub fn is_apple_speech_locale_ready(_locale_identifier: Option<&str>) -> bool {
     false
 }
 
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[cfg(all(
+    target_os = "macos",
+    target_arch = "aarch64",
+    not(feature = "ci-mock-transcription")
+))]
 pub fn transcribe_with_apple_speech_analyzer(
     audio: &[f32],
     sample_rate: u32,
@@ -165,7 +185,10 @@ pub fn transcribe_with_apple_speech_analyzer(
     result
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(all(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    not(feature = "ci-mock-transcription")
+))]
 pub fn transcribe_with_apple_speech_analyzer(
     _audio: &[f32],
     _sample_rate: u32,

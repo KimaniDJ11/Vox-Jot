@@ -308,6 +308,16 @@
       "tip": {
         "title": "Zacznij prosto, dostosuj później",
         "description": "Najszybszą ścieżką jest najpierw uruchomienie surowego dyktowania. Gdy wszystko będzie dobrze, dopracuj ustawienia wklejania i dopracuj dyktowanie z poziomu aplikacji głównej."
+      },
+      "ctaSuccess": "Zakończ konfigurację",
+      "ctaWaiting": "Czekam na dyktando",
+      "skip": "Pomiń na razie",
+      "troubleshoot": "Rozwiązywanie problemów",
+      "testField": {
+        "label": "Pole testowe transkrypcji",
+        "placeholder": "Tutaj pojawi się Twoje pierwsze udane dyktando.",
+        "success": "Otrzymano dyktando. Konfiguracja może zostać zakończona.",
+        "waiting": "Użyj skrótu raz. Jeśli nic się nie pojawi, sprawdź mikrofon, uprawnienia i konfigurację modelu."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Pobieranie modelu {{modelId}}",
     "downloadProgress": "Postęp pobierania modelu",
     "switcherAriaLabel": "Aktualny model: {{model}}. Otwórz przełącznik modeli.",
-    "waitingForData": "Oczekiwanie na dane..."
+    "waitingForData": "Oczekiwanie na dane...",
+    "downloadModel": "Pobierz {{modelName}} ({{size}})",
+    "largeDownloadWarning": "Duży plik do pobrania: {{size}}. Pozostaw Vox Jot otwarty aż do zakończenia instalacji.",
+    "badges": {
+      "bestQuality": "Najlepsza jakość",
+      "bestQualityDetail": "Najwyżej oceniany model mowy w bieżącym pakiecie.",
+      "fastest": "Najszybszy",
+      "fastestDetail": "Bardzo niskie zmierzone opóźnienie p50.",
+      "balanced": "Zrównoważony",
+      "balancedDetail": "Zalecana równowaga szybkości, jakości i konfiguracji.",
+      "smallest": "Najmniejszy",
+      "smallestDetail": "Małe pobieranie i miejsce na dysku."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Widok kluczy fraz",
         "importDropHint": "Przeciągnij i upuść tutaj plik kluczy fraz JSON",
         "pickImportFile": "Wybierz plik JSON",
-        "importSuccess": "Zaimportowano klucze fraz.",
+        "importSuccess": "Zaimportowane klucze fraz {{count}}.",
         "importFailed": "Nie udało się zaimportować kluczy fraz.",
         "importJsonOnly": "Wybierz plik kluczy fraz JSON.",
         "importTooLarge": "Ten plik jest zbyt duży, aby go zaimportować.",
         "duplicateTrigger": "Klucz frazy już korzysta z tego wypowiadanego wyzwalacza.",
         "deleteConfirm": "Usunąć klucz frazy „{{trigger}}”?",
         "disableAriaLabel": "Wyłącz klucz frazy: {{trigger}}",
-        "enableAriaLabel": "Włącz klucz frazy: {{trigger}}"
+        "enableAriaLabel": "Włącz klucz frazy: {{trigger}}",
+        "importNoNewKeys": "Brak nowych kluczy fraz do zaimportowania.",
+        "disableMenu": {
+          "open": "Opcje wyłączania klawiszy fraz dla {{trigger}}",
+          "title": "Wyłącz opcje",
+          "disable": "Wyłącz klucz frazy",
+          "enable": "Włącz klucz frazy"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Lokalny tryb prywatności",
         "description": "Wymuś działanie całego przetwarzania końcowego tylko na urządzeniu. Gdy ta opcja jest włączona, dostawcy usług w chmurze zostaną wyłączeni.",
         "cloudDisabled": "Dostawcy przetwarzania końcowego w chmurze są wyłączeni, gdy włączony jest lokalny tryb prywatności."
+      },
+      "cleanupLevel": {
+        "title": "Poziom oczyszczenia",
+        "description": "Wybierz, w jakim stopniu Vox Jot edytuje każde dyktando przed wklejeniem. Tryby dyktowania mogą zastąpić tę opcję w przypadku poszczególnych aplikacji lub witryn internetowych.",
+        "raw": "Surowy: wklej dokładny zapis",
+        "light": "Światło: napraw wypełniacze i gramatykę",
+        "medium": "Średni: popraw przejrzystość i zwięzłość",
+        "high": "Wysoki: przepisz dla zwięzłości i dopracowania"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Wyciszenie podczas nagrywania",
           "description": "Wycisz dźwięk innych aplikacji na czas nagrywania tego profilu."
+        },
+        "cleanup_level": {
+          "label": "Poziom oczyszczenia",
+          "description": "Wybierz, w jakim stopniu Vox Jot może edytować to, co powiedziałeś."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Pomiń proces końcowy",
         "trailingSpace": "Spacja końcowa",
         "noTrailingSpace": "Brak spacji końcowej",
-        "muteWhileRecording": "Wyciszenie podczas nagrywania"
+        "muteWhileRecording": "Wyciszenie podczas nagrywania",
+        "tryMode": "Tryb podglądu"
       },
       "templates": {
         "heading": "Zacznij od szablonu",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Wyciszenie podczas nagrywania",
           "off": "Kontynuuj odtwarzanie dźwięku"
+        },
+        "cleanup_level": {
+          "raw": "Surowy",
+          "light": "Światło",
+          "medium": "Średni",
+          "high": "Wysoki"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Możliwości trybu dyktowania",
+        "match": {
+          "label": "Dopasuj kontekst",
+          "value": "Aplikacje i strony internetowe",
+          "detail": "Użyj innego zachowania w Mail, Slack, przeglądarkach lub dowolnej aplikacji."
+        },
+        "cleanup": {
+          "label": "Poziom oczyszczenia",
+          "value": "Surowy do Wysokiego",
+          "detail": "Wybierz, w jakim stopniu Vox Jot może edytować każde dopasowane dyktando."
+        },
+        "tone": {
+          "label": "Ton i monit",
+          "value": "Swobodny, profesjonalny, kod",
+          "detail": "Zastosuj głos pisany lub niestandardowy monit czyszczenia dla każdego trybu."
+        }
+      },
+      "preview": {
+        "title": "Tryb podglądu",
+        "description": "Spowoduje to podgląd czyszczenia tekstu dla {{name}}. Dyktowanie na żywo nadal stosuje ten tryb automatycznie, gdy {{target}} jest ustawiony na ostrość.",
+        "multipleApps": "Aplikacje {{count}}",
+        "urlOnly": "Ten podgląd wymusza wybrany tryb strony internetowej. W przypadku dyktowania na żywo otwórz {{target}}, zaznacz pole tekstowe, a następnie użyj skrótu do dyktowania.",
+        "inputLabel": "Przykładowe dyktando",
+        "outputLabel": "Wyjście trybu",
+        "outputPlaceholder": "Tutaj pojawia się podgląd wyniku.",
+        "run": "Uruchom podgląd",
+        "running": "Podgląd…",
+        "appliedTone": "Zastosowany ton: {{tone}}",
+        "unchanged": "Podgląd ukończony z niezmienionym tekstem. Może się to zdarzyć, gdy próbka jest już czysta lub nie skonfigurowano czyszczenia; dyktowanie na żywo nadal korzysta z aplikacji, modelu, dźwięku i ustawień wyjściowych tego trybu.",
+        "error": "Nie można wyświetlić podglądu tego trybu."
       }
     }
   },

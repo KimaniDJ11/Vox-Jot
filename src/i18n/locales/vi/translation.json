@@ -308,6 +308,16 @@
       "tip": {
         "title": "Bắt đầu đơn giản, điều chỉnh sau",
         "description": "Cách nhanh nhất là làm cho tính năng đọc chính tả thô hoạt động trước tiên. Sau khi cảm thấy ổn, hãy tinh chỉnh cài đặt dán và viết chính tả tinh tế từ ứng dụng chính."
+      },
+      "ctaSuccess": "Hoàn tất thiết lập",
+      "ctaWaiting": "Đang chờ chính tả",
+      "skip": "Bỏ qua bây giờ",
+      "troubleshoot": "Khắc phục sự cố",
+      "testField": {
+        "label": "Trường kiểm tra bảng điểm",
+        "placeholder": "Đọc chính tả thành công đầu tiên của bạn sẽ xuất hiện ở đây.",
+        "success": "Đã nhận được chính tả. Quá trình thiết lập có thể kết thúc.",
+        "waiting": "Sử dụng phím tắt một lần. Nếu không có gì xuất hiện, hãy kiểm tra micrô, quyền và thiết lập kiểu máy."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Đang tải xuống mô hình {{modelId}}",
     "downloadProgress": "Tiến trình tải xuống mô hình",
     "switcherAriaLabel": "Mô hình hiện tại: {{model}}. Mở bộ chuyển mô hình.",
-    "waitingForData": "Đang chờ dữ liệu..."
+    "waitingForData": "Đang chờ dữ liệu...",
+    "downloadModel": "Tải xuống {{modelName}} ({{size}})",
+    "largeDownloadWarning": "Tải xuống lớn: {{size}}. Giữ Vox Jot mở cho đến khi quá trình cài đặt hoàn tất.",
+    "badges": {
+      "bestQuality": "Chất lượng tốt nhất",
+      "bestQualityDetail": "Mô hình giọng nói được xếp hạng cao nhất trong bộ ứng dụng hiện tại.",
+      "fastest": "Nhanh nhất",
+      "fastestDetail": "Độ trễ p50 đo được rất thấp.",
+      "balanced": "Cân bằng",
+      "balancedDetail": "Đề xuất cân bằng về tốc độ, chất lượng và thiết lập.",
+      "smallest": "Nhỏ nhất",
+      "smallestDetail": "Dung lượng tải xuống và dung lượng ổ đĩa nhỏ."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Chế độ xem phím cụm từ",
         "importDropHint": "Kéo và thả một tập tin cụm từ JSON vào đây",
         "pickImportFile": "Chọn tệp JSON",
-        "importSuccess": "Đã nhập khóa cụm từ.",
+        "importSuccess": "Đã nhập khóa cụm từ {{count}}.",
         "importFailed": "Không thể nhập khóa cụm từ.",
         "importJsonOnly": "Chọn tệp khóa cụm từ JSON.",
         "importTooLarge": "Tệp đó quá lớn để nhập.",
         "duplicateTrigger": "Khóa cụm từ đã sử dụng trình kích hoạt bằng giọng nói đó.",
         "deleteConfirm": "Xóa phím cụm từ \"{{trigger}}\"?",
         "disableAriaLabel": "Tắt phím cụm từ: {{trigger}}",
-        "enableAriaLabel": "Bật phím cụm từ: {{trigger}}"
+        "enableAriaLabel": "Bật phím cụm từ: {{trigger}}",
+        "importNoNewKeys": "Không có khóa cụm từ mới để nhập.",
+        "disableMenu": {
+          "open": "Tùy chọn tắt khóa cụm từ cho {{trigger}}",
+          "title": "Tắt tùy chọn",
+          "disable": "Tắt phím cụm từ",
+          "enable": "Bật phím cụm từ"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Chế độ bảo mật cục bộ",
         "description": "Buộc tất cả quá trình xử lý hậu kỳ chỉ chạy trên thiết bị. Các nhà cung cấp đám mây sẽ bị vô hiệu hóa khi tính năng này được bật.",
         "cloudDisabled": "Nhà cung cấp dịch vụ xử lý hậu kỳ trên đám mây bị tắt trong khi Chế độ bảo mật cục bộ được bật."
+      },
+      "cleanupLevel": {
+        "title": "Mức độ dọn dẹp",
+        "description": "Chọn mức độ Vox Jot chỉnh sửa từng chính tả trước khi dán. Chế độ đọc chính tả có thể ghi đè điều này trên mỗi ứng dụng hoặc trang web.",
+        "raw": "Nguyên: dán bản ghi chính xác",
+        "light": "Nhẹ: sửa lỗi bổ sung và ngữ pháp",
+        "medium": "Trung bình: cải thiện sự rõ ràng và súc tích",
+        "high": "Cao: viết lại cho ngắn gọn và trau chuốt"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Tắt tiếng trong khi ghi âm",
           "description": "Tắt tiếng âm thanh của ứng dụng khác trong khi hồ sơ này ghi lại."
+        },
+        "cleanup_level": {
+          "label": "Mức độ dọn dẹp",
+          "description": "Chọn mức độ Vox Jot có thể chỉnh sửa những gì bạn nói."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Bỏ qua quá trình hậu kỳ",
         "trailingSpace": "Khoảng trống ở cuối",
         "noTrailingSpace": "Không có dấu cách",
-        "muteWhileRecording": "Tắt tiếng trong khi ghi âm"
+        "muteWhileRecording": "Tắt tiếng trong khi ghi âm",
+        "tryMode": "Chế độ xem trước"
       },
       "templates": {
         "heading": "Bắt đầu từ một mẫu",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Tắt tiếng trong khi ghi âm",
           "off": "Tiếp tục phát âm thanh"
+        },
+        "cleanup_level": {
+          "raw": "thô",
+          "light": "Ánh sáng",
+          "medium": "Trung bình",
+          "high": "Cao"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Khả năng của Chế độ đọc chính tả",
+        "match": {
+          "label": "Phù hợp với bối cảnh",
+          "value": "Ứng dụng và trang web",
+          "detail": "Sử dụng các hành vi khác nhau trong Mail, Slack, trình duyệt hoặc bất kỳ ứng dụng nào."
+        },
+        "cleanup": {
+          "label": "Mức độ dọn dẹp",
+          "value": "Nguyên đến cao",
+          "detail": "Chọn mức độ Vox Jot có thể chỉnh sửa từng chính tả phù hợp."
+        },
+        "tone": {
+          "label": "Giai điệu & lời nhắc",
+          "value": "Bình thường, chuyên nghiệp, mã",
+          "detail": "Áp dụng giọng viết hoặc lời nhắc dọn dẹp tùy chỉnh cho mỗi chế độ."
+        }
+      },
+      "preview": {
+        "title": "Chế độ xem trước",
+        "description": "Điều này xem trước việc dọn dẹp văn bản cho {{name}}. Đọc chính tả trực tiếp vẫn tự động áp dụng chế độ này khi {{target}} được lấy nét.",
+        "multipleApps": "Ứng dụng {{count}}",
+        "urlOnly": "Bản xem trước này buộc chế độ trang web đã chọn. Trong tính năng đọc chính tả trực tiếp, hãy mở {{target}}, đặt tiêu điểm vào trường văn bản, sau đó sử dụng phím tắt đọc chính tả của bạn.",
+        "inputLabel": "Chính tả mẫu",
+        "outputLabel": "Chế độ đầu ra",
+        "outputPlaceholder": "Đầu ra xem trước xuất hiện ở đây.",
+        "run": "Chạy xem trước",
+        "running": "Đang xem trước…",
+        "appliedTone": "Âm áp dụng: {{tone}}",
+        "unchanged": "Bản xem trước đã hoàn tất với văn bản không thay đổi. Điều đó có thể xảy ra khi mẫu đã được làm sạch hoặc việc dọn dẹp chưa được cấu hình; đọc chính tả trực tiếp vẫn sử dụng cài đặt ứng dụng, kiểu máy, âm sắc và đầu ra của chế độ này.",
+        "error": "Không thể xem trước chế độ này."
       }
     }
   },

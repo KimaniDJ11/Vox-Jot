@@ -71,6 +71,7 @@ pub fn shared_model_family(model_id: &str) -> Option<SharedModelAssetFamily> {
     definition_for_model_id(model_id).map(|definition| definition.family)
 }
 
+#[cfg(any(test, not(feature = "ci-mock-transcription")))]
 pub fn shared_model_repo_id(model_id: &str) -> Option<&'static str> {
     definition_for_model_id(model_id).map(|definition| definition.repo_id)
 }

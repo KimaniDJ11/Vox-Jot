@@ -308,6 +308,16 @@
       "tip": {
         "title": "シンプルに始めて、後で調整する",
         "description": "最も早い方法は、最初に生のディクテーションを機能させることです。それがうまくいったと感じたら、貼り付け設定を調整し、メイン アプリからのディクテーションを洗練させます。"
+      },
+      "ctaSuccess": "セットアップを完了する",
+      "ctaWaiting": "ディクテーションを待っています",
+      "skip": "今のところスキップしてください",
+      "troubleshoot": "トラブルシューティング",
+      "testField": {
+        "label": "成績証明書テストフィールド",
+        "placeholder": "最初に成功したディクテーションがここに表示されます。",
+        "success": "ディクテーションを受信しました。セットアップは完了できます。",
+        "waiting": "ショートカットを一度使用してください。何も表示されない場合は、マイク、権限、モデルの設定を確認してください。"
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "モデル {{modelId}} をダウンロード中",
     "downloadProgress": "モデルのダウンロード進行状況",
     "switcherAriaLabel": "現在のモデル: {{model}}。モデル切り替えを開く。",
-    "waitingForData": "データを待機中..."
+    "waitingForData": "データを待機中...",
+    "downloadModel": "{{modelName}} ({{size}}) をダウンロード",
+    "largeDownloadWarning": "大量のダウンロード: {{size}}。インストールが完了するまで Vox Jot を開いたままにしてください。",
+    "badges": {
+      "bestQuality": "最高の品質",
+      "bestQualityDetail": "現在のスイートで最高ランクの音声モデル。",
+      "fastest": "最速",
+      "fastestDetail": "測定された p50 待ち時間が非常に低い。",
+      "balanced": "バランスの取れた",
+      "balancedDetail": "速度、品質、セットアップの推奨バランス。",
+      "smallest": "最小",
+      "smallestDetail": "ダウンロードとディスクの占有面積が小さい。"
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "フレーズキービュー",
         "importDropHint": "ここにフレーズ キー JSON ファイルをドラッグ アンド ドロップします",
         "pickImportFile": "JSON ファイルを選択してください",
-        "importSuccess": "フレーズキーがインポートされました。",
+        "importSuccess": "{{count}} フレーズ キーをインポートしました。",
         "importFailed": "フレーズキーのインポートに失敗しました。",
         "importJsonOnly": "JSON フレーズ キー ファイルを選択します。",
         "importTooLarge": "そのファイルは大きすぎてインポートできません。",
         "duplicateTrigger": "フレーズ キーはすでにその音声トリガーを使用しています。",
         "deleteConfirm": "フレーズキー「{{trigger}}」を削除しますか？",
         "disableAriaLabel": "フレーズキーを無効化: {{trigger}}",
-        "enableAriaLabel": "フレーズキーを有効化: {{trigger}}"
+        "enableAriaLabel": "フレーズキーを有効化: {{trigger}}",
+        "importNoNewKeys": "インポートする新しいフレーズ キーはありません。",
+        "disableMenu": {
+          "open": "{{trigger}}のフレーズキー無効化オプション",
+          "title": "オプションを無効にする",
+          "disable": "フレーズキーを無効にする",
+          "enable": "フレーズキーを有効にする"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "ローカルプライバシーモード",
         "description": "すべての後処理をデバイス上でのみ実行するように強制します。これがオンになっている間、クラウド プロバイダーは無効になります。",
         "cloudDisabled": "ローカル プライバシー モードが有効になっている間、クラウド後処理プロバイダーは無効になります。"
+      },
+      "cleanupLevel": {
+        "title": "クリーンアップレベル",
+        "description": "Vox Jot が各ディクテーションをペーストする前にどの程度編集するかを選択します。ディクテーション モードは、アプリまたは Web サイトごとにこれをオーバーライドできます。",
+        "raw": "Raw: 正確なトランスクリプトを貼り付けます",
+        "light": "ライト: フィラーと文法を修正",
+        "medium": "中: 明瞭さと簡潔さを向上させます",
+        "high": "高: 簡潔さと洗練のために書き直す"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "録音中にミュートする",
           "description": "このプロファイルの録音中は他のアプリの音声を消音します。"
+        },
+        "cleanup_level": {
+          "label": "クリーンアップレベル",
+          "description": "Vox Jot が発言内容をどの程度編集できるかを選択します。"
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "後処理をスキップする",
         "trailingSpace": "末尾のスペース",
         "noTrailingSpace": "末尾のスペースなし",
-        "muteWhileRecording": "録音中にミュートする"
+        "muteWhileRecording": "録音中にミュートする",
+        "tryMode": "プレビューモード"
       },
       "templates": {
         "heading": "テンプレートから始める",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "録音中にミュートする",
           "off": "オーディオを再生し続ける"
+        },
+        "cleanup_level": {
+          "raw": "生",
+          "light": "ライト",
+          "medium": "中くらい",
+          "high": "高い"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "ディクテーション モードの機能",
+        "match": {
+          "label": "コンテキストの一致",
+          "value": "アプリとウェブサイト",
+          "detail": "メール、Slack、ブラウザ、または任意のアプリで異なる動作を使用します。"
+        },
+        "cleanup": {
+          "label": "クリーンアップレベル",
+          "value": "ローからハイまで",
+          "detail": "Vox Jot が一致した各ディクテーションをどの程度編集できるかを選択します。"
+        },
+        "tone": {
+          "label": "トーンとプロンプト",
+          "value": "カジュアル、プロ、コード",
+          "detail": "モードごとに書き込み音声またはカスタム クリーンアップ プロンプトを適用します。"
+        }
+      },
+      "preview": {
+        "title": "プレビューモード",
+        "description": "これは、{{name}} のテキスト クリーンアップをプレビューします。 {{target}} がフォーカスされている場合、ライブ ディクテーションは引き続きモードを自動的に適用します。",
+        "multipleApps": "{{count}} アプリ",
+        "urlOnly": "このプレビューは、選択した Web サイト モードを強制します。ライブディクテーションでは、{{target}} を開き、テキストフィールドにフォーカスして、ディクテーションショートカットを使用します。",
+        "inputLabel": "ディクテーションのサンプル",
+        "outputLabel": "モード出力",
+        "outputPlaceholder": "プレビュー出力がここに表示されます。",
+        "run": "プレビューを実行する",
+        "running": "プレビュー中…",
+        "appliedTone": "適用音色：{{tone}}",
+        "unchanged": "テキストが変更されていない状態でプレビューが完了しました。これは、サンプルがすでにクリーンであるか、クリーンアップが構成されていない場合に発生する可能性があります。ライブディクテーションでは、このモードのアプリ、モデル、トーン、出力設定が引き続き使用されます。",
+        "error": "このモードをプレビューできませんでした。"
       }
     }
   },

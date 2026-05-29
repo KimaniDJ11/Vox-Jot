@@ -212,7 +212,7 @@ impl CorrectionStore {
 
     /// Add or update a correction pair. Uses UPSERT to increment frequency
     /// and update confidence/timestamps if the pair already exists.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     pub fn add_correction(&self, pair: &CorrectionPair) -> Result<()> {
         let conn = self.get_connection()?;
 
@@ -272,7 +272,7 @@ impl CorrectionStore {
     }
 
     /// Get active corrections as DictionaryEntry values for merging with the personal dictionary.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     pub(crate) fn get_active_corrections(
         &self,
         min_frequency: u32,

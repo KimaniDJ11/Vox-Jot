@@ -3669,7 +3669,7 @@ fn validate_cast(
     Ok(resolved)
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn parse_script(script_text: &str) -> Result<Vec<StoryScriptLine>, String> {
     let mut lines = Vec::new();
     for (index, raw_line) in script_text.lines().enumerate() {
@@ -3821,22 +3821,6 @@ fn parse_sound_tag_attrs(attrs: &str, line_number: usize) -> Result<StoryParsedS
         title,
         mode,
     })
-}
-
-#[allow(dead_code)]
-fn validate_script_speakers(
-    lines: &[StoryScriptLine],
-    cast: &HashMap<String, TtsVoicePreset>,
-) -> Result<(), String> {
-    for line in lines {
-        if !cast.contains_key(&normalize_name(&line.speaker)) {
-            return Err(format!(
-                "'{}' appears in the script but is not in the cast.",
-                line.speaker
-            ));
-        }
-    }
-    Ok(())
 }
 
 fn validate_render_script_speakers(

@@ -147,7 +147,6 @@ impl NotesManager {
     }
 
     /// Append text to an existing note's content, separated by a newline.
-    #[allow(dead_code)]
     pub fn append_to_note(&self, id: i64, text: &str) -> Result<()> {
         let conn = self.get_connection()?;
         let now = chrono::Utc::now().timestamp();

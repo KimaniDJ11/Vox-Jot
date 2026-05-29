@@ -308,6 +308,16 @@
       "tip": {
         "title": "간단하게 시작하고 나중에 조정하세요",
         "description": "가장 빠른 방법은 원시 받아쓰기를 먼저 작동시키는 것입니다. 기분이 좋으면 기본 앱에서 붙여넣기 설정과 세련된 받아쓰기를 수정하세요."
+      },
+      "ctaSuccess": "설정 완료",
+      "ctaWaiting": "받아쓰기를 기다리는 중",
+      "skip": "지금은 건너뛰세요",
+      "troubleshoot": "문제 해결",
+      "testField": {
+        "label": "성적표 테스트 필드",
+        "placeholder": "첫 번째 성공적인 받아쓰기가 여기에 표시됩니다.",
+        "success": "받아쓰기가 접수되었습니다. 설정이 완료될 수 있습니다.",
+        "waiting": "단축키를 한 번 사용해 보세요. 아무것도 나타나지 않으면 마이크, 권한, 모델 설정을 확인하세요."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "모델 {{modelId}} 다운로드 중",
     "downloadProgress": "모델 다운로드 진행률",
     "switcherAriaLabel": "현재 모델: {{model}}. 모델 전환기를 엽니다.",
-    "waitingForData": "데이터를 기다리는 중..."
+    "waitingForData": "데이터를 기다리는 중...",
+    "downloadModel": "{{modelName}}({{size}}) 다운로드",
+    "largeDownloadWarning": "대용량 다운로드: {{size}}. 설치가 완료될 때까지 Vox Jot를 열어두세요.",
+    "badges": {
+      "bestQuality": "최고의 품질",
+      "bestQualityDetail": "현재 제품군에서 가장 높은 순위의 음성 모델입니다.",
+      "fastest": "가장 빠른",
+      "fastestDetail": "측정된 p50 대기 시간이 매우 낮습니다.",
+      "balanced": "균형 잡힌",
+      "balancedDetail": "속도, 품질, 설정의 균형을 권장합니다.",
+      "smallest": "가장 작은",
+      "smallestDetail": "작은 다운로드 및 디스크 공간."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "구문 키 보기",
         "importDropHint": "구문 키 JSON 파일을 여기에 드래그 앤 드롭하세요.",
         "pickImportFile": "JSON 파일 선택",
-        "importSuccess": "구문 키를 가져왔습니다.",
+        "importSuccess": "{{count}} 구문 키를 가져왔습니다.",
         "importFailed": "구문 키를 가져오지 못했습니다.",
         "importJsonOnly": "JSON 구문 키 파일을 선택하세요.",
         "importTooLarge": "파일이 너무 커서 가져올 수 없습니다.",
         "duplicateTrigger": "문구 키는 이미 해당 음성 트리거를 사용하고 있습니다.",
         "deleteConfirm": "구문 키 \"{{trigger}}\"을(를) 삭제할까요?",
         "disableAriaLabel": "구문 키 비활성화: {{trigger}}",
-        "enableAriaLabel": "구문 키 활성화: {{trigger}}"
+        "enableAriaLabel": "구문 키 활성화: {{trigger}}",
+        "importNoNewKeys": "가져올 새 구문 키가 없습니다.",
+        "disableMenu": {
+          "open": "{{trigger}}에 대한 구문 키 비활성화 옵션",
+          "title": "옵션 비활성화",
+          "disable": "구문 키 비활성화",
+          "enable": "구문 키 활성화"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "로컬 개인 정보 보호 모드",
         "description": "모든 사후 처리가 기기에서만 실행되도록 강제합니다. 이 기능이 켜져 있으면 클라우드 공급자가 비활성화됩니다.",
         "cloudDisabled": "로컬 개인 정보 보호 모드가 활성화되어 있으면 클라우드 사후 처리 공급자가 비활성화됩니다."
+      },
+      "cleanupLevel": {
+        "title": "정리 수준",
+        "description": "붙여넣기 전에 Vox Jot가 각 받아쓰기를 얼마나 편집할지 선택하세요. 받아쓰기 모드는 앱이나 웹사이트별로 이를 재정의할 수 있습니다.",
+        "raw": "원시: 정확한 성적표 붙여넣기",
+        "light": "Light: 필러 및 문법 수정",
+        "medium": "중간: 명확성과 간결성을 향상합니다.",
+        "high": "높음: 간결함과 세련미를 위해 다시 작성"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "녹음하는 동안 음소거",
           "description": "이 프로필이 녹음하는 동안 다른 앱의 오디오를 무음으로 설정합니다."
+        },
+        "cleanup_level": {
+          "label": "정리 수준",
+          "description": "Vox Jot가 귀하가 말한 내용을 얼마나 편집할 수 있는지 선택하세요."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "후처리 건너뛰기",
         "trailingSpace": "후행 공백",
         "noTrailingSpace": "후행 공백 없음",
-        "muteWhileRecording": "녹음하는 동안 음소거"
+        "muteWhileRecording": "녹음하는 동안 음소거",
+        "tryMode": "미리보기 모드"
       },
       "templates": {
         "heading": "템플릿에서 시작",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "녹음하는 동안 음소거",
           "off": "오디오 계속 재생"
+        },
+        "cleanup_level": {
+          "raw": "날것의",
+          "light": "빛",
+          "medium": "중간",
+          "high": "높은"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "받아쓰기 모드 기능",
+        "match": {
+          "label": "컨텍스트 일치",
+          "value": "앱 및 웹사이트",
+          "detail": "메일, Slack, 브라우저 또는 모든 앱에서 다양한 동작을 사용하세요."
+        },
+        "cleanup": {
+          "label": "정리 수준",
+          "value": "원시에서 높음으로",
+          "detail": "Vox Jot가 일치하는 각 받아쓰기를 얼마나 편집할 수 있는지 선택하세요."
+        },
+        "tone": {
+          "label": "어조 및 프롬프트",
+          "value": "캐주얼, 프로, 코드",
+          "detail": "모드별로 쓰기 음성 또는 사용자 정의 정리 프롬프트를 적용합니다."
+        }
+      },
+      "preview": {
+        "title": "미리보기 모드",
+        "description": "{{name}}의 텍스트 정리를 미리 봅니다. 라이브 받아쓰기는 {{target}}에 초점이 맞춰지면 자동으로 모드를 적용합니다.",
+        "multipleApps": "{{count}} 앱",
+        "urlOnly": "이 미리보기는 선택된 웹사이트 모드를 강제합니다. 실시간 받아쓰기에서 {{target}}를 열고 텍스트 필드에 초점을 맞춘 다음 받아쓰기 단축키를 사용하세요.",
+        "inputLabel": "샘플 받아쓰기",
+        "outputLabel": "모드 출력",
+        "outputPlaceholder": "미리보기 출력이 여기에 표시됩니다.",
+        "run": "미리보기 실행",
+        "running": "미리보기 중…",
+        "appliedTone": "적용톤 : {{tone}}",
+        "unchanged": "텍스트가 변경되지 않은 상태로 미리보기가 완료되었습니다. 이는 샘플이 이미 깨끗하거나 정리가 구성되지 않은 경우 발생할 수 있습니다. 실시간 받아쓰기는 여전히 이 모드의 앱, 모델, 톤 및 출력 설정을 사용합니다.",
+        "error": "이 모드를 미리 볼 수 없습니다."
       }
     }
   },

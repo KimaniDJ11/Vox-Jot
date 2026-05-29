@@ -7,9 +7,6 @@ use std::thread;
 use tauri::AppHandle;
 
 pub const OLLAMA_BASE_URL: &str = "http://127.0.0.1:11434";
-// Note: The canonical OLLAMA_PROVIDER_ID is in settings.rs; this module re-exports for local use.
-#[allow(dead_code)]
-pub const OLLAMA_PROVIDER_ID: &str = "ollama";
 
 /// The recommended tiny LLM models to surface in the UI
 pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[

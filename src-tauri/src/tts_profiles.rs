@@ -405,6 +405,7 @@ pub fn get_profile_progress(
 
 /// Append audio samples (expected mono 24kHz f32) to the profile's reference WAV.
 /// Returns the new total duration in seconds.
+#[cfg(not(feature = "ci-mock-transcription"))]
 pub fn append_reference_audio(
     app_handle: &AppHandle,
     profile_id: &str,
@@ -454,6 +455,7 @@ pub fn append_reference_audio(
 }
 
 /// Find the profile that currently has continuous improvement enabled, if any.
+#[cfg(not(feature = "ci-mock-transcription"))]
 pub fn find_active_improvement_profile(app_handle: &AppHandle) -> Result<Option<String>, String> {
     let root = profiles_root(app_handle)?;
     if !root.exists() {

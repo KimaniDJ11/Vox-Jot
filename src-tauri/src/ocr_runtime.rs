@@ -654,13 +654,6 @@ mod tests {
     }
 }
 
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // fields read by the UI layer once the catalog surfaces probe state
-pub struct ProbeResult {
-    pub loaded: bool,
-    pub detail: Option<String>,
-}
-
 pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
 }
@@ -733,7 +726,7 @@ impl OcrRuntimeManager {
         backend: OcrBackendKind,
         model_root: &Path,
         timeout: Duration,
-    ) -> Result<ProbeResult, String> {
+    ) -> Result<bool, String> {
         let response = self.request_inner(
             catalog_id,
             backend,
@@ -745,12 +738,6 @@ impl OcrRuntimeManager {
         if let Some(err) = response.error {
             return Err(err);
         }
-        let detail = response
-            .info
-            .as_ref()
-            .and_then(|info| info.get("detail"))
-            .and_then(|v| v.as_str())
-            .map(str::to_string);
         let loaded = response.ok.unwrap_or(false)
             && response
                 .info
@@ -758,7 +745,7 @@ impl OcrRuntimeManager {
                 .and_then(|info| info.get("loaded"))
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
-        Ok(ProbeResult { loaded, detail })
+        Ok(loaded)
     }
 
     /// Run inference for one frame. The frame is a packed-BGRA buffer
@@ -775,6 +762,7 @@ impl OcrRuntimeManager {
         let frame_b64 = BASE64.encode(frame.pixels);
         let pixel_format = match frame.format {
             PixelFormat::Bgra8 => "bgra8",
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
             PixelFormat::Rgba8 => "rgba8",
         };
         let body = serde_json::json!({

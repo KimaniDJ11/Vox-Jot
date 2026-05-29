@@ -120,7 +120,6 @@ pub struct ConvoAudioCaptureStatus {
 // ── PersonaPlex helper manager ──────────────────────────────────────────────
 
 pub struct PersonaPlexHelper {
-    #[allow(dead_code)]
     app_handle: AppHandle,
     child: Mutex<Option<std::process::Child>>,
 }

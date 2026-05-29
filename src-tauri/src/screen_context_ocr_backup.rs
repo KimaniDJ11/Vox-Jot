@@ -1,9 +1,3 @@
-// On macOS, the backup engine is only consumed when the user explicitly opts
-// into `BackupOnly` (a future macOS path) and through tests. Cargo otherwise
-// flags every helper as dead code on this target — silence that here so the
-// module compiles cleanly without sprinkling cfg gates on every fn.
-#![cfg_attr(target_os = "macos", allow(dead_code))]
-
 //! Cross-platform backup OCR engine for screen context capture.
 //!
 //! This module wraps the Tesseract OCR binary as a subprocess and converts
@@ -32,6 +26,7 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PixelFormat {
     Bgra8,
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
     Rgba8,
 }
 
@@ -49,6 +44,7 @@ pub struct OcrFrame<'a> {
 }
 
 impl<'a> OcrFrame<'a> {
+    #[cfg(any(test, target_os = "windows", target_os = "linux"))]
     pub fn new_packed(width: u32, height: u32, pixels: &'a [u8], format: PixelFormat) -> Self {
         Self {
             width,
@@ -89,6 +85,7 @@ fn downscale_to_rgb(frame: &OcrFrame, dst_w: u32, dst_h: u32) -> Vec<u8> {
     let stride = frame.stride_bytes as usize;
     let (rs, gs, bs) = match frame.format {
         PixelFormat::Bgra8 => (2usize, 1, 0),
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
         PixelFormat::Rgba8 => (0usize, 1, 2),
     };
 
@@ -139,6 +136,7 @@ static BUNDLED: OnceLock<Option<BundledPaths>> = OnceLock::new();
 /// The runtime accepts a `Some(_)` before the files exist on disk -
 /// the executable check happens lazily so a partial dev tree (e.g. tessdata
 /// fetched but binary still missing) does not panic the app.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 pub(crate) fn set_bundled_paths(paths: Option<BundledPaths>) {
     let _ = BUNDLED.set(paths);
 }
@@ -189,10 +187,6 @@ fn bundled_tessdata_dir() -> Option<&'static Path> {
         .filter(|p| p.is_dir())
 }
 
-pub fn is_tesseract_available() -> bool {
-    tesseract_executable().is_some()
-}
-
 /// Eagerly resolve the tesseract path so the worker thread does not pay
 /// filesystem-walk cost on its first capture. Safe to call multiple times.
 pub(crate) fn prewarm() {
@@ -219,6 +213,7 @@ pub(crate) fn prewarm() {
 
 /// Run Tesseract over the supplied frame and return snippets in the same
 /// normalized-bottom-left coordinate system that Vision uses.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 pub fn run_tesseract_ocr(
     frame: &OcrFrame,
     quality: OcrQualityMode,

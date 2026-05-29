@@ -216,3 +216,24 @@ Settings are stored using Tauri's store plugin with reactive updates:
 ### Single Instance Architecture
 
 The app enforces single instance behavior - launching when already running brings the settings window to front rather than creating a new process.
+
+## Gemini 3.5 Agent Optimization & Exhaustive Task Audit Rule
+
+This section governs how Gemini 3.5 and all 3.5 agent variants (including Antigravity and Claude Code) must parse, expand, and execute every user request in this repository, regardless of how simple or brief the user's initial prompt is.
+
+### 1. Auto-Expansion of Inbound Prompts
+When a user submits a prompt, the agent must not execute it blindly or partially. The agent must automatically expand the request into an internal multi-step strategy:
+- **Exhaustive Code Search:** Instead of doing one or two quick searches, search across the entire project for all related keywords, file names, states, or custom UI patterns.
+- **Trace to Definition:** For every matching UI element or handler, trace its control flow all the way to its state hook, backend command, or library definition. Never assume a function or helper is working without checking its source code.
+- **Identify Environment Quirks:** Specifically analyze if a standard web API or pattern is being utilized (e.g., standard dialogs, native clipboard, file access, local storage, window events) and verify whether it runs correctly inside the Tauri and WebKit (macOS) production/sandbox container.
+
+### 2. Zero-Miss Audit Protocol for Deletion and Actions
+- **Explicit Confirmation Checks:** Every deletion, reset, or destructive action must have an active, visible confirmation dialog or inline UX state before executing.
+- **Inline Confirmation Over Native Popups:** Standard browser dialogs (`window.confirm`, `window.alert`) are blocked or automatically bypassed in Tauri webviews. Therefore, agents must reject standard `window.confirm` calls and either use Tauri's native dialog plugin or implement custom React inline confirmation states (e.g., swapping a trash icon with a "Confirm Delete" checkmark and "Cancel" cross).
+- **Audit Table Output:** For any audit or feature review, the agent must output a detailed file-by-file audit table detailing what was found, what triggers the action, how it is confirmed, and whether it has been verified to work under the Tauri runtime.
+
+### 3. Exhaustive Verification Gate
+Before declaring any task completed:
+- Verify that no visible flow, button, or menu item was left non-functional or half-implemented.
+- Run typecheck, linting, and build validation (e.g., `bun run build` / `bun run lint`) to guarantee no compilation errors are introduced.
+- Summarize findings honestly, listing any potential side effects or runtime limitations explicitly.

@@ -108,6 +108,24 @@
         "individual": "Apps & Sites",
         "grouped": "Modes"
       },
+      "featureCards": {
+        "ariaLabel": "Dictation Mode capabilities",
+        "match": {
+          "label": "Match context",
+          "value": "Apps & websites",
+          "detail": "Use different behavior in Mail, Slack, browsers, or any app."
+        },
+        "cleanup": {
+          "label": "Cleanup level",
+          "value": "Raw to High",
+          "detail": "Choose how much Vox Jot can edit each matched dictation."
+        },
+        "tone": {
+          "label": "Tone & prompt",
+          "value": "Casual, pro, code",
+          "detail": "Apply a writing voice or custom cleanup prompt per mode."
+        }
+      },
       "matchers": {
         "appsLabel": "Apps",
         "urlsLabel": "URLs",
@@ -138,6 +156,10 @@
         "post_process_prompt_id": {
           "label": "Post-process prompt",
           "description": "Use a specific cleanup prompt for this mode."
+        },
+        "cleanup_level": {
+          "label": "Cleanup level",
+          "description": "Choose how much Vox Jot can edit what you said."
         },
         "force_post_process": {
           "label": "Post-processing",
@@ -263,6 +285,12 @@
         "force_post_process": {
           "on": "Always run post-processing",
           "off": "Skip post-processing"
+        },
+        "cleanup_level": {
+          "raw": "Raw",
+          "light": "Light",
+          "medium": "Medium",
+          "high": "High"
         },
         "auto_submit": {
           "on": "Auto-submit",
@@ -886,7 +914,8 @@
         "viewLabel": "Phrase keys view",
         "importDropHint": "Drag & drop a phrase keys JSON file here",
         "pickImportFile": "Pick JSON file",
-        "importSuccess": "Phrase keys imported.",
+        "importSuccess": "Imported {{count}} phrase keys.",
+        "importNoNewKeys": "No new phrase keys to import.",
         "importFailed": "Failed to import phrase keys.",
         "importJsonOnly": "Choose a JSON phrase keys file.",
         "importTooLarge": "That file is too large to import.",
@@ -897,7 +926,13 @@
         "expansionPlaceholder": "What gets typed (e.g. user@example.com)",
         "deleteConfirm": "Delete phrase key \"{{trigger}}\"?",
         "disableAriaLabel": "Disable phrase key: {{trigger}}",
-        "enableAriaLabel": "Enable phrase key: {{trigger}}"
+        "enableAriaLabel": "Enable phrase key: {{trigger}}",
+        "disableMenu": {
+          "open": "Phrase key disable options for {{trigger}}",
+          "title": "Disable options",
+          "disable": "Disable phrase key",
+          "enable": "Enable phrase key"
+        }
       }
     },
     "styles": {
@@ -1305,6 +1340,14 @@
           "label": "Fallback to normalized text on failure",
           "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
         }
+      },
+      "cleanupLevel": {
+        "title": "Cleanup level",
+        "description": "Choose how much Vox Jot edits each dictation before paste. Dictation Modes can override this per app or website.",
+        "raw": "Raw: paste exact transcript",
+        "light": "Light: fix fillers and grammar",
+        "medium": "Medium: improve clarity and concision",
+        "high": "High: rewrite for brevity and polish"
       },
       "localPrivacy": {
         "label": "Local Privacy Mode",

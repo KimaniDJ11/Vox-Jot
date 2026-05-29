@@ -308,6 +308,16 @@
       "tip": {
         "title": "Inizia in modo semplice, sintonizzati più tardi",
         "description": "Il percorso più veloce è far funzionare prima la dettatura grezza. Una volta che ti senti bene, perfeziona le impostazioni di incolla e la dettatura perfezionata dall'app principale."
+      },
+      "ctaSuccess": "Termina la configurazione",
+      "ctaWaiting": "In attesa della dettatura",
+      "skip": "Salta per ora",
+      "troubleshoot": "Risoluzione dei problemi",
+      "testField": {
+        "label": "Campo del test di trascrizione",
+        "placeholder": "La tua prima dettatura riuscita verrà visualizzata qui.",
+        "success": "Dettatura ricevuta. L'installazione può essere completata.",
+        "waiting": "Usa la scorciatoia una volta. Se non viene visualizzato nulla, controlla il microfono, le autorizzazioni e la configurazione del modello."
       }
     },
     "common": {
@@ -348,7 +358,19 @@
     "downloadProgressLabel": "Download del modello {{modelId}}",
     "downloadProgress": "Avanzamento download del modello",
     "switcherAriaLabel": "Modello attuale: {{model}}. Apri selettore modelli.",
-    "waitingForData": "In attesa dei dati..."
+    "waitingForData": "In attesa dei dati...",
+    "downloadModel": "Scarica {{modelName}} ({{size}})",
+    "largeDownloadWarning": "Download di grandi dimensioni: {{size}}. Tieni Vox Jot aperto fino al termine dell'installazione.",
+    "badges": {
+      "bestQuality": "Migliore qualità",
+      "bestQualityDetail": "Modello vocale con il punteggio più alto nella suite attuale.",
+      "fastest": "Il più veloce",
+      "fastestDetail": "Latenza p50 misurata molto bassa.",
+      "balanced": "Equilibrato",
+      "balancedDetail": "Equilibrio consigliato tra velocità, qualità e configurazione.",
+      "smallest": "Il più piccolo",
+      "smallestDetail": "Download e ingombro su disco ridotti."
+    }
   },
   "settings": {
     "snippets": {
@@ -375,14 +397,21 @@
         "viewLabel": "Visualizzazione dei tasti di frase",
         "importDropHint": "Trascina e rilascia qui il file JSON dei tasti frase",
         "pickImportFile": "Scegli il file JSON",
-        "importSuccess": "Chiavi di frase importate.",
+        "importSuccess": "Chiavi di frase {{count}} importate.",
         "importFailed": "Impossibile importare le chiavi della frase.",
         "importJsonOnly": "Scegli un file di chiavi di frase JSON.",
         "importTooLarge": "Il file è troppo grande per essere importato.",
         "duplicateTrigger": "Una chiave di frase utilizza già quel trigger parlato.",
         "deleteConfirm": "Eliminare la chiave frase \"{{trigger}}\"?",
         "disableAriaLabel": "Disattiva chiave frase: {{trigger}}",
-        "enableAriaLabel": "Attiva chiave frase: {{trigger}}"
+        "enableAriaLabel": "Attiva chiave frase: {{trigger}}",
+        "importNoNewKeys": "Nessuna nuova chiave di frase da importare.",
+        "disableMenu": {
+          "open": "Opzioni di disabilitazione del tasto frase per {{trigger}}",
+          "title": "Disabilita opzioni",
+          "disable": "Disabilita la chiave della frase",
+          "enable": "Abilita la chiave della frase"
+        }
       }
     },
     "styles": {
@@ -946,6 +975,14 @@
         "label": "Modalità privacy locale",
         "description": "Forza l'esecuzione di tutta la post-elaborazione solo sul dispositivo. I fornitori di servizi cloud verranno disabilitati mentre questa opzione è attiva.",
         "cloudDisabled": "I provider di post-elaborazione cloud sono disabilitati mentre la modalità privacy locale è abilitata."
+      },
+      "cleanupLevel": {
+        "title": "Livello di pulizia",
+        "description": "Scegli quanto Vox Jot modifica ciascun dettato prima di incollarlo. Le modalità di dettatura possono sovrascrivere questa impostazione per app o sito Web.",
+        "raw": "Raw: incolla la trascrizione esatta",
+        "light": "Luce: correggi riempitivi e grammatica",
+        "medium": "Medio: migliora la chiarezza e la concisione",
+        "high": "Alto: riscrivere per brevità e rifinitura"
       }
     },
     "history": {
@@ -1984,6 +2021,10 @@
         "mute_while_recording": {
           "label": "Disattiva l'audio durante la registrazione",
           "description": "Disattiva l'audio di altre app durante la registrazione di questo profilo."
+        },
+        "cleanup_level": {
+          "label": "Livello di pulizia",
+          "description": "Scegli quanto Vox Jot può modificare ciò che hai detto."
         }
       },
       "test": {
@@ -2015,7 +2056,8 @@
         "skipPostProcess": "Salta il post-processo",
         "trailingSpace": "Spazio finale",
         "noTrailingSpace": "Nessuno spazio finale",
-        "muteWhileRecording": "Disattiva l'audio durante la registrazione"
+        "muteWhileRecording": "Disattiva l'audio durante la registrazione",
+        "tryMode": "Modalità di anteprima"
       },
       "templates": {
         "heading": "Inizia da un modello",
@@ -2094,7 +2136,45 @@
         "mute_while_recording": {
           "on": "Disattiva l'audio durante la registrazione",
           "off": "Continua la riproduzione dell'audio"
+        },
+        "cleanup_level": {
+          "raw": "Crudo",
+          "light": "Leggero",
+          "medium": "Medio",
+          "high": "Alto"
         }
+      },
+      "featureCards": {
+        "ariaLabel": "Funzionalità della modalità dettatura",
+        "match": {
+          "label": "Abbina il contesto",
+          "value": "App e siti Web",
+          "detail": "Utilizza comportamenti diversi in Mail, Slack, browser o qualsiasi app."
+        },
+        "cleanup": {
+          "label": "Livello di pulizia",
+          "value": "Da crudo ad alto",
+          "detail": "Scegli quanto Vox Jot può modificare ciascun dettato abbinato."
+        },
+        "tone": {
+          "label": "Tono e richiesta",
+          "value": "Casuale, professionale, codice",
+          "detail": "Applicare una voce di scrittura o un messaggio di pulizia personalizzato per modalità."
+        }
+      },
+      "preview": {
+        "title": "Modalità di anteprima",
+        "description": "Questo prevede la pulizia del testo per {{name}}. La dettatura dal vivo applica comunque la modalità automaticamente quando {{target}} è a fuoco.",
+        "multipleApps": "App {{count}}",
+        "urlOnly": "Questa anteprima forza la modalità sito web selezionata. Nella dettatura dal vivo, apri {{target}}, seleziona un campo di testo, quindi utilizza la scorciatoia di dettatura.",
+        "inputLabel": "Dettatura di esempio",
+        "outputLabel": "Uscita modalità",
+        "outputPlaceholder": "L'output dell'anteprima viene visualizzato qui.",
+        "run": "Esegui l'anteprima",
+        "running": "Anteprima…",
+        "appliedTone": "Tono applicato: {{tone}}",
+        "unchanged": "Anteprima completata con testo invariato. Ciò può accadere quando il campione è già pulito o la pulizia non è configurata; la dettatura dal vivo utilizza ancora le impostazioni dell'app, del modello, del tono e dell'output di questa modalità.",
+        "error": "Impossibile visualizzare l'anteprima di questa modalità."
       }
     }
   },

@@ -28,7 +28,8 @@
     "settingsLabel": "Paramètres",
     "settingsButton": "Paramètres",
     "sectionNavigation": "Navigation dans les sections",
-    "generatedAudioActive": "Activité audio générée en cours"
+    "generatedAudioActive": "Activité audio générée en cours",
+    "openModelHub": "Model Hub"
   },
   "onboarding": {
     "subtitle": "Pour commencer, choisissez un modèle de transcription",
@@ -1954,6 +1955,19 @@
       "languageFilter": "Langue",
       "bestMatchSort": "Meilleure correspondance",
       "saveVoicePresetFailed": "Impossible d’enregistrer le préréglage vocal"
+    },
+    "voiceDesign": {
+      "title": "Voice Design",
+      "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "toolAriaLabel": "Voice Design tools",
+      "cloneProfile": "Clone Profile",
+      "cloneProfileAriaLabel": "Clone profile: {{profile}}",
+      "cloneProfileDialogDetail": "Choose a cloned voice profile for the selected model.",
+      "cloneProfileUnavailable": "The selected model does not support voice cloning.",
+      "noCloneProfileDetail": "Use the model voice without a clone.",
+      "loadingCloneProfiles": "Loading clone profiles…",
+      "noCloneProfilesForModel": "No clone profiles match this model yet. Create one in Voice Cloning.",
+      "profileNeedsAudioDetail": "Add reference audio in Voice Cloning to use this profile."
     }
   },
   "refine": {
@@ -2435,7 +2449,9 @@
       "createVoicePresetFailed": "Impossible d'enregistrer cette voix prédéfinie."
     },
     "script": {
-      "placeholder": "Narrateur : Les lumières de la ville se sont réveillées.\nHéros : Je connais cette voix.\nGuide : Alors suivez-le."
+      "placeholder": "Narrateur : Les lumières de la ville se sont réveillées.\nHéros : Je connais cette voix.\nGuide : Alors suivez-le.",
+      "title": "Script",
+      "description": "Use one line per spoken part in Character: dialogue format."
     },
     "defaultTitle": "Histoire sans titre",
     "defaultScript": "Narrateur : Les lumières de la ville se sont réveillées.\nHéros : Je connais cette voix.\nGuide : Alors suivez-le.",
@@ -2485,7 +2501,34 @@
       "openGenerated": "Ouvrir l’audio généré",
       "generate": "Générer le son",
       "generating": "Génération en cours"
-    }
+    },
+    "featureCards": {
+      "ariaLabel": "Studio capabilities",
+      "cast": {
+        "label": "Cast",
+        "value": "Saved voices",
+        "detail": "Assign a voice preset to each character before you render."
+      },
+      "script": {
+        "label": "Script",
+        "value": "Dialogue lines",
+        "detail": "Write Character: lines, expression tags, and sound cues."
+      },
+      "sounds": {
+        "label": "Sounds",
+        "value": "Project cues",
+        "detail": "Generate effects in the Sound tab and insert cues into the script."
+      },
+      "render": {
+        "label": "Render",
+        "value": "Story audio",
+        "detail": "Queue a full read with effects, then review it in Generated Audio."
+      }
+    },
+    "soundTags": "Sounds",
+    "soundTagsDescription": "Insert cues from this project's generated sounds.",
+    "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
+    "openSoundTab": "Open Sound tab"
   },
   "appSections": {
     "common": {
@@ -2890,12 +2933,12 @@
         "translation": "Traduction"
       },
       "listen": {
-        "createVoices": "Créer une voix",
         "myVoices": "Voix",
         "voiceCloning": "Clonage de voix",
         "studio": "Atelier",
         "generatedAudio": "Audio généré",
-        "voiceChanger": "Changeur de voix"
+        "voiceChanger": "Changeur de voix",
+        "voiceDesign": "Voice Design"
       },
       "settings": {
         "general": "Application et dictée",

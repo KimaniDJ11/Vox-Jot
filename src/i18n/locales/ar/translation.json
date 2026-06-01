@@ -28,7 +28,8 @@
     "settingsLabel": "الإعدادات",
     "settingsButton": "الإعدادات",
     "sectionNavigation": "الملاحة القسم",
-    "generatedAudioActive": "نشاط الصوت المولد جارٍ"
+    "generatedAudioActive": "نشاط الصوت المولد جارٍ",
+    "openModelHub": "Model Hub"
   },
   "onboarding": {
     "subtitle": "للبدء، اختر نموذج النسخ",
@@ -1954,6 +1955,19 @@
       "languageFilter": "اللغة",
       "bestMatchSort": "أفضل تطابق",
       "saveVoicePresetFailed": "فشل حفظ إعداد الصوت المسبق"
+    },
+    "voiceDesign": {
+      "title": "Voice Design",
+      "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "toolAriaLabel": "Voice Design tools",
+      "cloneProfile": "Clone Profile",
+      "cloneProfileAriaLabel": "Clone profile: {{profile}}",
+      "cloneProfileDialogDetail": "Choose a cloned voice profile for the selected model.",
+      "cloneProfileUnavailable": "The selected model does not support voice cloning.",
+      "noCloneProfileDetail": "Use the model voice without a clone.",
+      "loadingCloneProfiles": "Loading clone profiles…",
+      "noCloneProfilesForModel": "No clone profiles match this model yet. Create one in Voice Cloning.",
+      "profileNeedsAudioDetail": "Add reference audio in Voice Cloning to use this profile."
     }
   },
   "refine": {
@@ -2435,7 +2449,9 @@
       "createVoicePresetFailed": "تعذّر حفظ إعداد الصوت هذا."
     },
     "script": {
-      "placeholder": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه."
+      "placeholder": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه.",
+      "title": "Script",
+      "description": "Use one line per spoken part in Character: dialogue format."
     },
     "defaultTitle": "قصة بلا عنوان",
     "defaultScript": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه.",
@@ -2485,7 +2501,34 @@
       "openGenerated": "فتح الصوت المنشأ",
       "generate": "إنشاء الصوت",
       "generating": "جار الإنشاء"
-    }
+    },
+    "featureCards": {
+      "ariaLabel": "Studio capabilities",
+      "cast": {
+        "label": "Cast",
+        "value": "Saved voices",
+        "detail": "Assign a voice preset to each character before you render."
+      },
+      "script": {
+        "label": "Script",
+        "value": "Dialogue lines",
+        "detail": "Write Character: lines, expression tags, and sound cues."
+      },
+      "sounds": {
+        "label": "Sounds",
+        "value": "Project cues",
+        "detail": "Generate effects in the Sound tab and insert cues into the script."
+      },
+      "render": {
+        "label": "Render",
+        "value": "Story audio",
+        "detail": "Queue a full read with effects, then review it in Generated Audio."
+      }
+    },
+    "soundTags": "Sounds",
+    "soundTagsDescription": "Insert cues from this project's generated sounds.",
+    "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
+    "openSoundTab": "Open Sound tab"
   },
   "appSections": {
     "common": {
@@ -2890,12 +2933,12 @@
         "translation": "الترجمة"
       },
       "listen": {
-        "createVoices": "إنشاء الكلام",
         "myVoices": "أصوات",
         "voiceCloning": "استنساخ الصوت",
         "studio": "استوديو",
         "generatedAudio": "الصوت المولد",
-        "voiceChanger": "مغير الصوت"
+        "voiceChanger": "مغير الصوت",
+        "voiceDesign": "Voice Design"
       },
       "settings": {
         "general": "التطبيق والإملاء",

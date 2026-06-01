@@ -28,7 +28,8 @@
     "settingsLabel": "Налаштування",
     "settingsButton": "Налаштування",
     "sectionNavigation": "Навігація по розділах",
-    "generatedAudioActive": "Триває робота зі згенерованим аудіо"
+    "generatedAudioActive": "Триває робота зі згенерованим аудіо",
+    "openModelHub": "Model Hub"
   },
   "onboarding": {
     "subtitle": "Щоб почати, виберіть модель транскрипції",
@@ -1954,6 +1955,19 @@
       "languageFilter": "Мова",
       "bestMatchSort": "Найкращий збіг",
       "saveVoicePresetFailed": "Не вдалося зберегти пресет голосу"
+    },
+    "voiceDesign": {
+      "title": "Voice Design",
+      "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "toolAriaLabel": "Voice Design tools",
+      "cloneProfile": "Clone Profile",
+      "cloneProfileAriaLabel": "Clone profile: {{profile}}",
+      "cloneProfileDialogDetail": "Choose a cloned voice profile for the selected model.",
+      "cloneProfileUnavailable": "The selected model does not support voice cloning.",
+      "noCloneProfileDetail": "Use the model voice without a clone.",
+      "loadingCloneProfiles": "Loading clone profiles…",
+      "noCloneProfilesForModel": "No clone profiles match this model yet. Create one in Voice Cloning.",
+      "profileNeedsAudioDetail": "Add reference audio in Voice Cloning to use this profile."
     }
   },
   "refine": {
@@ -2435,7 +2449,9 @@
       "createVoicePresetFailed": "Не вдалося зберегти цей пресет голосу."
     },
     "script": {
-      "placeholder": "Оповідач: Вогні міста спалахнули.\nГерой: Я знаю цей голос.\nКерівник: Тоді слідуйте за ним."
+      "placeholder": "Оповідач: Вогні міста спалахнули.\nГерой: Я знаю цей голос.\nКерівник: Тоді слідуйте за ним.",
+      "title": "Script",
+      "description": "Use one line per spoken part in Character: dialogue format."
     },
     "defaultTitle": "Історія без назви",
     "defaultScript": "Оповідач: Вогні міста спалахнули.\nГерой: Я знаю цей голос.\nКерівник: Тоді слідуйте за ним.",
@@ -2485,7 +2501,34 @@
       "openGenerated": "Відкрити згенероване аудіо",
       "generate": "Згенерувати звук",
       "generating": "Генерація"
-    }
+    },
+    "featureCards": {
+      "ariaLabel": "Studio capabilities",
+      "cast": {
+        "label": "Cast",
+        "value": "Saved voices",
+        "detail": "Assign a voice preset to each character before you render."
+      },
+      "script": {
+        "label": "Script",
+        "value": "Dialogue lines",
+        "detail": "Write Character: lines, expression tags, and sound cues."
+      },
+      "sounds": {
+        "label": "Sounds",
+        "value": "Project cues",
+        "detail": "Generate effects in the Sound tab and insert cues into the script."
+      },
+      "render": {
+        "label": "Render",
+        "value": "Story audio",
+        "detail": "Queue a full read with effects, then review it in Generated Audio."
+      }
+    },
+    "soundTags": "Sounds",
+    "soundTagsDescription": "Insert cues from this project's generated sounds.",
+    "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
+    "openSoundTab": "Open Sound tab"
   },
   "appSections": {
     "common": {
@@ -2890,12 +2933,12 @@
         "translation": "Переклад"
       },
       "listen": {
-        "createVoices": "Створити мовлення",
         "myVoices": "Голоси",
         "voiceCloning": "Клонування голосу",
         "studio": "Студія",
         "generatedAudio": "Згенероване аудіо",
-        "voiceChanger": "Зміна голосу"
+        "voiceChanger": "Зміна голосу",
+        "voiceDesign": "Voice Design"
       },
       "settings": {
         "general": "Додаток і диктування",

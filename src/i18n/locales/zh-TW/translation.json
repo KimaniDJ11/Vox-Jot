@@ -28,7 +28,8 @@
     "settingsLabel": "設定",
     "settingsButton": "設定",
     "sectionNavigation": "版塊導航",
-    "generatedAudioActive": "產生音訊活動正在進行"
+    "generatedAudioActive": "產生音訊活動正在進行",
+    "openModelHub": "Model Hub"
   },
   "onboarding": {
     "subtitle": "首先，選擇轉錄模型",
@@ -1954,6 +1955,19 @@
       "languageFilter": "語言",
       "bestMatchSort": "最佳相符",
       "saveVoicePresetFailed": "無法儲存語音預設"
+    },
+    "voiceDesign": {
+      "title": "Voice Design",
+      "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "toolAriaLabel": "Voice Design tools",
+      "cloneProfile": "Clone Profile",
+      "cloneProfileAriaLabel": "Clone profile: {{profile}}",
+      "cloneProfileDialogDetail": "Choose a cloned voice profile for the selected model.",
+      "cloneProfileUnavailable": "The selected model does not support voice cloning.",
+      "noCloneProfileDetail": "Use the model voice without a clone.",
+      "loadingCloneProfiles": "Loading clone profiles…",
+      "noCloneProfilesForModel": "No clone profiles match this model yet. Create one in Voice Cloning.",
+      "profileNeedsAudioDetail": "Add reference audio in Voice Cloning to use this profile."
     }
   },
   "refine": {
@@ -2435,7 +2449,9 @@
       "createVoicePresetFailed": "無法儲存該語音預設。"
     },
     "script": {
-      "placeholder": "旁白：城市的燈光閃爍著醒來。\n&& 我認識那個聲音。\n指導：那就照著做吧。"
+      "placeholder": "旁白：城市的燈光閃爍著醒來。\n&& 我認識那個聲音。\n指導：那就照著做吧。",
+      "title": "Script",
+      "description": "Use one line per spoken part in Character: dialogue format."
     },
     "defaultTitle": "無題故事",
     "defaultScript": "旁白：城市的燈光閃爍著醒來。\n&& 我認識那個聲音。\n指導：那就照著做吧。",
@@ -2485,7 +2501,34 @@
       "openGenerated": "開啟已產生音訊",
       "generate": "產生聲音",
       "generating": "正在產生"
-    }
+    },
+    "featureCards": {
+      "ariaLabel": "Studio capabilities",
+      "cast": {
+        "label": "Cast",
+        "value": "Saved voices",
+        "detail": "Assign a voice preset to each character before you render."
+      },
+      "script": {
+        "label": "Script",
+        "value": "Dialogue lines",
+        "detail": "Write Character: lines, expression tags, and sound cues."
+      },
+      "sounds": {
+        "label": "Sounds",
+        "value": "Project cues",
+        "detail": "Generate effects in the Sound tab and insert cues into the script."
+      },
+      "render": {
+        "label": "Render",
+        "value": "Story audio",
+        "detail": "Queue a full read with effects, then review it in Generated Audio."
+      }
+    },
+    "soundTags": "Sounds",
+    "soundTagsDescription": "Insert cues from this project's generated sounds.",
+    "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
+    "openSoundTab": "Open Sound tab"
   },
   "appSections": {
     "common": {
@@ -2890,12 +2933,12 @@
         "translation": "翻譯"
       },
       "listen": {
-        "createVoices": "建立語音",
         "myVoices": "聲音",
         "voiceCloning": "語音克隆",
         "studio": "工作室",
         "generatedAudio": "產生的音訊",
-        "voiceChanger": "變聲器"
+        "voiceChanger": "變聲器",
+        "voiceDesign": "Voice Design"
       },
       "settings": {
         "general": "應用程式和聽寫",

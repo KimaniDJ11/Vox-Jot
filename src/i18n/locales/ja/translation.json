@@ -28,7 +28,8 @@
     "settingsLabel": "設定",
     "settingsButton": "設定",
     "sectionNavigation": "セクションのナビゲーション",
-    "generatedAudioActive": "生成音声の処理中"
+    "generatedAudioActive": "生成音声の処理中",
+    "openModelHub": "Model Hub"
   },
   "onboarding": {
     "subtitle": "まず、文字起こしモデルを選択してください",
@@ -1954,6 +1955,19 @@
       "languageFilter": "言語",
       "bestMatchSort": "最適な一致",
       "saveVoicePresetFailed": "音声プリセットを保存できませんでした"
+    },
+    "voiceDesign": {
+      "title": "Voice Design",
+      "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "toolAriaLabel": "Voice Design tools",
+      "cloneProfile": "Clone Profile",
+      "cloneProfileAriaLabel": "Clone profile: {{profile}}",
+      "cloneProfileDialogDetail": "Choose a cloned voice profile for the selected model.",
+      "cloneProfileUnavailable": "The selected model does not support voice cloning.",
+      "noCloneProfileDetail": "Use the model voice without a clone.",
+      "loadingCloneProfiles": "Loading clone profiles…",
+      "noCloneProfilesForModel": "No clone profiles match this model yet. Create one in Voice Cloning.",
+      "profileNeedsAudioDetail": "Add reference audio in Voice Cloning to use this profile."
     }
   },
   "refine": {
@@ -2435,7 +2449,9 @@
       "createVoicePresetFailed": "この音声プリセットを保存できませんでした。"
     },
     "script": {
-      "placeholder": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。"
+      "placeholder": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。",
+      "title": "Script",
+      "description": "Use one line per spoken part in Character: dialogue format."
     },
     "defaultTitle": "タイトルのない物語",
     "defaultScript": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。",
@@ -2485,7 +2501,34 @@
       "openGenerated": "生成済み音声を開く",
       "generate": "サウンドを生成",
       "generating": "生成中"
-    }
+    },
+    "featureCards": {
+      "ariaLabel": "Studio capabilities",
+      "cast": {
+        "label": "Cast",
+        "value": "Saved voices",
+        "detail": "Assign a voice preset to each character before you render."
+      },
+      "script": {
+        "label": "Script",
+        "value": "Dialogue lines",
+        "detail": "Write Character: lines, expression tags, and sound cues."
+      },
+      "sounds": {
+        "label": "Sounds",
+        "value": "Project cues",
+        "detail": "Generate effects in the Sound tab and insert cues into the script."
+      },
+      "render": {
+        "label": "Render",
+        "value": "Story audio",
+        "detail": "Queue a full read with effects, then review it in Generated Audio."
+      }
+    },
+    "soundTags": "Sounds",
+    "soundTagsDescription": "Insert cues from this project's generated sounds.",
+    "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
+    "openSoundTab": "Open Sound tab"
   },
   "appSections": {
     "common": {
@@ -2890,12 +2933,12 @@
         "translation": "翻訳"
       },
       "listen": {
-        "createVoices": "音声を作成",
         "myVoices": "声",
         "voiceCloning": "音声クローン作成",
         "studio": "スタジオ",
         "generatedAudio": "生成されたオーディオ",
-        "voiceChanger": "ボイスチェンジャー"
+        "voiceChanger": "ボイスチェンジャー",
+        "voiceDesign": "Voice Design"
       },
       "settings": {
         "general": "アプリとディクテーション",

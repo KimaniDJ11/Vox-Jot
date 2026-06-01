@@ -12,6 +12,10 @@ import { FolderOpen, SkipBack, SkipForward } from "lucide-react";
 import { commands, type HistoryEntry } from "@/bindings";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { DockedAudioHud } from "@/components/ui/DockedAudioHud";
+import {
+  contentBodyClassName,
+  contentHintClassName,
+} from "@/lib/contentTypography";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
 interface TranscriptViewProps {
@@ -298,11 +302,11 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
   return (
     <article className="flex flex-col gap-4 px-1 py-4 pb-[calc(11.5rem_+_env(safe-area-inset-bottom))]">
       <div className="max-h-[52vh] min-h-[14rem] flex-1 overflow-y-auto px-4 py-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+        <p className={`mb-3 ${contentHintClassName}`}>
           {t("settings.history.transcript.hint")}
         </p>
         {hasTranscript ? (
-          <p className="whitespace-pre-wrap break-words text-[17px] font-medium leading-8 text-[var(--text)]">
+          <p className={contentBodyClassName}>
             {segments.map((segment, index) => {
               if (!segment.isWord) {
                 return (

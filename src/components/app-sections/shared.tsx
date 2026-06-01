@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import { SettingsGroup } from "@/components/ui";
 
 export { subtleCardClassName } from "@/components/ui/subtleCard";
+export {
+  SectionFeatureCards,
+  type SectionFeatureCard,
+  type SectionFeatureCardsLayout,
+} from "@/components/app-sections/SectionFeatureCards";
 
 export const SectionIntro: React.FC<{
   title: string;

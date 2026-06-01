@@ -13,8 +13,6 @@ import {
   Pin,
   Plus,
 } from "lucide-react";
-import { motion } from "framer-motion";
-
 import { commands, type HistoryEntry, type Note } from "@/bindings";
 import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
@@ -22,7 +20,10 @@ import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SectionIntro } from "@/components/app-sections/shared";
+import {
+  SectionFeatureCards,
+  SectionIntro,
+} from "@/components/app-sections/shared";
 import { useDictationStats } from "@/hooks/useDictationStats";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import { useSettings } from "@/hooks/useSettings";
@@ -378,20 +379,6 @@ function useAppIcon(bundleId: string | null | undefined): string | null {
   return iconUrl;
 }
 
-const cardEntrance = {
-  hidden: { opacity: 0, y: 12, scale: 0.98 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      delay: i * 0.05,
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-    },
-  }),
-};
-
 const HomeStatsCards: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { stats } = useDictationStats();
@@ -480,67 +467,13 @@ const HomeStatsCards: React.FC = () => {
   ];
 
   return (
-    <section
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-      aria-label={t("titleBar.recentActivity", {
+    <SectionFeatureCards
+      layout="stats"
+      ariaLabel={t("titleBar.recentActivity", {
         defaultValue: "Recent activity",
       })}
-    >
-      {cards.map((card, i) => (
-        <motion.div
-          key={card.label}
-          variants={cardEntrance}
-          initial="hidden"
-          animate="visible"
-          custom={i}
-          whileHover={{
-            y: -3,
-            boxShadow: "var(--shadow-md)",
-            borderColor: card.accentColor,
-            transition: { duration: 0.2, ease: "easeOut" },
-          }}
-          className="flat-card group relative flex min-h-[6.5rem] flex-col justify-between overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 shadow-[var(--shadow-sm)] transition-colors duration-300"
-          style={
-            {
-              "--card-accent": card.accentColor,
-            } as React.CSSProperties
-          }
-          title={card.title}
-        >
-          {/* Subtle top accent bar */}
-          <span
-            className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-40 transition-opacity duration-300 group-hover:opacity-100"
-            style={{ background: card.accentColor }}
-            aria-hidden
-          />
-
-          <div className="flex items-center justify-between gap-3">
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${card.accentColor} 10%, transparent)`,
-                color: card.accentColor,
-              }}
-              aria-hidden
-            >
-              {card.icon}
-            </span>
-            <span className="text-2xl font-bold tabular-nums leading-none tracking-tight text-[var(--text)]">
-              {card.value}
-            </span>
-          </div>
-
-          <div className="mt-2 min-w-0">
-            <span className="block text-sm font-semibold leading-tight text-[var(--text)]">
-              {card.label}
-            </span>
-            <span className="mt-1 block truncate text-[11px] font-medium leading-4 text-[var(--muted)]">
-              {card.detail}
-            </span>
-          </div>
-        </motion.div>
-      ))}
-    </section>
+      cards={cards}
+    />
   );
 };
 

@@ -171,12 +171,85 @@ describe("ScriptEditor custom history", () => {
     expect(editor.querySelector("[data-expression-token]")).not.toBeNull();
   });
 
+  it("highlights cast-matching speakers and warns on unknown speakers", async () => {
+    const castNames = new Set(["narrator", "emmy"]);
+
+    await render(
+      <ScriptEditor
+        value={"narrator: Hello\nHero: Goodbye"}
+        castNames={castNames}
+        onChange={() => {}}
+      />,
+    );
+    const editor = editorElement();
+    const speakers = editor.querySelectorAll("[data-script-speaker]");
+
+    expect(speakers).toHaveLength(2);
+    expect(speakers[0]?.getAttribute("data-script-speaker-known")).toBe("true");
+    expect(speakers[1]?.getAttribute("data-script-speaker-known")).toBe(
+      "false",
+    );
+    expect(editor.querySelectorAll("[data-script-speaker-colon]")).toHaveLength(
+      2,
+    );
+  });
+
+  it("matches cast speaker names case-insensitively", async () => {
+    const castNames = new Set(["narrator"]);
+
+    await render(
+      <ScriptEditor
+        value="Narrator: Hi"
+        castNames={castNames}
+        onChange={() => {}}
+      />,
+    );
+    const editor = editorElement();
+    const speaker = editor.querySelector("[data-script-speaker]");
+
+    expect(speaker?.getAttribute("data-script-speaker-known")).toBe("true");
+    expect(speaker?.textContent).toBe("Narrator");
+  });
+
+  it("refreshes speaker styling when cast names change", async () => {
+    await render(
+      <ScriptEditor
+        value="Hero: Hello"
+        castNames={new Set(["narrator"])}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(
+      editorElement()
+        .querySelector("[data-script-speaker]")
+        ?.getAttribute("data-script-speaker-known"),
+    ).toBe("false");
+
+    await act(async () => {
+      root?.render(
+        <ScriptEditor
+          value="Hero: Hello"
+          castNames={new Set(["hero"])}
+          onChange={() => {}}
+        />,
+      );
+    });
+
+    expect(
+      editorElement()
+        .querySelector("[data-script-speaker]")
+        ?.getAttribute("data-script-speaker-known"),
+    ).toBe("true");
+  });
+
   it("decorates sound cue tags separately from expression tags", async () => {
     const soundTag = '[sound id="sound-1" mode="overlay" title="Rain outside"]';
 
     await render(
       <ScriptEditor
         value={`Narrator: Hello ${soundTag}`}
+        castNames={new Set(["narrator"])}
         onChange={() => {}}
       />,
     );

@@ -7,9 +7,12 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-const scriptTitle = "Script";
-const scriptDescription =
-  "Use one line per spoken part in Character: dialogue format.";
+import {
+  contentBodyClassName,
+  contentHintClassName,
+} from "@/lib/contentTypography";
+
+import { normalizeStoryName } from "./storyScript";
 
 export interface ScriptTextSelection {
   start: number;
@@ -24,6 +27,8 @@ export interface ScriptEditorHandle {
 
 interface ScriptEditorProps {
   value: string;
+  /** Normalized cast names (`normalizeStoryName`) for speaker label styling. */
+  castNames?: ReadonlySet<string>;
   disabled?: boolean;
   headerAction?: React.ReactNode;
   ariaInvalid?: boolean;
@@ -45,6 +50,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
   (
     {
       value,
+      castNames,
       disabled = false,
       headerAction,
       ariaInvalid,
@@ -57,6 +63,9 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
     const { t } = useTranslation();
     const editorRef = useRef<HTMLDivElement | null>(null);
     const latestValueRef = useRef(value);
+    const lastRenderedCastNamesRef = useRef<ReadonlySet<string> | undefined>(
+      undefined,
+    );
     const undoStackRef = useRef<HistorySnapshot[]>([]);
     const redoStackRef = useRef<HistorySnapshot[]>([]);
     const pendingHistorySnapshotRef = useRef<HistorySnapshot | null>(null);
@@ -83,6 +92,8 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
     });
 
     latestValueRef.current = value;
+    const castNamesRef = useRef(castNames);
+    castNamesRef.current = castNames;
 
     const clearHistoryDebounce = () => {
       if (historyDebounceTimerRef.current === null) {
@@ -205,7 +216,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       latestValueRef.current = target.text;
       lastSelectionRef.current = nextSelection;
       onChange(target.text);
-      renderDecoratedText(editor, target.text);
+      renderDecoratedText(editor, target.text, castNamesRef.current);
       editor.focus();
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
@@ -246,7 +257,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
-      renderDecoratedText(editor, next);
+      renderDecoratedText(editor, next, castNamesRef.current);
       editor.focus();
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
@@ -262,8 +273,12 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
         return;
       }
 
-      if (plainText(editor) === value) {
+      if (
+        plainText(editor) === value &&
+        lastRenderedCastNamesRef.current === castNames
+      ) {
         latestValueRef.current = value;
+        syncScriptEditorHeight(editor);
         return;
       }
 
@@ -274,9 +289,10 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       const nextSelection = clampSelection(lastSelectionRef.current, value);
       latestValueRef.current = value;
       lastSelectionRef.current = nextSelection;
-      renderDecoratedText(editor, value);
+      renderDecoratedText(editor, value, castNamesRef.current);
+      lastRenderedCastNamesRef.current = castNamesRef.current;
       restoreSelection(editor, nextSelection);
-    }, [value]);
+    }, [value, castNames]);
 
     useEffect(
       () => () => {
@@ -284,6 +300,20 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       },
       [],
     );
+
+    useEffect(() => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+
+      const syncHeight = () => syncScriptEditorHeight(editor);
+      syncHeight();
+      window.addEventListener("resize", syncHeight);
+      return () => {
+        window.removeEventListener("resize", syncHeight);
+      };
+    }, [value]);
 
     useImperativeHandle(
       ref,
@@ -315,7 +345,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
-      renderDecoratedText(editor, next);
+      renderDecoratedText(editor, next, castNamesRef.current);
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
 
@@ -598,23 +628,23 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
-      renderDecoratedText(editor, next);
+      renderDecoratedText(editor, next, castNamesRef.current);
       editor.focus();
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
     };
 
+    const scriptAriaLabel = t("storyStudio.script.title");
+
     return (
       <section className="w-full space-y-3">
-        <div className="flex w-full items-start gap-2">
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-[var(--text)]">
-              {scriptTitle}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {scriptDescription}
-            </p>
-          </div>
+        <div className="flex w-full items-center gap-2">
+          <p
+            id="story-studio-script-hint"
+            className={`min-w-0 flex-1 truncate ${contentHintClassName}`}
+          >
+            {t("storyStudio.script.title")} - {t("storyStudio.script.description")}
+          </p>
           {headerAction ? (
             <div className="ml-auto shrink-0">{headerAction}</div>
           ) : null}
@@ -623,14 +653,18 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
           ref={editorRef}
           role="textbox"
           aria-multiline="true"
-          aria-label={scriptTitle}
+          aria-label={scriptAriaLabel}
           aria-invalid={ariaInvalid || undefined}
-          aria-describedby={ariaDescribedBy}
+          aria-describedby={
+            [ariaDescribedBy, "story-studio-script-hint"]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
           contentEditable={!disabled}
           suppressContentEditableWarning
           spellCheck={true}
           data-script-editor-root="true"
-          className={`min-h-[180px] w-full resize-y overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-start font-mono text-[13px] font-medium leading-6 text-[var(--text)] outline-none transition-[background-color,border-color,box-shadow] duration-150 empty:before:pointer-events-none empty:before:text-[var(--muted)] empty:before:content-[attr(data-placeholder)] hover:border-[var(--accent)] hover:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-glow)] lg:min-h-[220px] ${
+          className={`w-full overflow-hidden rounded-lg border-0 bg-transparent px-0 py-1 text-start outline-none empty:before:pointer-events-none empty:before:text-[var(--muted)] empty:before:content-[attr(data-placeholder)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${contentBodyClassName} ${
             disabled ? "cursor-not-allowed opacity-60" : ""
           }`}
           data-placeholder={t("storyStudio.script.placeholder")}
@@ -670,23 +704,104 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
 ScriptEditor.displayName = "ScriptEditor";
 
 const EXPRESSION_TOKEN_PATTERN = /(\[[^\]\n]{1,220}\]|\([^()\n]{1,80}\))/g;
+const SCRIPT_EDITOR_MIN_HEIGHT_PX = 144;
 
-function renderDecoratedText(editor: HTMLDivElement, text: string) {
+function syncScriptEditorHeight(editor: HTMLDivElement) {
+  editor.style.height = "auto";
+  editor.style.height = `${Math.max(SCRIPT_EDITOR_MIN_HEIGHT_PX, editor.scrollHeight)}px`;
+}
+
+function renderDecoratedText(
+  editor: HTMLDivElement,
+  text: string,
+  castNames?: ReadonlySet<string>,
+) {
   editor.replaceChildren();
   const lines = text.split("\n");
   lines.forEach((lineText) => {
     const line = document.createElement("div");
     line.dataset.scriptLine = "true";
     line.style.minHeight = "1.5rem";
-    appendDecoratedLine(line, lineText);
+    appendDecoratedLine(line, lineText, castNames);
     if (line.childNodes.length === 0) {
       line.append(document.createElement("br"));
     }
     editor.append(line);
   });
+  syncScriptEditorHeight(editor);
 }
 
-function appendDecoratedLine(line: HTMLDivElement, text: string) {
+const SPEAKER_KNOWN_CLASS =
+  "font-semibold text-[var(--accent)]";
+const SPEAKER_UNKNOWN_CLASS =
+  "font-semibold text-[var(--danger)] underline decoration-wavy decoration-[var(--danger)] underline-offset-2";
+const SPEAKER_COLON_CLASS = "text-[var(--muted)]";
+
+function splitScriptLineSpeaker(text: string): {
+  leading: string;
+  speakerLabel: string | null;
+  remainder: string;
+} {
+  const leadingMatch = text.match(/^\s*/);
+  const leading = leadingMatch?.[0] ?? "";
+  const rest = text.slice(leading.length);
+  const colonIndex = rest.indexOf(":");
+  if (colonIndex <= 0) {
+    return { leading, speakerLabel: null, remainder: text };
+  }
+
+  const speakerRaw = rest.slice(0, colonIndex);
+  const speaker = speakerRaw.trim();
+  if (!speaker) {
+    return { leading, speakerLabel: null, remainder: text };
+  }
+
+  return {
+    leading,
+    speakerLabel: speakerRaw,
+    remainder: rest.slice(colonIndex + 1),
+  };
+}
+
+function appendSpeakerSpan(
+  line: HTMLDivElement,
+  speakerLabel: string,
+  castNames?: ReadonlySet<string>,
+) {
+  const normalized = normalizeStoryName(speakerLabel);
+  const isKnown = Boolean(castNames?.has(normalized));
+  const span = document.createElement("span");
+  span.dataset.scriptSpeaker = "true";
+  span.dataset.scriptSpeakerKnown = isKnown ? "true" : "false";
+  span.textContent = speakerLabel;
+  span.className = isKnown ? SPEAKER_KNOWN_CLASS : SPEAKER_UNKNOWN_CLASS;
+  line.append(span);
+
+  const colon = document.createElement("span");
+  colon.textContent = ":";
+  colon.dataset.scriptSpeakerColon = "true";
+  colon.className = SPEAKER_COLON_CLASS;
+  line.append(colon);
+}
+
+function appendDecoratedLine(
+  line: HTMLDivElement,
+  text: string,
+  castNames?: ReadonlySet<string>,
+) {
+  const { leading, speakerLabel, remainder } = splitScriptLineSpeaker(text);
+  if (leading) {
+    line.append(document.createTextNode(leading));
+  }
+  if (speakerLabel && castNames !== undefined) {
+    appendSpeakerSpan(line, speakerLabel, castNames);
+    appendDecoratedTokens(line, remainder);
+    return;
+  }
+  appendDecoratedTokens(line, text);
+}
+
+function appendDecoratedTokens(line: HTMLDivElement, text: string) {
   let cursor = 0;
   for (const match of text.matchAll(EXPRESSION_TOKEN_PATTERN)) {
     const index = match.index ?? 0;

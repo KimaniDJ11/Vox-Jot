@@ -61,7 +61,12 @@ import {
   type ScriptTextSelection,
 } from "./ScriptEditor";
 import { SoundDesignPanel, type StorySoundItem } from "./SoundDesignPanel";
-import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
+import {
+  buildCastNameSet,
+  generateStoryTitleFromScript,
+  validateStoryDraft,
+  type StoryCastMemberDraft,
+} from "./storyScript";
 
 interface StoryRenderEnqueueResult {
   render_id: string;
@@ -87,7 +92,6 @@ type StorySoundCueMode = "insert" | "overlay";
 
 interface StoryStudioDraft {
   projectId: string;
-  title: string;
   cast: StoryCastMemberDraft[];
   scriptText: string;
   pauseMs: number;
@@ -116,7 +120,6 @@ interface ExpressionPopoverPosition {
 
 const defaultStudioDraft: StoryStudioDraft = {
   projectId: "",
-  title: "",
   cast: [],
   scriptText: "",
   pauseMs: 500,
@@ -132,9 +135,6 @@ export const StoryStudioSection: React.FC = () => {
 
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-  const [title, setTitle] = useState(
-    initialDraft.title || t("storyStudio.defaultTitle"),
-  );
   const [cast, setCast] = useState<StoryCastMemberDraft[]>(initialDraft.cast);
   const [scriptText, setScriptText] = useState(
     initialDraft.scriptText || t("storyStudio.defaultScript"),
@@ -168,12 +168,16 @@ export const StoryStudioSection: React.FC = () => {
   );
   const loadingVoiceKeysRef = useRef(new Set<string>());
   const expressionAnchorRef = useRef<HTMLDivElement | null>(null);
+  const soundAnchorRef = useRef<HTMLDivElement | null>(null);
+  const soundPopoverRef = useRef<HTMLDivElement | null>(null);
   const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
   const [isQueueingRender, setIsQueueingRender] = useState(false);
   const [showQueuedAck, setShowQueuedAck] = useState(false);
   const [projectSounds, setProjectSounds] = useState<StorySoundItem[]>([]);
   const [isLoadingProjectSounds, setIsLoadingProjectSounds] = useState(true);
   const [soundPopoverOpen, setSoundPopoverOpen] = useState(false);
+  const [soundPopoverPosition, setSoundPopoverPosition] =
+    useState<ExpressionPopoverPosition | null>(null);
   const queuedAckTimerRef = useRef<number | null>(null);
 
   const refreshPresets = useCallback(async () => {
@@ -228,6 +232,51 @@ export const StoryStudioSection: React.FC = () => {
     updateExpressionPopoverPosition();
     setExpressionPopoverOpen(true);
   }, [updateExpressionPopoverPosition]);
+
+  const updateSoundPopoverPosition = useCallback(() => {
+    const anchor = soundAnchorRef.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth =
+      document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight =
+      document.documentElement.clientHeight || window.innerHeight;
+    const margin = viewportWidth < 640 ? 12 : 24;
+    const width = Math.min(384, viewportWidth - margin * 2);
+    const left = Math.max(
+      margin,
+      Math.min(rect.right - width, viewportWidth - width - margin),
+    );
+    const gap = 8;
+    const preferredTop = rect.bottom + gap;
+    const minimumHeight = Math.min(288, viewportHeight - margin * 2);
+    const availableBelow = viewportHeight - preferredTop - margin;
+    const availableAbove = rect.top - margin - gap;
+    const openBelow =
+      availableBelow >= minimumHeight || availableBelow >= availableAbove;
+    const top = openBelow
+      ? preferredTop
+      : Math.max(margin, rect.top - gap - minimumHeight);
+    const maxHeight = Math.max(
+      180,
+      openBelow
+        ? viewportHeight - top - margin
+        : Math.min(minimumHeight, rect.top - margin - gap),
+    );
+
+    setSoundPopoverPosition({
+      top,
+      left,
+      width,
+      maxHeight,
+    });
+  }, []);
+
+  const openSoundPopover = useCallback(() => {
+    updateSoundPopoverPosition();
+    setSoundPopoverOpen(true);
+  }, [updateSoundPopoverPosition]);
 
   useEffect(() => {
     if (activeTool !== "script") {
@@ -351,7 +400,6 @@ export const StoryStudioSection: React.FC = () => {
   useEffect(() => {
     writeStoredStudioDraft({
       projectId,
-      title,
       cast,
       scriptText,
       pauseMs,
@@ -367,7 +415,6 @@ export const StoryStudioSection: React.FC = () => {
     pauseMs,
     projectId,
     scriptText,
-    title,
   ]);
 
   useEffect(() => {
@@ -382,6 +429,7 @@ export const StoryStudioSection: React.FC = () => {
     () => validateStoryDraft(cast, scriptText, presets, projectSounds),
     [cast, presets, projectSounds, scriptText],
   );
+  const castNameSet = useMemo(() => buildCastNameSet(cast), [cast]);
   const canRender =
     !isLoadingPresets &&
     !isQueueingRender &&
@@ -411,62 +459,83 @@ export const StoryStudioSection: React.FC = () => {
     ? (lineInstructions[currentInstructionKey] ?? "")
     : "";
   const soundTagControl = (
-    <div className="relative">
+    <div ref={soundAnchorRef} className="relative shrink-0">
       <button
         type="button"
-        className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={() => setSoundPopoverOpen((current) => !current)}
-        disabled={isLoadingProjectSounds || projectSounds.length === 0}
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={() => {
+          if (soundPopoverOpen) {
+            setSoundPopoverOpen(false);
+            return;
+          }
+          openSoundPopover();
+        }}
+        disabled={isLoadingProjectSounds}
+        aria-label={t("storyStudio.soundTags")}
         aria-haspopup="dialog"
         aria-expanded={soundPopoverOpen}
       >
         <Music2 className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-        {t("storyStudio.soundTags", { defaultValue: "Sounds" })}
       </button>
-      {soundPopoverOpen ? (
-        <div
-          className="absolute right-0 top-full z-40 mt-2 w-[24rem] max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
-          role="dialog"
-          aria-label={t("storyStudio.soundTags", { defaultValue: "Sounds" })}
-        >
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-semibold text-[var(--text)]">
-                {t("storyStudio.soundTags", { defaultValue: "Sounds" })}
-              </p>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">
-                {t("storyStudio.soundTagsDescription", {
-                  defaultValue:
-                    "Insert cues from this project's generated sounds.",
-                })}
-              </p>
-            </div>
-            <ActionIconButton
-              type="button"
-              onClick={() => setSoundPopoverOpen(false)}
-              aria-label={t("common.close", { defaultValue: "Close" })}
-            >
-              <X aria-hidden />
-            </ActionIconButton>
-          </div>
-          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-            {projectSounds.map((sound) => (
-              <SoundTagPickerRow
-                key={sound.id}
-                sound={sound}
-                onInsert={(mode) => {
-                  scriptEditorRef.current?.insertText(
-                    `${formatSoundCueTag(sound, mode)} `,
-                  );
-                  setSoundPopoverOpen(false);
-                }}
-              />
-            ))}
-          </div>
-        </div>
+      {soundPopoverOpen && soundPopoverPosition ? (
+        <SoundTagPopover
+          ref={soundPopoverRef}
+          position={soundPopoverPosition}
+          sounds={projectSounds}
+          isLoading={isLoadingProjectSounds}
+          onClose={() => setSoundPopoverOpen(false)}
+          onOpenSoundTab={() => {
+            setActiveTool("sound");
+            setSoundPopoverOpen(false);
+          }}
+          onInsert={(sound, mode) => {
+            scriptEditorRef.current?.insertText(
+              `${formatSoundCueTag(sound, mode)} `,
+            );
+            setSoundPopoverOpen(false);
+          }}
+        />
       ) : null}
     </div>
   );
+  useLayoutEffect(() => {
+    if (!soundPopoverOpen) return;
+
+    updateSoundPopoverPosition();
+    window.addEventListener("resize", updateSoundPopoverPosition);
+    window.addEventListener("scroll", updateSoundPopoverPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateSoundPopoverPosition);
+      window.removeEventListener("scroll", updateSoundPopoverPosition, true);
+    };
+  }, [soundPopoverOpen, updateSoundPopoverPosition]);
+
+  useEffect(() => {
+    if (!soundPopoverOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (soundAnchorRef.current?.contains(target)) return;
+      if (soundPopoverRef.current?.contains(target)) return;
+      setSoundPopoverOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSoundPopoverOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [soundPopoverOpen]);
+
   useLayoutEffect(() => {
     if (!expressionPopoverOpen || !expressionEnabled) return;
 
@@ -573,7 +642,10 @@ export const StoryStudioSection: React.FC = () => {
     const request: StoryRenderRequest = {
       render_id: renderId,
       project_id: projectId,
-      title,
+      title: generateStoryTitleFromScript(
+        scriptText,
+        t("storyStudio.defaultTitle"),
+      ),
       cast: cast.map((member) => ({
         character_name: member.characterName.trim(),
         preset_id: member.presetId,
@@ -621,7 +693,7 @@ export const StoryStudioSection: React.FC = () => {
     pauseMs,
     projectId,
     scriptText,
-    title,
+    t,
     validation.lines,
   ]);
   const openCreativeAudioModels = useCallback(async () => {
@@ -641,7 +713,10 @@ export const StoryStudioSection: React.FC = () => {
       </div>
     ) : null;
   const expressionTagControl = (
-    <div ref={expressionAnchorRef} className="relative w-[20rem] max-w-full">
+    <div
+      ref={expressionAnchorRef}
+      className="relative w-[min(20rem,100%)] max-w-[20rem] shrink-0"
+    >
       <label
         className="relative flex h-10 w-full items-center"
         aria-label={t("storyStudio.expressionTags")}
@@ -720,55 +795,50 @@ export const StoryStudioSection: React.FC = () => {
       ) : null}
     </div>
   );
-  const scriptEditorHeaderAction = (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      {expressionTagControl}
-      {soundTagControl}
-    </div>
-  );
-
   return (
     <div className="px-6 pb-5">
       <div className="flex w-full flex-col gap-4 pb-4">
-        <div className="story-studio-toolbar flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="primary-soft"
-              size="sm"
-              onClick={() => void handleRender()}
-              disabled={!canRender}
-            >
-              {isQueueingRender || showQueuedAck ? (
-                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-              ) : (
-                <WandSparkles className="h-3.5 w-3.5" />
-              )}
-              {isQueueingRender || showQueuedAck
-                ? t("storyStudio.queued")
-                : t("storyStudio.generate")}
-            </Button>
+        <div className="story-studio-toolbar flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto">
+          <Button
+            type="button"
+            variant="primary-soft"
+            size="sm"
+            className="shrink-0"
+            onClick={() => void handleRender()}
+            disabled={!canRender}
+          >
+            {isQueueingRender || showQueuedAck ? (
+              <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+            ) : (
+              <WandSparkles className="h-3.5 w-3.5" />
+            )}
+            {isQueueingRender || showQueuedAck
+              ? t("storyStudio.queued")
+              : t("storyStudio.generate")}
+          </Button>
 
-            <SegmentedControl<StudioTool>
-              value={activeTool}
-              onChange={setActiveTool}
-              layoutId="story-studio-tool-toggle"
-              ariaLabel={t("storyStudio.toolAriaLabel")}
-              items={[
-                { value: "script", label: t("storyStudio.tools.script") },
-                { value: "cast", label: t("storyStudio.tools.cast") },
-                {
-                  value: "sound",
-                  label: t("storyStudio.tools.sound", {
-                    defaultValue: "Sound",
-                  }),
-                },
-              ]}
-            />
-          </div>
+          <SegmentedControl<StudioTool>
+            value={activeTool}
+            onChange={setActiveTool}
+            layoutId="story-studio-tool-toggle"
+            ariaLabel={t("storyStudio.toolAriaLabel")}
+            className="shrink-0"
+            items={[
+              { value: "script", label: t("storyStudio.tools.script") },
+              { value: "cast", label: t("storyStudio.tools.cast") },
+              {
+                value: "sound",
+                label: t("storyStudio.tools.sound", {
+                  defaultValue: "Sound",
+                }),
+              },
+            ]}
+          />
 
           {activeTool === "script" ? (
-            <div className="story-studio-toolbar__trailing ms-auto flex flex-wrap items-center justify-end gap-2">
+            <>
+              {expressionTagControl}
+              {soundTagControl}
               <div
                 className="shrink-0"
                 title="Apply an audio effect to the rendered story. Clean keeps the original voice. Voice Polish smooths artifacts. Radio adds vintage broadcast warmth. Warm Room adds natural reverb."
@@ -808,13 +878,21 @@ export const StoryStudioSection: React.FC = () => {
                   ]}
                 />
               </div>
-            </div>
-          ) : activeTool === "cast" ? (
-            <div className="ms-auto flex max-w-full justify-end">
+            </>
+          ) : null}
+
+          {activeTool === "cast" ? (
+            <div className="story-studio-toolbar__trailing ms-auto flex shrink-0 justify-end">
               {renderReadinessPill}
             </div>
-          ) : (
-            <div className="story-studio-toolbar__trailing ms-auto flex justify-end">
+          ) : null}
+
+          {activeTool === "script" && validation.errors.length > 0 ? (
+            <div className="shrink-0">{renderReadinessPill}</div>
+          ) : null}
+
+          {activeTool === "sound" ? (
+            <div className="story-studio-toolbar__trailing ms-auto flex shrink-0 justify-end">
               <Button
                 type="button"
                 variant="secondary"
@@ -825,7 +903,7 @@ export const StoryStudioSection: React.FC = () => {
                 {t("listen.createVoices.models", { defaultValue: "Models" })}
               </Button>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
@@ -862,42 +940,26 @@ export const StoryStudioSection: React.FC = () => {
               onOpenMyVoices={() =>
                 window.dispatchEvent(
                   new CustomEvent("vox-jot:navigate", {
-                    detail: { view: "listen", section: "create-voices" },
+                    detail: { view: "listen", section: "voice-design" },
                   }),
                 )
               }
               onRefresh={() => void refreshPresets()}
             />
           ) : activeTool === "script" ? (
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-              <div className="mb-4 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-[var(--text)]">
-                    {t("storyStudio.storyTitle")}
-                  </span>
-                  <div className="shrink-0">{renderReadinessPill}</div>
-                </div>
-                <Input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  aria-label={t("storyStudio.storyTitle")}
-                  className="h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
-                />
-              </div>
-              <ScriptEditor
-                ref={scriptEditorRef}
-                value={scriptText}
-                headerAction={scriptEditorHeaderAction}
-                onChange={setScriptText}
-                onCursorChange={setScriptSelection}
-                ariaInvalid={validation.errors.length > 0}
-                ariaDescribedBy={
-                  validation.errors.length > 0
-                    ? "story-studio-validation-errors"
-                    : undefined
-                }
-              />
-            </div>
+            <ScriptEditor
+              ref={scriptEditorRef}
+              value={scriptText}
+              castNames={castNameSet}
+              onChange={setScriptText}
+              onCursorChange={setScriptSelection}
+              ariaInvalid={validation.errors.length > 0}
+              ariaDescribedBy={
+                validation.errors.length > 0
+                  ? "story-studio-validation-errors"
+                  : undefined
+              }
+            />
           ) : activeTool === "cast" ? (
             <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
               <CastBuilder
@@ -977,6 +1039,81 @@ const EmptyStoryVoices: React.FC<{
     </div>
   );
 };
+
+const SoundTagPopover = React.forwardRef<
+  HTMLDivElement,
+  {
+    position: ExpressionPopoverPosition;
+    sounds: StorySoundItem[];
+    isLoading: boolean;
+    onClose: () => void;
+    onOpenSoundTab: () => void;
+    onInsert: (sound: StorySoundItem, mode: StorySoundCueMode) => void;
+  }
+>(function SoundTagPopover(
+  { position, sounds, isLoading, onClose, onOpenSoundTab, onInsert },
+  ref,
+) {
+  const { t } = useTranslation();
+
+  return createPortal(
+    <div
+      ref={ref}
+      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      style={{
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        maxHeight: position.maxHeight,
+      }}
+      role="dialog"
+      aria-label={t("storyStudio.soundTags")}
+    >
+      <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-[var(--text)]">
+            {t("storyStudio.soundTags")}
+          </p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">
+            {t("storyStudio.soundTagsDescription")}
+          </p>
+        </div>
+        <ActionIconButton
+          type="button"
+          onClick={onClose}
+          aria-label={t("common.close", { defaultValue: "Close" })}
+        >
+          <X aria-hidden />
+        </ActionIconButton>
+      </div>
+      <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
+        {isLoading ? (
+          <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted)]">
+            {t("common.loading", { defaultValue: "Loading..." })}
+          </p>
+        ) : sounds.length > 0 ? (
+          sounds.map((sound) => (
+            <SoundTagPickerRow
+              key={sound.id}
+              sound={sound}
+              onInsert={(mode) => onInsert(sound, mode)}
+            />
+          ))
+        ) : (
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3">
+            <p className="text-xs text-[var(--muted)]">
+              {t("storyStudio.noProjectSoundsForTags")}
+            </p>
+            <Button type="button" variant="secondary" size="sm" onClick={onOpenSoundTab}>
+              {t("storyStudio.openSoundTab")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+});
 
 const SoundTagPickerRow: React.FC<{
   sound: StorySoundItem;
@@ -1348,8 +1485,6 @@ function normalizeStoredStudioDraft(
       typeof draft.projectId === "string" && draft.projectId.trim()
         ? draft.projectId
         : defaultStudioDraft.projectId,
-    title:
-      typeof draft.title === "string" ? draft.title : defaultStudioDraft.title,
     cast: Array.isArray(draft.cast)
       ? draft.cast
           .map(normalizeStoredCastMember)

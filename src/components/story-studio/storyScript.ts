@@ -118,6 +118,65 @@ export function normalizeStoryName(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+export function buildCastNameSet(
+  cast: StoryCastMemberDraft[],
+): ReadonlySet<string> {
+  const names = new Set<string>();
+  cast.forEach((member) => {
+    const name = member.characterName.trim();
+    if (name) {
+      names.add(normalizeStoryName(name));
+    }
+  });
+  return names;
+}
+
+const STORY_TITLE_MAX_LENGTH = 72;
+
+export function generateStoryTitleFromScript(
+  scriptText: string,
+  fallbackTitle: string,
+): string {
+  const { lines } = parseStoryScript(scriptText);
+  const firstLine = lines.find((line) => line.text.trim().length > 0);
+  if (!firstLine) {
+    return normalizeStoryTitleLabel(fallbackTitle);
+  }
+
+  const normalized = normalizeStoryTitleCandidate(firstLine.text);
+  if (!normalized) {
+    return normalizeStoryTitleLabel(fallbackTitle);
+  }
+
+  return truncateStoryTitle(normalized);
+}
+
+function normalizeStoryTitleLabel(title: string): string {
+  const trimmed = title.trim();
+  return trimmed.length > 0 ? trimmed : "Untitled Story";
+}
+
+function normalizeStoryTitleCandidate(text: string): string {
+  return text
+    .replace(/\[[^\]]+\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateStoryTitle(text: string): string {
+  if (text.length <= STORY_TITLE_MAX_LENGTH) {
+    return text;
+  }
+
+  const slice = text.slice(0, STORY_TITLE_MAX_LENGTH);
+  const lastSpace = slice.lastIndexOf(" ");
+  if (lastSpace > STORY_TITLE_MAX_LENGTH * 0.6) {
+    return `${slice.slice(0, lastSpace).trimEnd()}…`;
+  }
+
+  return `${slice.trimEnd()}…`;
+}
+
 function uniqueErrors(errors: string[]): string[] {
   return Array.from(new Set(errors));
 }

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCastNameSet,
+  generateStoryTitleFromScript,
   parseStoryScript,
   validateStoryDraft,
   type StoryCastMemberDraft,
@@ -72,6 +74,30 @@ describe("storyScript", () => {
     );
   });
 
+  it("generates a title from the first spoken script line", () => {
+    const title = generateStoryTitleFromScript(
+      "Narrator: The door creaked open.\nHero: Who is there?",
+      "Untitled Story",
+    );
+    expect(title).toBe("The door creaked open.");
+  });
+
+  it("strips inline tags when generating a story title", () => {
+    const title = generateStoryTitleFromScript(
+      'Narrator: [whisper] Stay quiet [sound id="sound-1" mode="insert" title="Rain"] now.',
+      "Untitled Story",
+    );
+    expect(title).toBe("Stay quiet now.");
+  });
+
+  it("falls back when the script has no spoken lines", () => {
+    const title = generateStoryTitleFromScript(
+      '[sound id="sound-1" mode="insert" title="Door slam"]',
+      "Untitled Story",
+    );
+    expect(title).toBe("Untitled Story");
+  });
+
   it("validates duplicate cast names", () => {
     const result = validateStoryDraft(
       [
@@ -89,5 +115,15 @@ describe("storyScript", () => {
     expect(result.errors).toContain(
       'Choose a saved voice preset for "Narrator".',
     );
+  });
+
+  it("builds a normalized cast name set", () => {
+    expect(buildCastNameSet(cast)).toEqual(new Set(["narrator"]));
+    expect(
+      buildCastNameSet([
+        { id: "1", characterName: "  Emmy  ", presetId: "preset-1" },
+        { id: "2", characterName: "", presetId: "preset-1" },
+      ]),
+    ).toEqual(new Set(["emmy"]));
   });
 });

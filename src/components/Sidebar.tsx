@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings } from "lucide-react";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup } from "framer-motion";
 
-import { HighlightTrack } from "@/motion/HighlightTrack";
-import { crisp, press } from "@/motion/springs";
+import SidebarModelLaunchers, {
+  MODEL_HUB_ROW_ID,
+} from "@/components/sidebar/SidebarModelLaunchers";
 import {
-  interactiveFocusRingClass,
-  minTapTargetHeightClass,
-} from "@/lib/interactiveFocus";
-import SidebarModelLaunchers from "@/components/sidebar/SidebarModelLaunchers";
+  SidebarNavRow,
+  type SidebarIconTone,
+} from "@/components/sidebar/SidebarNavRow";
 
 type SidebarIcon = React.ComponentType<{
   className?: string;
@@ -28,14 +28,7 @@ export interface SidebarItem {
   groupLabel?: string;
 }
 
-export type SidebarIconTone =
-  | "accent"
-  | "blue"
-  | "gold"
-  | "green"
-  | "red"
-  | "teal"
-  | "violet";
+export type { SidebarIconTone };
 
 interface SidebarProps {
   activeSectionId: string;
@@ -57,34 +50,6 @@ interface StoryRenderJobSummary {
  * LayoutGroup.
  */
 const SETTINGS_ROW_ID = "__settings__";
-
-type SidebarIconToneStyle = React.CSSProperties & {
-  "--sidebar-icon-color"?: string;
-};
-
-const sidebarIconToneStyles: Record<SidebarIconTone, SidebarIconToneStyle> = {
-  accent: {
-    "--sidebar-icon-color": "var(--accent)",
-  },
-  blue: {
-    "--sidebar-icon-color": "var(--info)",
-  },
-  gold: {
-    "--sidebar-icon-color": "var(--voice)",
-  },
-  green: {
-    "--sidebar-icon-color": "var(--success)",
-  },
-  red: {
-    "--sidebar-icon-color": "var(--danger)",
-  },
-  teal: {
-    "--sidebar-icon-color": "var(--accent-teal)",
-  },
-  violet: {
-    "--sidebar-icon-color": "var(--accent-2)",
-  },
-};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeSectionId,
@@ -140,10 +105,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
   }, []);
 
-  const itemLayoutClass = collapsed
-    ? "justify-center px-0 py-2"
-    : "px-1.5 py-0 text-left";
-
   const clearHover = () => setHoveredId(null);
 
   const renderRow = (
@@ -154,7 +115,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     isActive: boolean,
     onClick: () => void,
   ) => {
-    const isHovered = hoveredId === id;
     const showGeneratedAudioActivity =
       id === "story-audio-history" &&
       (generatedAudioPulse || renderQueueActive);
@@ -163,87 +123,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           defaultValue: "Generated audio activity in progress",
         })
       : null;
-    const accessibleLabel = activityLabel
-      ? `${label}. ${activityLabel}`
-      : label;
 
     return (
-      <motion.button
+      <SidebarNavRow
         key={id}
-        type="button"
+        id={id}
+        label={label}
+        icon={Icon}
+        iconTone={iconTone}
+        isActive={isActive}
+        collapsed={collapsed}
+        hovered={hoveredId === id}
+        onHoverStart={() => setHoveredId(id)}
+        activityLabel={activityLabel}
+        showActivityIndicator={showGeneratedAudioActivity}
         onClick={onClick}
-        whileTap={{ scale: 0.97 }}
-        transition={press}
-        onPointerEnter={() => setHoveredId(id)}
-        onFocus={() => setHoveredId(id)}
-        className={`sidebar__nav-button group relative flex w-full items-center rounded-xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
-        style={sidebarIconToneStyles[iconTone]}
-        aria-current={isActive ? "page" : undefined}
-        aria-label={collapsed || activityLabel ? accessibleLabel : undefined}
-        title={collapsed || activityLabel ? accessibleLabel : undefined}
-      >
-        {/* Active pill — springs between rows whenever active changes. */}
-        {isActive && (
-          <motion.span
-            layoutId="sidebar-active"
-            transition={crisp}
-            className="pointer-events-none absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] ring-1 ring-[var(--ring-hairline)]"
-            aria-hidden
-          />
-        )}
-
-        {/* Hover track — only shown on non-active rows, so the active pill
-         *  always remains visible underneath. */}
-        {!isActive && (
-          <HighlightTrack
-            active={isHovered}
-            layoutId="sidebar-hover"
-            variant="surface"
-            insetClass="inset-0"
-            radiusClass="rounded-xl"
-          />
-        )}
-
-        <span
-          className={`relative z-10 flex w-full items-center ${collapsed ? "justify-center" : "gap-1.5"}`}
-        >
-          <span className="sidebar__nav-icon-shell flex shrink-0 items-center justify-center rounded-full">
-            <Icon
-              width={collapsed ? 18 : 16}
-              height={collapsed ? 18 : 16}
-              strokeWidth={1.85}
-              className="sidebar__nav-icon shrink-0"
-            />
-          </span>
-          <AnimatePresence initial={false}>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -6 }}
-                transition={crisp}
-                className="sidebar__nav-label flex min-w-0 flex-1 items-center gap-2 text-[13px] font-bold leading-5 tracking-[-0.005em]"
-              >
-                <span className="truncate">{label}</span>
-                {showGeneratedAudioActivity ? (
-                  <span
-                    className="ms-auto inline-flex h-5 shrink-0 items-end gap-0.5 rounded-full bg-[var(--accent-soft)] px-2 py-1"
-                    aria-hidden="true"
-                  >
-                    {[0, 1, 2].map((index) => (
-                      <span
-                        key={index}
-                        className="h-2 w-1 rounded-full bg-[var(--accent)] animate-[pulse_0.8s_ease-in-out_infinite]"
-                        style={{ animationDelay: `${index * 120}ms` }}
-                      />
-                    ))}
-                  </span>
-                ) : null}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </span>
-      </motion.button>
+      />
     );
   };
 
@@ -293,13 +188,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
 
           <div className="sidebar__lower-stack">
-            {showStatusCards && !collapsed && (
-              <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
-                <SidebarModelLaunchers variant="stats" />
-              </div>
-            )}
-
-            <div className="sidebar__footer mt-4 pt-3">
+            <div className="sidebar__footer mt-4 flex flex-col gap-0.5 pt-3">
+              {showStatusCards ? (
+                <SidebarModelLaunchers
+                  collapsed={collapsed}
+                  hovered={hoveredId === MODEL_HUB_ROW_ID}
+                  onHoverStart={() => setHoveredId(MODEL_HUB_ROW_ID)}
+                />
+              ) : null}
               {renderRow(
                 SETTINGS_ROW_ID,
                 t("sidebar.settingsButton", { defaultValue: "Settings" }),

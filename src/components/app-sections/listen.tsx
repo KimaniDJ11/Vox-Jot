@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Music2, ScrollText, Users, WandSparkles } from "lucide-react";
 
 import {
-  CreateVoicesSection as CreateVoicesPanel,
   MyVoicesSection as MyVoicesPanel,
   VoiceDesignSection as VoiceDesignPanel,
   ListenVoiceCloningSection as VoiceCloningPanel,
@@ -13,7 +13,11 @@ import {
   StoryStudioSection,
 } from "@/components/story-studio";
 import { SettingsGroup } from "@/components/ui";
-import { SectionIntro } from "@/components/app-sections/shared";
+import {
+  SectionFeatureCards,
+  SectionIntro,
+  type SectionFeatureCard,
+} from "@/components/app-sections/shared";
 
 export const ListenMyVoicesSection: React.FC = () => {
   const { t } = useTranslation();
@@ -25,28 +29,6 @@ export const ListenMyVoicesSection: React.FC = () => {
       >
         <MyVoicesPanel showGroupTitle={false} />
       </SectionIntro>
-    </div>
-  );
-};
-
-export const ListenCreateVoicesSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SettingsGroup
-        noCard
-        title={t("listen.createVoices.title", {
-          defaultValue: "Create Speech",
-        })}
-        description={t("listen.createVoices.description", {
-          defaultValue:
-            "Preview models, tune delivery, and save a new voice profile without changing the active voice.",
-        })}
-        showTitle={false}
-        descriptionOnlyGap="controls"
-      >
-        <CreateVoicesPanel showGroupTitle={false} />
-      </SettingsGroup>
     </div>
   );
 };
@@ -108,16 +90,51 @@ export const ListenVoiceChangerSection: React.FC = () => {
 
 export const StoryStudioAppSection: React.FC = () => {
   const { t } = useTranslation();
+  const studioFeatureCards = useMemo<SectionFeatureCard[]>(
+    () => [
+      {
+        label: t("storyStudio.featureCards.cast.label"),
+        value: t("storyStudio.featureCards.cast.value"),
+        detail: t("storyStudio.featureCards.cast.detail"),
+        icon: <Users className="h-4.5 w-4.5" strokeWidth={2} />,
+        accentColor: "var(--accent)",
+      },
+      {
+        label: t("storyStudio.featureCards.script.label"),
+        value: t("storyStudio.featureCards.script.value"),
+        detail: t("storyStudio.featureCards.script.detail"),
+        icon: <ScrollText className="h-4.5 w-4.5" strokeWidth={2} />,
+        accentColor: "var(--voice)",
+      },
+      {
+        label: t("storyStudio.featureCards.sounds.label"),
+        value: t("storyStudio.featureCards.sounds.value"),
+        detail: t("storyStudio.featureCards.sounds.detail"),
+        icon: <Music2 className="h-4.5 w-4.5" strokeWidth={2} />,
+        accentColor: "var(--accent-gold, #d89a5c)",
+      },
+      {
+        label: t("storyStudio.featureCards.render.label"),
+        value: t("storyStudio.featureCards.render.value"),
+        detail: t("storyStudio.featureCards.render.detail"),
+        icon: <WandSparkles className="h-4.5 w-4.5" strokeWidth={2} />,
+        accentColor: "var(--success, #22c55e)",
+      },
+    ],
+    [t],
+  );
+
   return (
-    <div className="space-y-4">
-      <SectionIntro
-        title={t("appSections.sections.studioTitle")}
-        description={t("appSections.sections.studioDescription")}
-      >
-        <div className="-mx-6 md:-mx-8">
-          <StoryStudioSection />
-        </div>
-      </SectionIntro>
+    <div className="space-y-7">
+      <SectionFeatureCards
+        layout="capability"
+        columns={4}
+        ariaLabel={t("storyStudio.featureCards.ariaLabel")}
+        cards={studioFeatureCards}
+      />
+      <div className="-mx-6 md:-mx-8">
+        <StoryStudioSection />
+      </div>
     </div>
   );
 };

@@ -77,24 +77,11 @@ export const VoicesSection: React.FC<{
   );
 };
 
-export const CreateVoicesSection: React.FC<{
-  showGroupTitle?: boolean;
-}> = ({ showGroupTitle = true }) => {
-  const speech = useListenSpeechState();
-  return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
-};
-
 export const VoiceDesignSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return (
-    <VoiceArchitectSection
-      speech={speech}
-      showTitle={showGroupTitle}
-      mode="voice-design"
-    />
-  );
+  return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
 export const EngineLibrarySection: React.FC<{

@@ -567,7 +567,7 @@ impl ConvoController {
             "Enable text-to-speech playback.",
             settings.tts_enabled,
             "Listen",
-            "create-voices"
+            "voice-design"
         );
         entry!(
             "tts_auto_readback_mode",
@@ -575,7 +575,7 @@ impl ConvoController {
             "When to automatically read back transcriptions.",
             format!("{:?}", settings.tts_auto_readback_mode),
             "Listen",
-            "create-voices"
+            "voice-design"
         );
         entry!(
             "auto_submit",

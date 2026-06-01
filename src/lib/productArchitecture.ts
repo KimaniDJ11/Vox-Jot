@@ -45,9 +45,9 @@ export const PRODUCT_MODULES: ProductModuleDescriptor[] = [
     id: "listen",
     tier: "advanced",
     sectionIds: [
-      "create-voices",
-      "my-voices",
+      "voice-design",
       "voice-cloning",
+      "voice-changer",
       "story-studio",
       "story-audio-history",
     ],

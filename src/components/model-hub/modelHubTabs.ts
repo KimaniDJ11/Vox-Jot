@@ -39,6 +39,18 @@ export const MODEL_HUB_TAB_DEFS: Array<{
   { id: "ocr", labelKey: "modelHub.tabs.ocr", defaultLabel: "Screen OCR" },
 ];
 
+/** Opens Model Hub without changing the stored tab or scope. */
+export async function openModelHubView() {
+  try {
+    const result = await commands.showDetailView(MODEL_HUB_SECTION_ID);
+    if (result.status === "error") {
+      console.warn("Failed to open model hub:", result.error);
+    }
+  } catch (error) {
+    console.warn("Failed to open model hub:", error);
+  }
+}
+
 export async function openModelHub(
   tab: ModelHubTabId,
   options: { scope?: ModelHubScope } = {},

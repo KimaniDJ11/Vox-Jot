@@ -2,13 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Layers, Loader2, WandSparkles, X } from "lucide-react";
-import { toast } from "sonner";
+import { Check, Dna, Layers, X } from "lucide-react";
 import { commands, type VoiceInfo } from "@/bindings";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import {
@@ -51,29 +49,21 @@ import {
   saveVoiceArchitectDraft,
   writeVoiceArchitectUiDraft,
 } from "../draftStorage";
-import {
-  InlineCueHint,
-  SelectField,
-  VoiceTuningCard,
-  WorkflowField,
-} from "../sharedComponents";
+import { VoiceTuningCard } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
 import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
 import { SavedVoiceProfilesSection } from "./SavedVoiceProfilesSection";
 
-type VoiceArchitectMode = "create-speech" | "voice-design";
-type VoiceArchitectTool = "audio" | "my-voices" | "tuning";
+type VoiceArchitectTool = "my-voices" | "tuning";
 
 const PREVIEW_RUNNING_DELAY_MS = 1500;
 
 export const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
-  mode?: VoiceArchitectMode;
-}> = ({ speech, showTitle = true, mode = "create-speech" }) => {
+}> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
-  const voiceDesignMode = mode === "voice-design";
   const initialDraft = useMemo(() => {
     const cached = getCachedVoiceArchitectDraft();
     if (cached && cached.presetId === (speech.activePreset?.id ?? null)) {
@@ -101,11 +91,11 @@ export const VoiceArchitectSection: React.FC<{
   const [previewTextDraft, setPreviewTextDraft] = useState(
     initialUiDraft.previewTextDraft,
   );
-  const [generatingSpeech, setGeneratingSpeech] = useState(false);
   const [draftPreviewRunning, setDraftPreviewRunning] = useState(false);
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
   const [saveTunedVoiceWindowOpen, setSaveTunedVoiceWindowOpen] =
     useState(false);
+  const [cloneProfileWindowOpen, setCloneProfileWindowOpen] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState(
     initialUiDraft.modelSearchQuery,
   );
@@ -114,7 +104,7 @@ export const VoiceArchitectSection: React.FC<{
   const [modelSortMode, setModelSortMode] =
     useState<ModelSortMode>("best_match");
   const [createVoiceTool, setCreateVoiceTool] = useState<VoiceArchitectTool>(
-    voiceDesignMode ? "my-voices" : initialUiDraft.createVoiceTool,
+    initialUiDraft.createVoiceTool === "tuning" ? "tuning" : "my-voices",
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
   const hasTunedVoiceChanges = useMemo(
@@ -131,7 +121,7 @@ export const VoiceArchitectSection: React.FC<{
       saveProfileNameDraft,
       previewTextDraft,
       modelSearchQuery,
-      createVoiceTool: createVoiceTool === "tuning" ? "tuning" : "audio",
+      createVoiceTool,
     });
   }, [
     createVoiceTool,
@@ -300,7 +290,6 @@ export const VoiceArchitectSection: React.FC<{
   ]);
 
   const saveProfileName = saveProfileNameDraft.trim();
-  const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
   const draftSelectedModelForControls =
     availableDraftModels.find(
       (model) =>
@@ -308,8 +297,6 @@ export const VoiceArchitectSection: React.FC<{
     ) ?? null;
   const draftProviderIdForControls =
     draftSelectedModelForControls?.provider_id ?? draftProviderId ?? "";
-  const supportsDraftManualVoiceId =
-    draftProviderIdForControls === "local_sidecar_api";
   const draftModelIdForControls =
     draftSelectedModelForControls?.id ?? draftModelId ?? "";
   const draftSelectedModel =
@@ -320,8 +307,6 @@ export const VoiceArchitectSection: React.FC<{
     ) ?? null;
   const draftSupportsVoiceCloning =
     draftSelectedModel?.capabilities.supports_voice_cloning ?? false;
-  const draftSupportsInlineTags =
-    draftSelectedModel?.capabilities.supports_inline_tags ?? false;
   const noCloneProfileLabel = t("listen.createVoices.noCloneProfile", {
     defaultValue: "No clone profile",
   });
@@ -342,6 +327,17 @@ export const VoiceArchitectSection: React.FC<{
         : profile.label,
     })),
   ];
+  const selectedCloneProfileLabel =
+    draftProfileOptions.find((option) => option.value === draftVoiceProfileId)
+      ?.label ?? noCloneProfileLabel;
+  const cloneProfileButtonDisabled =
+    !speech.ttsEnabled || !draftSupportsVoiceCloning;
+  const cloneProfileUnavailableTitle = t(
+    "listen.voiceDesign.cloneProfileUnavailable",
+    {
+      defaultValue: "The selected model does not support voice cloning.",
+    },
+  );
   const selectedTuningModel = draftSelectedModel ?? speech.activeModel;
   const controls = resolvedTuningControlsForModel(selectedTuningModel);
   const supportsExpressiveness =
@@ -383,24 +379,9 @@ export const VoiceArchitectSection: React.FC<{
       draftVoiceSelectionId ?? draftVoiceProfileId ?? "auto",
     ].join("::"),
   );
-  const selectedVoiceChip = (
-    <span
-      className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]"
-      title={t("listen.createVoices.selectedPreviewVoice", {
-        voice: draftPreviewVoiceName,
-        defaultValue: "Selected voice: {{voice}}",
-      })}
-    >
-      <span
-        className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
-        style={{ background: draftPreviewVoiceAvatar }}
-        aria-hidden="true"
-      />
-      <span className="truncate">{draftPreviewVoiceName}</span>
-    </span>
-  );
   useEffect(() => {
     if (!draftSupportsVoiceCloning) {
+      setCloneProfileWindowOpen(false);
       if (draftVoiceProfileId !== "__none__") {
         setDraftVoiceProfileId("__none__");
       }
@@ -433,6 +414,24 @@ export const VoiceArchitectSection: React.FC<{
     draftVoiceProfileId,
     speech.activePreset?.voice_profile_id,
   ]);
+
+  useEffect(() => {
+    if (!cloneProfileWindowOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCloneProfileWindowOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [cloneProfileWindowOpen]);
+
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
   const providerFilterLabel = t("listen.createVoices.providerFilter", {
     defaultValue: "Provider",
@@ -614,51 +613,6 @@ export const VoiceArchitectSection: React.FC<{
       previewTextDraft.trim() ? previewTextDraft : DEFAULT_TTS_PREVIEW_TEXT,
     );
   };
-  const handleGenerateSpeech = async () => {
-    if (
-      generatingSpeech ||
-      !speech.ttsEnabled ||
-      !previewTextDraft.trim() ||
-      !draftProviderIdForControls ||
-      !draftModelIdForControls
-    ) {
-      return;
-    }
-
-    setGeneratingSpeech(true);
-    try {
-      const result = await commands.generateCreateSpeechAudio({
-        render_id: crypto.randomUUID(),
-        title: `Create Speech - ${draftPreviewVoiceName}`,
-        text: previewTextDraft,
-        preset: buildDraftPresetInput(),
-      });
-      if (result.status === "error") {
-        throw new Error(result.error);
-      }
-      speech.setStatusMessage(null);
-      toast.message(
-        t("listen.createVoices.generateQueued", {
-          defaultValue:
-            "Speech audio queued. Open Generated Audio to track it.",
-        }),
-      );
-    } catch (error) {
-      const fallbackMessage = t("listen.createVoices.generateFailed", {
-        defaultValue: "Failed to generate speech audio.",
-      });
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-            ? error
-            : fallbackMessage;
-      speech.setStatusMessage(message);
-      toast.error(message);
-    } finally {
-      setGeneratingSpeech(false);
-    }
-  };
   const handleSaveCurrent = async () => {
     if (
       !saveProfileName ||
@@ -739,23 +693,6 @@ export const VoiceArchitectSection: React.FC<{
     setCreateVoiceTool(value);
   };
 
-  const trimmedPreviewText = previewTextDraft.trim();
-  const previewTextStatusLabel = trimmedPreviewText
-    ? t("listen.createVoices.workflow.scriptReady", {
-        defaultValue: "Text ready",
-      })
-    : t("listen.createVoices.workflow.needsTextShort", {
-        defaultValue: "Add text",
-      });
-  const previewTextStatusDetail = trimmedPreviewText
-    ? t("listen.createVoices.workflow.characterCount", {
-        defaultValue: "{{count}} characters",
-        count: trimmedPreviewText.length,
-      })
-    : t("listen.createVoices.workflow.needsText", {
-        defaultValue: "Add text before generating",
-      });
-
   const handleDraftVoiceProfileChange = (value: string) => {
     setDraftVoiceProfileId(value);
     if (!draftMatchesActiveModel) {
@@ -772,21 +709,13 @@ export const VoiceArchitectSection: React.FC<{
     });
   };
 
+  const handleCloneProfileSelect = (value: string) => {
+    handleDraftVoiceProfileChange(value);
+    setCloneProfileWindowOpen(false);
+  };
+
   const tuningView = (
     <>
-      {draftSupportsVoiceCloning ? (
-        <div className={whiteWorkflowCardClassName}>
-          <WorkflowField label={t("listen.createVoices.workflow.cloneProfile")}>
-            <SelectField
-              value={draftVoiceProfileId}
-              onChange={handleDraftVoiceProfileChange}
-              disabled={!speech.ttsEnabled || speech.loadingProfiles}
-              options={draftProfileOptions}
-            />
-          </WorkflowField>
-        </div>
-      ) : null}
-
       <div className={whiteWorkflowCardClassName}>
         <VoiceTuningCard
           preset={buildDraftPresetInput()}
@@ -797,21 +726,14 @@ export const VoiceArchitectSection: React.FC<{
           title={t("listen.createVoices.tuning", {
             defaultValue: "Tuning",
           })}
-          titleAccessory={voiceDesignMode ? undefined : selectedVoiceChip}
-          modelLabel={voiceDesignMode ? draftPreviewVoiceName : undefined}
-          previewButtonGradient={
-            voiceDesignMode ? draftPreviewVoiceAvatar : undefined
-          }
-          previewing={
-            voiceDesignMode ? speech.previewingPresetId === "__draft__" : false
-          }
-          previewRunning={voiceDesignMode ? draftPreviewRunning : false}
+          modelLabel={draftPreviewVoiceName}
+          previewButtonGradient={draftPreviewVoiceAvatar}
+          previewing={speech.previewingPresetId === "__draft__"}
+          previewRunning={draftPreviewRunning}
           previewDisabled={
-            voiceDesignMode
-              ? !draftProviderIdForControls || !draftModelIdForControls
-              : false
+            !draftProviderIdForControls || !draftModelIdForControls
           }
-          onPreview={voiceDesignMode ? handlePreviewDraftTuning : undefined}
+          onPreview={handlePreviewDraftTuning}
           embedded
           onResetAll={resetDraftTuning}
         />
@@ -822,83 +744,6 @@ export const VoiceArchitectSection: React.FC<{
   const contentSpacingClassName = showTitle
     ? "space-y-7 px-4 py-3"
     : "space-y-7";
-  const showAudioControlsCard =
-    (draftMatchesActiveModel && supportsDraftManualVoiceId) ||
-    Boolean(statusMessage);
-  const audioView = (
-    <>
-      {showAudioControlsCard ? (
-        <div className={whiteWorkflowCardClassName}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-3">
-              {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
-                <WorkflowField
-                  label={t("listen.createVoices.workflow.manualVoiceId")}
-                >
-                  <Input
-                    value={speech.activePreset.voice_id ?? ""}
-                    onChange={(event) =>
-                      void speech.updateActivePreset({
-                        voice_id: event.target.value || null,
-                        voice_label_snapshot: event.target.value || null,
-                      })
-                    }
-                    placeholder={t("listen.placeholders.manualVoiceId")}
-                    disabled={!speech.ttsEnabled}
-                    className="w-full max-w-none"
-                  />
-                </WorkflowField>
-              ) : null}
-            </div>
-            {statusMessage ? (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
-                {statusMessage}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      <div
-        className={`${whiteWorkflowCardClassName} flex min-h-[clamp(360px,62vh,780px)] flex-col`}
-      >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 truncate text-sm text-[var(--muted)]">
-              <span className="font-semibold text-[var(--text)]">
-                {previewTextStatusLabel}
-              </span>
-              <span> - {previewTextStatusDetail}</span>
-            </div>
-            <div
-              className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
-              aria-label={t("listen.createVoices.selectedPreviewVoice", {
-                voice: draftPreviewVoiceName,
-                defaultValue: "Selected voice: {{voice}}",
-              })}
-            >
-              <span
-                className="h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
-                style={{ background: draftPreviewVoiceAvatar }}
-                aria-hidden="true"
-              />
-              <span className="truncate">{draftPreviewVoiceName}</span>
-            </div>
-          </div>
-          <Textarea
-            value={previewTextDraft}
-            onChange={(event) => setPreviewTextDraft(event.target.value)}
-            placeholder={DEFAULT_TTS_PREVIEW_TEXT}
-            disabled={!speech.ttsEnabled}
-            className="min-h-[320px] w-full flex-1 resize-y !rounded-2xl"
-          />
-          {draftSupportsInlineTags ? (
-            <InlineCueHint modelLabel={draftSelectedModel?.label} />
-          ) : null}
-        </div>
-      </div>
-    </>
-  );
 
   const saveTunedVoiceDialog = createPortal(
     <AnimatePresence>
@@ -1026,9 +871,176 @@ export const VoiceArchitectSection: React.FC<{
     document.body,
   );
 
+  const cloneProfileDialog = createPortal(
+    <AnimatePresence>
+      {cloneProfileWindowOpen ? (
+        <motion.div
+          className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={() => setCloneProfileWindowOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setCloneProfileWindowOpen(false);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clone-profile-dialog-title"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-[var(--border)] px-4 py-3">
+              <h3
+                id="clone-profile-dialog-title"
+                className="text-sm font-semibold leading-snug text-[var(--text)]"
+              >
+                {t("listen.voiceDesign.cloneProfileDialogDetail", {
+                  defaultValue:
+                    "Choose a cloned voice profile for the selected model.",
+                })}
+              </h3>
+            </div>
+            <div
+              role="listbox"
+              aria-label={t("listen.voiceDesign.cloneProfileDialogDetail", {
+                defaultValue:
+                  "Choose a cloned voice profile for the selected model.",
+              })}
+              className="max-h-[min(60vh,360px)] space-y-1 overflow-y-auto p-2"
+            >
+              <button
+                type="button"
+                role="option"
+                aria-selected={draftVoiceProfileId === "__none__"}
+                disabled={!speech.ttsEnabled || speech.loadingProfiles}
+                onClick={() => handleCloneProfileSelect("__none__")}
+                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50 ${
+                  draftVoiceProfileId === "__none__"
+                    ? "border-[color-mix(in_srgb,var(--accent),transparent_55%)] bg-[var(--accent-soft)]"
+                    : "border-transparent hover:border-[var(--border)] hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)]"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+                >
+                  <Dna className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-[var(--text)]">
+                    {noCloneProfileLabel}
+                  </span>
+                  <span className="block text-xs text-[var(--muted)]">
+                    {t("listen.voiceDesign.noCloneProfileDetail", {
+                      defaultValue: "Use the model voice without a clone.",
+                    })}
+                  </span>
+                </span>
+                {draftVoiceProfileId === "__none__" ? (
+                  <Check
+                    className="h-4 w-4 shrink-0 text-[var(--accent)]"
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </button>
+
+              {speech.loadingProfiles ? (
+                <p className="px-3 py-4 text-sm text-[var(--muted)]">
+                  {t("listen.voiceDesign.loadingCloneProfiles", {
+                    defaultValue: "Loading clone profiles…",
+                  })}
+                </p>
+              ) : draftCompatibleProfiles.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-[var(--muted)]">
+                  {t("listen.voiceDesign.noCloneProfilesForModel", {
+                    defaultValue:
+                      "No clone profiles match this model yet. Create one in Voice Cloning.",
+                  })}
+                </p>
+              ) : (
+                draftCompatibleProfiles.map((profile) => {
+                  const isSelected = draftVoiceProfileId === profile.id;
+                  const profileLabel = !profile.ready
+                    ? t("listen.createVoices.profileNeedsAudio", {
+                        profile: profile.label,
+                        defaultValue: "{{profile}} (Needs audio)",
+                      })
+                    : profile.label;
+                  return (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      disabled={!speech.ttsEnabled}
+                      onClick={() => handleCloneProfileSelect(profile.id)}
+                      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50 ${
+                        isSelected
+                          ? "border-[color-mix(in_srgb,var(--accent),transparent_55%)] bg-[var(--accent-soft)]"
+                          : "border-transparent hover:border-[var(--border)] hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)]"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+                        style={{
+                          background: voiceAvatarGradient(profile.id),
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[var(--text)]">
+                          {profileLabel}
+                        </span>
+                        {profile.description ? (
+                          <span className="block truncate text-xs text-[var(--muted)]">
+                            {profile.description}
+                          </span>
+                        ) : !profile.ready ? (
+                          <span className="block text-xs text-[var(--muted)]">
+                            {t("listen.voiceDesign.profileNeedsAudioDetail", {
+                              defaultValue:
+                                "Add reference audio in Voice Cloning to use this profile.",
+                            })}
+                          </span>
+                        ) : null}
+                      </span>
+                      {isSelected ? (
+                        <Check
+                          className="h-4 w-4 shrink-0 text-[var(--accent)]"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
+
   const content = (
     <>
       {saveTunedVoiceDialog}
+      {cloneProfileDialog}
       <CreateVoiceModelHubPicker
         open={modelWindowOpen}
         speech={speech}
@@ -1053,7 +1065,7 @@ export const VoiceArchitectSection: React.FC<{
         onSortModeChange={setModelSortMode}
         orderedModels={orderedDraftModels}
         filteredModelCount={filteredDraftModels.length}
-        mode={voiceDesignMode ? "voice-design" : "full"}
+        mode="voice-design"
         onSelectVoice={handleSelectDraftVoice}
         selectedVoiceProfileId={
           draftVoiceProfileId === "__none__" ? null : draftVoiceProfileId
@@ -1067,81 +1079,27 @@ export const VoiceArchitectSection: React.FC<{
         }`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          {!voiceDesignMode ? (
-            <Button
-              type="button"
-              variant="primary-soft"
-              size="sm"
-              onClick={() => void handleGenerateSpeech()}
-              disabled={
-                generatingSpeech ||
-                !speech.ttsEnabled ||
-                !previewTextDraft.trim() ||
-                !draftProviderIdForControls ||
-                !draftModelIdForControls
-              }
-            >
-              {generatingSpeech ? (
-                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-              ) : (
-                <WandSparkles className="h-3.5 w-3.5" />
-              )}
-              {generatingSpeech
-                ? t("listen.myVoices.generating", {
-                    defaultValue: "Generating…",
-                  })
-                : t("storyStudio.generate", { defaultValue: "Generate" })}
-            </Button>
-          ) : null}
-
           <SegmentedControl<VoiceArchitectTool>
             value={createVoiceTool}
             onChange={handleCreateVoiceToolChange}
-            layoutId={
-              voiceDesignMode
-                ? "voice-design-tool-toggle"
-                : "create-voice-tool-toggle"
-            }
-            ariaLabel={
-              voiceDesignMode
-                ? t("listen.voiceDesign.toolAriaLabel", {
-                    defaultValue: "Voice Design tools",
-                  })
-                : t("listen.createVoices.toolAriaLabel", {
-                    defaultValue: "Create Speech tools",
-                  })
-            }
-            items={
-              voiceDesignMode
-                ? [
-                    {
-                      value: "my-voices",
-                      label: t("listen.createVoices.myVoices", {
-                        defaultValue: "My Voices",
-                      }),
-                    },
-                    {
-                      value: "tuning",
-                      label: t("listen.createVoices.tuning", {
-                        defaultValue: "Tuning",
-                      }),
-                    },
-                  ]
-                : [
-                    {
-                      value: "audio",
-                      label: t("listen.createVoices.audioTab", {
-                        defaultValue: "Speech",
-                      }),
-                    },
-                    {
-                      value: "tuning",
-                      label: t("listen.createVoices.tuning", {
-                        defaultValue: "Tuning",
-                      }),
-                    },
-                  ]
-            }
+            layoutId="voice-design-tool-toggle"
+            ariaLabel={t("listen.voiceDesign.toolAriaLabel", {
+              defaultValue: "Voice Design tools",
+            })}
+            items={[
+              {
+                value: "my-voices",
+                label: t("listen.createVoices.myVoices", {
+                  defaultValue: "My Voices",
+                }),
+              },
+              {
+                value: "tuning",
+                label: t("listen.createVoices.tuning", {
+                  defaultValue: "Tuning",
+                }),
+              },
+            ]}
           />
 
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -1166,6 +1124,27 @@ export const VoiceArchitectSection: React.FC<{
               type="button"
               variant="secondary"
               size="sm"
+              onClick={() => setCloneProfileWindowOpen(true)}
+              disabled={cloneProfileButtonDisabled}
+              title={
+                cloneProfileButtonDisabled
+                  ? cloneProfileUnavailableTitle
+                  : selectedCloneProfileLabel
+              }
+              aria-label={t("listen.voiceDesign.cloneProfileAriaLabel", {
+                profile: selectedCloneProfileLabel,
+                defaultValue: "Clone profile: {{profile}}",
+              })}
+            >
+              <Dna className="h-3.5 w-3.5" />
+              {t("listen.voiceDesign.cloneProfile", {
+                defaultValue: "Clone Profile",
+              })}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setModelWindowOpen(true)}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -1180,8 +1159,6 @@ export const VoiceArchitectSection: React.FC<{
             showTitle={false}
             revealDeleteOnHover
           />
-        ) : createVoiceTool === "audio" ? (
-          audioView
         ) : (
           tuningView
         )}
@@ -1195,13 +1172,9 @@ export const VoiceArchitectSection: React.FC<{
 
   return (
     <SettingsGroup
-      title={
-        voiceDesignMode
-          ? t("appSections.nav.listen.voiceDesign", {
-              defaultValue: "Voice Design",
-            })
-          : t("appSections.nav.listen.createVoices")
-      }
+      title={t("appSections.nav.listen.voiceDesign", {
+        defaultValue: "Voice Design",
+      })}
     >
       {content}
     </SettingsGroup>

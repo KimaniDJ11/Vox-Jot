@@ -3,28 +3,8 @@ import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const sidebarState = vi.hoisted(() => ({
-  currentModel: "small",
-  llmProviderId: "openai",
-  llmProviders: [
-    { id: "openai", label: "OpenAI" },
-    { id: "apple_intelligence", label: "Apple Intelligence" },
-  ],
-  llmModels: {
-    openai: "gpt-4.1-mini",
-  } as Record<string, string>,
-  selectedTtsModelId: "xtts-v2",
-  selectedTtsProviderId: "xtts",
-  ocrEngine: "native_then_backup",
-  ocrNeuralModelId: null as string | null,
-  analysisAsrModelId: "current_dictation_engine",
-  analysisDiarizationModelId: "no_speaker_labels",
-}));
-
 const commandMocks = vi.hoisted(() => ({
   showDetailView: vi.fn(),
-  getOcrModelCatalog: vi.fn(),
-  getSpeechAnalysisCatalog: vi.fn(),
 }));
 
 const translationMock = vi.hoisted(() => ({
@@ -41,94 +21,17 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/bindings", () => ({
   commands: {
     showDetailView: commandMocks.showDetailView,
-    getOcrModelCatalog: commandMocks.getOcrModelCatalog,
-    getSpeechAnalysisCatalog: commandMocks.getSpeechAnalysisCatalog,
   },
-}));
-
-vi.mock("@/stores/modelStore", () => ({
-  useModelStore: () => ({
-    models: [
-      {
-        id: "small",
-        name: "Small",
-      },
-      {
-        id: "large-v3",
-        name: "Large v3",
-      },
-    ],
-    currentModel: sidebarState.currentModel,
-  }),
-}));
-
-vi.mock("@/hooks/useSettings", () => ({
-  useSettingsSlice: () => ({
-    post_process_provider_id: sidebarState.llmProviderId,
-    post_process_providers: sidebarState.llmProviders,
-    post_process_models: sidebarState.llmModels,
-    selected_tts_model_id: sidebarState.selectedTtsModelId,
-    selected_tts_provider_id: sidebarState.selectedTtsProviderId,
-    screen_context_ocr_engine: sidebarState.ocrEngine,
-    screen_context_ocr_neural_model_id: sidebarState.ocrNeuralModelId,
-    file_transcription_asr_model_id: sidebarState.analysisAsrModelId,
-    file_transcription_diarization_model_id:
-      sidebarState.analysisDiarizationModelId,
-  }),
 }));
 
 import SidebarModelLaunchers from "@/components/sidebar/SidebarModelLaunchers";
 
 describe("SidebarModelLaunchers", () => {
   beforeEach(() => {
-    sidebarState.currentModel = "small";
-    sidebarState.llmProviderId = "openai";
-    sidebarState.llmProviders = [
-      { id: "openai", label: "OpenAI" },
-      { id: "apple_intelligence", label: "Apple Intelligence" },
-    ];
-    sidebarState.llmModels = { openai: "gpt-4.1-mini" };
-    sidebarState.selectedTtsModelId = "xtts-v2";
-    sidebarState.selectedTtsProviderId = "xtts";
-    sidebarState.ocrEngine = "native_then_backup";
-    sidebarState.ocrNeuralModelId = null;
-    sidebarState.analysisAsrModelId = "current_dictation_engine";
-    sidebarState.analysisDiarizationModelId = "no_speaker_labels";
-    commandMocks.showDetailView.mockResolvedValue(undefined);
-    commandMocks.getOcrModelCatalog.mockResolvedValue({
-      status: "ok",
-      data: {
-        install_root: "/tmp/ocr-models",
-        models: [
-          {
-            id: "pp-ocrv5",
-            title: "PP-OCRv5",
-          },
-        ],
-      },
-    });
-    commandMocks.getSpeechAnalysisCatalog.mockResolvedValue({
-      status: "ok",
-      data: {
-        selection: {
-          asr_model_id: "current_dictation_engine",
-          diarization_model_id: "no_speaker_labels",
-        },
-        models: [
-          {
-            id: "current_dictation_engine",
-            label: "Current Dictation Engine",
-          },
-          {
-            id: "no_speaker_labels",
-            label: "No Speaker Labels",
-          },
-        ],
-      },
-    });
+    commandMocks.showDetailView.mockResolvedValue({ status: "ok" });
   });
 
-  it("refreshes the LLM launcher label when the active model changes", async () => {
+  it("renders a single Model Hub launcher button", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
 
@@ -136,24 +39,17 @@ describe("SidebarModelLaunchers", () => {
       root.render(<SidebarModelLaunchers />);
     });
 
-    expect(container.textContent).toContain("gpt-4.1-mini");
-
-    sidebarState.llmModels = { openai: "gpt-5.4-mini" };
-
-    await act(async () => {
-      root.render(<SidebarModelLaunchers />);
-    });
-
-    expect(container.textContent).toContain("gpt-5.4-mini");
-    expect(container.textContent).not.toContain("gpt-4.1-mini");
+    const button = container.querySelector("button");
+    expect(button).not.toBeNull();
+    expect(container.textContent).toContain("Model Hub");
+    expect(container.querySelectorAll("button")).toHaveLength(1);
 
     await act(async () => {
       root.unmount();
     });
   });
 
-  it("shows the active neural OCR model in the Screen OCR launcher", async () => {
-    sidebarState.ocrNeuralModelId = "pp-ocrv5";
+  it("opens the model hub when clicked", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
 
@@ -161,11 +57,14 @@ describe("SidebarModelLaunchers", () => {
       root.render(<SidebarModelLaunchers />);
     });
 
-    await vi.waitFor(() => {
-      expect(container.textContent).toContain("PP-OCRv5");
+    const button = container.querySelector("button");
+    expect(button).not.toBeNull();
+
+    await act(async () => {
+      button?.click();
     });
 
-    expect(container.textContent).not.toContain("Smart (default)");
+    expect(commandMocks.showDetailView).toHaveBeenCalledWith("model-hub");
 
     await act(async () => {
       root.unmount();

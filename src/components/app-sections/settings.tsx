@@ -251,7 +251,7 @@ const SettingsCoachPanel: React.FC = () => {
 
   const openSettingAction = useCallback((sectionId: string) => {
     const listenSections = new Set([
-      "create-voices",
+      "voice-design",
       "voice-cloning",
       "voice-changer",
       "story-studio",
@@ -520,7 +520,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
           onClick={() => {
             window.dispatchEvent(
               new CustomEvent("vox-jot:navigate", {
-                detail: { view: "listen", section: "create-voices" },
+                detail: { view: "listen", section: "voice-design" },
               }),
             );
           }}

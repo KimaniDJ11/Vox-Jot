@@ -66,6 +66,7 @@ import {
   profileSupportsModel,
   ttsModelSupportsLanguage,
 } from "../utils";
+import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import { readVoiceCloningDraft, writeVoiceCloningDraft } from "../draftStorage";
 import {
   DraftVoiceModelLibraryCard,
@@ -951,134 +952,6 @@ export const VoiceCloningSection: React.FC<{
           </div>
         ) : null}
 
-        {visibleProfiles.length > 0 ? (
-          <div
-            className={`${whiteWorkflowCardClassName} space-y-3`}
-            aria-live="polite"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-[var(--text)]">
-                  {t("listen.voiceCloning.improveFromDictationsTitle", {
-                    defaultValue: "Improve from dictations",
-                  })}
-                </h3>
-                <p className="text-xs leading-5 text-[var(--muted)]">
-                  {t("listen.voiceCloning.improveFromDictationsDescription", {
-                    defaultValue:
-                      "Use successful dictations that pass quality checks to tune one voice profile in the background.",
-                  })}
-                </p>
-              </div>
-              <Badge
-                variant={activeImprovementProfile ? "success" : "secondary"}
-              >
-                {activeImprovementProfile
-                  ? t("common.on", { defaultValue: "On" })
-                  : t("common.off", { defaultValue: "Off" })}
-              </Badge>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {visibleProfiles.map((profile) => {
-                const collectedSeconds = Math.round(
-                  profile.collected_audio_duration_secs ?? 0,
-                );
-                const isActive = profile.continuous_improvement_enabled;
-                const confirmingClear =
-                  confirmingClearProfileId === profile.id;
-                return (
-                  <div
-                    key={profile.id}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--text)]">
-                          {profile.label}
-                        </p>
-                        <p className="text-xs text-[var(--muted)]">
-                          {t("listen.voiceCloning.collectedAudioDuration", {
-                            count: collectedSeconds,
-                            defaultValue: "{{count}}s collected",
-                          })}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant={isActive ? "secondary" : "primary-soft"}
-                        size="sm"
-                        disabled={speech.busyProfileAction === "improvement"}
-                        onClick={() =>
-                          void toggleProfileImprovement(profile.id, !isActive)
-                        }
-                      >
-                        {isActive ? "Turn off" : "Use profile"}
-                      </Button>
-                    </div>
-                    {collectedSeconds > 0 ? (
-                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-                        {confirmingClear ? (
-                          <>
-                            <span className="text-xs font-medium text-[var(--text)]">
-                              {t(
-                                "listen.voiceCloning.clearCollectedAudioConfirm",
-                                {
-                                  defaultValue:
-                                    "Clear collected improvement audio for this voice?",
-                                },
-                              )}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="danger"
-                              size="sm"
-                              disabled={
-                                speech.busyProfileAction === "improvement"
-                              }
-                              onClick={() =>
-                                void clearCollectedProfileAudio(profile.id)
-                              }
-                            >
-                              {t("common.clear", { defaultValue: "Clear" })}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled={
-                                speech.busyProfileAction === "improvement"
-                              }
-                              onClick={() => setConfirmingClearProfileId(null)}
-                            >
-                              {t("common.cancel", { defaultValue: "Cancel" })}
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={
-                              speech.busyProfileAction === "improvement"
-                            }
-                            onClick={() =>
-                              setConfirmingClearProfileId(profile.id)
-                            }
-                          >
-                            {t("listen.voiceCloning.clearCollectedAudio", {
-                              defaultValue: "Clear collected audio",
-                            })}
-                          </Button>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
         <>
           <div
             className={[
@@ -1344,6 +1217,143 @@ export const VoiceCloningSection: React.FC<{
             </WorkflowField>
           </div>
         </>
+
+        {visibleProfiles.length > 0 ? (
+          <div
+            className={`${whiteWorkflowCardClassName} space-y-3`}
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--text)]">
+                  {t("listen.voiceCloning.improveFromDictationsTitle", {
+                    defaultValue: "Improve from dictations",
+                  })}
+                </h3>
+                <p className="text-xs leading-5 text-[var(--muted)]">
+                  {t("listen.voiceCloning.improveFromDictationsDescription", {
+                    defaultValue:
+                      "Use successful dictations that pass quality checks to tune one voice profile in the background.",
+                  })}
+                </p>
+              </div>
+              <Badge
+                variant={activeImprovementProfile ? "success" : "secondary"}
+              >
+                {activeImprovementProfile
+                  ? t("common.on", { defaultValue: "On" })
+                  : t("common.off", { defaultValue: "Off" })}
+              </Badge>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {visibleProfiles.map((profile) => {
+                const collectedSeconds = Math.round(
+                  profile.collected_audio_duration_secs ?? 0,
+                );
+                const isActive = profile.continuous_improvement_enabled;
+                const confirmingClear =
+                  confirmingClearProfileId === profile.id;
+                return (
+                  <div
+                    key={profile.id}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+                          style={{
+                            background: voiceAvatarGradient(profile.id),
+                          }}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[var(--text)]">
+                            {profile.label}
+                          </p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {t("listen.voiceCloning.collectedAudioDuration", {
+                              count: collectedSeconds,
+                              defaultValue: "{{count}}s collected",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={isActive ? "secondary" : "primary-soft"}
+                        size="sm"
+                        disabled={speech.busyProfileAction === "improvement"}
+                        onClick={() =>
+                          void toggleProfileImprovement(profile.id, !isActive)
+                        }
+                      >
+                        {isActive ? "Turn off" : "Use profile"}
+                      </Button>
+                    </div>
+                    {collectedSeconds > 0 ? (
+                      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                        {confirmingClear ? (
+                          <>
+                            <span className="text-xs font-medium text-[var(--text)]">
+                              {t(
+                                "listen.voiceCloning.clearCollectedAudioConfirm",
+                                {
+                                  defaultValue:
+                                    "Clear collected improvement audio for this voice?",
+                                },
+                              )}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              disabled={
+                                speech.busyProfileAction === "improvement"
+                              }
+                              onClick={() =>
+                                void clearCollectedProfileAudio(profile.id)
+                              }
+                            >
+                              {t("common.clear", { defaultValue: "Clear" })}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={
+                                speech.busyProfileAction === "improvement"
+                              }
+                              onClick={() => setConfirmingClearProfileId(null)}
+                            >
+                              {t("common.cancel", { defaultValue: "Cancel" })}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={
+                              speech.busyProfileAction === "improvement"
+                            }
+                            onClick={() =>
+                              setConfirmingClearProfileId(profile.id)
+                            }
+                          >
+                            {t("listen.voiceCloning.clearCollectedAudio", {
+                              defaultValue: "Clear collected audio",
+                            })}
+                          </Button>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
     </>
   );

@@ -15,7 +15,7 @@ const defaultVoiceArchitectUiDraft: VoiceArchitectUiDraftState = {
   saveProfileNameDraft: "",
   previewTextDraft: DEFAULT_TTS_PREVIEW_TEXT,
   modelSearchQuery: "",
-  createVoiceTool: "audio",
+  createVoiceTool: "my-voices",
 };
 
 const defaultVoiceCloningDraft: VoiceCloningDraftState = {
@@ -104,7 +104,12 @@ function normalizeVoiceArchitectUiDraft(
       typeof draft.modelSearchQuery === "string"
         ? draft.modelSearchQuery
         : defaultVoiceArchitectUiDraft.modelSearchQuery,
-    createVoiceTool: draft.createVoiceTool === "tuning" ? "tuning" : "audio",
+    createVoiceTool:
+      draft.createVoiceTool === "tuning"
+        ? "tuning"
+        : draft.createVoiceTool === "my-voices"
+          ? "my-voices"
+          : defaultVoiceArchitectUiDraft.createVoiceTool,
   };
 }
 

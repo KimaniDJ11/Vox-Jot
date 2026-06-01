@@ -250,12 +250,11 @@ function exerciseNavigation() {
     {
       root: "Listen",
       sections: [
-        ["Create Speech", sectionPoint(58)],
-        ["Voices", sectionPoint(98)],
+        ["Studio", sectionPoint(58)],
+        ["Voice Design", sectionPoint(98)],
         ["Voice Cloning", sectionPoint(138)],
         ["Voice Changer", sectionPoint(178)],
-        ["Studio", sectionPoint(218)],
-        ["Generated Audio", sectionPoint(258)],
+        ["Generated Audio", sectionPoint(218)],
       ],
     },
     {

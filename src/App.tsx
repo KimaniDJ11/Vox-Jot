@@ -47,6 +47,7 @@ import {
 import { LayoutGroup, motion } from "framer-motion";
 import { press } from "./motion/springs";
 import { ModelStateEvent } from "./lib/types/events";
+import { resolveListenSectionId } from "@/lib/sectionNavigation";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import SidebarToggleIcon from "./components/icons/SidebarToggleIcon";
@@ -210,11 +211,6 @@ const RefinePhraseKeysSection = lazy(() =>
 const RefineTranslationSection = lazy(() =>
   import("@/components/app-sections/refine").then((module) => ({
     default: module.RefineTranslationSection,
-  })),
-);
-const ListenCreateVoicesSection = lazy(() =>
-  import("@/components/app-sections/listen").then((module) => ({
-    default: module.ListenCreateVoicesSection,
   })),
 );
 const ListenVoiceDesignSection = lazy(() =>
@@ -507,8 +503,12 @@ function App() {
   );
 
   const handleSectionJump = useCallback((sectionId: string) => {
-    setActiveSectionId(sectionId);
-    lastSectionByView.current[activeRootViewRef.current] = sectionId;
+    const resolved =
+      activeRootViewRef.current === "listen"
+        ? resolveListenSectionId(sectionId)
+        : sectionId;
+    setActiveSectionId(resolved);
+    lastSectionByView.current[activeRootViewRef.current] = resolved;
   }, []);
 
   const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(() => {
@@ -601,13 +601,6 @@ function App() {
           BookOpen,
           <StoryStudioAppSection />,
           "green",
-        ),
-        makeSection(
-          "create-voices",
-          "appSections.nav.listen.createVoices",
-          WandSparkles,
-          <ListenCreateVoicesSection />,
-          "gold",
         ),
         makeSection(
           "voice-design",
@@ -1122,10 +1115,13 @@ function App() {
       activeSectionIdRef.current;
     setActiveMode(mode);
     setActiveRootView(mode);
+    const remembered = lastSectionByView.current[mode] || "";
+    const nextSectionId =
+      mode === "listen"
+        ? resolveListenSectionId(remembered)
+        : remembered;
     setActiveSectionId(
-      lastSectionByView.current[mode] ||
-        sectionsByViewRef.current[mode][0]?.id ||
-        "",
+      nextSectionId || sectionsByViewRef.current[mode][0]?.id || "",
     );
   }, []);
 
@@ -1183,8 +1179,10 @@ function App() {
       if (view === "dictate" || view === "refine" || view === "listen") {
         handleModeSelect(view);
         if (section) {
-          setActiveSectionId(section);
-          lastSectionByView.current[view] = section;
+          const resolved =
+            view === "listen" ? resolveListenSectionId(section) : section;
+          setActiveSectionId(resolved);
+          lastSectionByView.current[view] = resolved;
         }
       }
     };

@@ -316,7 +316,7 @@ const ModelHubSection: React.FC = () => {
                           direction: document.dir === "rtl" ? "rtl" : "ltr",
                         })
                       }
-                      className="relative inline-flex items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
+                      className="relative inline-flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5"
                     >
                       {tabs.map((tab) => {
                         const isActive = visibleTab === tab.id;
@@ -332,13 +332,11 @@ const ModelHubSection: React.FC = () => {
                             whileTap={{ scale: 0.97 }}
                             transition={press}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`relative whitespace-nowrap px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-                            style={{
-                              color: isActive
-                                ? "var(--accent-foreground)"
-                                : "var(--muted)",
-                              transition: "color 160ms var(--spring-crisp)",
-                            }}
+                            className={`relative isolate whitespace-nowrap rounded-full border border-transparent px-3 py-1.5 text-xs font-medium ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+                              isActive
+                                ? "text-[var(--accent)]"
+                                : "text-[var(--muted)] hover:text-[var(--accent)]"
+                            }`}
                           >
                             {isActive && (
                               <motion.span
@@ -349,7 +347,7 @@ const ModelHubSection: React.FC = () => {
                                   damping: 32,
                                   mass: 0.9,
                                 }}
-                                className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
+                                className="absolute inset-0 rounded-full bg-[var(--accent-soft)]"
                                 aria-hidden
                               />
                             )}

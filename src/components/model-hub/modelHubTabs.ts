@@ -39,8 +39,16 @@ export const MODEL_HUB_TAB_DEFS: Array<{
   { id: "ocr", labelKey: "modelHub.tabs.ocr", defaultLabel: "Screen OCR" },
 ];
 
-/** Opens Model Hub without changing the stored tab or scope. */
+/** Opens Model Hub and resets to the main "all" scope so the user always
+ *  sees the full hub, not a leftover scoped view from a previous section. */
 export async function openModelHubView() {
+  try {
+    localStorage.removeItem(MODEL_HUB_SCOPE_STORAGE_KEY);
+    localStorage.removeItem(MODEL_HUB_TAB_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+
   try {
     const result = await commands.showDetailView(MODEL_HUB_SECTION_ID);
     if (result.status === "error") {

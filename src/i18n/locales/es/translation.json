@@ -2162,18 +2162,23 @@
         "ariaLabel": "Capacidades del modo de dictado",
         "match": {
           "label": "Contexto de coincidencia",
-          "value": "Aplicaciones y sitios web",
+          "value": "Reglas de app",
           "detail": "Utilice un comportamiento diferente en Mail, Slack, navegadores o cualquier aplicación."
         },
         "cleanup": {
           "label": "nivel de limpieza",
-          "value": "Crudo a alto",
+          "value": "Crudo-alto",
           "detail": "Elija cuánto puede editar Vox Jot cada dictado coincidente."
         },
         "tone": {
           "label": "Tono y aviso",
-          "value": "Casual, profesional, código",
+          "value": "Estilos de tono",
           "detail": "Aplique una voz de escritura o un mensaje de limpieza personalizado por modo."
+        },
+        "output": {
+          "label": "Modelo y salida",
+          "value": "Motor de modo",
+          "detail": "Anule el modelo STT, el método de pegado o el autoenvío por modo."
         }
       },
       "preview": {

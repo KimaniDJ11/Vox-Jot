@@ -2162,18 +2162,23 @@
         "ariaLabel": "Dikte Modu yetenekleri",
         "match": {
           "label": "Bağlamı eşleştir",
-          "value": "Uygulamalar ve web siteleri",
+          "value": "Uygulama kuralları",
           "detail": "Mail'de, Slack'te, tarayıcılarda veya herhangi bir uygulamada farklı davranışlar kullanın."
         },
         "cleanup": {
           "label": "Temizleme düzeyi",
-          "value": "Hamdan Yükseğe",
+          "value": "Ham-yüksek",
           "detail": "Vox Jot'un eşleşen her dikteyi ne kadar düzenleyebileceğini seçin."
         },
         "tone": {
           "label": "Ton ve istem",
-          "value": "Günlük, profesyonel, kod",
+          "value": "Ton stilleri",
           "detail": "Her moda bir yazma sesi veya özel temizleme istemi uygulayın."
+        },
+        "output": {
+          "label": "Model ve çıktı",
+          "value": "Mod motoru",
+          "detail": "Her mod için STT modelini, yapıştırmayı veya otomatik göndermeyi geçersiz kılın."
         }
       },
       "preview": {

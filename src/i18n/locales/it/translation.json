@@ -2162,18 +2162,23 @@
         "ariaLabel": "Funzionalità della modalità dettatura",
         "match": {
           "label": "Abbina il contesto",
-          "value": "App e siti Web",
+          "value": "Regole app",
           "detail": "Utilizza comportamenti diversi in Mail, Slack, browser o qualsiasi app."
         },
         "cleanup": {
           "label": "Livello di pulizia",
-          "value": "Da crudo ad alto",
+          "value": "Grezzo-alto",
           "detail": "Scegli quanto Vox Jot può modificare ciascun dettato abbinato."
         },
         "tone": {
           "label": "Tono e richiesta",
-          "value": "Casuale, professionale, codice",
+          "value": "Stili tono",
           "detail": "Applicare una voce di scrittura o un messaggio di pulizia personalizzato per modalità."
+        },
+        "output": {
+          "label": "Modello e output",
+          "value": "Motore modo",
+          "detail": "Sovrascrivi modello STT, metodo di incolla o invio automatico per modo."
         }
       },
       "preview": {

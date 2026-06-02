@@ -141,7 +141,7 @@ export const SectionFeatureCards: React.FC<SectionFeatureCardsProps> = ({
                 <span className="block text-sm font-semibold leading-tight text-[var(--text)]">
                   {card.label}
                 </span>
-                <span className="mt-1 block truncate text-[11px] font-medium leading-4 text-[var(--muted)]">
+                <span className="mt-1 block text-[11px] font-medium leading-4 text-[var(--muted)]">
                   {card.detail}
                 </span>
               </div>
@@ -160,10 +160,10 @@ export const SectionFeatureCards: React.FC<SectionFeatureCardsProps> = ({
                   {card.icon}
                 </span>
                 <div className="min-w-0 flex-1 text-right">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                     {card.label}
                   </p>
-                  <p className="mt-0.5 truncate text-base font-semibold leading-6 text-[var(--text)]">
+                  <p className="mt-0.5 text-base font-semibold leading-6 text-[var(--text)]">
                     {card.value}
                   </p>
                 </div>

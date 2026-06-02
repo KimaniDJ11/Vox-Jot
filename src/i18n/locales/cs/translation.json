@@ -2162,18 +2162,23 @@
         "ariaLabel": "Možnosti režimu diktování",
         "match": {
           "label": "Kontext zápasu",
-          "value": "Aplikace a webové stránky",
+          "value": "Pravidla aplikací",
           "detail": "Použijte jiné chování v Mailu, Slacku, prohlížečích nebo jakékoli aplikaci."
         },
         "cleanup": {
           "label": "Úroveň čištění",
-          "value": "Syrové až vysoké",
+          "value": "Surové-vysoké",
           "detail": "Vyberte, jak moc může Vox Jot upravovat každý odpovídající diktát."
         },
         "tone": {
           "label": "Tón a výzva",
-          "value": "Neformální, profík, kód",
+          "value": "Styly tónu",
           "detail": "V každém režimu použijte hlas pro psaní nebo vlastní výzvu k vyčištění."
+        },
+        "output": {
+          "label": "Model a výstup",
+          "value": "Režimový engine",
+          "detail": "Přepište model STT, metodu vložení nebo automatické odeslání pro každý režim."
         }
       },
       "preview": {

@@ -2162,18 +2162,23 @@
         "ariaLabel": "Funktionen des Diktiermodus",
         "match": {
           "label": "Kontext anpassen",
-          "value": "Apps und Websites",
+          "value": "App-Regeln",
           "detail": "Verwenden Sie unterschiedliche Verhaltensweisen in Mail, Slack, Browsern oder einer beliebigen App."
         },
         "cleanup": {
           "label": "Reinigungsstufe",
-          "value": "Roh bis hoch",
+          "value": "Roh-Hoch",
           "detail": "Wählen Sie aus, wie stark Vox Jot jedes übereinstimmende Diktat bearbeiten kann."
         },
         "tone": {
           "label": "Ton und Aufforderung",
-          "value": "Lässig, Profi, Code",
+          "value": "Tonstile",
           "detail": "Wenden Sie pro Modus eine Schreibstimme oder eine benutzerdefinierte Reinigungsaufforderung an."
+        },
+        "output": {
+          "label": "Modell & Ausgabe",
+          "value": "Modus-Engine",
+          "detail": "Überschreibe STT-Modell, Einfügemethode oder Auto-Senden je Modus."
         }
       },
       "preview": {

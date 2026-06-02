@@ -2162,18 +2162,23 @@
         "ariaLabel": "Capacités du mode dictée",
         "match": {
           "label": "Contexte de correspondance",
-          "value": "Applications et sites Web",
+          "value": "Règles d'app",
           "detail": "Utilisez un comportement différent dans Mail, Slack, les navigateurs ou toute autre application."
         },
         "cleanup": {
           "label": "Niveau de nettoyage",
-          "value": "Brut à élevé",
+          "value": "Brut-élevé",
           "detail": "Choisissez dans quelle mesure Vox Jot peut modifier chaque dictée correspondante."
         },
         "tone": {
           "label": "Tonalité et invite",
-          "value": "Casual, pro, code (fr)",
+          "value": "Styles de ton",
           "detail": "Appliquez une voix d'écriture ou une invite de nettoyage personnalisée par mode."
+        },
+        "output": {
+          "label": "Modèle et sortie",
+          "value": "Moteur de mode",
+          "detail": "Remplacez le modèle STT, la méthode de collage ou l’envoi auto par mode."
         }
       },
       "preview": {

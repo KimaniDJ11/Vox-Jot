@@ -112,18 +112,23 @@
         "ariaLabel": "Dictation Mode capabilities",
         "match": {
           "label": "Match context",
-          "value": "Apps & websites",
+          "value": "App rules",
           "detail": "Use different behavior in Mail, Slack, browsers, or any app."
         },
         "cleanup": {
           "label": "Cleanup level",
-          "value": "Raw to High",
+          "value": "Raw-High",
           "detail": "Choose how much Vox Jot can edit each matched dictation."
         },
         "tone": {
           "label": "Tone & prompt",
-          "value": "Casual, pro, code",
+          "value": "Tone styles",
           "detail": "Apply a writing voice or custom cleanup prompt per mode."
+        },
+        "output": {
+          "label": "Model & output",
+          "value": "Mode engine",
+          "detail": "Override the STT model, paste method, or auto-submit per mode."
         }
       },
       "matchers": {

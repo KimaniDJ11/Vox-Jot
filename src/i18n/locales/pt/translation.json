@@ -2162,18 +2162,23 @@
         "ariaLabel": "Capacidades do modo de ditado",
         "match": {
           "label": "Contexto de correspondência",
-          "value": "Aplicativos e sites",
+          "value": "Regras do app",
           "detail": "Use um comportamento diferente no Mail, Slack, navegadores ou qualquer aplicativo."
         },
         "cleanup": {
           "label": "Nível de limpeza",
-          "value": "Cru para alto",
+          "value": "Cru-alto",
           "detail": "Escolha quanto o Vox Jot pode editar cada ditado correspondente."
         },
         "tone": {
           "label": "Tom e aviso",
-          "value": "Casual, profissional, código",
+          "value": "Estilos de tom",
           "detail": "Aplique uma voz escrita ou um prompt de limpeza personalizado por modo."
+        },
+        "output": {
+          "label": "Modelo e saída",
+          "value": "Motor do modo",
+          "detail": "Substitua o modelo STT, método de colagem ou envio automático por modo."
         }
       },
       "preview": {

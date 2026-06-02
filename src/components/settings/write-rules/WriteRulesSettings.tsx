@@ -24,6 +24,7 @@ import {
   Plus,
   SlidersHorizontal,
   WandSparkles,
+  Zap,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -333,10 +334,11 @@ export const WriteRulesSettings: React.FC = () => {
         defaultValue: "Match context",
       }),
       value: t("refine.writeRules.featureCards.match.value", {
-        defaultValue: "Apps & websites",
+        defaultValue: "App rules",
       }),
       detail: t("refine.writeRules.featureCards.match.detail", {
-        defaultValue: "Use different behavior in Mail, Slack, browsers, or any app.",
+        defaultValue:
+          "Use different behavior in Mail, Slack, browsers, or any app.",
       }),
       icon: <AppWindow className="h-4.5 w-4.5" strokeWidth={2} />,
       accentColor: "var(--accent)",
@@ -346,10 +348,11 @@ export const WriteRulesSettings: React.FC = () => {
         defaultValue: "Cleanup level",
       }),
       value: t("refine.writeRules.featureCards.cleanup.value", {
-        defaultValue: "Raw to High",
+        defaultValue: "Raw-High",
       }),
       detail: t("refine.writeRules.featureCards.cleanup.detail", {
-        defaultValue: "Choose how much Vox Jot can edit each matched dictation.",
+        defaultValue:
+          "Choose how much Vox Jot can edit each matched dictation.",
       }),
       icon: <SlidersHorizontal className="h-4.5 w-4.5" strokeWidth={2} />,
       accentColor: "var(--voice)",
@@ -359,13 +362,28 @@ export const WriteRulesSettings: React.FC = () => {
         defaultValue: "Tone & prompt",
       }),
       value: t("refine.writeRules.featureCards.tone.value", {
-        defaultValue: "Casual, pro, code",
+        defaultValue: "Tone styles",
       }),
       detail: t("refine.writeRules.featureCards.tone.detail", {
-        defaultValue: "Apply a writing voice or custom cleanup prompt per mode.",
+        defaultValue:
+          "Apply a writing voice or custom cleanup prompt per mode.",
       }),
       icon: <Palette className="h-4.5 w-4.5" strokeWidth={2} />,
       accentColor: "var(--accent-gold, #d89a5c)",
+    },
+    {
+      label: t("refine.writeRules.featureCards.output.label", {
+        defaultValue: "Model & output",
+      }),
+      value: t("refine.writeRules.featureCards.output.value", {
+        defaultValue: "Mode engine",
+      }),
+      detail: t("refine.writeRules.featureCards.output.detail", {
+        defaultValue:
+          "Override the STT model, paste method, or auto-submit per mode.",
+      }),
+      icon: <Zap className="h-4.5 w-4.5" strokeWidth={2} />,
+      accentColor: "var(--success, #22c55e)",
     },
   ];
 
@@ -478,7 +496,11 @@ export const WriteRulesSettings: React.FC = () => {
                   })}
                 </p>
               </div>
-              <Button type="button" variant="ghost" onClick={closePreviewWindow}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closePreviewWindow}
+              >
                 {t("common.close", { defaultValue: "Close" })}
               </Button>
             </div>
@@ -521,15 +543,20 @@ export const WriteRulesSettings: React.FC = () => {
                   <Textarea
                     value={previewResult?.final_text ?? ""}
                     readOnly
-                    placeholder={t("refine.writeRules.preview.outputPlaceholder", {
-                      defaultValue: "Preview output appears here.",
-                    })}
+                    placeholder={t(
+                      "refine.writeRules.preview.outputPlaceholder",
+                      {
+                        defaultValue: "Preview output appears here.",
+                      },
+                    )}
                     className="min-h-[140px]"
                   />
                 </div>
               </div>
 
-              {previewError ? <Alert variant="error">{previewError}</Alert> : null}
+              {previewError ? (
+                <Alert variant="error">{previewError}</Alert>
+              ) : null}
 
               {previewOutputUnchanged ? (
                 <Alert variant="info">
@@ -551,15 +578,17 @@ export const WriteRulesSettings: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
-              <Button type="button" variant="ghost" onClick={closePreviewWindow}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closePreviewWindow}
+              >
                 {t("common.cancel", { defaultValue: "Cancel" })}
               </Button>
               <Button
                 type="button"
                 onClick={() => void runModePreview()}
-                disabled={
-                  isPreviewing || !previewInput.trim()
-                }
+                disabled={isPreviewing || !previewInput.trim()}
               >
                 {isPreviewing
                   ? t("refine.writeRules.preview.running", {
@@ -584,6 +613,7 @@ export const WriteRulesSettings: React.FC = () => {
       {previewWindow}
       <SectionFeatureCards
         layout="capability"
+        columns={4}
         ariaLabel={t("refine.writeRules.featureCards.ariaLabel", {
           defaultValue: "Dictation Mode capabilities",
         })}

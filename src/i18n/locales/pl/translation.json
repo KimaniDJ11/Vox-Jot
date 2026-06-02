@@ -2162,18 +2162,23 @@
         "ariaLabel": "Możliwości trybu dyktowania",
         "match": {
           "label": "Dopasuj kontekst",
-          "value": "Aplikacje i strony internetowe",
+          "value": "Reguły aplikacji",
           "detail": "Użyj innego zachowania w Mail, Slack, przeglądarkach lub dowolnej aplikacji."
         },
         "cleanup": {
           "label": "Poziom oczyszczenia",
-          "value": "Surowy do Wysokiego",
+          "value": "Surowy-wysoki",
           "detail": "Wybierz, w jakim stopniu Vox Jot może edytować każde dopasowane dyktando."
         },
         "tone": {
           "label": "Ton i monit",
-          "value": "Swobodny, profesjonalny, kod",
+          "value": "Style tonu",
           "detail": "Zastosuj głos pisany lub niestandardowy monit czyszczenia dla każdego trybu."
+        },
+        "output": {
+          "label": "Model i wyjście",
+          "value": "Silnik trybu",
+          "detail": "Nadpisz model STT, metodę wklejania lub autowysyłanie dla trybu."
         }
       },
       "preview": {

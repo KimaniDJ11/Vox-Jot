@@ -2162,18 +2162,23 @@
         "ariaLabel": "Khả năng của Chế độ đọc chính tả",
         "match": {
           "label": "Phù hợp với bối cảnh",
-          "value": "Ứng dụng và trang web",
+          "value": "Quy tắc app",
           "detail": "Sử dụng các hành vi khác nhau trong Mail, Slack, trình duyệt hoặc bất kỳ ứng dụng nào."
         },
         "cleanup": {
           "label": "Mức độ dọn dẹp",
-          "value": "Nguyên đến cao",
+          "value": "Thô-cao",
           "detail": "Chọn mức độ Vox Jot có thể chỉnh sửa từng chính tả phù hợp."
         },
         "tone": {
           "label": "Giai điệu & lời nhắc",
-          "value": "Bình thường, chuyên nghiệp, mã",
+          "value": "Kiểu giọng",
           "detail": "Áp dụng giọng viết hoặc lời nhắc dọn dẹp tùy chỉnh cho mỗi chế độ."
+        },
+        "output": {
+          "label": "Mô hình & đầu ra",
+          "value": "Bộ máy chế độ",
+          "detail": "Ghi đè mô hình STT, cách dán hoặc tự gửi cho từng chế độ."
         }
       },
       "preview": {

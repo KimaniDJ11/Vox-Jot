@@ -2162,18 +2162,23 @@
         "ariaLabel": "听写模式功能",
         "match": {
           "label": "匹配上下文",
-          "value": "应用程序和网站",
+          "value": "应用规则",
           "detail": "在 Mail、Slack、浏览器或任何应用程序中使用不同的行为。"
         },
         "cleanup": {
           "label": "清理级别",
-          "value": "原始到高",
+          "value": "原始-高",
           "detail": "选择 Vox Jot 可以编辑每个匹配听写的程度。"
         },
         "tone": {
           "label": "提示音和提示音",
-          "value": "休闲、专业、代码",
+          "value": "语气样式",
           "detail": "在每种模式下应用书写语音或自定义清理提示。"
+        },
+        "output": {
+          "label": "模型和输出",
+          "value": "模式引擎",
+          "detail": "按模式覆盖 STT 模型、粘贴方式或自动提交。"
         }
       },
       "preview": {

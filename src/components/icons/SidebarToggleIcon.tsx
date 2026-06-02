@@ -21,14 +21,19 @@ const SidebarToggleIcon: React.FC<SidebarToggleIconProps> = ({
       aria-hidden="true"
       {...props}
     >
-      <path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h10a2.5 2.5 0 0 1 2.5 2.5v13A2.5 2.5 0 0 1 17 21H7a2.5 2.5 0 0 1-2.5-2.5z" />
-      <path d="M9.5 3v18" />
-      <path d="M13.25 8h3.5" opacity={0.72} />
-      <path d="M13.25 12h4.25" opacity={0.72} />
-      <path d="M13.25 16h3" opacity={0.72} />
-      {collapsed ? (
-        <path d="M19.25 4.75 4.75 19.25" strokeWidth={2.5} />
-      ) : null}
+      <rect x="3" y="3" width="18" height="18" rx="3.5" />
+      <line
+        x1="9"
+        y1="3"
+        x2="9"
+        y2="21"
+        style={{
+          transform: collapsed ? "translateX(-3px)" : "translateX(0px)",
+          opacity: collapsed ? 0.4 : 1,
+          transition:
+            "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease",
+        }}
+      />
     </svg>
   );
 };

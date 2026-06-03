@@ -214,6 +214,9 @@ impl SidecarManager {
     pub fn runtime_python_path(runtime_root: &Path) -> Option<PathBuf> {
         #[cfg(target_os = "windows")]
         let candidates = [
+            // Relocatable python-build-standalone layout (preferred).
+            runtime_root.join(".python").join("python.exe"),
+            // Legacy venv layouts.
             runtime_root
                 .join("runtime")
                 .join(".venv")
@@ -228,6 +231,13 @@ impl SidecarManager {
 
         #[cfg(not(target_os = "windows"))]
         let candidates = [
+            // Relocatable python-build-standalone layout (preferred). This works
+            // from wherever the app extracts the runtime, unlike a venv which
+            // hard-references the base interpreter it was built from.
+            runtime_root.join(".python").join("bin").join("python3"),
+            runtime_root.join(".python").join("bin").join("python3.11"),
+            runtime_root.join(".python").join("bin").join("python"),
+            // Legacy venv layouts.
             runtime_root
                 .join("runtime")
                 .join(".venv")

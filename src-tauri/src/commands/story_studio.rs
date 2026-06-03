@@ -1665,10 +1665,10 @@ fn hf_creative_speech_runtime_root(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn hf_creative_python_path(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(hf_creative_speech_runtime_root(app)?
-        .join(".venv")
-        .join("bin")
-        .join("python"))
+    let root = hf_creative_speech_runtime_root(app)?;
+    crate::sidecar::SidecarManager::runtime_python_path(&root).ok_or_else(|| {
+        "The bundled PyTorch/MPS runtime is missing its Python interpreter.".to_string()
+    })
 }
 
 fn hf_creative_script_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -1717,8 +1717,8 @@ fn ensure_hf_creative_runtime_installed_blocking(
 
     let runtime_python_ready = runtime_root
         .as_ref()
-        .map(|root| root.join(".venv").join("bin").join("python").exists())
-        .unwrap_or(false);
+        .and_then(|root| crate::sidecar::SidecarManager::runtime_python_path(root))
+        .is_some();
 
     if !runtime_python_ready {
         let archive_path = crate::portable::resolve_resource(
@@ -1738,13 +1738,16 @@ fn ensure_hf_creative_runtime_installed_blocking(
 
     let runtime_root = runtime_root
         .ok_or_else(|| "Bundled PyTorch/MPS runtime extraction produced no files.".to_string())?;
-    let python = runtime_root.join(".venv").join("bin").join("python");
-    if !python.exists() {
-        return Err(format!(
-            "Bundled PyTorch/MPS runtime is missing Python at {}.",
-            python.display()
-        ));
-    }
+    // Validate the bundled runtime ships a usable interpreter (relocatable
+    // `.python/` or legacy `.venv/`); the path itself is not needed here.
+    let _python = crate::sidecar::SidecarManager::runtime_python_path(&runtime_root).ok_or_else(
+        || {
+            format!(
+                "Bundled PyTorch/MPS runtime is missing a Python interpreter under {}.",
+                runtime_root.display()
+            )
+        },
+    )?;
 
     ensure_download_not_cancelled(stop_flag)?;
     let runtime_dir = hf_creative_runtime_dir(app)?;

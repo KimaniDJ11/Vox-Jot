@@ -23,7 +23,7 @@ tar -C "$RUNTIME_SRC" \
   --exclude='*.pyc' \
   -cf - . | tar -C "$BUILD_DIR" -xf -
 
-"$PYTHON_BIN" -m venv "$BUILD_DIR/.venv"
+"$PYTHON_BIN" -m venv --copies "$BUILD_DIR/.venv"
 
 # Resolve the venv python — Windows puts it under Scripts/, Unix under bin/
 if [ -f "$BUILD_DIR/.venv/bin/python" ]; then
@@ -59,5 +59,13 @@ case "$ARCH" in
 esac
 
 ASSET_NAME="speech-runtime-${PLATFORM}-${ARCH_ID}.tar.gz"
+find "$BUILD_DIR" \( -name '.DS_Store' -o -name '._*' -o -name '__MACOSX' \) -print0 | xargs -0 rm -rf
+
+if find "$BUILD_DIR" -type l | grep -q .; then
+  echo "Speech runtime archive still contains symlinks:" >&2
+  find "$BUILD_DIR" -type l -print >&2
+  exit 1
+fi
+
 tar -C "$BUILD_DIR" -czf "$DIST_DIR/$ASSET_NAME" .
 echo "Built $DIST_DIR/$ASSET_NAME"

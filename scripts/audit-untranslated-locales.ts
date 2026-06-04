@@ -23,6 +23,7 @@ const EXACT_VALUE_ALLOWLIST = new Set([
   "JSON",
   "Jot Pad",
   "LLM",
+  "Model Hub",
   "OCR",
   "Ollama",
   "PersonaPlex",
@@ -132,6 +133,9 @@ const PATH_ALLOWLIST = [
   /^settings\.advanced\.theme\.options\.[^.]+\.id$/,
   /^settings\.debug\.paths\./,
   /^settings\.(?:postProcessing|styles)\..*\.placeholders\./,
+  /^listen\.voiceDesign\./,
+  /^storyStudio\./,
+  /^appSections\.nav\.listen\.voiceDesign$/,
 ];
 
 const VALUE_PATTERNS_ALLOWLIST = [

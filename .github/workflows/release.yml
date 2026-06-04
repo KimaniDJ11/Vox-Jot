@@ -30,7 +30,7 @@ jobs:
 
       - name: Create Draft Release
         id: create-release
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const tagName = `v${{ steps.get-version.outputs.version }}`
@@ -113,7 +113,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

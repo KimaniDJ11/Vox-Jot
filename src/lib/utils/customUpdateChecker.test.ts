@@ -89,6 +89,22 @@ describe("update checker (plugin-backed)", () => {
     expect(openUrlMock).not.toHaveBeenCalled();
   });
 
+  it("forwards updater progress events during in-app install", async () => {
+    const onEvent = vi.fn();
+    const downloadAndInstall = vi.fn().mockResolvedValue(undefined);
+    checkMock.mockResolvedValue({
+      version: "1.2.0",
+      body: "Fixes",
+      downloadAndInstall,
+    });
+
+    await module.checkForCustomUpdate("1.1.0");
+    await module.installPendingUpdate(onEvent);
+
+    expect(downloadAndInstall).toHaveBeenCalledWith(onEvent);
+    expect(relaunchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("falls back to the browser when the in-app install fails", async () => {
     const downloadAndInstall = vi
       .fn()

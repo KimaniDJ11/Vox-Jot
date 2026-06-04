@@ -52,6 +52,7 @@ import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import SidebarToggleIcon from "./components/icons/SidebarToggleIcon";
 import Footer from "./components/footer";
+import AppUpdateButton from "@/components/update-checker/AppUpdateButton";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { useMinWidth769 } from "@/hooks/useMinWidth769";
 import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
@@ -1117,9 +1118,7 @@ function App() {
     setActiveRootView(mode);
     const remembered = lastSectionByView.current[mode] || "";
     const nextSectionId =
-      mode === "listen"
-        ? resolveListenSectionId(remembered)
-        : remembered;
+      mode === "listen" ? resolveListenSectionId(remembered) : remembered;
     setActiveSectionId(
       nextSectionId || sectionsByViewRef.current[mode][0]?.id || "",
     );
@@ -1263,7 +1262,7 @@ function App() {
             className="app-macos-titlebar-overlay__traffic-shim"
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__leading flex">
+          <div className="app-macos-titlebar-overlay__leading flex items-center gap-1">
             <Button
               type="button"
               variant="ghost"
@@ -1286,6 +1285,7 @@ function App() {
                 className="shrink-0"
               />
             </Button>
+            <AppUpdateButton />
           </div>
           <div className="app-macos-titlebar-overlay__center">
             <PrimaryModeSwitcher
@@ -1304,7 +1304,7 @@ function App() {
           dir="ltr"
           onMouseDown={handleWindowTitlebarMouseDown}
         >
-          <div className="app-window-toolbar__sidebar-toggle app-no-drag flex items-center ps-1 pe-1">
+          <div className="app-window-toolbar__sidebar-toggle app-no-drag flex items-center gap-1 ps-1 pe-1">
             <Button
               type="button"
               variant="ghost"
@@ -1327,6 +1327,7 @@ function App() {
                 className="h-5 w-5 shrink-0"
               />
             </Button>
+            <AppUpdateButton />
           </div>
           <div className="app-window-toolbar__center">
             <PrimaryModeSwitcher

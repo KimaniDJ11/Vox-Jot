@@ -1,4 +1,8 @@
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import {
+  check,
+  type DownloadEvent,
+  type Update,
+} from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
@@ -44,12 +48,21 @@ export const checkForCustomUpdate = async (
   };
 };
 
-export const installPendingUpdate = async (): Promise<void> => {
+export const installUpdate = async (
+  update: Update,
+  onEvent?: (event: DownloadEvent) => void,
+): Promise<void> => {
+  await update.downloadAndInstall(onEvent);
+  await relaunch();
+};
+
+export const installPendingUpdate = async (
+  onEvent?: (event: DownloadEvent) => void,
+): Promise<void> => {
   if (!pendingUpdate) {
     throw new Error("No pending update to install");
   }
-  await pendingUpdate.downloadAndInstall();
-  await relaunch();
+  await installUpdate(pendingUpdate, onEvent);
 };
 
 export const openUpdateDownloadUrl = async (url?: string): Promise<void> => {

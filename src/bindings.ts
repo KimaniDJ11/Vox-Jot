@@ -935,6 +935,14 @@ async getFrontmostAppForExclusion() : Promise<Result<ActiveAppContext, string>> 
     else return { status: "error", error: e  as any };
 }
 },
+async prepareMacosPermissionRelaunch(reason: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_macos_permission_relaunch", { reason }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async openScreenRecordingSettings() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("open_screen_recording_settings") };

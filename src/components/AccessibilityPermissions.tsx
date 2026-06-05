@@ -8,6 +8,7 @@ import {
   minTapTargetHeightClass,
   titleBarOverlayWarningFocusClass,
 } from "@/lib/interactiveFocus";
+import { prepareMacosPermissionRelaunch } from "@/lib/macosPermissionRelaunch";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -72,6 +73,9 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     setBusyPermission(permission);
 
     try {
+      await prepareMacosPermissionRelaunch(
+        `accessibility-permissions:${permission}`,
+      );
       if (permission === "accessibility") {
         await requestAccessibilityPermission();
       } else if (permission === "screenRecording") {

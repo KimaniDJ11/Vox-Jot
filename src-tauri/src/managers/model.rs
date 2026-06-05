@@ -1297,8 +1297,12 @@ impl ModelManager {
             extracting_models: Arc::new(Mutex::new(HashSet::new())),
         };
 
-        // Migrate any bundled models to user directory
-        manager.migrate_bundled_models()?;
+        // Migrate any bundled models to the user directory when possible. A
+        // failed convenience copy should not prevent the app from opening; the
+        // normal download/import flows can still recover from it.
+        if let Err(error) = manager.migrate_bundled_models() {
+            warn!("Failed to migrate bundled STT models during startup: {error:#}");
+        }
 
         // Check which models are already downloaded
         manager.update_download_status()?;

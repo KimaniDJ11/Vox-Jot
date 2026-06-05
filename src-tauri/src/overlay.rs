@@ -10,9 +10,6 @@ use log::debug;
 use tauri::WebviewWindowBuilder;
 
 #[cfg(target_os = "macos")]
-use tauri::WebviewUrl;
-
-#[cfg(target_os = "macos")]
 use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel};
 
 #[cfg(target_os = "macos")]
@@ -214,7 +211,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     let mut builder = WebviewWindowBuilder::new(
         app_handle,
         "recording_overlay",
-        tauri::WebviewUrl::App("src/overlay/index.html".into()),
+        crate::app_webview_url("/src/overlay/index.html"),
     )
     .title("Recording")
     .resizable(false)
@@ -230,6 +227,8 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     .transparent(true)
     .focused(false)
     .visible(false);
+
+    builder = crate::apply_webview_workarounds(builder);
 
     if let Some(data_dir) = crate::portable::data_dir() {
         builder = builder.data_directory(data_dir.join("webview"));
@@ -256,7 +255,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
         // PanelBuilder creates a Tauri window then converts it to NSPanel.
         // The window remains registered, so get_webview_window() still works.
         match PanelBuilder::<_, RecordingOverlayPanel>::new(app_handle, "recording_overlay")
-            .url(WebviewUrl::App("src/overlay/index.html".into()))
+            .url(crate::app_webview_url("/src/overlay/index.html"))
             .title("Recording")
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .level(PanelLevel::Status)
@@ -286,10 +285,28 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     }
 }
 
+fn ensure_recording_overlay(app_handle: &AppHandle) -> bool {
+    if app_handle.get_webview_window("recording_overlay").is_some() {
+        return true;
+    }
+
+    let settings = settings::get_settings(app_handle);
+    if settings.overlay_position == OverlayPosition::None {
+        return false;
+    }
+
+    create_recording_overlay(app_handle);
+    app_handle.get_webview_window("recording_overlay").is_some()
+}
+
 fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     // Check if overlay should be shown based on position setting
     let settings = settings::get_settings(app_handle);
     if settings.overlay_position == OverlayPosition::None {
+        return;
+    }
+
+    if !ensure_recording_overlay(app_handle) {
         return;
     }
 
@@ -341,6 +358,10 @@ pub fn show_correction_overlay(
 ) {
     let settings = settings::get_settings(app_handle);
     if settings.overlay_position == OverlayPosition::None {
+        return;
+    }
+
+    if !ensure_recording_overlay(app_handle) {
         return;
     }
 

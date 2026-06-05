@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
+import { prepareMacosPermissionRelaunch } from "@/lib/macosPermissionRelaunch";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
   Check,
@@ -369,6 +370,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 
   const handleGrantAccessibility = async () => {
     try {
+      await prepareMacosPermissionRelaunch("onboarding:accessibility");
       await requestAccessibilityPermission();
       setPermissions((prev) => ({ ...prev, accessibility: "waiting" }));
       startPolling();
@@ -395,6 +397,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 
   const handleGrantInputMonitoring = async () => {
     try {
+      await prepareMacosPermissionRelaunch("onboarding:input-monitoring");
       await requestInputMonitoringPermission();
       setPermissions((prev) => ({ ...prev, inputMonitoring: "waiting" }));
       startPolling();
@@ -406,6 +409,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 
   const handleGrantScreenRecording = async () => {
     try {
+      await prepareMacosPermissionRelaunch("onboarding:screen-recording");
       await requestScreenRecordingPermission();
       const result = await commands.changeScreenContextEnabledSetting(true);
       if (result.status !== "ok") {

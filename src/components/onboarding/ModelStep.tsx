@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Download, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  AlertTriangle,
+  Download,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+} from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
@@ -24,6 +31,10 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     extractingModels,
     downloadProgress,
     downloadStats,
+    loading,
+    error,
+    initialize,
+    loadModels,
   } = useModelStore();
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -43,6 +54,11 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     downloadedModels.find((m: ModelInfo) => m.id === currentModel) ??
     downloadedModels.find((m: ModelInfo) => m.is_recommended) ??
     downloadedModels[0];
+  const hasNoCatalogModels = !loading && models.length === 0;
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
 
   // Watch for the selected model to finish downloading + extracting
   useEffect(() => {
@@ -93,6 +109,10 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     }
   };
 
+  const handleRetryCatalog = async () => {
+    await loadModels();
+  };
+
   const getModelStatus = (modelId: string) => {
     if (modelId in extractingModels) return "extracting" as const;
     if (modelId in downloadingModels) return "downloading" as const;
@@ -108,7 +128,25 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
   };
 
   // Build right-side visual
-  const rightVisual = isDownloading ? (
+  const rightVisual = loading ? (
+    <div className="ob-visual-card ob-visual-center ob-visual-stack">
+      <Loader2
+        size={48}
+        className="ob-spinner mx-auto mb-4"
+        color="var(--ob-primary)"
+      />
+      <h3 className="ob-card-title">
+        {t("onboarding.setup.loading.title", {
+          defaultValue: "Loading speech models",
+        })}
+      </h3>
+      <p className="ob-card-copy">
+        {t("onboarding.setup.loading.description", {
+          defaultValue: "Vox Jot is checking the local model catalog.",
+        })}
+      </p>
+    </div>
+  ) : isDownloading ? (
     <div className="ob-visual-card ob-visual-center ob-visual-stack">
       <Loader2
         size={48}
@@ -169,7 +207,29 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
           </div>
 
           {/* Recommended models */}
-          {recommendedModels.length > 0 ? (
+          {loading ? (
+            <div className="rounded-2xl border border-[var(--ob-border)] bg-[var(--ob-card)] p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <Loader2
+                  className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-[var(--ob-primary)]"
+                  aria-hidden
+                />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--ob-text)]">
+                    {t("onboarding.setup.loading.title", {
+                      defaultValue: "Loading speech models",
+                    })}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--ob-text-muted)]">
+                    {t("onboarding.setup.loading.description", {
+                      defaultValue:
+                        "Vox Jot is checking the local model catalog.",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : recommendedModels.length > 0 ? (
             <div className="flex flex-col gap-3">
               {recommendedModels.map((model: ModelInfo) => (
                 <ModelCard
@@ -209,6 +269,56 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                   defaultValue: "Continue",
                 })}
               </button>
+            </div>
+          ) : hasNoCatalogModels ? (
+            <div className="rounded-2xl border border-[var(--ob-border)] bg-[var(--ob-card)] p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ob-primary)]"
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[var(--ob-text)]">
+                    {t("onboarding.setup.empty.title", {
+                      defaultValue: "No speech models loaded",
+                    })}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--ob-text-muted)]">
+                    {error ??
+                      t("onboarding.setup.empty.description", {
+                        defaultValue:
+                          "Vox Jot could not load the speech model catalog. Try again, or skip this step and install a model later from Model Hub.",
+                      })}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleRetryCatalog()}
+                      className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl bg-[var(--ob-primary)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition-colors hover:bg-[var(--ob-primary-hover)] ${interactiveFocusRingClass}`}
+                    >
+                      <RefreshCw className="h-4 w-4" aria-hidden />
+                      {t("onboarding.setup.empty.retry", {
+                        defaultValue: "Try again",
+                      })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onModelSelected}
+                      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-[var(--ob-border)] bg-transparent px-4 text-sm font-semibold text-[var(--ob-text)] transition-colors hover:bg-[var(--ob-chip-bg)] ${interactiveFocusRingClass}`}
+                    >
+                      {t("onboarding.setup.empty.skip", {
+                        defaultValue: "Skip model setup",
+                      })}
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-[var(--ob-text-muted)]">
+                    {t("onboarding.setup.empty.skipNote", {
+                      defaultValue:
+                        "Dictation needs a speech model before the first recording can succeed.",
+                    })}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : null}
 

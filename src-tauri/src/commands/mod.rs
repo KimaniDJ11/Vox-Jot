@@ -19,6 +19,7 @@ use crate::settings::{
     get_settings, get_settings_without_secrets, write_settings, AppSettings, LogLevel,
 };
 use crate::utils::cancel_current_operation;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
@@ -219,11 +220,92 @@ pub fn get_frontmost_app_for_exclusion() -> Result<ActiveAppContext, String> {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn app_bundle_path_from_exe_path(exe_path: &Path) -> Option<PathBuf> {
+    exe_path
+        .ancestors()
+        .find(|path| path.extension().and_then(|ext| ext.to_str()) == Some("app"))
+        .map(Path::to_path_buf)
+}
+
+#[cfg(target_os = "macos")]
+fn current_app_bundle_path() -> Result<PathBuf, String> {
+    let exe_path =
+        std::env::current_exe().map_err(|err| format!("Failed to locate current app: {err}"))?;
+
+    if let Some(bundle_path) = app_bundle_path_from_exe_path(&exe_path) {
+        return Ok(bundle_path);
+    }
+
+    let installed_app_path = PathBuf::from("/Applications/Vox Jot.app");
+    if installed_app_path.exists() {
+        return Ok(installed_app_path);
+    }
+
+    Ok(exe_path)
+}
+
+#[cfg(target_os = "macos")]
+fn spawn_permission_relaunch_watcher(app_bundle_path: &Path) -> Result<(), String> {
+    let current_pid = std::process::id().to_string();
+    let app_bundle_path = app_bundle_path.to_string_lossy().to_string();
+    let script = r#"
+original_pid="$1"
+app_path="$2"
+attempts=0
+
+while kill -0 "$original_pid" 2>/dev/null && [ "$attempts" -lt 1200 ]; do
+  sleep 0.5
+  attempts=$((attempts + 1))
+done
+
+if ! kill -0 "$original_pid" 2>/dev/null; then
+  sleep 1.5
+  /usr/bin/open "$app_path"
+fi
+"#;
+
+    std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg(script)
+        .arg("vox-jot-permission-relaunch")
+        .arg(current_pid)
+        .arg(app_bundle_path)
+        .current_dir("/")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map(|_| ())
+        .map_err(|err| format!("Failed to prepare app relaunch: {err}"))
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn prepare_macos_permission_relaunch(reason: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let app_bundle_path = current_app_bundle_path()?;
+        spawn_permission_relaunch_watcher(&app_bundle_path)?;
+        log::info!(
+            "Prepared macOS permission relaunch watcher for {reason} using {}",
+            app_bundle_path.display()
+        );
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = reason;
+        Ok(())
+    }
+}
+
 #[specta::specta]
 #[tauri::command]
 pub fn open_screen_recording_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
+        prepare_macos_permission_relaunch("screen-context-settings".to_string())?;
         std::process::Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
             .spawn()
@@ -254,6 +336,27 @@ pub fn open_screen_recording_settings() -> Result<(), String> {
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
         Err("Screen capture settings are not available on this platform.".to_string())
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod permission_relaunch_tests {
+    use super::app_bundle_path_from_exe_path;
+    use std::path::Path;
+
+    #[test]
+    fn finds_bundle_path_from_installed_app_executable() {
+        let path = Path::new("/Applications/Vox Jot.app/Contents/MacOS/vox_jot");
+        assert_eq!(
+            app_bundle_path_from_exe_path(path).as_deref(),
+            Some(Path::new("/Applications/Vox Jot.app"))
+        );
+    }
+
+    #[test]
+    fn returns_none_for_non_bundle_executable() {
+        let path = Path::new("/Users/example/Apps/Vox Jot/target/debug/vox_jot");
+        assert!(app_bundle_path_from_exe_path(path).is_none());
     }
 }
 

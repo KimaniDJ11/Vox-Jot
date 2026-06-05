@@ -74,6 +74,47 @@ const MAIN_WINDOW_DEFAULT_W: f64 = 1200.0;
 const MAIN_WINDOW_DEFAULT_H: f64 = 1020.0;
 const MAIN_WINDOW_MIN_W: f64 = 940.0;
 const MAIN_WINDOW_MIN_H: f64 = 760.0;
+#[cfg(all(target_os = "macos", not(dev)))]
+const LOCALHOST_ASSET_PORT: u16 = 47635;
+#[cfg(all(target_os = "macos", not(dev)))]
+pub(crate) const MACOS_FORCE_POSTMESSAGE_IPC_SCRIPT: &str = r#"
+(() => {
+  const originalFetch = window.fetch;
+  if (!originalFetch || originalFetch.__voxJotPostMessageIpcOnly) {
+    return;
+  }
+
+  const isIpcUrl = (input) => {
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input && typeof input === "object" && "url" in input
+          ? input.url
+          : "";
+
+    return String(rawUrl).toLowerCase().startsWith("ipc:");
+  };
+
+  const patchedFetch = function patchedFetch(input, init) {
+    if (isIpcUrl(input)) {
+      return Promise.reject(
+        new TypeError("Tauri custom-protocol IPC disabled for macOS production"),
+      );
+    }
+
+    return originalFetch.apply(this, arguments);
+  };
+
+  Object.defineProperty(patchedFetch, "__voxJotPostMessageIpcOnly", {
+    value: true,
+  });
+  Object.defineProperty(window, "fetch", {
+    value: patchedFetch,
+    configurable: true,
+    writable: true,
+  });
+})();
+"#;
 
 pub use cli::CliArgs;
 #[cfg(debug_assertions)]
@@ -179,6 +220,48 @@ pub(crate) fn show_main_window(app: &AppHandle) {
         "Main window not found. Webview labels: {:?}",
         webview_labels
     );
+}
+
+pub(crate) fn app_webview_url(path: impl Into<String>) -> tauri::WebviewUrl {
+    let path = path.into();
+
+    #[cfg(all(target_os = "macos", not(dev)))]
+    {
+        // macOS 26 WebKit can crash in WKURLSchemeHandler when Tauri's custom asset
+        // scheme races resource loading, so release builds serve bundled assets locally.
+        let asset_path = path.trim_start_matches('/');
+        let url = if asset_path.is_empty() {
+            format!("http://127.0.0.1:{LOCALHOST_ASSET_PORT}")
+        } else {
+            format!("http://127.0.0.1:{LOCALHOST_ASSET_PORT}/{asset_path}")
+        };
+        return tauri::WebviewUrl::External(
+            url.parse()
+                .expect("production localhost asset URL must be valid"),
+        );
+    }
+
+    #[cfg(not(all(target_os = "macos", not(dev))))]
+    {
+        tauri::WebviewUrl::App(path.into())
+    }
+}
+
+pub(crate) fn apply_webview_workarounds<'a, M>(
+    builder: tauri::WebviewWindowBuilder<'a, tauri::Wry, M>,
+) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, M>
+where
+    M: tauri::Manager<tauri::Wry>,
+{
+    #[cfg(all(target_os = "macos", not(dev)))]
+    {
+        builder.initialization_script(MACOS_FORCE_POSTMESSAGE_IPC_SCRIPT)
+    }
+
+    #[cfg(not(all(target_os = "macos", not(dev))))]
+    {
+        builder
+    }
 }
 
 fn navigate_main_window(app: &AppHandle, view: &str) {
@@ -347,26 +430,34 @@ async fn maybe_warm_selected_ollama_model(
     }
 }
 
-fn initialize_core_logic(app_handle: &AppHandle) {
+fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     // Note: Enigo (keyboard/mouse simulation) is NOT initialized here.
     // The frontend is responsible for calling the `initialize_enigo` command
     // after onboarding completes. This avoids triggering permission dialogs
     // on macOS before the user is ready.
 
     // Initialize the managers
-    let recording_manager = Arc::new(
-        AudioRecordingManager::new(app_handle).expect("Failed to initialize recording manager"),
+    let recording_manager =
+        Arc::new(AudioRecordingManager::new(app_handle).map_err(|error| {
+            anyhow::anyhow!("Failed to initialize recording manager: {error:#}")
+        })?);
+    let model_manager = Arc::new(
+        ModelManager::new(app_handle)
+            .map_err(|error| anyhow::anyhow!("Failed to initialize model manager: {error:#}"))?,
     );
-    let model_manager =
-        Arc::new(ModelManager::new(app_handle).expect("Failed to initialize model manager"));
     let transcription_manager = Arc::new(
-        TranscriptionManager::new(app_handle, model_manager.clone())
-            .expect("Failed to initialize transcription manager"),
+        TranscriptionManager::new(app_handle, model_manager.clone()).map_err(|error| {
+            anyhow::anyhow!("Failed to initialize transcription manager: {error:#}")
+        })?,
     );
-    let history_manager =
-        Arc::new(HistoryManager::new(app_handle).expect("Failed to initialize history manager"));
-    let notes_manager =
-        Arc::new(NotesManager::new(app_handle).expect("Failed to initialize notes manager"));
+    let history_manager = Arc::new(
+        HistoryManager::new(app_handle)
+            .map_err(|error| anyhow::anyhow!("Failed to initialize history manager: {error:#}"))?,
+    );
+    let notes_manager = Arc::new(
+        NotesManager::new(app_handle)
+            .map_err(|error| anyhow::anyhow!("Failed to initialize notes manager: {error:#}"))?,
+    );
     let tts_manager = Arc::new(TtsManager::new(app_handle));
     let continuous_cloning_manager = Arc::new(ContinuousCloningManager::new(app_handle));
     let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
@@ -484,7 +575,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         tray_builder
     };
 
-    let tray = tray_builder
+    match tray_builder
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
                 navigate_main_window(app, "settings");
@@ -551,8 +642,14 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             _ => {}
         })
         .build(app_handle)
-        .unwrap();
-    app_handle.manage(tray);
+    {
+        Ok(tray) => {
+            app_handle.manage(tray);
+        }
+        Err(error) => {
+            log::warn!("Failed to create tray icon; continuing without tray: {error}");
+        }
+    }
 
     // Initialize tray menu with idle state
     utils::update_tray_menu(app_handle, &utils::TrayIconState::Idle, None);
@@ -585,14 +682,13 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         }
     }
 
-    // Create the recording overlay window (hidden by default)
-    utils::create_recording_overlay(app_handle);
-
     // Auto-start and preload Ollama if it's the configured post-process provider.
     tauri::async_runtime::spawn(maybe_warm_selected_ollama_model(
         app_handle.clone(),
         settings,
     ));
+
+    Ok(())
 }
 
 fn shutdown_core_logic(app: &AppHandle) {
@@ -801,6 +897,7 @@ pub fn run(cli_args: CliArgs) {
         commands::debug_analyze_post_process_route,
         commands::get_screen_context_diagnostics,
         commands::get_frontmost_app_for_exclusion,
+        commands::prepare_macos_permission_relaunch,
         commands::open_screen_recording_settings,
         commands::tts::tts_speak,
         commands::tts::tts_stop,
@@ -1093,6 +1190,15 @@ pub fn run(cli_args: CliArgs) {
         }));
     }
 
+    #[cfg(all(target_os = "macos", not(dev)))]
+    {
+        builder = builder.plugin(
+            tauri_plugin_localhost::Builder::new(LOCALHOST_ASSET_PORT)
+                .host("127.0.0.1")
+                .build(),
+        );
+    }
+
     builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
@@ -1127,13 +1233,18 @@ pub fn run(cli_args: CliArgs) {
             // Min size matches former default so the two-column shell always fits.
             // No max — zoom/full screen should use the full display (CSS uses minmax(0,1fr) and overflow).
             let mut win_builder =
-                tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
-                    .title("Vox Jot")
-                    .inner_size(MAIN_WINDOW_DEFAULT_W, MAIN_WINDOW_DEFAULT_H)
-                    .min_inner_size(MAIN_WINDOW_MIN_W, MAIN_WINDOW_MIN_H)
-                    .resizable(true)
-                    .maximizable(true)
-                    .visible(false);
+                apply_webview_workarounds(tauri::WebviewWindowBuilder::new(
+                    app,
+                    "main",
+                    app_webview_url("/"),
+                ));
+            win_builder = win_builder
+                .title("Vox Jot")
+                .inner_size(MAIN_WINDOW_DEFAULT_W, MAIN_WINDOW_DEFAULT_H)
+                .min_inner_size(MAIN_WINDOW_MIN_W, MAIN_WINDOW_MIN_H)
+                .resizable(true)
+                .maximizable(true)
+                .visible(false);
 
             // Enable transparent + vibrancy-ready chrome on macOS and Windows.
             // Overlay lets the webview extend under the traffic lights so the in-app
@@ -1224,7 +1335,10 @@ pub fn run(cli_args: CliArgs) {
             app.manage(recent_input_tracker);
             app.manage(InsertedSpanTracker::new());
 
-            initialize_core_logic(&app_handle);
+            initialize_core_logic(&app_handle).map_err(|error| {
+                log::error!("Core initialization failed: {error:#}");
+                Box::<dyn std::error::Error>::from(error)
+            })?;
 
             // Hide tray icon if --no-tray was passed
             if cli_args.no_tray {
@@ -1248,25 +1362,36 @@ pub fn run(cli_args: CliArgs) {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
+                if window.label() != "main" {
+                    return;
+                }
+
                 api.prevent_close();
-                let _res = window.hide();
 
                 let settings = get_settings(window.app_handle());
-                let tray_visible =
-                    settings.show_tray_icon && !window.app_handle().state::<CliArgs>().no_tray;
+                let tray_visible = settings.show_tray_icon
+                    && !window.app_handle().state::<CliArgs>().no_tray
+                    && window
+                        .app_handle()
+                        .try_state::<tauri::tray::TrayIcon>()
+                        .is_some();
+
+                if !tray_visible {
+                    window.app_handle().exit(0);
+                    return;
+                }
+
+                let _res = window.hide();
 
                 #[cfg(target_os = "macos")]
                 {
-                    if tray_visible {
-                        // Tray is available: hide the dock icon, app lives in the tray
-                        let res = window
-                            .app_handle()
-                            .set_activation_policy(tauri::ActivationPolicy::Accessory);
-                        if let Err(e) = res {
-                            log::error!("Failed to set activation policy: {}", e);
-                        }
+                    // Tray is available: hide the dock icon, app lives in the tray
+                    let res = window
+                        .app_handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    if let Err(e) = res {
+                        log::error!("Failed to set activation policy: {}", e);
                     }
-                    // No tray: keep the dock icon visible so the user can reopen
                 }
             }
             tauri::WindowEvent::ThemeChanged(theme) => {

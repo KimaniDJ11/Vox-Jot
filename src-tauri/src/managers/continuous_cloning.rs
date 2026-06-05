@@ -33,9 +33,9 @@ impl ContinuousCloningManager {
     pub fn new(app_handle: &AppHandle) -> Self {
         #[cfg(not(feature = "ci-mock-transcription"))]
         {
-            return Self {
+            Self {
                 app_handle: app_handle.clone(),
-            };
+            }
         }
         #[cfg(feature = "ci-mock-transcription")]
         {

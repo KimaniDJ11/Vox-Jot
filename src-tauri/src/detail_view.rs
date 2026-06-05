@@ -8,7 +8,7 @@ use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
 const DETAIL_LABEL: &str = "detail-view";
 const MODEL_HUB_LABEL: &str = "model-hub-view";
 const MODEL_HUB_SECTION: &str = "model-hub";
-const DETAIL_PATH: &str = "src/detail/index.html";
+const DETAIL_PATH: &str = "/src/detail/index.html";
 /// Default detail / "show all" window size (logical pixels).
 const DETAIL_WIDTH: f64 = 800.0;
 const DETAIL_HEIGHT: f64 = 900.0;
@@ -131,7 +131,7 @@ fn create_detail_window(app: &AppHandle, section: &str) {
     let app_clone = app.clone();
 
     let builder = PanelBuilder::<_, DetailViewPanel>::new(app, DETAIL_LABEL)
-        .url(tauri::WebviewUrl::App(DETAIL_PATH.into()))
+        .url(crate::app_webview_url(DETAIL_PATH))
         .title("Vox Jot")
         .size(tauri::Size::Logical(tauri::LogicalSize {
             width: DETAIL_WIDTH,
@@ -158,8 +158,10 @@ fn create_detail_window(app: &AppHandle, section: &str) {
                 .full_size_content_view(),
         )
         .with_window(move |w| {
+            let w = crate::apply_webview_workarounds(
+                w.min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT),
+            );
             let w = w
-                .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
                 .resizable(true)
                 .maximizable(false)
                 .minimizable(true)
@@ -198,26 +200,23 @@ fn create_detail_window(app: &AppHandle, section: &str) {
 fn create_detail_window(app: &AppHandle, section: &str) {
     let section_owned = section.to_string();
 
-    let mut builder = WebviewWindowBuilder::new(
-        app,
-        DETAIL_LABEL,
-        tauri::WebviewUrl::App(DETAIL_PATH.into()),
-    )
-    .title("Vox Jot")
-    .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
-    .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
-    .resizable(true)
-    .maximizable(true)
-    .minimizable(true)
-    .closable(true)
-    .always_on_top(true)
-    .focused(true)
-    .visible(true)
-    .on_page_load(move |window, payload| {
-        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-            emit_section_to(window.app_handle(), DETAIL_LABEL, &section_owned);
-        }
-    });
+    let mut builder =
+        WebviewWindowBuilder::new(app, DETAIL_LABEL, crate::app_webview_url(DETAIL_PATH))
+            .title("Vox Jot")
+            .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
+            .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
+            .resizable(true)
+            .maximizable(true)
+            .minimizable(true)
+            .closable(true)
+            .always_on_top(true)
+            .focused(true)
+            .visible(true)
+            .on_page_load(move |window, payload| {
+                if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                    emit_section_to(window.app_handle(), DETAIL_LABEL, &section_owned);
+                }
+            });
 
     if let Some(data_dir) = crate::portable::data_dir() {
         builder = builder.data_directory(data_dir.join("webview"));
@@ -235,24 +234,25 @@ fn create_detail_window(app: &AppHandle, section: &str) {
 }
 
 fn create_model_hub_window(app: &AppHandle) {
-    let mut builder = WebviewWindowBuilder::new(
+    let mut builder = crate::apply_webview_workarounds(WebviewWindowBuilder::new(
         app,
         MODEL_HUB_LABEL,
-        tauri::WebviewUrl::App(DETAIL_PATH.into()),
-    )
-    .title("Vox Jot")
-    .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
-    .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
-    .resizable(true)
-    .decorations(false)
-    .always_on_top(true)
-    .focused(true)
-    .visible(true)
-    .on_page_load(move |window, payload| {
-        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-            emit_section_to(window.app_handle(), MODEL_HUB_LABEL, MODEL_HUB_SECTION);
-        }
-    });
+        crate::app_webview_url(DETAIL_PATH),
+    ));
+    builder = builder
+        .title("Vox Jot")
+        .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
+        .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
+        .resizable(true)
+        .decorations(false)
+        .always_on_top(true)
+        .focused(true)
+        .visible(true)
+        .on_page_load(move |window, payload| {
+            if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                emit_section_to(window.app_handle(), MODEL_HUB_LABEL, MODEL_HUB_SECTION);
+            }
+        });
 
     if let Some(data_dir) = crate::portable::data_dir() {
         builder = builder.data_directory(data_dir.join("webview"));

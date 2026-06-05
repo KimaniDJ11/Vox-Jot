@@ -94,7 +94,10 @@ pub fn load_tray_icon(
 }
 
 pub fn change_tray_icon(app: &AppHandle, icon: TrayIconState) {
-    let tray = app.state::<TrayIcon>();
+    let Some(tray) = app.try_state::<TrayIcon>() else {
+        warn!("Skipping tray icon update because no tray icon is registered");
+        return;
+    };
     let theme = get_current_theme(app);
 
     if let Some(image) = load_tray_icon(app, theme, icon) {
@@ -108,6 +111,11 @@ pub fn change_tray_icon(app: &AppHandle, icon: TrayIconState) {
 }
 
 pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&str>) {
+    let Some(tray) = app.try_state::<TrayIcon>() else {
+        warn!("Skipping tray menu update because no tray icon is registered");
+        return;
+    };
+
     let settings = settings::get_settings(app);
 
     let locale = locale.unwrap_or(&settings.app_language);
@@ -220,7 +228,6 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
         .expect("failed to create menu"),
     };
 
-    let tray = app.state::<TrayIcon>();
     let _ = tray.set_menu(Some(menu));
     let _ = tray.set_icon_as_template(true);
 }
@@ -234,7 +241,11 @@ fn last_transcript_text(entry: &HistoryEntry) -> &str {
 }
 
 pub fn set_tray_visibility(app: &AppHandle, visible: bool) {
-    let tray = app.state::<TrayIcon>();
+    let Some(tray) = app.try_state::<TrayIcon>() else {
+        warn!("Skipping tray visibility change because no tray icon is registered");
+        return;
+    };
+
     if let Err(e) = tray.set_visible(visible) {
         error!("Failed to set tray visibility: {}", e);
     } else {

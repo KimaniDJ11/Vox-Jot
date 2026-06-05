@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { prepareMacosPermissionRelaunch } from "@/lib/macosPermissionRelaunch";
 import { useSettingsStore } from "@/stores/settingsStore";
 import VoxJotTextLogo from "../icons/VoxJotTextLogo";
 import { Keyboard, Mic, Check, Loader2 } from "lucide-react";
@@ -277,6 +278,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
 
   const handleGrantAccessibility = async () => {
     try {
+      await prepareMacosPermissionRelaunch("legacy-onboarding:accessibility");
       await requestAccessibilityPermission();
       setPermissions((prev) => ({ ...prev, accessibility: "waiting" }));
       startPolling();
@@ -304,6 +306,9 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
 
   const handleGrantInputMonitoring = async () => {
     try {
+      await prepareMacosPermissionRelaunch(
+        "legacy-onboarding:input-monitoring",
+      );
       await requestInputMonitoringPermission();
       setPermissions((prev) => ({ ...prev, inputMonitoring: "waiting" }));
       startPolling();

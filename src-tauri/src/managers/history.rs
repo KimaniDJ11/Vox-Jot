@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Local, Utc};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use rusqlite::{params, Connection, OptionalExtension};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
@@ -247,10 +247,59 @@ impl HistoryManager {
             db_path,
         };
 
-        // Initialize database and run migrations synchronously
-        manager.init_database()?;
+        // Initialize database and run migrations synchronously. If SQLite reports
+        // a corruption-style error, preserve the damaged file and start clean so
+        // users are not trapped in a launch crash loop.
+        if let Err(error) = manager.init_database() {
+            manager.recover_corrupt_database(error)?;
+        }
 
         Ok(manager)
+    }
+
+    fn is_recoverable_database_error(error: &anyhow::Error) -> bool {
+        let message = format!("{error:#}").to_ascii_lowercase();
+        [
+            "database disk image is malformed",
+            "file is not a database",
+            "file is encrypted",
+            "unsupported file format",
+            "malformed database schema",
+            "database corruption",
+            "not an sqlite database",
+        ]
+        .iter()
+        .any(|needle| message.contains(needle))
+    }
+
+    fn corrupt_backup_path(&self) -> PathBuf {
+        let timestamp = Utc::now().format("%Y%m%d%H%M%S");
+        self.db_path
+            .with_file_name(format!("history.db.corrupt-{timestamp}"))
+    }
+
+    fn recover_corrupt_database(&self, error: anyhow::Error) -> Result<()> {
+        if !Self::is_recoverable_database_error(&error) {
+            return Err(error);
+        }
+
+        let backup_path = self.corrupt_backup_path();
+        warn!(
+            "History database appears corrupt; moving {:?} to {:?}: {:#}",
+            self.db_path, backup_path, error
+        );
+
+        if self.db_path.exists() {
+            fs::rename(&self.db_path, &backup_path)?;
+        }
+
+        self.init_database().map_err(|retry_error| {
+            anyhow::anyhow!(
+                "Recovered corrupt history database to {:?}, but creating a clean database failed: {:#}",
+                backup_path,
+                retry_error
+            )
+        })
     }
 
     fn init_database(&self) -> Result<()> {
@@ -1227,5 +1276,15 @@ mod tests {
         writer.finalize().expect("finalize wav");
 
         assert_eq!(read_wav_duration_ms(&wav_path), Some(500));
+    }
+
+    #[test]
+    fn database_recovery_only_accepts_corruption_errors() {
+        assert!(HistoryManager::is_recoverable_database_error(
+            &anyhow::anyhow!("database disk image is malformed")
+        ));
+        assert!(!HistoryManager::is_recoverable_database_error(
+            &anyhow::anyhow!("permission denied")
+        ));
     }
 }

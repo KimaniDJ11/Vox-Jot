@@ -5,11 +5,12 @@ use crate::audio_toolkit::{
 use crate::helpers::clamshell;
 use crate::settings::{get_settings, AppSettings};
 use crate::utils;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tauri::Emitter;
 
 fn query_mute() -> Option<bool> {
     #[cfg(target_os = "windows")]
@@ -281,7 +282,12 @@ impl AudioRecordingManager {
 
         // Always-on?  Open immediately.
         if matches!(mode, MicrophoneMode::AlwaysOn) {
-            manager.start_microphone_stream()?;
+            if let Err(error) = manager.start_microphone_stream() {
+                let message =
+                    format!("Failed to open always-on microphone during startup: {error}");
+                warn!("{message}");
+                let _ = app.emit("recording-error", message);
+            }
         }
 
         Ok(manager)

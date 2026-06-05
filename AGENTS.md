@@ -71,6 +71,16 @@ Agents that download, benchmark, clean up, or expose models must follow `docs/mo
 - For TTS downloads, prefer `scripts/download-untested-tts-models.zsh` over ad hoc shell queues so other agents inherit the same paths, duplicate policy, and status logging.
 - For TTS models, benchmark success is not enough. Always validate the app path the user actually uses: select the model through Vox Jot's catalog, load the available voice list, create or preview a voice preset, and confirm preview synthesis succeeds with the canonical app provider/model IDs rather than a raw Hugging Face repo alias.
 
+## Gumroad Operations
+
+Use the `gumroad` CLI for Gumroad product, sales, file, license, and content inspection before falling back to browser automation. This repo is configured with the `gumroad` CLI and agent skill; see `docs/gumroad-cli-agent-runbook.md`.
+
+- Default to `gumroad ... --json --no-input --quiet` for agent commands.
+- Do not commit or print Gumroad access tokens. Use the stored local auth, `GUMROAD_ACCESS_TOKEN`, or `gumroad auth login --with-token` on fresh machines.
+- Vox Jot Gumroad product ID: `8UhuqxxzvPRLgPfGc37FFw==`; permalink: `voxjot`.
+- Use `--dry-run` before mutating product metadata, custom pages, attachments, refunds, offer codes, or customer-visible content.
+- Browser testing is still required for checkout, receipt, CAPTCHA/payment behavior, and full download/install flow validation.
+
 ## Text color visibility (contrast)
 
 Body copy and interactive labels must remain readable on real surfaces (`--panel-bg`, `--card`, `--bg`, overlays). Targets follow **WCAG 2.x**: **≥ 4.5:1** contrast for normal-sized text, **≥ 3:1** for large or bold UI text. Semi-transparent shells and backdrop blur effectively lighten or darken backgrounds; avoid stacking extra faintness.

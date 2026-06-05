@@ -88,6 +88,7 @@ export const WriteRulesSettings: React.FC = () => {
   );
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [lookupsReady, setLookupsReady] = useState(false);
   const profileDialogRef = useRef<HTMLDivElement>(null);
   const previewDialogRef = useRef<HTMLDivElement>(null);
 
@@ -183,13 +184,31 @@ export const WriteRulesSettings: React.FC = () => {
   // (app names, model names, tone labels) so we don't call the same
   // commands once per row.
   useEffect(() => {
-    void loadRules();
-    void refreshInstalledApps().then(setApps);
+    let cancelled = false;
     const unsubscribe = subscribeInstalledApps(setApps);
-    void commands.getAvailableModels().then((result) => {
-      if (result.status === "ok") setModels(result.data);
-    });
-    return unsubscribe;
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        await loadRules();
+        if (cancelled) return;
+
+        const refreshedApps = await refreshInstalledApps();
+        if (cancelled) return;
+        setApps(refreshedApps);
+
+        const modelsResult = await commands.getAvailableModels();
+        if (cancelled) return;
+        if (modelsResult.status === "ok") setModels(modelsResult.data);
+
+        setLookupsReady(true);
+      })();
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, [loadRules]);
 
   // "Active now" indicator — periodically asks the backend which rule
@@ -218,13 +237,18 @@ export const WriteRulesSettings: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (adding || editingId) return; // pause while user is editing
-    void refreshActiveRule();
+    if (!lookupsReady || adding || editingId) return; // pause while user is editing
+    const timeoutId = window.setTimeout(() => {
+      void refreshActiveRule();
+    }, 250);
     const id = window.setInterval(() => {
       void refreshActiveRule();
     }, 4000);
-    return () => window.clearInterval(id);
-  }, [adding, editingId, refreshActiveRule, rules.length]);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(id);
+    };
+  }, [adding, editingId, lookupsReady, refreshActiveRule, rules.length]);
 
   const saveRule = async (rule: WriteRule) => {
     setSaveError(null);

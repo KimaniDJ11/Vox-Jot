@@ -82,6 +82,11 @@ import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 import { useDictationEncouragementTitle } from "@/hooks/useDictationEncouragementTitle";
+import {
+  RefinePhraseKeysSection,
+  RefineProfilesSection,
+  RefineTranslationSection,
+} from "@/components/app-sections/refineCore";
 
 type OnboardingStep = "onboarding" | "done";
 
@@ -197,21 +202,6 @@ const JotPadSection = lazy(() =>
 const FileTranscriptionSection = lazy(() =>
   import("@/components/app-sections/dictate").then((module) => ({
     default: module.FileTranscriptionSection,
-  })),
-);
-const RefineProfilesSection = lazy(() =>
-  import("@/components/app-sections/refine").then((module) => ({
-    default: module.RefineProfilesSection,
-  })),
-);
-const RefinePhraseKeysSection = lazy(() =>
-  import("@/components/app-sections/refine").then((module) => ({
-    default: module.RefinePhraseKeysSection,
-  })),
-);
-const RefineTranslationSection = lazy(() =>
-  import("@/components/app-sections/refine").then((module) => ({
-    default: module.RefineTranslationSection,
   })),
 );
 const ListenVoiceDesignSection = lazy(() =>

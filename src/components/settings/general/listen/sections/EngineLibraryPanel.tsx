@@ -352,7 +352,6 @@ const SpeechModelLibraryCard: React.FC<{
   const downloadFailed = isDownloadFailed(downloadProgress, localDownloadError);
   const clickable =
     !active &&
-    speech.ttsEnabled &&
     !speech.loadingPlatform &&
     !confirmingRemove &&
     !downloadActive &&
@@ -420,14 +419,14 @@ const SpeechModelLibraryCard: React.FC<{
     trailing = {
       kind: "acquire",
       onClick: () => void downloadOrActivate(),
-      disabled: !speech.ttsEnabled || speech.loadingPlatform,
+      disabled: speech.loadingPlatform,
       label: `Download ${model.label}`,
     };
   } else if (!active && ttsHubModelCanRemove(model) && !confirmingRemove) {
     trailing = {
       kind: "remove",
       onClick: () => setConfirmingRemove(true),
-      disabled: !speech.ttsEnabled || speech.loadingPlatform || removing,
+      disabled: speech.loadingPlatform || removing,
       busy: removing,
       label: t("modelHub.tts.remove", {
         modelName: model.label,
@@ -524,7 +523,7 @@ const SpeechModelLibraryCard: React.FC<{
             type="button"
             variant="danger"
             size="sm"
-            disabled={removing || !speech.ttsEnabled || speech.loadingPlatform}
+            disabled={removing || speech.loadingPlatform}
             onClick={() => {
               void (async () => {
                 setRemoving(true);
@@ -584,7 +583,7 @@ const SpeechModelLibraryCard: React.FC<{
       downloadState={downloadState}
       footerExtra={footerExtra}
       onClick={clickable ? () => void downloadOrActivate() : undefined}
-      disabled={!speech.ttsEnabled || speech.loadingPlatform}
+      disabled={speech.loadingPlatform}
       active={active}
     />
   );

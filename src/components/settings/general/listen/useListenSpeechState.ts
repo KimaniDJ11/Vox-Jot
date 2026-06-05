@@ -564,10 +564,20 @@ export function useListenSpeechState() {
         void refreshAll();
         return;
       }
+      if (!settings?.tts_enabled) {
+        await updateSetting("tts_enabled", true);
+      }
       await setTtsPlatformSelection(providerId, modelId);
       await refreshAll();
     },
-    [ensureModelInstalled, refreshAll, t, visibleModels],
+    [
+      ensureModelInstalled,
+      refreshAll,
+      settings?.tts_enabled,
+      t,
+      updateSetting,
+      visibleModels,
+    ],
   );
 
   const createPresetFromProfile = useCallback(

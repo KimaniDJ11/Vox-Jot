@@ -13,32 +13,45 @@ pub struct FrameResampler {
 }
 
 impl FrameResampler {
-    pub fn new(in_hz: usize, out_hz: usize, frame_dur: Duration) -> Self {
+    pub fn new(in_hz: usize, out_hz: usize, frame_dur: Duration) -> Result<Self, String> {
         Self::with_chunk_size(in_hz, out_hz, frame_dur, RESAMPLER_CHUNK_SIZE)
     }
 
+    /// Build a resampler. Returns an error (instead of panicking) when the
+    /// parameters are invalid or Rubato cannot construct an FFT resampler for
+    /// the given rate ratio, so callers can surface a clean failure rather than
+    /// killing the audio worker thread.
     pub fn with_chunk_size(
         in_hz: usize,
         out_hz: usize,
         frame_dur: Duration,
         chunk_in: usize,
-    ) -> Self {
+    ) -> Result<Self, String> {
         let frame_samples = ((out_hz as f64 * frame_dur.as_secs_f64()).round()) as usize;
-        assert!(frame_samples > 0, "frame duration too short");
-        assert!(chunk_in > 0, "chunk size must be positive");
+        if frame_samples == 0 {
+            return Err("frame duration too short for output sample rate".to_string());
+        }
+        if chunk_in == 0 {
+            return Err("resampler chunk size must be positive".to_string());
+        }
 
-        let resampler = (in_hz != out_hz).then(|| {
-            FftFixedIn::<f32>::new(in_hz, out_hz, chunk_in, 1, 1)
-                .expect("Failed to create resampler")
-        });
+        let resampler = if in_hz != out_hz {
+            Some(
+                FftFixedIn::<f32>::new(in_hz, out_hz, chunk_in, 1, 1).map_err(|e| {
+                    format!("Failed to create resampler ({in_hz} Hz -> {out_hz} Hz): {e}")
+                })?,
+            )
+        } else {
+            None
+        };
 
-        Self {
+        Ok(Self {
             resampler,
             chunk_in,
             in_buf: Vec::with_capacity(chunk_in),
             frame_samples,
             pending: Vec::with_capacity(frame_samples),
-        }
+        })
     }
 
     pub fn push(&mut self, mut src: &[f32], mut emit: impl FnMut(&[f32])) {

@@ -67,7 +67,7 @@ pub struct AudioEnhancer {
 }
 
 impl AudioEnhancer {
-    pub fn new(input_sample_rate: u32, config: AudioEnhancementConfig) -> Self {
+    pub fn new(input_sample_rate: u32, config: AudioEnhancementConfig) -> Result<Self, String> {
         info!(
             "Enabling '{}' audio enhancement ({} Hz capture -> {} Hz denoise -> {} Hz STT)",
             config.model.as_str(),
@@ -77,23 +77,23 @@ impl AudioEnhancer {
         );
 
         match config.model {
-            AudioEnhancementModel::Rnnoise => Self {
+            AudioEnhancementModel::Rnnoise => Ok(Self {
                 input_resampler: FrameResampler::with_chunk_size(
                     input_sample_rate as usize,
                     RNNOISE_SAMPLE_RATE,
                     Duration::from_millis(RNNOISE_FRAME_MS),
                     RNNOISE_CHUNK_SIZE,
-                ),
+                )?,
                 output_resampler: FrameResampler::with_chunk_size(
                     RNNOISE_SAMPLE_RATE,
                     constants::WHISPER_SAMPLE_RATE as usize,
                     Duration::from_millis(30),
                     RNNOISE_CHUNK_SIZE,
-                ),
+                )?,
                 denoise: DenoiseState::new(),
                 denoise_input: [0.0; DenoiseState::FRAME_SIZE],
                 denoise_output: [0.0; DenoiseState::FRAME_SIZE],
-            },
+            }),
         }
     }
 
@@ -190,7 +190,7 @@ mod tests {
         let config = AudioEnhancementConfig {
             model: AudioEnhancementModel::Rnnoise,
         };
-        let mut enhancer = AudioEnhancer::new(48_000, config);
+        let mut enhancer = AudioEnhancer::new(48_000, config).expect("create enhancer");
         let input: Vec<f32> = (0..(DenoiseState::FRAME_SIZE * 12))
             .map(|index| {
                 let theta = index as f32 * 2.0 * std::f32::consts::PI * 220.0 / 48_000.0;

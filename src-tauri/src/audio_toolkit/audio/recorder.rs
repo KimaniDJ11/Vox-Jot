@@ -86,7 +86,10 @@ impl AudioRecorder {
         let level_cb = self.level_cb.clone();
 
         let worker = std::thread::spawn(move || {
-            let init_result = (|| -> Result<(cpal::Stream, u32), String> {
+            let init_result = (|| -> Result<
+                (cpal::Stream, u32, Option<AudioEnhancer>, FrameResampler),
+                String,
+            > {
                 let config = AudioRecorder::get_preferred_config(&thread_device)
                     .map_err(|e| format!("Failed to fetch preferred config: {e}"))?;
 
@@ -146,16 +149,36 @@ impl AudioRecorder {
                     .play()
                     .map_err(|e| format!("Failed to start microphone stream: {e}"))?;
 
-                Ok((stream, sample_rate))
+                // Build the resamplers before reporting init success so a
+                // construction failure surfaces as a clean error through the
+                // init channel instead of silently killing the worker thread
+                // (which would leave recording "active" with no audio captured).
+                let enhancer = match enhancement_config {
+                    Some(config) => Some(AudioEnhancer::new(sample_rate, config)?),
+                    None => None,
+                };
+                let frame_resampler = FrameResampler::new(
+                    sample_rate as usize,
+                    constants::WHISPER_SAMPLE_RATE as usize,
+                    Duration::from_millis(30),
+                )?;
+
+                Ok((stream, sample_rate, enhancer, frame_resampler))
             })();
 
             match init_result {
-                Ok((stream, sample_rate)) => {
+                Ok((stream, sample_rate, enhancer, frame_resampler)) => {
                     let _ = init_tx.send(Ok(()));
                     // Keep the stream alive while we process samples.
-                    let enhancer =
-                        enhancement_config.map(|config| AudioEnhancer::new(sample_rate, config));
-                    run_consumer(sample_rate, vad, enhancer, sample_rx, cmd_rx, level_cb);
+                    run_consumer(
+                        sample_rate,
+                        vad,
+                        enhancer,
+                        frame_resampler,
+                        sample_rx,
+                        cmd_rx,
+                        level_cb,
+                    );
                     drop(stream);
                 }
                 Err(error_message) => {
@@ -331,16 +354,11 @@ fn run_consumer(
     in_sample_rate: u32,
     vad: Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
     mut enhancer: Option<AudioEnhancer>,
+    mut frame_resampler: FrameResampler,
     sample_rx: mpsc::Receiver<Vec<f32>>,
     cmd_rx: mpsc::Receiver<Cmd>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
 ) {
-    let mut frame_resampler = FrameResampler::new(
-        in_sample_rate as usize,
-        constants::WHISPER_SAMPLE_RATE as usize,
-        Duration::from_millis(30),
-    );
-
     // Pre-allocate for ~10 seconds of audio at 16kHz to avoid repeated reallocs
     let mut processed_samples = Vec::<f32>::with_capacity(160_000);
     let mut recording = false;

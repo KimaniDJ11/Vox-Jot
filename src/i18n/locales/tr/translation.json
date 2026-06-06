@@ -1550,7 +1550,11 @@
     "openSettings": "Sistem Ayarlarını Aç",
     "dismiss": "Reddet",
     "permissionsTitle": "macOS izinlerine dikkat edilmesi gerekiyor",
-    "permissionNeeded": "İzin Gerekli"
+    "permissionNeeded": "İzin Gerekli",
+    "relaunchTitle": "İzinleri uygulamak için yeniden başlatın",
+    "relaunchDescription": "macOS, yeni verilen izinleri yalnızca Vox Jot yeniden başlatıldıktan sonra uygular. Etkinleştirmek için şimdi yeniden başlatın.",
+    "relaunchNow": "Şimdi yeniden başlat",
+    "relaunching": "Yeniden başlatılıyor…"
   },
   "errors": {
     "loadDirectory": "Dizin yüklenirken hata oluştu: {{error}}",

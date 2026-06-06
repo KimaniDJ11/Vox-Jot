@@ -8,7 +8,10 @@ import {
   minTapTargetHeightClass,
   titleBarOverlayWarningFocusClass,
 } from "@/lib/interactiveFocus";
-import { prepareMacosPermissionRelaunch } from "@/lib/macosPermissionRelaunch";
+import {
+  prepareMacosPermissionRelaunch,
+  relaunchForMacosPermissions,
+} from "@/lib/macosPermissionRelaunch";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -45,6 +48,8 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     screenRecording: false,
   });
   const [busyPermission, setBusyPermission] = useState<MissingPermission>(null);
+  const [relaunchPrepared, setRelaunchPrepared] = useState(false);
+  const [isRelaunching, setIsRelaunching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +81,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       await prepareMacosPermissionRelaunch(
         `accessibility-permissions:${permission}`,
       );
+      setRelaunchPrepared(true);
       if (permission === "accessibility") {
         await requestAccessibilityPermission();
       } else if (permission === "screenRecording") {
@@ -88,6 +94,16 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     } finally {
       await refreshPermissions();
       setBusyPermission(null);
+    }
+  };
+
+  const handleRelaunch = async (): Promise<void> => {
+    setIsRelaunching(true);
+    try {
+      await relaunchForMacosPermissions("accessibility-permissions:relaunch");
+    } catch (error) {
+      console.error("Error relaunching for permissions:", error);
+      setIsRelaunching(false);
     }
   };
 
@@ -136,7 +152,11 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     permissions.inputMonitoring &&
     permissions.screenRecording;
 
-  if (!isMacOS || hasAllPermissions) {
+  // Keep rendering after every permission reads as granted if a relaunch is
+  // still pending: macOS reports the grant at the OS level, but the running
+  // process can't use Accessibility/Input Monitoring/Screen Recording until it
+  // restarts, so the relaunch prompt must remain available.
+  if (!isMacOS || (hasAllPermissions && !relaunchPrepared)) {
     return null;
   }
 
@@ -222,6 +242,29 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             disabled={busyPermission !== null}
           >
             {t("accessibility.openSettings")}
+          </button>
+        </div>
+      )}
+
+      {relaunchPrepared && (
+        <div className={permissionCardClassName}>
+          <div>
+            <p className="text-sm font-semibold">
+              {t("accessibility.relaunchTitle")}
+            </p>
+            <p className="mt-1 text-sm text-[var(--text)]">
+              {t("accessibility.relaunchDescription")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleRelaunch()}
+            className={buttonClassName}
+            disabled={isRelaunching}
+          >
+            {isRelaunching
+              ? t("accessibility.relaunching")
+              : t("accessibility.relaunchNow")}
           </button>
         </div>
       )}

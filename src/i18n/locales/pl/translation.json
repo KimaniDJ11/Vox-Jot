@@ -1550,7 +1550,11 @@
     "openSettings": "Otwórz Ustawienia systemowe",
     "dismiss": "Odrzuć",
     "permissionsTitle": "Uprawnienia macOS wymagają uwagi",
-    "permissionNeeded": "Potrzebne pozwolenie"
+    "permissionNeeded": "Potrzebne pozwolenie",
+    "relaunchTitle": "Uruchom ponownie, aby zastosować uprawnienia",
+    "relaunchDescription": "macOS stosuje nowo przyznane uprawnienia dopiero po ponownym uruchomieniu Vox Jot. Uruchom ponownie teraz, aby je aktywować.",
+    "relaunchNow": "Uruchom ponownie teraz",
+    "relaunching": "Ponowne uruchamianie…"
   },
   "errors": {
     "loadDirectory": "Błąd podczas ładowania katalogu: {{error}}",

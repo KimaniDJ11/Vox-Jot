@@ -1550,7 +1550,11 @@
     "openSettings": "システム設定を開く",
     "dismiss": "解雇する",
     "permissionsTitle": "macOS 権限には注意が必要です",
-    "permissionNeeded": "許可が必要です"
+    "permissionNeeded": "許可が必要です",
+    "relaunchTitle": "権限を適用するには再起動してください",
+    "relaunchDescription": "macOS は新しく付与された権限を Vox Jot の再起動後にのみ適用します。今すぐ再起動して有効化してください。",
+    "relaunchNow": "今すぐ再起動",
+    "relaunching": "再起動しています…"
   },
   "errors": {
     "loadDirectory": "ディレクトリのロード中にエラーが発生しました: {{error}}",

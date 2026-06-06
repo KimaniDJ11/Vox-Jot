@@ -1550,7 +1550,11 @@
     "openSettings": "開啟系統設定",
     "dismiss": "解僱",
     "permissionsTitle": "macOS 權限需注意",
-    "permissionNeeded": "需要許可"
+    "permissionNeeded": "需要許可",
+    "relaunchTitle": "重新啟動以套用權限",
+    "relaunchDescription": "macOS 僅在 Vox Jot 重新啟動後才會套用新授予的權限。立即重新啟動以啟用它們。",
+    "relaunchNow": "立即重新啟動",
+    "relaunching": "正在重新啟動…"
   },
   "errors": {
     "loadDirectory": "載入目錄時發生錯誤：{{error}}",

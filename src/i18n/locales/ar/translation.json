@@ -1550,7 +1550,11 @@
     "openSettings": "افتح إعدادات النظام",
     "dismiss": "استبعاد",
     "permissionsTitle": "أذونات macOS تحتاج إلى الاهتمام",
-    "permissionNeeded": "الإذن مطلوب"
+    "permissionNeeded": "الإذن مطلوب",
+    "relaunchTitle": "أعد التشغيل لتطبيق الأذونات",
+    "relaunchDescription": "لا يطبّق macOS الأذونات الممنوحة حديثًا إلا بعد إعادة تشغيل Vox Jot. أعد التشغيل الآن لتفعيلها.",
+    "relaunchNow": "أعد التشغيل الآن",
+    "relaunching": "جارٍ إعادة التشغيل…"
   },
   "errors": {
     "loadDirectory": "خطأ في تحميل الدليل: {{error}}",

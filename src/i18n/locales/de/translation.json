@@ -1550,7 +1550,11 @@
     "openSettings": "Öffnen Sie die Systemeinstellungen",
     "dismiss": "Entlassen",
     "permissionsTitle": "macOS-Berechtigungen erfordern Aufmerksamkeit",
-    "permissionNeeded": "Erlaubnis erforderlich"
+    "permissionNeeded": "Erlaubnis erforderlich",
+    "relaunchTitle": "Neu starten, um Berechtigungen anzuwenden",
+    "relaunchDescription": "macOS wendet neu erteilte Berechtigungen erst nach einem Neustart von Vox Jot an. Starten Sie jetzt neu, um sie zu aktivieren.",
+    "relaunchNow": "Jetzt neu starten",
+    "relaunching": "Wird neu gestartet…"
   },
   "errors": {
     "loadDirectory": "Fehler beim Laden des Verzeichnisses: {{error}}",

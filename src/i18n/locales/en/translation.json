@@ -2067,7 +2067,11 @@
     "permissionsTitle": "macOS permissions need attention",
     "permissionsDescription": "Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring for shortcut and send-versus-delete signals, and Screen Recording only when optional local Screen Context OCR is enabled.",
     "openSettings": "Open System Settings",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "relaunchTitle": "Restart to apply permissions",
+    "relaunchDescription": "macOS only applies newly granted permissions after Vox Jot restarts. Relaunch now to activate them.",
+    "relaunchNow": "Relaunch now",
+    "relaunching": "Relaunching…"
   },
   "errors": {
     "loadDirectory": "Error loading directory: {{error}}",

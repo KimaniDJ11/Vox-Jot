@@ -1550,7 +1550,11 @@
     "openSettings": "Otevřete Nastavení systému",
     "dismiss": "Odmítnout",
     "permissionsTitle": "Oprávnění macOS vyžadují pozornost",
-    "permissionNeeded": "Je vyžadováno povolení"
+    "permissionNeeded": "Je vyžadováno povolení",
+    "relaunchTitle": "Restartujte pro použití oprávnění",
+    "relaunchDescription": "macOS použije nově udělená oprávnění až po restartu Vox Jot. Restartujte nyní pro jejich aktivaci.",
+    "relaunchNow": "Restartovat nyní",
+    "relaunching": "Restartuji…"
   },
   "errors": {
     "loadDirectory": "Chyba při načítání adresáře: {{error}}",

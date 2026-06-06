@@ -1550,7 +1550,11 @@
     "openSettings": "Mở cài đặt hệ thống",
     "dismiss": "Loại bỏ",
     "permissionsTitle": "Quyền macOS cần được chú ý",
-    "permissionNeeded": "Cần có sự cho phép"
+    "permissionNeeded": "Cần có sự cho phép",
+    "relaunchTitle": "Khởi động lại để áp dụng quyền",
+    "relaunchDescription": "macOS chỉ áp dụng các quyền vừa cấp sau khi khởi động lại Vox Jot. Khởi động lại ngay để kích hoạt chúng.",
+    "relaunchNow": "Khởi động lại ngay",
+    "relaunching": "Đang khởi động lại…"
   },
   "errors": {
     "loadDirectory": "Lỗi tải thư mục: {{error}}",

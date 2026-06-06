@@ -1550,7 +1550,11 @@
     "openSettings": "Відкрийте налаштування системи",
     "dismiss": "Відхилити",
     "permissionsTitle": "Дозволи macOS потребують уваги",
-    "permissionNeeded": "Потрібен дозвіл"
+    "permissionNeeded": "Потрібен дозвіл",
+    "relaunchTitle": "Перезапустіть, щоб застосувати дозволи",
+    "relaunchDescription": "macOS застосовує нещодавно надані дозволи лише після перезапуску Vox Jot. Перезапустіть зараз, щоб активувати їх.",
+    "relaunchNow": "Перезапустити зараз",
+    "relaunching": "Перезапуск…"
   },
   "errors": {
     "loadDirectory": "Помилка завантаження каталогу: {{error}}",

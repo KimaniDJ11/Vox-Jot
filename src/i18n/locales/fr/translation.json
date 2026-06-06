@@ -1550,7 +1550,11 @@
     "openSettings": "Ouvrir les paramètres système",
     "dismiss": "Rejeter",
     "permissionsTitle": "Les autorisations macOS nécessitent une attention particulière",
-    "permissionNeeded": "Autorisation requise"
+    "permissionNeeded": "Autorisation requise",
+    "relaunchTitle": "Redémarrez pour appliquer les autorisations",
+    "relaunchDescription": "macOS n'applique les autorisations récemment accordées qu'après le redémarrage de Vox Jot. Redémarrez maintenant pour les activer.",
+    "relaunchNow": "Redémarrer maintenant",
+    "relaunching": "Redémarrage…"
   },
   "errors": {
     "loadDirectory": "Erreur de chargement du répertoire : {{error}}",

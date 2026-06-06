@@ -440,7 +440,15 @@ impl TranscriptionManager {
             let shutdown_signal = manager.shutdown_signal.clone();
             let handle = thread::spawn(move || {
                 while !shutdown_signal.load(Ordering::Relaxed) {
-                    thread::sleep(Duration::from_secs(10)); // Check every 10 seconds
+                    // Sleep ~10s between checks, but wake every 100ms to observe the
+                    // shutdown signal so `join()` on quit returns promptly instead of
+                    // blocking for up to a full interval.
+                    for _ in 0..100 {
+                        if shutdown_signal.load(Ordering::Relaxed) {
+                            break;
+                        }
+                        thread::sleep(Duration::from_millis(100));
+                    }
 
                     // Check shutdown signal again after sleep
                     if shutdown_signal.load(Ordering::Relaxed) {

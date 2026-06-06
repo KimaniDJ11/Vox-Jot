@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   CatalogModelDescriptor,
@@ -9,11 +9,21 @@ import type {
 } from "@/lib/modelPlatform";
 import { VoiceChangerSection } from "./VoiceChangerSection";
 
+const commandMocks = vi.hoisted(() => ({
+  convoStopAudioCapture: vi.fn(),
+  downloadTtsPack: vi.fn(),
+  cancelArtifactDownload: vi.fn(),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (_key: string, options?: { defaultValue?: string }) =>
       options?.defaultValue ?? _key,
   }),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async () => vi.fn()),
 }));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
@@ -25,10 +35,31 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 }));
 
 vi.mock("@/bindings", () => ({
-  commands: {
-    convoStopAudioCapture: vi.fn(),
-  },
+  commands: commandMocks,
 }));
+
+function installLocalStorageMock() {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => {
+        store.clear();
+      }),
+    },
+  });
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: globalThis.localStorage,
+  });
+}
 
 const runtime = {
   id: "speech-runtime",
@@ -91,6 +122,21 @@ const openVoiceModel: CatalogModelDescriptor = {
 };
 
 describe("VoiceChangerSection", () => {
+  const voiceChangerDraftKey = "vox-jot-voice-changer-draft-v1";
+
+  beforeEach(() => {
+    installLocalStorageMock();
+    window.localStorage.clear();
+    commandMocks.downloadTtsPack.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+    commandMocks.cancelArtifactDownload.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+  });
+
   const render = async (node: React.ReactNode) => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -110,6 +156,12 @@ describe("VoiceChangerSection", () => {
         container.remove();
       },
     };
+  };
+
+  const unavailableOpenVoiceModel: CatalogModelDescriptor = {
+    ...openVoiceModel,
+    installed: false,
+    runnable: false,
   };
 
   it("renders the voice changer panel without blanking the app", async () => {
@@ -166,5 +218,89 @@ describe("VoiceChangerSection", () => {
     expect(view.container.textContent).toContain("Tone blend");
 
     await view.cleanup();
+  });
+
+  it("does not auto-select a voice changer catalog model that is not downloaded", async () => {
+    window.localStorage.removeItem(voiceChangerDraftKey);
+
+    const view = await render(
+      <VoiceChangerSection
+        showTitle={false}
+        speech={
+          {
+            profiles: [
+              {
+                id: "profile-1",
+                label: "Target",
+                description: null,
+                sample_path: "/tmp/target.wav",
+                transcript: null,
+                provider_id: "openvoice",
+                model_id: "openvoice",
+                ready: true,
+              },
+            ],
+            visibleModels: [unavailableOpenVoiceModel],
+            visibleProviders: [provider],
+            packs: [],
+            refreshAll: vi.fn(),
+          } as never
+        }
+      />,
+    );
+
+    expect(view.container.textContent).toContain("No model selected");
+    expect(view.container.textContent).not.toContain("Ready");
+
+    await view.cleanup();
+  });
+
+  it("shows downloadable voice changer models without marking them selected", async () => {
+    window.localStorage.setItem(
+      voiceChangerDraftKey,
+      JSON.stringify({ providerId: "openvoice", modelId: "openvoice" }),
+    );
+
+    const view = await render(
+      <VoiceChangerSection
+        showTitle={false}
+        speech={
+          {
+            profiles: [],
+            visibleModels: [unavailableOpenVoiceModel],
+            visibleProviders: [provider],
+            packs: [],
+            refreshAll: vi.fn(),
+          } as never
+        }
+      />,
+    );
+
+    const modelsButton = Array.from(
+      view.container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Models"));
+
+    await act(async () => {
+      modelsButton?.click();
+    });
+
+    expect(document.body.textContent).toContain("OpenVoice");
+    expect(document.body.textContent).not.toContain("Downloaded Models");
+    expect(document.body.textContent).toContain("Available to Download");
+    expect(document.body.textContent).toContain("Download required");
+    expect(document.body.textContent).not.toContain("Selected");
+
+    const downloadButton = document.body.querySelector(
+      'button[aria-label="Download {{modelLabel}} for Voice Changer"]',
+    );
+
+    await act(async () => {
+      (downloadButton as HTMLButtonElement | null)?.click();
+    });
+
+    expect(commandMocks.downloadTtsPack).toHaveBeenCalledWith("openvoice");
+
+    await view.cleanup();
+    window.localStorage.removeItem(voiceChangerDraftKey);
   });
 });

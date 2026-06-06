@@ -8,6 +8,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
@@ -22,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 
-import { commands, type TtsPackInfo } from "@/bindings";
+import { commands } from "@/bindings";
 import { convertVoiceRecording, convertVoiceSample } from "@/lib/voiceChanger";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
@@ -30,6 +31,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
+import Badge from "@/components/ui/Badge";
+import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
+import {
+  buildHubDownloadState,
+  isDownloadActive,
+  isDownloadFailed,
+} from "@/components/model-hub/hubDownloadState";
 import {
   ProviderIcon,
   resolveModelProviderId,
@@ -47,13 +55,17 @@ import { modal } from "@/motion/springs";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
 import {
-  DEFAULT_VOICE_CHANGER_MODEL,
   findVoiceChangerModel,
   isVoiceChangerCapableModel,
   type VoiceChangerModelSelection,
   voiceChangerModelKey,
 } from "../voiceChangerModels";
-import { getModelLanguageItems, ttsModelSupportsLanguage } from "../utils";
+import {
+  getModelLanguageItems,
+  huggingFaceRepoIdFromSourceUrl,
+  isDraftVoiceModelAvailable,
+  ttsModelSupportsLanguage,
+} from "../utils";
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/);
@@ -75,23 +87,16 @@ function errorToMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function modelInstalled(
-  model: CatalogModelDescriptor | null,
-  packs: TtsPackInfo[],
-) {
-  if (!model) return false;
-  return Boolean(
-    model.installed ||
-    model.runnable ||
-    packs.find((pack) => pack.id === model.id)?.installed,
-  );
-}
+const EMPTY_VOICE_CHANGER_MODEL_SELECTION: VoiceChangerModelSelection = {
+  providerId: "",
+  modelId: "",
+};
 
 function readVoiceChangerDraft(): VoiceChangerModelSelection {
-  if (typeof window === "undefined") return DEFAULT_VOICE_CHANGER_MODEL;
+  if (typeof window === "undefined") return EMPTY_VOICE_CHANGER_MODEL_SELECTION;
   try {
     const raw = window.localStorage.getItem("vox-jot-voice-changer-draft-v1");
-    if (!raw) return DEFAULT_VOICE_CHANGER_MODEL;
+    if (!raw) return EMPTY_VOICE_CHANGER_MODEL_SELECTION;
     const draft = JSON.parse(raw) as Partial<VoiceChangerModelSelection>;
     if (
       typeof draft.providerId === "string" &&
@@ -105,12 +110,16 @@ function readVoiceChangerDraft(): VoiceChangerModelSelection {
   } catch (error) {
     console.warn("Failed to read Voice Changer draft:", error);
   }
-  return DEFAULT_VOICE_CHANGER_MODEL;
+  return EMPTY_VOICE_CHANGER_MODEL_SELECTION;
 }
 
 function writeVoiceChangerDraft(selection: VoiceChangerModelSelection) {
   if (typeof window === "undefined") return;
   try {
+    if (!selection.providerId || !selection.modelId) {
+      window.localStorage.removeItem("vox-jot-voice-changer-draft-v1");
+      return;
+    }
     window.localStorage.setItem(
       "vox-jot-voice-changer-draft-v1",
       JSON.stringify(selection),
@@ -121,6 +130,17 @@ function writeVoiceChangerDraft(selection: VoiceChangerModelSelection) {
 }
 
 type WaitPhase = "download" | "prepare" | "finalize" | "convert" | "loadOutput";
+
+interface TtsHfDownloadProgress {
+  repo_id: string;
+  stage: string;
+  file?: string | null;
+  file_index?: number | null;
+  file_count?: number | null;
+  downloaded_bytes?: number | null;
+  total_bytes?: number | null;
+  error?: string | null;
+}
 
 export const VoiceChangerSection: React.FC<{
   speech: ListenSpeechState;
@@ -136,6 +156,10 @@ export const VoiceChangerSection: React.FC<{
     () => speech.visibleModels.filter(isVoiceChangerCapableModel),
     [speech.visibleModels],
   );
+  const availableVoiceChangerModels = useMemo(
+    () => voiceChangerModels.filter(isDraftVoiceModelAvailable),
+    [voiceChangerModels],
+  );
   const [draftProviderId, setDraftProviderId] = useState(
     initialVoiceChangerDraft.providerId,
   );
@@ -144,15 +168,11 @@ export const VoiceChangerSection: React.FC<{
   );
   const selectedVoiceChangerModel = useMemo(
     () =>
-      findVoiceChangerModel(voiceChangerModels, {
+      findVoiceChangerModel(availableVoiceChangerModels, {
         providerId: draftProviderId,
         modelId: draftModelId,
       }),
-    [draftModelId, draftProviderId, voiceChangerModels],
-  );
-  const selectedVoiceChangerInstalled = modelInstalled(
-    selectedVoiceChangerModel,
-    speech.packs,
+    [availableVoiceChangerModels, draftModelId, draftProviderId],
   );
   const selectedVoiceChangerProvider =
     speech.visibleProviders.find(
@@ -173,6 +193,18 @@ export const VoiceChangerSection: React.FC<{
   const [waitPhase, setWaitPhase] = useState<WaitPhase | null>(null);
   const [waitStartedAt, setWaitStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [ttsDownloadProgress, setTtsDownloadProgress] = useState<
+    Record<string, TtsHfDownloadProgress>
+  >({});
+  const [locallyDownloadingModelIds, setLocallyDownloadingModelIds] = useState<
+    Record<string, true>
+  >({});
+  const [localDownloadErrors, setLocalDownloadErrors] = useState<
+    Record<string, string>
+  >({});
+  const [cancellingDownloadModelIds, setCancellingDownloadModelIds] = useState<
+    Record<string, true>
+  >({});
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
   const isRecordingRef = useRef(false);
@@ -188,15 +220,84 @@ export const VoiceChangerSection: React.FC<{
   }, [readyProfiles, selectedProfileId]);
 
   useEffect(() => {
-    if (voiceChangerModels.length === 0) return;
+    if (availableVoiceChangerModels.length === 0) {
+      if (draftProviderId || draftModelId) {
+        setDraftProviderId("");
+        setDraftModelId("");
+      }
+      return;
+    }
     if (selectedVoiceChangerModel) return;
-    const fallback =
-      findVoiceChangerModel(voiceChangerModels, DEFAULT_VOICE_CHANGER_MODEL) ??
-      voiceChangerModels[0];
-    if (!fallback) return;
+    const fallback = availableVoiceChangerModels[0];
     setDraftProviderId(fallback.provider_id);
     setDraftModelId(fallback.id);
-  }, [selectedVoiceChangerModel, voiceChangerModels]);
+  }, [
+    availableVoiceChangerModels,
+    draftModelId,
+    draftProviderId,
+    selectedVoiceChangerModel,
+  ]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      unlisten = await listen<TtsHfDownloadProgress>(
+        "tts-hf-download-progress",
+        (event) => {
+          const progress = event.payload;
+          if (!progress.repo_id) return;
+          const matchingModel = voiceChangerModels.find(
+            (model) =>
+              model.id === progress.repo_id ||
+              huggingFaceRepoIdFromSourceUrl(model.source_url) ===
+                progress.repo_id,
+          );
+          if (!matchingModel) return;
+
+          if (progress.stage === "complete") {
+            setTtsDownloadProgress((current) => {
+              const next = { ...current };
+              delete next[progress.repo_id];
+              delete next[matchingModel.id];
+              return next;
+            });
+            setLocallyDownloadingModelIds((current) => {
+              const next = { ...current };
+              delete next[matchingModel.id];
+              return next;
+            });
+            setLocalDownloadErrors((current) => {
+              const next = { ...current };
+              delete next[matchingModel.id];
+              return next;
+            });
+            void speech.refreshAll();
+            return;
+          }
+
+          setTtsDownloadProgress((current) => ({
+            ...current,
+            [progress.repo_id]: progress,
+            [matchingModel.id]: progress,
+          }));
+          if (progress.stage === "failed") {
+            setLocallyDownloadingModelIds((current) => {
+              const next = { ...current };
+              delete next[matchingModel.id];
+              return next;
+            });
+            if (progress.error) {
+              setLocalDownloadErrors((current) => ({
+                ...current,
+                [matchingModel.id]: progress.error ?? "",
+              }));
+            }
+          }
+        },
+      );
+    })();
+    return () => unlisten?.();
+  }, [speech, voiceChangerModels]);
 
   useEffect(() => {
     writeVoiceChangerDraft({
@@ -296,45 +397,12 @@ export const VoiceChangerSection: React.FC<{
     if (!model) {
       throw new Error(
         t("listen.voiceChanger.noVoiceChangerModel", {
-          defaultValue: "No voice changer model is available.",
+          defaultValue:
+            "No downloaded, runnable voice changer model is available.",
         }),
       );
     }
-    if (selectedVoiceChangerInstalled) return;
-    if (!model.downloadable) {
-      throw new Error(
-        t("listen.voiceChanger.modelNotReady", {
-          defaultValue: "{{modelLabel}} is not ready for voice changing.",
-          modelLabel: model.label,
-        }),
-      );
-    }
-    beginWait(
-      "download",
-      t("listen.voiceChanger.downloadingModel", {
-        defaultValue: "Preparing {{modelLabel}} for offline voice changing.",
-        modelLabel: model.label,
-      }),
-    );
-    const result = await commands.downloadTtsPack(model.id);
-    if (result.status === "error") {
-      throw new Error(result.error);
-    }
-    await speech.refreshAll();
-    throw new Error(
-      t("listen.voiceChanger.modelDownloadStarted", {
-        defaultValue:
-          "{{modelLabel}} download started. Try the conversion again after it finishes.",
-        modelLabel: model.label,
-      }),
-    );
-  }, [
-    beginWait,
-    selectedVoiceChangerInstalled,
-    selectedVoiceChangerModel,
-    speech,
-    t,
-  ]);
+  }, [selectedVoiceChangerModel, t]);
 
   const runConversion = useCallback(async () => {
     const model = selectedVoiceChangerModel;
@@ -468,7 +536,8 @@ export const VoiceChangerSection: React.FC<{
       if (!model) {
         throw new Error(
           t("listen.voiceChanger.noVoiceChangerModel", {
-            defaultValue: "No voice changer model is available.",
+            defaultValue:
+              "No downloaded, runnable voice changer model is available.",
           }),
         );
       }
@@ -561,13 +630,9 @@ export const VoiceChangerSection: React.FC<{
     selectedVoiceChangerProvider?.label,
     selectedVoiceChangerModel?.runtime.label,
     selectedVoiceChangerModel
-      ? selectedVoiceChangerInstalled
-        ? t("listen.voiceChanger.modelReady", {
-            defaultValue: "Ready",
-          })
-        : t("listen.voiceChanger.modelInstallsOnConvert", {
-            defaultValue: "Installs on convert",
-          })
+      ? t("listen.voiceChanger.modelReady", {
+          defaultValue: "Ready",
+        })
       : t("listen.voiceChanger.chooseModel", {
           defaultValue: "Choose a model",
         }),
@@ -718,6 +783,113 @@ export const VoiceChangerSection: React.FC<{
       ),
     [speech.visibleProviders],
   );
+  const clearTtsDownloadProgress = useCallback(
+    (model: CatalogModelDescriptor) => {
+      const repoId =
+        huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id;
+      setTtsDownloadProgress((current) => {
+        const next = { ...current };
+        delete next[model.id];
+        delete next[repoId];
+        return next;
+      });
+      setLocalDownloadErrors((current) => {
+        const next = { ...current };
+        delete next[model.id];
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleDownloadVoiceChangerModel = useCallback(
+    async (model: CatalogModelDescriptor) => {
+      if (isDraftVoiceModelAvailable(model)) {
+        setDraftProviderId(model.provider_id);
+        setDraftModelId(model.id);
+        setModelPickerOpen(false);
+        clearOutput();
+        setStatus(null);
+        return;
+      }
+      if (!model.downloadable || model.installed) return;
+      const progress = ttsDownloadProgress[model.id];
+      if (isDownloadActive(progress, locallyDownloadingModelIds[model.id])) {
+        return;
+      }
+
+      clearTtsDownloadProgress(model);
+      setLocallyDownloadingModelIds((current) => ({
+        ...current,
+        [model.id]: true,
+      }));
+      setStatus(
+        t("listen.voiceChanger.modelDownloadStarting", {
+          defaultValue: "Starting {{modelLabel}} download.",
+          modelLabel: model.label,
+        }),
+      );
+
+      let downloadStarted = false;
+      try {
+        const result = await commands.downloadTtsPack(model.id);
+        if (result.status === "error") {
+          throw new Error(result.error);
+        }
+        downloadStarted = true;
+      } catch (error) {
+        const message = errorToMessage(
+          error,
+          t("listen.voiceChanger.modelDownloadFailed", {
+            defaultValue: "Model download failed.",
+          }),
+        );
+        setLocalDownloadErrors((current) => ({
+          ...current,
+          [model.id]: message,
+        }));
+        setStatus(message);
+      } finally {
+        if (!downloadStarted) {
+          setLocallyDownloadingModelIds((current) => {
+            const next = { ...current };
+            delete next[model.id];
+            return next;
+          });
+        }
+      }
+    },
+    [
+      clearOutput,
+      clearTtsDownloadProgress,
+      locallyDownloadingModelIds,
+      t,
+      ttsDownloadProgress,
+    ],
+  );
+
+  const cancelTtsModelDownload = useCallback(
+    async (model: CatalogModelDescriptor) => {
+      setCancellingDownloadModelIds((current) => ({
+        ...current,
+        [model.id]: true,
+      }));
+      try {
+        const result = await commands.cancelArtifactDownload("tts", model.id);
+        if (result.status === "error") {
+          setStatus(result.error);
+        }
+      } finally {
+        setCancellingDownloadModelIds((current) => {
+          const next = { ...current };
+          delete next[model.id];
+          return next;
+        });
+      }
+    },
+    [],
+  );
+
   const filteredVoiceChangerModels = voiceChangerModels.filter((model) => {
     if (
       modelProviderFilter !== "all" &&
@@ -751,8 +923,8 @@ export const VoiceChangerSection: React.FC<{
       .toLowerCase();
     return haystack.includes(normalizedModelSearch);
   });
-  const orderedVoiceChangerModels = orderModelList(
-    filteredVoiceChangerModels,
+  const downloadedVoiceChangerModels = orderModelList(
+    filteredVoiceChangerModels.filter((model) => model.installed),
     "downloaded",
     modelSortMode,
     {
@@ -760,9 +932,13 @@ export const VoiceChangerSection: React.FC<{
       active: (model: CatalogModelDescriptor) =>
         voiceChangerModelKey(model.provider_id, model.id) ===
         selectedVoiceChangerKey,
-      installed: (model: CatalogModelDescriptor) =>
-        modelInstalled(model, speech.packs),
+      installed: (model: CatalogModelDescriptor) => model.installed,
       runnable: (model: CatalogModelDescriptor) => model.runnable,
+      inProgress: (model: CatalogModelDescriptor) =>
+        isDownloadActive(
+          ttsDownloadProgress[model.id],
+          locallyDownloadingModelIds[model.id],
+        ),
       recommended: (model: CatalogModelDescriptor) =>
         isVoiceChangerCapableModel(model),
       rank: (model: CatalogModelDescriptor) =>
@@ -773,15 +949,181 @@ export const VoiceChangerSection: React.FC<{
         modelProviderRankById.get(model.provider_id),
     },
   );
+  const availableVoiceChangerHubModels = orderModelList(
+    filteredVoiceChangerModels.filter((model) => !model.installed),
+    "available",
+    modelSortMode,
+    {
+      label: (model: CatalogModelDescriptor) => model.label,
+      active: (model: CatalogModelDescriptor) =>
+        voiceChangerModelKey(model.provider_id, model.id) ===
+        selectedVoiceChangerKey,
+      installed: (model: CatalogModelDescriptor) => model.installed,
+      runnable: (model: CatalogModelDescriptor) => model.runnable,
+      inProgress: (model: CatalogModelDescriptor) =>
+        isDownloadActive(
+          ttsDownloadProgress[model.id],
+          locallyDownloadingModelIds[model.id],
+        ),
+      recommended: (model: CatalogModelDescriptor) =>
+        isVoiceChangerCapableModel(model),
+      blocked: (model: CatalogModelDescriptor) =>
+        !model.downloadable && !model.runnable,
+      rank: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.rank,
+      latencyMs: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.latencyP50Ms,
+      providerRank: (model: CatalogModelDescriptor) =>
+        modelProviderRankById.get(model.provider_id),
+    },
+  );
   const handleSelectVoiceChangerModel = useCallback(
     (model: CatalogModelDescriptor) => {
-      setDraftProviderId(model.provider_id);
-      setDraftModelId(model.id);
-      setModelPickerOpen(false);
-      clearOutput();
-      setStatus(null);
+      void handleDownloadVoiceChangerModel(model);
     },
-    [clearOutput],
+    [handleDownloadVoiceChangerModel],
+  );
+
+  const renderModelCard = (model: CatalogModelDescriptor) => {
+    const modelKey = voiceChangerModelKey(model.provider_id, model.id);
+    const modelReady = isDraftVoiceModelAvailable(model);
+    const downloadProgress = ttsDownloadProgress[model.id];
+    const localDownloadError = localDownloadErrors[model.id] ?? null;
+    const locallyDownloading = Boolean(locallyDownloadingModelIds[model.id]);
+    const downloadActive = isDownloadActive(
+      downloadProgress,
+      locallyDownloading,
+    );
+    const downloadFailed = isDownloadFailed(
+      downloadProgress,
+      localDownloadError,
+    );
+    const byteProgress =
+      downloadProgress?.total_bytes && downloadProgress.total_bytes > 0
+        ? Math.min(
+            100,
+            Math.round(
+              ((downloadProgress.downloaded_bytes ?? 0) /
+                downloadProgress.total_bytes) *
+                100,
+            ),
+          )
+        : null;
+    const fileProgress =
+      downloadProgress?.file_count && downloadProgress.file_count > 0
+        ? Math.min(
+            100,
+            Math.round(
+              ((downloadProgress.file_index ?? 0) /
+                downloadProgress.file_count) *
+                100,
+            ),
+          )
+        : null;
+    const downloadState = buildHubDownloadState({
+      t,
+      progress: downloadProgress,
+      localError: localDownloadError,
+      localBusy: locallyDownloading,
+      activeLabel: downloadingModelFilesLabel(t),
+      failedLabel: t("listen.voiceChanger.modelDownloadFailed", {
+        defaultValue: "Model download failed.",
+      }),
+      progressPct: byteProgress ?? fileProgress,
+      indeterminate:
+        !localDownloadError && byteProgress === null && fileProgress === null,
+      cancelling: Boolean(cancellingDownloadModelIds[model.id]),
+      onCancel: downloadActive
+        ? () => void cancelTtsModelDownload(model)
+        : undefined,
+      onRetry: downloadFailed
+        ? () => void handleDownloadVoiceChangerModel(model)
+        : undefined,
+      onDismiss: downloadFailed ? () => clearTtsDownloadProgress(model) : undefined,
+    });
+    return (
+      <DraftVoiceModelLibraryCard
+        key={modelKey}
+        model={model}
+        provider={
+          speech.visibleProviders.find(
+            (provider) => provider.id === model.provider_id,
+          ) ?? null
+        }
+        selected={modelReady && modelKey === selectedVoiceChangerKey}
+        selectedBadgeLabel={t("listen.voiceChanger.selectedModel", {
+          defaultValue: "Selected",
+        })}
+        selectedBadgeDetail={t("listen.voiceChanger.selectedModelDetail", {
+          defaultValue:
+            "Selected for Voice Changer only. The active app voice is unchanged.",
+        })}
+        statusBadges={
+          modelReady
+            ? undefined
+            : [
+                {
+                  id: "download-required",
+                  label: t("listen.voiceChanger.downloadRequired", {
+                    defaultValue: "Download required",
+                  }),
+                  variant: "secondary",
+                  detail: t("listen.voiceChanger.downloadRequiredDetail", {
+                    defaultValue:
+                      "Download this model before selecting it for Voice Changer.",
+                  }),
+                },
+              ]
+        }
+        trailing={
+          !modelReady && model.downloadable && !downloadActive && !downloadFailed
+            ? {
+                kind: "acquire",
+                onClick: () => void handleDownloadVoiceChangerModel(model),
+                disabled: isConverting || isRecording,
+                label: t("listen.voiceChanger.downloadModel", {
+                  defaultValue: "Download {{modelLabel}} for Voice Changer",
+                  modelLabel: model.label,
+                }),
+              }
+            : undefined
+        }
+        downloadState={downloadState}
+        disabled={
+          isConverting ||
+          isRecording ||
+          (!modelReady && !model.downloadable)
+        }
+        onSelect={() => handleSelectVoiceChangerModel(model)}
+      />
+    );
+  };
+
+  const renderModelSection = (
+    title: string,
+    models: CatalogModelDescriptor[],
+    emptyMessage?: string,
+  ) => (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+          {title}
+        </h3>
+        <Badge
+          variant="secondary"
+          className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
+        >
+          {models.length}
+        </Badge>
+      </div>
+      {models.length > 0 ? (
+        <div className="flex flex-col gap-3">{models.map(renderModelCard)}</div>
+      ) : emptyMessage ? (
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-sm text-[var(--muted)]">
+          {emptyMessage}
+        </div>
+      ) : null}
+    </section>
   );
 
   const modelHubWindow = createPortal(
@@ -889,41 +1231,34 @@ export const VoiceChangerSection: React.FC<{
             </div>
 
             <div className="overflow-y-auto p-4">
-              {orderedVoiceChangerModels.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {orderedVoiceChangerModels.map((model) => {
-                    const modelKey = voiceChangerModelKey(
-                      model.provider_id,
-                      model.id,
-                    );
-                    return (
-                      <DraftVoiceModelLibraryCard
-                        key={modelKey}
-                        model={model}
-                        provider={
-                          speech.visibleProviders.find(
-                            (provider) => provider.id === model.provider_id,
-                          ) ?? null
-                        }
-                        selected={modelKey === selectedVoiceChangerKey}
-                        selectedBadgeLabel={t(
-                          "listen.voiceChanger.selectedModel",
-                          {
-                            defaultValue: "Selected",
-                          },
-                        )}
-                        selectedBadgeDetail={t(
-                          "listen.voiceChanger.selectedModelDetail",
-                          {
-                            defaultValue:
-                              "Selected for Voice Changer only. The active app voice is unchanged.",
-                          },
-                        )}
-                        disabled={isConverting || isRecording}
-                        onSelect={() => handleSelectVoiceChangerModel(model)}
-                      />
-                    );
-                  })}
+              {filteredVoiceChangerModels.length > 0 ? (
+                <div className="space-y-5">
+                  {downloadedVoiceChangerModels.length > 0
+                    ? renderModelSection(
+                        t("listen.engineLibrary.downloadedModels", {
+                          defaultValue: "Downloaded Models",
+                        }),
+                        downloadedVoiceChangerModels,
+                      )
+                    : null}
+                  <div
+                    className={
+                      downloadedVoiceChangerModels.length > 0
+                        ? "border-t border-[var(--border)] pt-5"
+                        : ""
+                    }
+                  >
+                    {renderModelSection(
+                      t("listen.engineLibrary.availableToDownload", {
+                        defaultValue: "Available to Download",
+                      }),
+                      availableVoiceChangerHubModels,
+                      t("listen.engineLibrary.allModelsReady", {
+                        defaultValue:
+                          "Every compatible speech model is already downloaded or active.",
+                      }),
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-6 text-sm text-[var(--muted)]">

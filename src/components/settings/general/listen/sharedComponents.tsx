@@ -18,7 +18,10 @@ import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { type CompactBadgeItem } from "@/components/ui/CompactOverflow";
-import HubModelCard from "@/components/model-hub/HubModelCard";
+import HubModelCard, {
+  type HubDownloadState,
+  type HubTrailing,
+} from "@/components/model-hub/HubModelCard";
 import {
   buildModelIdentityChips,
   inferArchitectureLabel,
@@ -207,7 +210,10 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   selected: boolean;
   selectedBadgeLabel?: string;
   selectedBadgeDetail?: string;
+  statusBadges?: CompactBadgeItem[];
   disabled: boolean;
+  trailing?: HubTrailing;
+  downloadState?: HubDownloadState;
   onSelect: () => void;
 }> = ({
   model,
@@ -215,7 +221,10 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   selected,
   selectedBadgeLabel,
   selectedBadgeDetail,
+  statusBadges,
   disabled,
+  trailing,
+  downloadState,
   onSelect,
 }) => {
   const { t } = useTranslation();
@@ -240,6 +249,7 @@ export const DraftVoiceModelLibraryCard: React.FC<{
             }),
         }
       : null,
+    ...(statusBadges ?? []),
   ].filter(Boolean) as CompactBadgeItem[];
 
   const sublineParts = [
@@ -348,6 +358,8 @@ export const DraftVoiceModelLibraryCard: React.FC<{
         modelName: model.label,
         defaultValue: "{{modelName}} details",
       })}
+      trailing={trailing}
+      downloadState={downloadState}
       onClick={onSelect}
       disabled={disabled}
       active={selected}
@@ -555,9 +567,7 @@ export const VoiceTuningCard: React.FC<{
             </h3>
           )}
           <div className="min-w-0">
-            {onPreview ? (
-              <span className="sr-only">{title}</span>
-            ) : null}
+            {onPreview ? <span className="sr-only">{title}</span> : null}
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {trimmedModelLabel ? (
                 <p

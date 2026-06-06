@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   CatalogModelDescriptor,
@@ -9,12 +9,24 @@ import type {
 } from "@/lib/modelPlatform";
 import { VoiceCloningSection } from "./VoiceCloningSection";
 
+const commandMocks = vi.hoisted(() => ({
+  convoStartAudioCapture: vi.fn(),
+  convoStopAudioCapture: vi.fn(),
+  saveTtsVoiceProfileReferenceAudio: vi.fn(),
+  downloadTtsPack: vi.fn(),
+  cancelArtifactDownload: vi.fn(),
+}));
+
 vi.mock("react-i18next", () => ({
   Trans: () => null,
   useTranslation: () => ({
     t: (_key: string, options?: { defaultValue?: string }) =>
       options?.defaultValue ?? _key,
   }),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async () => vi.fn()),
 }));
 
 vi.mock("@tauri-apps/api/webview", () => ({
@@ -29,17 +41,38 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 }));
 
 vi.mock("@/bindings", () => ({
-  commands: {
-    convoStartAudioCapture: vi.fn(),
-    convoStopAudioCapture: vi.fn(),
-    saveTtsVoiceProfileReferenceAudio: vi.fn(),
-  },
+  commands: commandMocks,
 }));
 
 vi.mock("@/lib/ttsVoiceProfiles", () => ({
   createTtsVoiceProfile: vi.fn(),
+  clearProfileCollectedData: vi.fn(),
   importTtsVoiceProfileSample: vi.fn(),
+  setActiveImprovementProfile: vi.fn(),
 }));
+
+function installLocalStorageMock() {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => {
+        store.clear();
+      }),
+    },
+  });
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: globalThis.localStorage,
+  });
+}
 
 const runtime = {
   id: "speech-runtime",
@@ -102,6 +135,20 @@ const cloneModel: CatalogModelDescriptor = {
 };
 
 describe("VoiceCloningSection", () => {
+  beforeEach(() => {
+    installLocalStorageMock();
+    window.localStorage.clear();
+    vi.clearAllMocks();
+    commandMocks.downloadTtsPack.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+    commandMocks.cancelArtifactDownload.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+  });
+
   const render = async (node: React.ReactNode) => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -121,6 +168,13 @@ describe("VoiceCloningSection", () => {
         container.remove();
       },
     };
+  };
+
+  const unavailableCloneModel: CatalogModelDescriptor = {
+    ...cloneModel,
+    installed: false,
+    active: false,
+    runnable: false,
   };
 
   it("renders with an existing clone profile", async () => {
@@ -167,6 +221,112 @@ describe("VoiceCloningSection", () => {
     expect(view.container.textContent).toContain("Generate");
     expect(view.container.textContent).toContain("OpenVoice");
     expect(view.container.textContent).toContain("Add reference");
+
+    await view.cleanup();
+  });
+
+  it("shows downloadable clone-capable models without marking them selected", async () => {
+    const view = await render(
+      <VoiceCloningSection
+        showTitle={false}
+        speech={
+          {
+            settings: { tts_enabled: true },
+            ttsEnabled: true,
+            cloneCapableModels: [unavailableCloneModel],
+            allProviders: [provider],
+            activeModel: null,
+            profiles: [],
+            busyProfileAction: null,
+            loadingPlatform: false,
+            statusMessage: null,
+            setStatusMessage: vi.fn(),
+            setBusyProfileAction: vi.fn(),
+            refreshAll: vi.fn(),
+            refreshProfiles: vi.fn(),
+            createPresetFromProfile: vi.fn(),
+          } as never
+        }
+      />,
+    );
+
+    const modelsButton = Array.from(
+      view.container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Models"));
+
+    await act(async () => {
+      modelsButton?.click();
+    });
+
+    expect(document.body.textContent).toContain("OpenVoice");
+    expect(document.body.textContent).not.toContain("Downloaded Models");
+    expect(document.body.textContent).toContain("Available to Download");
+    expect(document.body.textContent).toContain("Download required");
+    expect(document.body.textContent).not.toContain("Selected");
+
+    const downloadButton = document.body.querySelector(
+      'button[aria-label="Download {{modelLabel}} for voice cloning"]',
+    );
+
+    await act(async () => {
+      (downloadButton as HTMLButtonElement | null)?.click();
+    });
+
+    expect(commandMocks.downloadTtsPack).toHaveBeenCalledWith("openvoice");
+
+    await view.cleanup();
+  });
+
+  it("keeps the model picker usable when TTS generation is disabled", async () => {
+    const view = await render(
+      <VoiceCloningSection
+        showTitle={false}
+        speech={
+          {
+            settings: { tts_enabled: false },
+            ttsEnabled: false,
+            cloneCapableModels: [unavailableCloneModel],
+            allProviders: [provider],
+            activeModel: null,
+            profiles: [],
+            busyProfileAction: null,
+            loadingPlatform: false,
+            statusMessage: null,
+            setStatusMessage: vi.fn(),
+            setBusyProfileAction: vi.fn(),
+            refreshAll: vi.fn(),
+            refreshProfiles: vi.fn(),
+            createPresetFromProfile: vi.fn(),
+          } as never
+        }
+      />,
+    );
+
+    const modelsButton = Array.from(
+      view.container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Models"));
+
+    expect(modelsButton).toBeTruthy();
+    expect((modelsButton as HTMLButtonElement).disabled).toBe(false);
+
+    await act(async () => {
+      modelsButton?.click();
+    });
+
+    expect(document.body.textContent).toContain("Available to Download");
+
+    const downloadButton = document.body.querySelector(
+      'button[aria-label="Download {{modelLabel}} for voice cloning"]',
+    ) as HTMLButtonElement | null;
+
+    expect(downloadButton).toBeTruthy();
+    expect(downloadButton?.disabled).toBe(false);
+
+    await act(async () => {
+      downloadButton?.click();
+    });
+
+    expect(commandMocks.downloadTtsPack).toHaveBeenCalledWith("openvoice");
 
     await view.cleanup();
   });

@@ -374,7 +374,9 @@ impl ModelManager {
             fs::create_dir_all(&models_dir)?;
         }
 
-        Self::migrate_local_mlx_stt_assets(app_handle, &models_dir)?;
+        if let Err(error) = Self::migrate_local_mlx_stt_assets(app_handle, &models_dir) {
+            log::warn!("Failed to migrate local MLX STT assets during startup: {error:#}");
+        }
 
         let mut available_models = HashMap::new();
 

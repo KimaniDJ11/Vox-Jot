@@ -90,14 +90,23 @@ impl WatchFolderManager {
         });
 
         let manager_for_thread = Arc::clone(&manager);
-        let handle = thread::Builder::new()
+        match thread::Builder::new()
             .name("watch-folders".into())
             .spawn(move || manager_for_thread.run_supervisor())
-            .expect("failed to spawn watch-folders supervisor thread");
-        *manager
-            .supervisor_handle
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(handle);
+        {
+            Ok(handle) => {
+                *manager
+                    .supervisor_handle
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(handle);
+            }
+            Err(error) => {
+                // Don't crash on launch if the OS can't spawn the supervisor
+                // thread (e.g. resource exhaustion); folder watching is simply
+                // disabled for this session.
+                log::error!("Failed to spawn watch-folders supervisor thread; folder watching disabled: {error}");
+            }
+        }
 
         manager
     }

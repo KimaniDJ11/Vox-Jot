@@ -536,13 +536,20 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     // after permissions are confirmed (on macOS) or after onboarding completes.
     // This matches the pattern used for Enigo initialization.
 
+    // Set up signal handlers for toggling transcription. These power optional
+    // CLI remote-control (SIGUSR1/SIGUSR2); if registration fails (e.g. a
+    // restrictive sandbox) we degrade gracefully rather than crash on launch.
     #[cfg(unix)]
-    let signals = Signals::new([SIGUSR1, SIGUSR2]).expect("failed to register signal handlers");
-    // Set up signal handlers for toggling transcription
-    #[cfg(unix)]
-    {
-        let signal_handler = signal_handle::setup_signal_handler(app_handle.clone(), signals);
-        app_handle.manage(signal_handler);
+    match Signals::new([SIGUSR1, SIGUSR2]) {
+        Ok(signals) => {
+            let signal_handler = signal_handle::setup_signal_handler(app_handle.clone(), signals);
+            app_handle.manage(signal_handler);
+        }
+        Err(error) => {
+            log::warn!(
+                "Failed to register SIGUSR1/SIGUSR2 handlers; CLI signal remote control disabled: {error}"
+            );
+        }
     }
 
     // Apply macOS Accessory policy if starting hidden and tray is available.
@@ -705,7 +712,7 @@ fn shutdown_core_logic(app: &AppHandle) {
 
     if let Some(http_api) = app.try_state::<Arc<HttpApiManager>>() {
         let http_api = http_api.inner().clone();
-        tauri::async_runtime::block_on(async move {
+        tauri::async_runtime::spawn(async move {
             http_api.stop().await;
         });
     }
@@ -1232,12 +1239,11 @@ pub fn run(cli_args: CliArgs) {
             // for portable mode (redirects WebView2 cache to portable Data dir)
             // Min size matches former default so the two-column shell always fits.
             // No max — zoom/full screen should use the full display (CSS uses minmax(0,1fr) and overflow).
-            let mut win_builder =
-                apply_webview_workarounds(tauri::WebviewWindowBuilder::new(
-                    app,
-                    "main",
-                    app_webview_url("/"),
-                ));
+            let mut win_builder = apply_webview_workarounds(tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                app_webview_url("/"),
+            ));
             win_builder = win_builder
                 .title("Vox Jot")
                 .inner_size(MAIN_WINDOW_DEFAULT_W, MAIN_WINDOW_DEFAULT_H)
@@ -1320,15 +1326,21 @@ pub fn run(cli_args: CliArgs) {
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
             app.manage(PreviewManager::default());
 
-            crate::storage_paths::ensure_model_storage_layout(&app_handle)
-                .expect("Failed to prepare model storage layout");
+            crate::storage_paths::ensure_model_storage_layout(&app_handle).map_err(|error| {
+                log::error!("Failed to prepare model storage layout: {error:#}");
+                Box::<dyn std::error::Error>::from(error)
+            })?;
 
             // Initialize correction tracking system
-            let app_data_dir = crate::portable::app_data_dir(&app_handle)
-                .expect("Failed to get app data directory for corrections");
-            let correction_store = Arc::new(
-                CorrectionStore::new(&app_data_dir).expect("Failed to initialize correction store"),
-            );
+            let app_data_dir = crate::portable::app_data_dir(&app_handle).map_err(|error| {
+                log::error!("Failed to get app data directory for corrections: {error:#}");
+                Box::<dyn std::error::Error>::from(error)
+            })?;
+            let correction_store =
+                Arc::new(CorrectionStore::new(&app_data_dir).map_err(|error| {
+                    log::error!("Failed to initialize correction store: {error:#}");
+                    Box::<dyn std::error::Error>::from(error)
+                })?);
             let recent_input_tracker = Arc::new(RecentInputTracker::new());
             recent_input_tracker.start_listener();
             app.manage(correction_store);

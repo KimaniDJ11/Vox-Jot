@@ -105,12 +105,23 @@ impl CorrectionStore {
 
         let store = Self { db_path };
         if let Err(err) = store.init_database() {
-            if is_database_too_far_ahead(&err) {
+            // Recover from databases this build can't open instead of crash-looping
+            // on every launch: a newer-than-build schema, or an on-disk corruption.
+            // Mirrors the recovery in HistoryManager/NotesManager.
+            let reason = if is_database_too_far_ahead(&err) {
+                Some("too-far-ahead")
+            } else if is_corrupt_database(&err) {
+                Some("corrupt")
+            } else {
+                None
+            };
+
+            if let Some(reason) = reason {
                 warn!(
-                    "Corrections database is newer than this app build; backing it up and starting a fresh database: {err:#}"
+                    "Corrections database is unusable ({reason}); backing it up and starting a fresh database: {err:#}"
                 );
                 store
-                    .backup_and_remove_incompatible_database("too-far-ahead")
+                    .backup_and_remove_incompatible_database(reason)
                     .context("Failed to back up incompatible corrections database")?;
                 store
                     .init_database()
@@ -937,6 +948,23 @@ fn is_database_too_far_ahead(err: &anyhow::Error) -> bool {
     message.contains("DatabaseTooFarAhead") || message.contains("migration number that is too high")
 }
 
+/// Detect SQLite corruption-style errors so a damaged `corrections.db` can be
+/// quarantined and rebuilt rather than crashing the app on every launch.
+fn is_corrupt_database(err: &anyhow::Error) -> bool {
+    let message = format!("{err:#}").to_ascii_lowercase();
+    [
+        "database disk image is malformed",
+        "file is not a database",
+        "file is encrypted",
+        "unsupported file format",
+        "malformed database schema",
+        "database corruption",
+        "not an sqlite database",
+    ]
+    .iter()
+    .any(|needle| message.contains(needle))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -969,6 +997,29 @@ mod tests {
                     .file_name()
                     .to_string_lossy()
                     .starts_with("corrections.db.incompatible-too-far-ahead-")
+            })
+            .count();
+        assert_eq!(backups, 1);
+    }
+
+    #[test]
+    fn recovers_when_corrections_database_is_corrupt() {
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("corrections.db");
+        // Write garbage so SQLite reports "file is not a database".
+        fs::write(&db_path, b"this is not a sqlite database").unwrap();
+
+        let store = CorrectionStore::new(dir.path()).unwrap();
+        assert!(store.list_all().unwrap().is_empty());
+
+        let backups = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("corrections.db.incompatible-corrupt-")
             })
             .count();
         assert_eq!(backups, 1);

@@ -127,109 +127,109 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
     #[cfg(not(target_os = "macos"))]
     let (settings_accelerator, quit_accelerator) = (Some("Ctrl+,"), Some("Ctrl+Q"));
 
-    // Create common menu items
-    let navigate_settings_i = MenuItem::with_id(
-        app,
-        "navigate_settings",
-        &strings.settings,
-        true,
-        settings_accelerator,
-    )
-    .expect("failed to create settings item");
-    let copy_last_transcript_i = MenuItem::with_id(
-        app,
-        "copy_last_transcript",
-        &strings.copy_last_transcript,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create copy last transcript item");
-    let speak_selected_i = MenuItem::with_id(
-        app,
-        "speak_selected",
-        &strings.speak_selected,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create speak selected item");
-    let navigate_dictate_i = MenuItem::with_id(
-        app,
-        "navigate_dictate",
-        &strings.dictate_mode,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create dictate item");
-    let navigate_refine_i = MenuItem::with_id(
-        app,
-        "navigate_refine",
-        &strings.refine_mode,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create refine item");
-    let navigate_listen_i = MenuItem::with_id(
-        app,
-        "navigate_listen",
-        &strings.listen_mode,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create listen item");
-    let quit_i = MenuItem::with_id(app, "quit", &strings.quit, true, quit_accelerator)
-        .expect("failed to create quit item");
-    let separator = || PredefinedMenuItem::separator(app).expect("failed to create separator");
+    // Build and apply the menu inside a fallible closure so an item/menu
+    // creation failure (OS resource exhaustion, shutdown race) logs and keeps
+    // the previous menu instead of panicking on the UI thread.
+    let result: tauri::Result<()> = (|| {
+        // Create common menu items
+        let navigate_settings_i = MenuItem::with_id(
+            app,
+            "navigate_settings",
+            &strings.settings,
+            true,
+            settings_accelerator,
+        )?;
+        let copy_last_transcript_i = MenuItem::with_id(
+            app,
+            "copy_last_transcript",
+            &strings.copy_last_transcript,
+            true,
+            None::<&str>,
+        )?;
+        let speak_selected_i = MenuItem::with_id(
+            app,
+            "speak_selected",
+            &strings.speak_selected,
+            true,
+            None::<&str>,
+        )?;
+        let navigate_dictate_i = MenuItem::with_id(
+            app,
+            "navigate_dictate",
+            &strings.dictate_mode,
+            true,
+            None::<&str>,
+        )?;
+        let navigate_refine_i = MenuItem::with_id(
+            app,
+            "navigate_refine",
+            &strings.refine_mode,
+            true,
+            None::<&str>,
+        )?;
+        let navigate_listen_i = MenuItem::with_id(
+            app,
+            "navigate_listen",
+            &strings.listen_mode,
+            true,
+            None::<&str>,
+        )?;
+        let quit_i = MenuItem::with_id(app, "quit", &strings.quit, true, quit_accelerator)?;
+        let separator = || PredefinedMenuItem::separator(app);
 
-    let start_recording_i = MenuItem::with_id(
-        app,
-        "start_recording",
-        &strings.start_recording,
-        true,
-        None::<&str>,
-    )
-    .expect("failed to create start recording item");
-    let scratchpad_i = MenuItem::with_id(app, "scratchpad", &strings.jot_pad, true, None::<&str>)
-        .expect("failed to create jot pad item");
+        let start_recording_i = MenuItem::with_id(
+            app,
+            "start_recording",
+            &strings.start_recording,
+            true,
+            None::<&str>,
+        )?;
+        let scratchpad_i =
+            MenuItem::with_id(app, "scratchpad", &strings.jot_pad, true, None::<&str>)?;
 
-    let menu = match state {
-        TrayIconState::Recording | TrayIconState::Transcribing => {
-            let cancel_i = MenuItem::with_id(app, "cancel", &strings.cancel, true, None::<&str>)
-                .expect("failed to create cancel item");
-            Menu::with_items(
+        let menu = match state {
+            TrayIconState::Recording | TrayIconState::Transcribing => {
+                let cancel_i =
+                    MenuItem::with_id(app, "cancel", &strings.cancel, true, None::<&str>)?;
+                Menu::with_items(
+                    app,
+                    &[
+                        &cancel_i,
+                        &separator()?,
+                        &copy_last_transcript_i,
+                        &navigate_settings_i,
+                        &separator()?,
+                        &quit_i,
+                    ],
+                )?
+            }
+            TrayIconState::Idle => Menu::with_items(
                 app,
                 &[
-                    &cancel_i,
-                    &separator(),
+                    &start_recording_i,
                     &copy_last_transcript_i,
+                    &speak_selected_i,
+                    &separator()?,
+                    &scratchpad_i,
+                    &navigate_dictate_i,
+                    &navigate_refine_i,
+                    &navigate_listen_i,
+                    &separator()?,
                     &navigate_settings_i,
-                    &separator(),
+                    &separator()?,
                     &quit_i,
                 ],
-            )
-            .expect("failed to create menu")
-        }
-        TrayIconState::Idle => Menu::with_items(
-            app,
-            &[
-                &start_recording_i,
-                &copy_last_transcript_i,
-                &speak_selected_i,
-                &separator(),
-                &scratchpad_i,
-                &navigate_dictate_i,
-                &navigate_refine_i,
-                &navigate_listen_i,
-                &separator(),
-                &navigate_settings_i,
-                &separator(),
-                &quit_i,
-            ],
-        )
-        .expect("failed to create menu"),
-    };
+            )?,
+        };
 
-    let _ = tray.set_menu(Some(menu));
-    let _ = tray.set_icon_as_template(true);
+        tray.set_menu(Some(menu))?;
+        tray.set_icon_as_template(true)?;
+        Ok(())
+    })();
+
+    if let Err(error) = result {
+        warn!("Failed to build tray menu; keeping previous menu: {error}");
+    }
 }
 
 fn last_transcript_text(entry: &HistoryEntry) -> &str {

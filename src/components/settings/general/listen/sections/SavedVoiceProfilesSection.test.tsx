@@ -127,4 +127,31 @@ describe("SavedVoiceProfilesSection", () => {
 
     await view.cleanup();
   });
+
+  it("does not block browsing saved voices when TTS is disabled", async () => {
+    const activePreset = preset();
+    const speech = {
+      settings: {},
+      activePreset,
+      allModels: [model()],
+      presets: [activePreset],
+      ttsEnabled: false,
+      previewingPresetId: null,
+      statusMessage: null,
+      setActivePreset: vi.fn(),
+      setStatusMessage: vi.fn(),
+      previewPreset: vi.fn(),
+      removePreset: vi.fn(),
+    } as unknown as ListenSpeechState;
+
+    const view = await render(
+      <SavedVoiceProfilesSection speech={speech} showTitle={false} />,
+    );
+
+    expect(view.container.textContent).toContain("Cat");
+    expect(view.container.querySelector(".pointer-events-none")).toBeNull();
+    expect(view.container.querySelector(".opacity-50")).toBeNull();
+
+    await view.cleanup();
+  });
 });

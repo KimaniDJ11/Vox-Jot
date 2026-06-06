@@ -1073,11 +1073,7 @@ export const VoiceArchitectSection: React.FC<{
         onSelectPreset={handleSelectSavedPreset}
         onClose={() => setModelWindowOpen(false)}
       />
-      <div
-        className={`${contentSpacingClassName} ${
-          !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
-        }`}
-      >
+      <div className={contentSpacingClassName}>
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl<VoiceArchitectTool>
             value={createVoiceTool}

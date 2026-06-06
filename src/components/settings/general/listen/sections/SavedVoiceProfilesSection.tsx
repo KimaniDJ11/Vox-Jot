@@ -54,11 +54,7 @@ export const SavedVoiceProfilesSection: React.FC<{
   const deleteLabel = t("common.delete", { defaultValue: "Delete" });
 
   const content = (
-    <div
-      className={`space-y-3 ${showTitle ? "px-4 py-3" : ""} ${
-        !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
-      }`}
-    >
+    <div className={`space-y-3 ${showTitle ? "px-4 py-3" : ""}`}>
       {speech.statusMessage ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
           {speech.statusMessage}

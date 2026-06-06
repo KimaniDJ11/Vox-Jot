@@ -712,8 +712,17 @@ fn shutdown_core_logic(app: &AppHandle) {
 
     if let Some(http_api) = app.try_state::<Arc<HttpApiManager>>() {
         let http_api = http_api.inner().clone();
-        tauri::async_runtime::spawn(async move {
-            http_api.stop().await;
+        // Stop synchronously so the server task is actually aborted before we
+        // exit, but bound the wait so a contended task lock can never stall the
+        // GUI thread on quit. stop() itself only aborts the task and emits an
+        // event, so this normally returns immediately.
+        tauri::async_runtime::block_on(async move {
+            if tokio::time::timeout(std::time::Duration::from_secs(2), http_api.stop())
+                .await
+                .is_err()
+            {
+                log::warn!("http_api: stop timed out during shutdown; continuing exit");
+            }
         });
     }
 

@@ -28,6 +28,16 @@ use transcribe_rs::{
     SpeechModel, TranscribeOptions, WhisperAccelerator,
 };
 
+/// Current Unix time in milliseconds, saturating to 0 if the system clock is
+/// set before the epoch. Avoids panicking on clock regressions (NTP glitch,
+/// dead RTC battery, VM snapshot rollback) on the transcription hot path.
+fn current_unix_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct ModelStateEvent {
     pub event_type: String,
@@ -414,12 +424,7 @@ impl TranscriptionManager {
             model_manager,
             app_handle: app_handle.clone(),
             current_model_id: Arc::new(Mutex::new(None)),
-            last_activity: Arc::new(AtomicU64::new(
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as u64,
-            )),
+            last_activity: Arc::new(AtomicU64::new(current_unix_millis())),
             shutdown_signal: Arc::new(AtomicBool::new(false)),
             shutdown_started: Arc::new(AtomicBool::new(false)),
             watcher_handle: Arc::new(Mutex::new(None)),
@@ -465,10 +470,7 @@ impl TranscriptionManager {
                         }
 
                         let last = manager_cloned.last_activity.load(Ordering::Relaxed);
-                        let now_ms = SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis() as u64;
+                        let now_ms = current_unix_millis();
 
                         if now_ms.saturating_sub(last) > limit_seconds * 1000 {
                             // idle -> unload
@@ -1402,13 +1404,8 @@ impl TranscriptionManager {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-        self.last_activity.store(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
-            Ordering::Relaxed,
-        );
+        self.last_activity
+            .store(current_unix_millis(), Ordering::Relaxed);
 
         if audio.is_empty() {
             return Ok((String::new(), Vec::new()));
@@ -1516,13 +1513,8 @@ impl TranscriptionManager {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         // Update last activity timestamp
-        self.last_activity.store(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
-            Ordering::Relaxed,
-        );
+        self.last_activity
+            .store(current_unix_millis(), Ordering::Relaxed);
 
         let st = std::time::Instant::now();
 

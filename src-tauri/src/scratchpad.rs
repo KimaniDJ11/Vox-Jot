@@ -408,10 +408,22 @@ pub fn set_scratchpad_titlebar_drag_enabled(
 /// minimized. This is the cheapest "is the user looking at it" check.
 fn is_scratchpad_visible(app: &AppHandle) -> bool {
     let Some(window) = app.get_webview_window(SCRATCHPAD_LABEL) else {
+        debug!(
+            "[jotpad-diag] is_scratchpad_visible: webview window NOT FOUND for label '{}'",
+            SCRATCHPAD_LABEL
+        );
         return false;
     };
-    let visible = window.is_visible().unwrap_or(false);
-    let minimized = window.is_minimized().unwrap_or(false);
+    let visible_raw = window.is_visible();
+    let minimized_raw = window.is_minimized();
+    let visible = *visible_raw.as_ref().unwrap_or(&false);
+    let minimized = *minimized_raw.as_ref().unwrap_or(&false);
+    debug!(
+        "[jotpad-diag] is_scratchpad_visible: is_visible={:?} is_minimized={:?} -> {}",
+        visible_raw.as_ref().map_err(|e| e.to_string()),
+        minimized_raw.as_ref().map_err(|e| e.to_string()),
+        visible && !minimized
+    );
     visible && !minimized
 }
 
@@ -423,11 +435,23 @@ fn is_scratchpad_visible(app: &AppHandle) -> bool {
 /// all of that.
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn is_vox_jot_frontmost(app: &AppHandle) -> bool {
-    let Ok(context) = crate::apple_intelligence::get_frontmost_app_context() else {
-        return false;
+    let context = match crate::apple_intelligence::get_frontmost_app_context() {
+        Ok(context) => context,
+        Err(e) => {
+            debug!(
+                "[jotpad-diag] is_vox_jot_frontmost: get_frontmost_app_context FAILED: {}",
+                e
+            );
+            return false;
+        }
     };
     let our_bundle_id = app.config().identifier.as_str();
-    context.bundle_id.eq_ignore_ascii_case(our_bundle_id)
+    let matches = context.bundle_id.eq_ignore_ascii_case(our_bundle_id);
+    debug!(
+        "[jotpad-diag] is_vox_jot_frontmost: frontmost='{}' ours='{}' match={}",
+        context.bundle_id, our_bundle_id, matches
+    );
+    matches
 }
 
 #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]

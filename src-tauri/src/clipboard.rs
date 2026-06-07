@@ -3,7 +3,7 @@ use crate::input::{self, EnigoState};
 use crate::settings::TypingTool;
 use crate::settings::{get_settings, AutoSubmitKey, ClipboardHandling, PasteMethod};
 use enigo::{Direction, Enigo, Key, Keyboard};
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -97,17 +97,23 @@ static CLIPBOARD_RESTORE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Result<bool, String> {
     // First: honor the snapshot taken at dictation start.
-    let mut should_insert = crate::scratchpad::consume_pending_insert_target(app_handle);
+    let consumed = crate::scratchpad::consume_pending_insert_target(app_handle);
+    let mut should_insert = consumed;
+    debug!(
+        "[jotpad-diag] try_insert: consumed_pending_snapshot={}",
+        consumed
+    );
 
     // Belt-and-suspenders: if the snapshot was missed (e.g. transient blur
     // during shortcut handling on macOS NSPanel), re-check at paste time
     // whether the scratchpad currently holds focus.
     if !should_insert && crate::scratchpad::scratchpad_currently_focused(app_handle) {
-        info!("Paste-time fallback: scratchpad is focused, routing dictation to Jot Pad");
+        debug!("[jotpad-diag] try_insert: paste-time fallback engaged (scratchpad focused)");
         should_insert = true;
     }
 
     if !should_insert {
+        debug!("[jotpad-diag] try_insert: NOT routing to Jot Pad -> external paste");
         return Ok(false);
     }
 
@@ -115,9 +121,11 @@ fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Res
         window
             .emit(SCRATCHPAD_INSERT_EVENT, text.to_string())
             .map_err(|e| format!("Failed to insert dictated text into Jot Pad: {}", e))?;
+        debug!("[jotpad-diag] try_insert: emitted scratchpad-insert-text to Jot Pad");
         return Ok(true);
     }
 
+    debug!("[jotpad-diag] try_insert: routing=true but Jot Pad window NOT FOUND");
     Ok(false)
 }
 

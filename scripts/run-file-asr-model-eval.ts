@@ -63,7 +63,7 @@ const MLX_ASR_MODEL_IDS = new Set([
 
 // Gemma 4 multimodal ASR runs through Transformers and needs the dedicated
 // gemma-audio-venv (pinned torch + transformers), not the .venv or mlx venv.
-const GEMMA_ASR_MODEL_IDS = new Set(["gemma4-e2b-audio"]);
+const GEMMA_ASR_MODEL_IDS = new Set(["gemma4-e2b-audio", "gemma4-e4b-audio"]);
 
 interface SidecarPayload {
   ok: boolean;
@@ -168,6 +168,11 @@ const MODELS: ModelSpec[] = [
   {
     id: "gemma4-e2b-audio",
     label: "Gemma 4 E2B Audio",
+    sidecar: true,
+  },
+  {
+    id: "gemma4-e4b-audio",
+    label: "Gemma 4 E4B Audio",
     sidecar: true,
   },
   {
@@ -317,10 +322,12 @@ function modelDownloaded(modelId: string): boolean {
     "mlx-mega-asr": "MLX/mlx-community/Mega-ASR-8bit",
   };
   const sttPath = sttMlxPaths[modelId];
-  if (sttPath) return modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true);
+  if (sttPath)
+    return modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true);
 
   const sttOtherPaths: Record<string, string> = {
     "gemma4-e2b-audio": "Gemma/google/gemma-4-E2B-it",
+    "gemma4-e4b-audio": "Gemma/google/gemma-4-E4B-it",
   };
   const otherPath = sttOtherPaths[modelId];
   return otherPath

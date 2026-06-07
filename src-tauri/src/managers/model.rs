@@ -1833,6 +1833,19 @@ impl ModelManager {
             Err(err) => return Err(anyhow::anyhow!(err)),
         }
 
+        // Validate shared snapshots before marking them installed. A partial
+        // final directory can otherwise look successful until the next status
+        // refresh, leaving Gemma/MLX catalog entries temporarily runnable.
+        if crate::shared_model_assets::is_shared_model_asset(model_id)
+            && !crate::shared_model_assets::shared_model_has_required_files(model_id, &model_path)
+        {
+            let _ = fs::remove_dir_all(&model_path);
+            return Err(anyhow::anyhow!(
+                "Downloaded {model_id} but the snapshot is missing required files; \
+                 removed the partial download so it can be retried."
+            ));
+        }
+
         {
             let mut models = self
                 .available_models

@@ -20,12 +20,12 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  generatedAt: "2026-06-07T07:20:23Z",
+  generatedAt: "2026-06-07T17:43:52Z",
   suite: "File ASR full local sample benchmark",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
   limitations:
-    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio was added from the 2026-06-07T07:20 run via the gemma-audio-venv Transformers path.",
+    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio and Gemma 4 E4B Audio were added from 2026-06-07 full five-format runs via the gemma-audio-venv Transformers path.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
@@ -34,7 +34,7 @@ export const FILE_ASR_EVALUATION_RUN = {
     "Device is informational.",
   ],
   reportPath:
-    "output/file-asr-model-eval-net-new-2026-06-07/2026-06-07T05-29-57/file-asr-summary.md",
+    "output/file-asr-model-eval-gemma-e4b-2026-06-07/2026-06-07T17-42-05/file-asr-summary.md",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
@@ -64,7 +64,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
     status: "tested",
-    rank: 10,
+    rank: 11,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 12.086,
@@ -185,6 +185,20 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     device: "mps",
     notes:
       "Full five-format local suite via the gemma-audio-venv Transformers path; Gemma 4 multimodal LLM ASR trails the dedicated ASR models on accuracy and runs slower than real time.",
+  },
+  {
+    modelId: "gemma4-e4b-audio",
+    label: "Gemma 4 E4B Audio",
+    status: "tested",
+    rank: 10,
+    sampleCount: 5,
+    exactMatches: 0,
+    averageWer: 0.5,
+    latencyMs: 19445,
+    realTimeFactor: 3.0,
+    device: "mps",
+    notes:
+      "Full five-format local suite via the gemma-audio-venv Transformers path; same accuracy as E2B but ~2x slower (16 GB model). Its app download first landed incomplete (weights present, config metadata missing) and was repaired before this run.",
   },
 ];
 

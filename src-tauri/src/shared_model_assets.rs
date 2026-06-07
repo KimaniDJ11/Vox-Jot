@@ -312,6 +312,14 @@ mod tests {
             shared_model_primary_relative_path("gemma4-e2b-audio-mlx").unwrap(),
             Path::new("GemmaMLX").join("mlx-community/gemma-4-e2b-it-4bit")
         );
+        assert_eq!(
+            shared_model_primary_relative_path("gemma4-e2b-audio").unwrap(),
+            Path::new("Gemma").join("google/gemma-4-E2B-it")
+        );
+        assert_eq!(
+            shared_model_primary_relative_path("gemma4-e4b-audio").unwrap(),
+            Path::new("Gemma").join("google/gemma-4-E4B-it")
+        );
         assert!(shared_model_primary_relative_path("mlx-sortformer-4spk-v1").is_none());
     }
 
@@ -349,6 +357,21 @@ mod tests {
         fs::write(sharded.join("model.safetensors.index.json"), "{}").unwrap();
         fs::write(sharded.join("model-00001-of-00004.safetensors"), "").unwrap();
         assert!(shared_model_has_required_files("mlx-qwen3-asr", &sharded));
+    }
+
+    #[test]
+    fn requires_core_gemma_audio_snapshot_files() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let gemma = temp_dir.path().join("gemma");
+        fs::create_dir(&gemma).unwrap();
+        fs::write(gemma.join("model.safetensors"), "").unwrap();
+        fs::write(gemma.join("tokenizer.json"), "{}").unwrap();
+        assert!(!shared_model_has_required_files("gemma4-e4b-audio", &gemma));
+
+        fs::write(gemma.join("config.json"), "{}").unwrap();
+        fs::write(gemma.join("processor_config.json"), "{}").unwrap();
+        assert!(shared_model_has_required_files("gemma4-e2b-audio", &gemma));
+        assert!(shared_model_has_required_files("gemma4-e4b-audio", &gemma));
     }
 
     #[test]

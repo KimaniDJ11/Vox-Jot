@@ -76,12 +76,12 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     permission: Exclude<MissingPermission, null>,
   ): Promise<void> => {
     setBusyPermission(permission);
+    const wasGranted = permissions[permission];
 
     try {
       await prepareMacosPermissionRelaunch(
         `accessibility-permissions:${permission}`,
       );
-      setRelaunchPrepared(true);
       if (permission === "accessibility") {
         await requestAccessibilityPermission();
       } else if (permission === "screenRecording") {
@@ -92,7 +92,22 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     } catch (error) {
       console.error("Error requesting permission:", { permission, error });
     } finally {
-      await refreshPermissions();
+      const [accessibility, inputMonitoring, screenRecording] =
+        await Promise.all([
+          checkAccessibilityPermission(),
+          checkInputMonitoringPermission(),
+          checkScreenRecordingPermission(),
+        ]);
+
+      const nextPermissions = {
+        accessibility,
+        inputMonitoring,
+        screenRecording,
+      };
+      setPermissions(nextPermissions);
+      if (!wasGranted && nextPermissions[permission]) {
+        setRelaunchPrepared(true);
+      }
       setBusyPermission(null);
     }
   };

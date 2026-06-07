@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "概要",
+      "appearance": "外観",
       "permissions": "権限",
       "setup": "モデル",
       "refine": "絞り込む",
       "learn": "初めてのディクテーション",
       "progress": "オンボーディングの進行状況"
+    },
+    "appearance": {
+      "eyebrow": "自分好みに設定",
+      "title": "Vox Jot のテーマを選択",
+      "description": "Galaxy が既定で用意されていますが、セットアップを続ける前に好みの見た目を選べます。",
+      "cta": "続ける",
+      "cardTitle": "テーマのプレビュー",
+      "cardDescription": "今テーマを切り替えると、Vox Jot にすぐ反映されます。",
+      "chooseTheme": "{{theme}} テーマを選択",
+      "features": [
+        "新規インストールでは Galaxy が既定で選択されます。",
+        "選択内容は Vox Jot 全体にすぐ反映されます。",
+        "テーマは後から設定で変更できます。"
+      ]
     },
     "refine": {
       "title": "ローカルの Refine エンジンが必要ですか?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "さらにモデルオプションを表示",
         "hide": "追加のモデル オプションを非表示にする"
+      },
+      "more": {
+        "show": "さらにモデルをダウンロード（任意）",
+        "hide": "追加モデルを非表示"
       },
       "installed": {
         "title": "モデルの準備完了",

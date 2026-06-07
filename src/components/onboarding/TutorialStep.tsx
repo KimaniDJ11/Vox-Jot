@@ -16,7 +16,6 @@ import { commands } from "@/bindings";
 
 interface TutorialStepProps {
   onComplete: () => void;
-  onBack?: () => void;
 }
 
 const formatShortcut = (binding: string | undefined): string => {
@@ -51,7 +50,7 @@ const formatShortcut = (binding: string | undefined): string => {
     .join(" + ");
 };
 
-const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
+const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete }) => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
   const [testText, setTestText] = useState("");
@@ -104,7 +103,31 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
   return (
     <OnboardingLayout
       currentStep="learn"
-      onBack={onBack}
+      footerActions={
+        <>
+          {!testSucceeded ? (
+            <button className="ob-btn-secondary" onClick={onComplete}>
+              {t("onboarding.firstDictation.skip", {
+                defaultValue: "Skip for now",
+              })}
+            </button>
+          ) : null}
+          <button
+            className="ob-btn-primary"
+            onClick={onComplete}
+            disabled={!testSucceeded}
+          >
+            {testSucceeded
+              ? t("onboarding.firstDictation.ctaSuccess", {
+                  defaultValue: "Finish setup",
+                })
+              : t("onboarding.firstDictation.ctaWaiting", {
+                  defaultValue: "Waiting for dictation",
+                })}
+            <ArrowRight size={18} aria-hidden />
+          </button>
+        </>
+      }
       leftContent={
         <>
           <p className="ob-eyebrow">
@@ -141,30 +164,6 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                 ? t("onboarding.firstDictation.postProcessReady.description")
                 : t("onboarding.firstDictation.postProcessLater.description")}
             </p>
-          </div>
-
-          <div className="ob-bottom-actions">
-            <button
-              className="ob-btn-primary"
-              onClick={onComplete}
-              disabled={!testSucceeded}
-            >
-              {testSucceeded
-                ? t("onboarding.firstDictation.ctaSuccess", {
-                    defaultValue: "Finish setup",
-                  })
-                : t("onboarding.firstDictation.ctaWaiting", {
-                    defaultValue: "Waiting for dictation",
-                  })}
-              <ArrowRight size={18} aria-hidden />
-            </button>
-            {!testSucceeded ? (
-              <button className="ob-btn-secondary" onClick={onComplete}>
-                {t("onboarding.firstDictation.skip", {
-                  defaultValue: "Skip for now",
-                })}
-              </button>
-            ) : null}
           </div>
         </>
       }
@@ -210,10 +209,13 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
               className="ob-test-field"
               value={testText}
               readOnly
-              placeholder={t("onboarding.firstDictation.testField.placeholder", {
-                defaultValue:
-                  "Your first successful dictation will appear here.",
-              })}
+              placeholder={t(
+                "onboarding.firstDictation.testField.placeholder",
+                {
+                  defaultValue:
+                    "Your first successful dictation will appear here.",
+                },
+              )}
             />
             <div
               className={
@@ -240,7 +242,10 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
               </span>
             </div>
             {!testSucceeded ? (
-              <button className="ob-btn-secondary" onClick={openTroubleshooting}>
+              <button
+                className="ob-btn-secondary"
+                onClick={openTroubleshooting}
+              >
                 {t("onboarding.firstDictation.troubleshoot", {
                   defaultValue: "Troubleshoot",
                 })}

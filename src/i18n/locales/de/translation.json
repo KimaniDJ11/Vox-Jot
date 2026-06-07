@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "Übersicht",
+      "appearance": "Darstellung",
       "permissions": "Berechtigungen",
       "setup": "Modell",
       "refine": "Verfeinern",
       "learn": "Erstes Diktat",
       "progress": "Einrichtungsfortschritt"
+    },
+    "appearance": {
+      "eyebrow": "Anpassen",
+      "title": "Wähle dein Vox Jot-Theme",
+      "description": "Galaxy ist standardmäßig bereit, aber du kannst vor dem Fortsetzen der Einrichtung den Look wählen, der dir am besten passt.",
+      "cta": "Weiter",
+      "cardTitle": "Theme-Vorschau",
+      "cardDescription": "Wechsle jetzt das Theme und Vox Jot aktualisiert sich sofort.",
+      "chooseTheme": "Theme {{theme}} wählen",
+      "features": [
+        "Galaxy ist bei neuen Installationen standardmäßig ausgewählt.",
+        "Deine Auswahl gilt sofort in Vox Jot.",
+        "Du kannst das Theme später in den Einstellungen ändern."
+      ]
     },
     "refine": {
       "title": "Möchten Sie eine lokale Refine-Engine?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "Weitere Modelloptionen anzeigen",
         "hide": "Zusätzliche Modelloptionen ausblenden"
+      },
+      "more": {
+        "show": "Weitere Modelle herunterladen (optional)",
+        "hide": "Zusätzliche Modelle ausblenden"
       },
       "installed": {
         "title": "Modell bereit",

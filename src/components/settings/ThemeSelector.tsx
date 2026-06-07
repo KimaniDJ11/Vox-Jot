@@ -13,7 +13,7 @@ interface ThemeSelectorProps {
   grouped?: boolean;
 }
 
-const THEME_VALUES = [
+export const THEME_VALUES = [
   "light",
   "dark",
   "sepia",
@@ -31,9 +31,9 @@ const THEME_VALUES = [
   "system",
 ] as const;
 
-type ThemeValue = (typeof THEME_VALUES)[number];
+export type ThemeValue = (typeof THEME_VALUES)[number];
 
-const themePreviewTokens: Record<
+export const themePreviewTokens: Record<
   ThemeValue,
   { bg: string; panel: string; text: string; accent: string; icon: typeof Sun }
 > = {

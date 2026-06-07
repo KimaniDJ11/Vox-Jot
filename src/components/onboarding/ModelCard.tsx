@@ -71,6 +71,10 @@ interface ModelCardProps {
   status?: ModelCardStatus;
   disabled?: boolean;
   className?: string;
+  /** Forwarded to HubModelCard — false makes the card hug its content. */
+  fillHeight?: boolean;
+  /** Max capability chips before extras fold into the overflow button. */
+  capabilityChipsMaxVisible?: number;
   onSelect: (modelId: string) => void;
   onDownload?: (modelId: string) => void;
   onDelete?: (modelId: string) => void;
@@ -92,6 +96,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
   status = "downloadable",
   disabled = false,
   className = "",
+  fillHeight = true,
+  capabilityChipsMaxVisible,
   onSelect,
   onDownload,
   onDelete,
@@ -466,6 +472,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       headerBadges={headerBadges}
       description={displayDescription}
       capabilityChips={capabilityChips}
+      capabilityChipsMaxVisible={capabilityChipsMaxVisible}
       footerMetaItems={metadataItems}
       footerMetaLinks={
         sourceUrl
@@ -487,6 +494,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       disabled={disabled}
       variant={variant}
       active={status === "active"}
+      fillHeight={fillHeight}
       className={className}
     />
   );

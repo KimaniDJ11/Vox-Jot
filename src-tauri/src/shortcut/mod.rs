@@ -570,8 +570,8 @@ pub fn change_app_theme_setting(app: AppHandle, theme: String) -> Result<(), Str
     if VALID_APP_THEMES.contains(&theme.as_str()) {
         settings.app_theme = theme;
     } else {
-        warn!("Invalid app theme '{}', defaulting to system", theme);
-        settings.app_theme = "system".to_string();
+        warn!("Invalid app theme '{}', defaulting to galaxy", theme);
+        settings.app_theme = "galaxy".to_string();
     }
     settings::write_settings(&app, settings);
     Ok(())

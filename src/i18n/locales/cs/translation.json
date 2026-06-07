@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "Přehled",
+      "appearance": "Vzhled",
       "permissions": "Oprávnění",
       "setup": "Model",
       "refine": "Upřesnit",
       "learn": "První diktát",
       "progress": "Průběh úvodního nastavení"
+    },
+    "appearance": {
+      "eyebrow": "Přizpůsobte si ho",
+      "title": "Vyberte motiv Vox Jot",
+      "description": "Motiv Galaxy je připravený jako výchozí, ale před pokračováním nastavení si můžete vybrat vzhled, který vám sedí.",
+      "cta": "Pokračovat",
+      "cardTitle": "Náhled motivu",
+      "cardDescription": "Přepněte motiv teď a Vox Jot se okamžitě aktualizuje.",
+      "chooseTheme": "Vybrat motiv {{theme}}",
+      "features": [
+        "Galaxy je výchozí volba pro nové instalace.",
+        "Vaše volba se ve Vox Jot projeví okamžitě.",
+        "Motiv můžete později změnit v Nastavení."
+      ]
     },
     "refine": {
       "title": "Chcete místní Refine engine?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "Zobrazit další možnosti modelu",
         "hide": "Skrýt další možnosti modelu"
+      },
+      "more": {
+        "show": "Stáhnout další modely (volitelné)",
+        "hide": "Skrýt další modely"
       },
       "installed": {
         "title": "Model je připraven",

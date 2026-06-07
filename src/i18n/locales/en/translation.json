@@ -562,11 +562,26 @@
     },
     "steps": {
       "welcome": "Overview",
+      "appearance": "Appearance",
       "permissions": "Permissions",
       "setup": "Model",
       "refine": "Refine",
       "learn": "First Dictation",
       "progress": "Onboarding progress"
+    },
+    "appearance": {
+      "eyebrow": "Make it yours",
+      "title": "Choose your Vox Jot theme",
+      "description": "Galaxy is ready by default, but you can pick the look that feels best before setup continues.",
+      "cta": "Continue",
+      "cardTitle": "Theme preview",
+      "cardDescription": "Switch themes now and Vox Jot updates immediately.",
+      "chooseTheme": "Choose {{theme}} theme",
+      "features": [
+        "Galaxy is selected by default for new installs.",
+        "Your choice applies immediately across Vox Jot.",
+        "You can switch themes later from Settings."
+      ]
     },
     "refine": {
       "title": "Want a local Refine engine?",
@@ -642,9 +657,13 @@
         "show": "Show more model options",
         "hide": "Hide extra model options"
       },
+      "more": {
+        "show": "Download more models (optional)",
+        "hide": "Hide extra models"
+      },
       "installed": {
         "title": "Model ready",
-        "description": "{{modelName}} is already installed. Continue with this model.",
+        "description": "{{modelName}} is installed and ready. Continue, or add more models below.",
         "continue": "Continue"
       }
     },

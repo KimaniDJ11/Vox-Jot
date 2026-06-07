@@ -864,6 +864,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_auto_submit_key_setting,
         shortcut::change_post_process_enabled_setting,
         shortcut::change_local_privacy_mode_setting,
+        settings::set_onboarding_completed,
         shortcut::change_screen_context_enabled_setting,
         shortcut::change_screen_context_excluded_bundle_ids_setting,
         shortcut::change_screen_context_pause_on_idle_setting,

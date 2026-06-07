@@ -1014,11 +1014,13 @@ function App() {
 
   const checkOnboardingStatus = async () => {
     try {
-      const result = await commands.hasAnyModelsAvailable();
-      const hasModels = result.status === "ok" && result.data;
+      const settingsResult = await commands.getAppSettings();
+      const onboardingCompleted =
+        settingsResult.status === "ok" &&
+        settingsResult.data.onboarding_completed === true;
       const currentPlatform = platform();
 
-      if (hasModels) {
+      if (onboardingCompleted) {
         setIsReturningUser(true);
 
         if (currentPlatform === "macos") {
@@ -1042,7 +1044,6 @@ function App() {
                 checkInputMonitoringPermission(),
                 checkScreenRecordingPermission(),
               ]);
-              const settingsResult = await commands.getAppSettings();
               const screenContextEnabled =
                 settingsResult.status === "ok"
                   ? (settingsResult.data.screen_context_enabled ?? true)
@@ -1094,7 +1095,11 @@ function App() {
     }
   };
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
+    const result = await commands.setOnboardingCompleted(true);
+    if (result.status !== "ok") {
+      console.error("Failed to persist onboarding completion:", result.error);
+    }
     setOnboardingStep("done");
   };
 

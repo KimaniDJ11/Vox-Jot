@@ -368,6 +368,20 @@ async changeLocalPrivacyModeSetting(enabled: boolean) : Promise<Result<null, str
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Persist whether the first-run onboarding wizard has been completed. The
+ * frontend calls this when the wizard finishes so subsequent launches skip
+ * straight to the app, while a fresh install (no stored flag) always shows
+ * onboarding regardless of which speech models happen to be available.
+ */
+async setOnboardingCompleted(completed: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_onboarding_completed", { completed }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeScreenContextEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_screen_context_enabled_setting", { enabled }) };
@@ -2691,7 +2705,14 @@ http_api_port?: number;
  * token in the OS credential store; old values are migrated lazily when
  * the Local API status or HTTP server reads the token.
  */
-http_api_token?: string }
+http_api_token?: string;
+/**
+ * Whether the first-run onboarding wizard has been completed. This is the
+ * source of truth for showing onboarding — it is deliberately independent
+ * of model availability so a fresh install always sees onboarding, even
+ * when the built-in Apple Speech engine reports as available.
+ */
+onboarding_completed?: boolean }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }

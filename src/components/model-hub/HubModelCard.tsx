@@ -84,6 +84,12 @@ export interface HubModelCardProps {
   variant?: HubCardVariant;
   /** When true, applies the "active" outline/shadow treatment. */
   active?: boolean;
+  /**
+   * When false, the card sizes to its content instead of stretching to the
+   * uniform grid height. Hub grids keep this true so rows line up; the
+   * onboarding vertical stack sets it false to avoid tall, half-empty cards.
+   */
+  fillHeight?: boolean;
 
   className?: string;
 }
@@ -138,7 +144,7 @@ export interface HubDownloadState {
 }
 
 const baseClasses =
-  "flex h-full min-h-[176px] min-w-0 flex-col gap-3 rounded-xl px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 motion-reduce:transition-none";
+  "flex min-w-0 flex-col gap-3 rounded-xl px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 motion-reduce:transition-none";
 
 const HubModelCard: React.FC<HubModelCardProps> = ({
   title,
@@ -165,11 +171,13 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   disabled = false,
   variant = "default",
   active = false,
+  fillHeight = true,
   className = "",
 }) => {
   const { t } = useTranslation();
   const isClickable = Boolean(onClick) && !disabled;
   const isFeatured = variant === "featured";
+  const fillClasses = fillHeight ? "h-full min-h-[176px]" : "";
   const hasNestedInteractive =
     Boolean(downloadState?.onCancel) ||
     Boolean(downloadState?.onRetry) ||
@@ -223,7 +231,13 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       aria-disabled={disabled || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={[baseClasses, variantClasses, interactiveClasses, className]
+      className={[
+        baseClasses,
+        fillClasses,
+        variantClasses,
+        interactiveClasses,
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
     >
@@ -290,8 +304,10 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
         </div>
       ) : null}
 
-      {/* Spacer keeps divider/footer pinned at a consistent visual height. */}
-      <div className="flex-1" />
+      {/* Spacer keeps divider/footer pinned at a consistent visual height in
+          fixed-height (grid) mode. Compact onboarding cards skip it so the
+          card hugs its content instead of leaving a tall empty gap. */}
+      {fillHeight ? <div className="flex-1" /> : null}
 
       {/* Divider */}
       <div className="border-t border-mid-gray/20" />

@@ -866,6 +866,12 @@ pub struct AppSettings {
     /// the Local API status or HTTP server reads the token.
     #[serde(default = "default_http_api_token")]
     pub http_api_token: String,
+    /// Whether the first-run onboarding wizard has been completed. This is the
+    /// source of truth for showing onboarding — it is deliberately independent
+    /// of model availability so a fresh install always sees onboarding, even
+    /// when the built-in Apple Speech engine reports as available.
+    #[serde(default)]
+    pub onboarding_completed: bool,
 }
 
 fn default_http_api_port() -> u16 {
@@ -923,7 +929,7 @@ fn default_experimental_enabled() -> bool {
 }
 
 fn default_app_theme() -> String {
-    "system".to_string()
+    "galaxy".to_string()
 }
 
 pub fn default_app_font_scale() -> f32 {
@@ -2100,6 +2106,7 @@ pub fn get_default_settings() -> AppSettings {
         http_api_enabled: false,
         http_api_port: default_http_api_port(),
         http_api_token: String::new(),
+        onboarding_completed: false,
     }
 }
 
@@ -2870,6 +2877,19 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
 
     // Notify all WebViews so each window's settings store stays in sync.
     let _ = app.emit("settings-changed", ());
+}
+
+/// Persist whether the first-run onboarding wizard has been completed. The
+/// frontend calls this when the wizard finishes so subsequent launches skip
+/// straight to the app, while a fresh install (no stored flag) always shows
+/// onboarding regardless of which speech models happen to be available.
+#[tauri::command]
+#[specta::specta]
+pub fn set_onboarding_completed(app: AppHandle, completed: bool) -> Result<(), String> {
+    let mut settings = get_settings(&app);
+    settings.onboarding_completed = completed;
+    write_settings(&app, settings);
+    Ok(())
 }
 
 pub fn get_bindings(app: &AppHandle) -> HashMap<String, ShortcutBinding> {

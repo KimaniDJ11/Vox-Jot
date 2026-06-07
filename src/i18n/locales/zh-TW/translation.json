@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "概述",
+      "appearance": "外觀",
       "permissions": "權限",
       "setup": "型號",
       "refine": "精煉",
       "learn": "第一次聽寫",
       "progress": "入門進度"
+    },
+    "appearance": {
+      "eyebrow": "依你的喜好設定",
+      "title": "選擇 Vox Jot 主題",
+      "description": "Galaxy 已作為預設主題準備好，但你可以在繼續設定前選擇更適合自己的外觀。",
+      "cta": "繼續",
+      "cardTitle": "主題預覽",
+      "cardDescription": "現在切換主題，Vox Jot 會立即更新。",
+      "chooseTheme": "選擇 {{theme}} 主題",
+      "features": [
+        "新安裝預設選擇 Galaxy。",
+        "你的選擇會立即套用到整個 Vox Jot。",
+        "之後也可以在設定中更改主題。"
+      ]
     },
     "refine": {
       "title": "想要本地Refine引擎嗎？",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "顯示更多型號選項",
         "hide": "隱藏額外的模型選項"
+      },
+      "more": {
+        "show": "下載更多模型（選用）",
+        "hide": "隱藏其他模型"
       },
       "installed": {
         "title": "模型已就緒",

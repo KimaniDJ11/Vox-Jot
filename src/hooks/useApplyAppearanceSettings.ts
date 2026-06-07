@@ -13,7 +13,7 @@ export function useApplyAppearanceSettings(
   appFontScale: number | null | undefined,
 ) {
   useEffect(() => {
-    const theme = appTheme ?? "system";
+    const theme = appTheme ?? "galaxy";
     if (theme === "system") {
       document.documentElement.removeAttribute("data-theme");
     } else {

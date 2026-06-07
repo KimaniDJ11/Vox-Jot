@@ -69,6 +69,11 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
     return "idle";
   }, [status, isChecking, isInstalling, isPullingRefineModel, hasRefineModel]);
 
+  // The footer actions only apply to the idle/ready states; while checking,
+  // installing, or pulling the panel shows progress instead.
+  const showFooterActions =
+    phase !== "checking" && phase !== "installing" && phase !== "pulling";
+
   const finalizeAndContinue = async (modelId: string) => {
     if (autoFinishedRef.current) return;
     autoFinishedRef.current = true;
@@ -230,20 +235,6 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
           </p>
         )}
 
-        <div className="ob-bottom-actions">
-          <button type="button" className="ob-btn-primary" onClick={handleSkip}>
-            {t("onboarding.refine.skipCta")}
-          </button>
-          <button
-            type="button"
-            onClick={handleInstall}
-            disabled={isInstalling}
-            className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--ob-border)] bg-transparent px-3 py-2 text-sm font-semibold text-[var(--ob-text)] transition-colors hover:bg-[var(--ob-primary-light)] ${interactiveFocusRingClass}`}
-          >
-            {t("onboarding.refine.installCta")}
-          </button>
-        </div>
-
         <p className="ob-footnote">{t("onboarding.refine.footnote")}</p>
       </>
     );
@@ -307,6 +298,27 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
     <OnboardingLayout
       currentStep="refine"
       onBack={isInstalling || isPullingRefineModel ? undefined : onBack}
+      footerActions={
+        showFooterActions ? (
+          <>
+            <button
+              type="button"
+              onClick={handleInstall}
+              disabled={isInstalling}
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--ob-border)] bg-transparent px-3 py-2 text-sm font-semibold text-[var(--ob-text)] transition-colors hover:bg-[var(--ob-primary-light)] ${interactiveFocusRingClass}`}
+            >
+              {t("onboarding.refine.installCta")}
+            </button>
+            <button
+              type="button"
+              className="ob-btn-primary"
+              onClick={handleSkip}
+            >
+              {t("onboarding.refine.skipCta")}
+            </button>
+          </>
+        ) : undefined
+      }
       leftContent={leftContent}
       rightContent={rightVisual}
     />

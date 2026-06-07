@@ -6,12 +6,19 @@ import { getLanguageDirection } from "@/lib/utils/rtl";
 import { modal } from "@/motion/springs";
 
 import WelcomeStep from "./WelcomeStep";
+import ThemeStep from "./ThemeStep";
 import PermissionsStep from "./PermissionsStep";
 import ModelStep from "./ModelStep";
 import RefineStep from "./RefineStep";
 import TutorialStep from "./TutorialStep";
 
-type WizardStep = "welcome" | "permissions" | "model" | "refine" | "tutorial";
+type WizardStep =
+  | "welcome"
+  | "appearance"
+  | "permissions"
+  | "model"
+  | "refine"
+  | "tutorial";
 
 interface OnboardingWizardProps {
   /** Called when the user finishes the entire onboarding flow. */
@@ -47,6 +54,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     region.focus();
   }, [step]);
 
+  const goToAppearance = useCallback(() => setStep("appearance"), []);
   const goToPermissions = useCallback(() => setStep("permissions"), []);
   const goToModel = useCallback(() => setStep("model"), []);
   const goToRefine = useCallback(() => setStep("refine"), []);
@@ -62,6 +70,8 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     setStep((prev) => {
       switch (prev) {
         case "permissions":
+          return "appearance";
+        case "appearance":
           return "welcome";
         case "model":
           return "permissions";
@@ -78,7 +88,9 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const renderStep = () => {
     switch (step) {
       case "welcome":
-        return <WelcomeStep onContinue={goToPermissions} />;
+        return <WelcomeStep onContinue={goToAppearance} />;
+      case "appearance":
+        return <ThemeStep onContinue={goToPermissions} onBack={goBack} />;
       case "permissions":
         return (
           <PermissionsStep
@@ -91,33 +103,47 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       case "refine":
         return <RefineStep onComplete={goToTutorial} onBack={goBack} />;
       case "tutorial":
-        return <TutorialStep onComplete={onComplete} onBack={goBack} />;
+        // Terminal step — intentionally no Back. Going back would land on
+        // Refine, which auto-completes when a refine model is ready and bounces
+        // straight back here. Everything on this step is adjustable later from
+        // Settings, so onboarding finishes forward-only.
+        return <TutorialStep onComplete={onComplete} />;
       default:
         return null;
     }
   };
 
+  // The onboarding window is transparent at the html/body/#root level (so
+  // native vibrancy can show through the main app shell). Each step paints its
+  // own opaque background via `.ob-root`, but that lives inside the
+  // opacity-animated motion.div below — so during an AnimatePresence "wait"
+  // transition the only opaque layer fades to 0 and the bare (transparent)
+  // window flashes the desktop through. This stable backdrop keeps a solid
+  // var(--bg) behind the steps so transitions cross-fade content over a
+  // constant background instead of flashing a "clear" view.
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={step}
-        ref={stepRegionRef}
-        tabIndex={-1}
-        role="group"
-        aria-label={t(`onboarding.steps.${step}`, {
-          defaultValue: step,
-        })}
-        aria-live="polite"
-        dir={direction}
-        initial={{ opacity: 0, x: enterOffset }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: exitOffset }}
-        transition={modal}
-        className="h-full w-full"
-      >
-        {renderStep()}
-      </motion.div>
-    </AnimatePresence>
+    <div className="relative h-full w-full bg-[var(--bg)]">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={step}
+          ref={stepRegionRef}
+          tabIndex={-1}
+          role="group"
+          aria-label={t(`onboarding.steps.${step}`, {
+            defaultValue: step,
+          })}
+          aria-live="polite"
+          dir={direction}
+          initial={{ opacity: 0, x: enterOffset }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: exitOffset }}
+          transition={modal}
+          className="h-full w-full"
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 };
 

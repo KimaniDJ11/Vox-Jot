@@ -13,6 +13,12 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ onContinue }) => {
   return (
     <OnboardingLayout
       currentStep="welcome"
+      footerActions={
+        <button className="ob-btn-primary" onClick={onContinue}>
+          {t("onboarding.welcome.cta")}
+          <ArrowRight size={18} aria-hidden />
+        </button>
+      }
       leftContent={
         <>
           <p className="ob-eyebrow">
@@ -57,13 +63,6 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ onContinue }) => {
                 <span>{feature}</span>
               </div>
             ))}
-          </div>
-
-          <div className="ob-bottom-actions">
-            <button className="ob-btn-primary" onClick={onContinue}>
-              {t("onboarding.welcome.cta")}
-              <ArrowRight size={18} aria-hidden />
-            </button>
           </div>
         </>
       }

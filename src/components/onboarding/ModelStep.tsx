@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  ArrowRight,
+  Check,
   Download,
   Loader2,
   ChevronDown,
@@ -49,12 +51,31 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     .sort(
       (a: ModelInfo, b: ModelInfo) => Number(a.size_mb) - Number(b.size_mb),
     );
+  // Lead with a single hero recommendation so the step fits without scrolling.
+  // Any additional recommended models join the rest under the "Show more model
+  // options" disclosure, where they keep their Recommended badge.
+  const heroModel = recommendedModels[0] ?? null;
+  const secondaryModels = [...recommendedModels.slice(1), ...otherModels];
   const downloadedModels = models.filter((m: ModelInfo) => m.is_downloaded);
   const downloadedRecommendedModel =
     downloadedModels.find((m: ModelInfo) => m.id === currentModel) ??
     downloadedModels.find((m: ModelInfo) => m.is_recommended) ??
     downloadedModels[0];
   const hasNoCatalogModels = !loading && models.length === 0;
+
+  // Re-entry state: when the user already has a model (e.g. they downloaded one,
+  // advanced to Refine, then tapped Back) we show a "ready + Continue" panel and
+  // fold all not-yet-downloaded models into an optional "download more"
+  // disclosure — instead of dead-ending on a download card with no way forward.
+  const hasDownloadedModel = Boolean(downloadedRecommendedModel);
+  const availableModels = [...recommendedModels, ...otherModels];
+  const disclosureModels = hasDownloadedModel
+    ? availableModels
+    : secondaryModels;
+  const downloadInFlight =
+    Object.keys(downloadingModels).length > 0 ||
+    Object.keys(extractingModels).length > 0;
+  const busy = isDownloading || downloadInFlight;
 
   useEffect(() => {
     void initialize();
@@ -97,11 +118,20 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     }
   };
 
+  // Download an additional model without selecting it or advancing the wizard.
+  // Used from the "download more" disclosure once the user already has a usable
+  // model, so they can stock up before continuing. Per-card progress still shows
+  // via the store's downloading/extracting state.
+  const handleAddModel = async (modelId: string) => {
+    const success = await downloadModel(modelId);
+    if (!success) {
+      toast.error(t("onboarding.downloadFailed"));
+    }
+  };
+
   const handleUseDownloadedModel = async () => {
-    if (!downloadedRecommendedModel || isDownloading) return;
-    setSelectedModelId(downloadedRecommendedModel.id);
+    if (!downloadedRecommendedModel || busy) return;
     const success = await selectModel(downloadedRecommendedModel.id);
-    setSelectedModelId(null);
     if (success) {
       onModelSelected();
     } else {
@@ -174,6 +204,21 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     <OnboardingLayout
       currentStep="setup"
       onBack={onBack}
+      footerActions={
+        hasDownloadedModel ? (
+          <button
+            type="button"
+            className="ob-btn-primary"
+            onClick={handleUseDownloadedModel}
+            disabled={busy}
+          >
+            {t("onboarding.setup.installed.continue", {
+              defaultValue: "Continue",
+            })}
+            <ArrowRight size={18} aria-hidden />
+          </button>
+        ) : undefined
+      }
       leftContent={
         <>
           <p className="ob-eyebrow">
@@ -229,46 +274,44 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                 </div>
               </div>
             </div>
-          ) : recommendedModels.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {recommendedModels.map((model: ModelInfo) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  variant="featured"
-                  status={getModelStatus(model.id)}
-                  disabled={isDownloading}
-                  onSelect={handleDownloadModel}
-                  onDownload={handleDownloadModel}
-                  downloadProgress={getModelDownloadProgress(model.id)}
-                  downloadSpeed={getModelDownloadSpeed(model.id)}
-                />
-              ))}
-            </div>
-          ) : downloadedRecommendedModel ? (
+          ) : hasDownloadedModel ? (
             <div className="rounded-2xl border border-[var(--ob-border)] bg-[var(--ob-card)] p-4 shadow-sm">
-              <p className="text-sm font-semibold text-[var(--ob-text)]">
-                {t("onboarding.setup.installed.title", {
-                  defaultValue: "Model ready",
-                })}
-              </p>
-              <p className="mt-1 text-sm text-[var(--ob-text-muted)]">
-                {t("onboarding.setup.installed.description", {
-                  defaultValue:
-                    "{{modelName}} is already installed. Continue with this model.",
-                  modelName: downloadedRecommendedModel.name,
-                })}
-              </p>
-              <button
-                type="button"
-                onClick={handleUseDownloadedModel}
-                disabled={isDownloading}
-                className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-[var(--ob-primary)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition-colors hover:bg-[var(--ob-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass}`}
-              >
-                {t("onboarding.setup.installed.continue", {
-                  defaultValue: "Continue",
-                })}
-              </button>
+              <div className="flex items-start gap-3">
+                <Check
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ob-primary)]"
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[var(--ob-text)]">
+                    {t("onboarding.setup.installed.title", {
+                      defaultValue: "Model ready",
+                    })}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--ob-text-muted)]">
+                    {t("onboarding.setup.installed.description", {
+                      defaultValue:
+                        "{{modelName}} is installed and ready. Continue, or add more models below.",
+                      modelName: downloadedRecommendedModel?.name ?? "",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : heroModel ? (
+            <div className="flex flex-col gap-3">
+              <ModelCard
+                key={heroModel.id}
+                model={heroModel}
+                variant="featured"
+                fillHeight={false}
+                capabilityChipsMaxVisible={3}
+                status={getModelStatus(heroModel.id)}
+                disabled={busy}
+                onSelect={handleDownloadModel}
+                onDownload={handleDownloadModel}
+                downloadProgress={getModelDownloadProgress(heroModel.id)}
+                downloadSpeed={getModelDownloadSpeed(heroModel.id)}
+              />
             </div>
           ) : hasNoCatalogModels ? (
             <div className="rounded-2xl border border-[var(--ob-border)] bg-[var(--ob-card)] p-4 shadow-sm">
@@ -322,8 +365,11 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
             </div>
           ) : null}
 
-          {/* Advanced toggle */}
-          {otherModels.length > 0 && (
+          {/* Download more / advanced disclosure. When the user already has a
+              model this lists every not-yet-downloaded model and adds them
+              without leaving the step; on first visit it holds the secondary
+              recommendations. */}
+          {disclosureModels.length > 0 && (
             <div className="mt-4">
               <button
                 type="button"
@@ -335,9 +381,17 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                 ) : (
                   <ChevronDown size={14} />
                 )}
-                {showAdvanced
-                  ? t("onboarding.setup.advanced.hide")
-                  : t("onboarding.setup.advanced.show")}
+                {hasDownloadedModel
+                  ? showAdvanced
+                    ? t("onboarding.setup.more.hide", {
+                        defaultValue: "Hide extra models",
+                      })
+                    : t("onboarding.setup.more.show", {
+                        defaultValue: "Download more models (optional)",
+                      })
+                  : showAdvanced
+                    ? t("onboarding.setup.advanced.hide")
+                    : t("onboarding.setup.advanced.show")}
               </button>
 
               {showAdvanced && (
@@ -348,14 +402,24 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                         "Extra models are useful for specific languages, lower latency, or larger accuracy tradeoffs. The recommended model is the fastest path to a successful first dictation.",
                     })}
                   </p>
-                  {otherModels.map((model: ModelInfo) => (
+                  {disclosureModels.map((model: ModelInfo) => (
                     <ModelCard
                       key={model.id}
                       model={model}
+                      fillHeight={false}
+                      capabilityChipsMaxVisible={3}
                       status={getModelStatus(model.id)}
-                      disabled={isDownloading}
-                      onSelect={handleDownloadModel}
-                      onDownload={handleDownloadModel}
+                      disabled={busy}
+                      onSelect={
+                        hasDownloadedModel
+                          ? handleAddModel
+                          : handleDownloadModel
+                      }
+                      onDownload={
+                        hasDownloadedModel
+                          ? handleAddModel
+                          : handleDownloadModel
+                      }
                       downloadProgress={getModelDownloadProgress(model.id)}
                       downloadSpeed={getModelDownloadSpeed(model.id)}
                     />

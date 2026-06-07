@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "Panoramica",
+      "appearance": "Aspetto",
       "permissions": "Autorizzazioni",
       "setup": "Modello",
       "refine": "Perfeziona",
       "learn": "Primo dettato",
       "progress": "Avanzamento onboarding"
+    },
+    "appearance": {
+      "eyebrow": "Rendilo tuo",
+      "title": "Scegli il tema di Vox Jot",
+      "description": "Galaxy è pronto come impostazione predefinita, ma puoi scegliere l’aspetto che preferisci prima di continuare la configurazione.",
+      "cta": "Continua",
+      "cardTitle": "Anteprima tema",
+      "cardDescription": "Cambia tema ora e Vox Jot si aggiorna immediatamente.",
+      "chooseTheme": "Scegli il tema {{theme}}",
+      "features": [
+        "Galaxy è selezionato per impostazione predefinita nelle nuove installazioni.",
+        "La tua scelta viene applicata subito in Vox Jot.",
+        "Puoi cambiare tema più tardi dalle Impostazioni."
+      ]
     },
     "refine": {
       "title": "Desideri un motore Refine locale?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "Mostra più opzioni del modello",
         "hide": "Nascondi opzioni di modello extra"
+      },
+      "more": {
+        "show": "Scarica altri modelli (opzionale)",
+        "hide": "Nascondi modelli extra"
       },
       "installed": {
         "title": "Modello pronto",

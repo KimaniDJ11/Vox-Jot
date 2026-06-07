@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "Genel Bakış",
+      "appearance": "Görünüm",
       "permissions": "İzinler",
       "setup": "Modeli",
       "refine": "Hassaslaştır",
       "learn": "İlk Dikte",
       "progress": "Başlangıç ilerlemesi"
+    },
+    "appearance": {
+      "eyebrow": "Kendine göre ayarla",
+      "title": "Vox Jot temanı seç",
+      "description": "Galaxy varsayılan olarak hazırdır, ancak kuruluma devam etmeden önce sana en uygun görünümü seçebilirsin.",
+      "cta": "Devam et",
+      "cardTitle": "Tema önizlemesi",
+      "cardDescription": "Temayı şimdi değiştir; Vox Jot hemen güncellensin.",
+      "chooseTheme": "{{theme}} temasını seç",
+      "features": [
+        "Yeni kurulumlarda Galaxy varsayılan olarak seçilir.",
+        "Seçimin Vox Jot genelinde hemen uygulanır.",
+        "Temayı daha sonra Ayarlar’dan değiştirebilirsin."
+      ]
     },
     "refine": {
       "title": "Yerel bir Refine motoru mu istiyorsunuz?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "Daha fazla model seçeneği göster",
         "hide": "Ekstra model seçeneklerini gizle"
+      },
+      "more": {
+        "show": "Daha fazla model indir (isteğe bağlı)",
+        "hide": "Ek modelleri gizle"
       },
       "installed": {
         "title": "Model hazır",

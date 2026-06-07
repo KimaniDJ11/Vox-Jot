@@ -192,11 +192,26 @@
     },
     "steps": {
       "welcome": "Tổng quan",
+      "appearance": "Giao diện",
       "permissions": "Quyền",
       "setup": "người mẫu",
       "refine": "Tinh chỉnh",
       "learn": "Đọc chính tả đầu tiên",
       "progress": "Tiến trình thiết lập ban đầu"
+    },
+    "appearance": {
+      "eyebrow": "Tùy chỉnh theo bạn",
+      "title": "Chọn chủ đề Vox Jot",
+      "description": "Galaxy đã là mặc định, nhưng bạn có thể chọn giao diện phù hợp nhất trước khi tiếp tục thiết lập.",
+      "cta": "Tiếp tục",
+      "cardTitle": "Xem trước chủ đề",
+      "cardDescription": "Đổi chủ đề ngay và Vox Jot sẽ cập nhật tức thì.",
+      "chooseTheme": "Chọn chủ đề {{theme}}",
+      "features": [
+        "Galaxy được chọn mặc định cho bản cài đặt mới.",
+        "Lựa chọn của bạn áp dụng ngay trên toàn bộ Vox Jot.",
+        "Bạn có thể đổi chủ đề sau trong Cài đặt."
+      ]
     },
     "refine": {
       "title": "Muốn có một công cụ Refine cục bộ?",
@@ -271,6 +286,10 @@
       "advanced": {
         "show": "Hiển thị thêm tùy chọn mô hình",
         "hide": "Ẩn các tùy chọn mô hình bổ sung"
+      },
+      "more": {
+        "show": "Tải thêm mô hình (tùy chọn)",
+        "hide": "Ẩn mô hình bổ sung"
       },
       "installed": {
         "title": "Mô hình đã sẵn sàng",

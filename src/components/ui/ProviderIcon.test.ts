@@ -115,6 +115,16 @@ describe("resolveModelProviderId", () => {
         expected: "firered",
       },
       {
+        title: "Mega-ASR 8-bit (MLX)",
+        runtimeProviderId: "stt_mlx_audio",
+        expected: "stt_qwen",
+      },
+      {
+        title: "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+        runtimeProviderId: "stt_mlx_audio",
+        expected: "nvidia",
+      },
+      {
         title: "Apple Speech",
         runtimeProviderId: "stt_apple_speech",
         expected: "apple",

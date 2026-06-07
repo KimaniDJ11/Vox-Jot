@@ -1969,6 +1969,9 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "qwen3-asr", providerId: "stt_qwen" },
   { keyword: "qwen3_asr", providerId: "stt_qwen" },
   { keyword: "qwen3 asr", providerId: "stt_qwen" },
+  // Mega-ASR is a robustness-merged Qwen3-ASR-1.7B variant (mlx-community/Mega-ASR-8bit).
+  { keyword: "mega-asr", providerId: "stt_qwen" },
+  { keyword: "mega asr", providerId: "stt_qwen" },
   { keyword: "fireredasr", providerId: "firered" },
   { keyword: "firered", providerId: "firered" },
   { keyword: "xiaohongshu", providerId: "firered" },

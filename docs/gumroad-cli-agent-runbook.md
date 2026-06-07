@@ -19,7 +19,7 @@ Do not commit Gumroad access tokens. For CI or a fresh machine, use `GUMROAD_ACC
 - Product ID: `8UhuqxxzvPRLgPfGc37FFw==`
 - Custom permalink: `voxjot`
 - Public product page: `https://iriedinamik.gumroad.com/l/voxjot`
-- Purchased content page used for smoke checks: `https://gumroad.com/d/3d366d9709b6e41a589b27736edb5c16`
+- Purchased content smoke checks require a user-provided, session-scoped link. Do not commit or reuse private Gumroad download URLs.
 - Direct DMG URL: `https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg`
 - Checksum URL: `https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg.sha256`
 - Paid download help page: `https://www.iriedinamik.org/voxjot/download/?paid=1`
@@ -35,7 +35,7 @@ Use these flags by default:
 For destructive or high-impact writes, use a dry run first:
 
 ```sh
-gumroad products update '8UhuqxxzvPRLgPfGc37FFw==' --custom-summary "..." --dry-run --json --no-input
+gumroad products update '8UhuqxxzvPRLgPfGc37FFw==' --custom-summary "..." --dry-run --json --no-input --quiet
 ```
 
 Then run the real command only after the intended diff is clear. Use `--yes` only when the command can prompt and the user has approved the specific mutation.
@@ -43,12 +43,12 @@ Then run the real command only after the intended diff is clear. Use `--yes` onl
 ## Common Read Commands
 
 ```sh
-gumroad auth status --json --no-input
-gumroad user --json --no-input
-gumroad products list --json --no-input
-gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input
-gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --jq '.product.rich_content' --no-input
-gumroad products sections list '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input
+gumroad auth status --json --no-input --quiet
+gumroad user --json --no-input --quiet
+gumroad products list --json --no-input --quiet
+gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input --quiet
+gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --jq '.product.rich_content' --no-input --quiet
+gumroad products sections list '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input --quiet
 ```
 
 ## Product Content and Files
@@ -67,7 +67,7 @@ To attach a local release artifact as a native Gumroad file in a future release,
 gumroad products update '8UhuqxxzvPRLgPfGc37FFw==' \
   --file /absolute/path/to/Vox-Jot-latest-aarch64.dmg \
   --file-name "Vox Jot for Mac (.dmg, Apple Silicon)" \
-  --dry-run --json --no-input
+  --dry-run --json --no-input --quiet
 ```
 
 If the dry run matches the intended file, run without `--dry-run`. Do not use `--replace-files` unless the user explicitly wants existing Gumroad-native attachments removed.
@@ -79,13 +79,13 @@ After content, file, or product-page changes:
 1. Read back through the CLI:
 
 ```sh
-gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input
+gumroad products view '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input --quiet
 ```
 
 2. Verify the user-facing page in a browser:
 
 ```text
-https://gumroad.com/d/3d366d9709b6e41a589b27736edb5c16
+Use a private purchased-content URL supplied for the current validation session. Never commit it.
 ```
 
 3. Check the direct artifact URL without downloading the full DMG:

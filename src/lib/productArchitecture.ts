@@ -15,7 +15,6 @@ export const PRODUCT_MODULES: ProductModuleDescriptor[] = [
     sectionIds: [
       "history",
       "corrections",
-      "jot-pad",
       "file-transcription",
       "general",
       "shortcuts",

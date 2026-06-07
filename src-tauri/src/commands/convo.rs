@@ -9,8 +9,6 @@ use crate::convo::{
     ConvoTurnResponse, SettingsCatalogEntry,
 };
 use crate::managers::convo::ConvoController;
-use crate::managers::notes::Note;
-use crate::managers::notes::NotesManager;
 
 #[tauri::command]
 #[specta::specta]
@@ -188,39 +186,6 @@ pub async fn convo_pick_folder_context(
 pub fn convo_get_settings_catalog(app: AppHandle) -> Result<Vec<SettingsCatalogEntry>, String> {
     let controller = app.state::<Arc<ConvoController>>();
     controller.generate_settings_catalog()
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn convo_get_current_note(app: AppHandle, note_id: i64) -> Result<Option<Note>, String> {
-    let manager = app.state::<Arc<NotesManager>>();
-    manager.get_note(note_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn convo_apply_note_edit(
-    app: AppHandle,
-    note_id: i64,
-    action: String,
-    content: String,
-) -> Result<(), String> {
-    let manager = app.state::<Arc<NotesManager>>();
-    match action.as_str() {
-        "replace" => {
-            let note = manager
-                .get_note(note_id)
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| format!("Note {} not found", note_id))?;
-            manager
-                .update_note(note_id, &note.title, &content)
-                .map_err(|e| e.to_string())
-        }
-        "append" => manager
-            .append_to_note(note_id, &content)
-            .map_err(|e| e.to_string()),
-        other => Err(format!("Unsupported note edit action: {}", other)),
-    }
 }
 
 // ── Audio turn commands ─────────────────────────────────────────────────────

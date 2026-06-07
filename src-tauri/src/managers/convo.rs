@@ -682,24 +682,6 @@ impl ConvoController {
                     context
                 )
             }
-            ConvoMode::Jotpad => {
-                let context = if !session.context_items.is_empty() {
-                    session
-                        .context_items
-                        .iter()
-                        .map(|c| c.content.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n\n")
-                } else {
-                    session.context_description.clone()
-                };
-                format!(
-                    "You are helping the user with their note. When you propose edits, wrap the \
-                     full proposed content in <draft>...</draft> tags. Keep any explanation \
-                     outside the draft concise.\n\n---\nCurrent note:\n{}",
-                    context
-                )
-            }
             ConvoMode::SettingsCoach => {
                 let catalog = self.generate_settings_catalog().unwrap_or_default();
                 let catalog_json =
@@ -885,22 +867,6 @@ impl ConvoController {
             }
         }
 
-        // Parse <draft>...</draft> blocks (Jotpad mode)
-        if *mode == ConvoMode::Jotpad {
-            let re_draft = regex::Regex::new(r"(?s)<draft>(.*?)</draft>").ok();
-            if let Some(re) = re_draft {
-                for cap in re.captures_iter(response) {
-                    if let Some(draft_content) = cap.get(1) {
-                        actions.push(ConvoActionSuggestion {
-                            action_type: "replace_note".to_string(),
-                            label: "Apply draft to note".to_string(),
-                            payload: draft_content.as_str().trim().to_string(),
-                        });
-                    }
-                }
-            }
-        }
-
         actions
     }
 
@@ -913,21 +879,11 @@ impl ConvoController {
             }
         }
 
-        if *mode == ConvoMode::Jotpad {
-            if let Ok(re) = regex::Regex::new(r"(?s)<draft>.*?</draft>") {
-                cleaned = re.replace_all(&cleaned, "").to_string();
-            }
-        }
-
         let cleaned = cleaned.trim().to_string();
         if !cleaned.is_empty() {
             return cleaned;
         }
-
-        match mode {
-            ConvoMode::Jotpad => "I drafted an updated note for you below.".to_string(),
-            _ => response.trim().to_string(),
-        }
+        response.trim().to_string()
     }
 
     fn build_files_context(&self, session: &ConvoSessionState, user_text: &str) -> String {

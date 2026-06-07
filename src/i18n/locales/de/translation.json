@@ -5,7 +5,6 @@
     "copyLastTranscript": "Letztes Transkript kopieren",
     "quit": "Hör auf",
     "cancel": "Abbrechen",
-    "jotPad": "Jot Pad",
     "speakSelected": "Ausgewählte Sprache sprechen",
     "dictateMode": "Diktieren",
     "refineMode": "Verfeinern",
@@ -1631,31 +1630,6 @@
     "quality": "Qualität",
     "speed": "Geschwindigkeit"
   },
-  "jotPad": {
-    "newNote": "Neuer Hinweis",
-    "empty": "Noch keine Notizen.",
-    "untitled": "Ohne Titel",
-    "titlePlaceholder": "Titel der Notiz",
-    "contentPlaceholder": "Beginnen Sie mit der Eingabe …",
-    "noNoteSelected": "Wählen Sie eine Notiz aus oder erstellen Sie eine neue",
-    "createFirst": "Erstellen Sie eine Notiz",
-    "pin": "Pin",
-    "unpin": "Lösen",
-    "emptyDescription": "Erstellen Sie eine Notiz, um diktierte Gedanken, Entwürfe und Schnipsel griffbereit zu halten.",
-    "emptyExample": "Diktieren Sie hier beispielsweise Besprechungsnotizen und bitten Sie Convo, diese in eine übersichtliche Zusammenfassung umzuwandeln.",
-    "title": "Jot Pad",
-    "untitledNote": "Unbenannte Notiz",
-    "speak": "Vorlesen",
-    "stopSpeaking": "Hör auf zu lesen",
-    "saveHint": "Speichern",
-    "lastEdited": "Zuletzt bearbeitet",
-    "charCount_one": "{{count}} char",
-    "charCount_other": "{{count}} Zeichen",
-    "deleteConfirm": "Notiz „{{noteTitle}}“ löschen?",
-    "notes": "Notizen",
-    "search": "Notizen durchsuchen",
-    "pinned": "Angepinnt"
-  },
   "convo": {
     "title": "Convo",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Fassen Sie den ausgewählten Text zusammen",
         "Formulieren Sie es klarer",
         "Ziehen Sie Aktionselemente heraus"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Beginnen Sie ein Gespräch über Ihre aktuelle Notiz.",
-      "replaceNote": "Hinweis ersetzen",
-      "appendToNote": "An Notiz anhängen",
-      "copyDraft": "Entwurf kopieren",
-      "noteReplaced": "Die aktuelle Notiz wurde ersetzt.",
-      "noteReplaceFailed": "Die Notiz konnte nicht ersetzt werden.",
-      "noteAppended": "Habe den Entwurf der Notiz beigefügt.",
-      "noteAppendFailed": "Konnte nicht an die Notiz angehängt werden.",
-      "draftCopied": "Habe den Entwurf kopiert.",
-      "starterPrompts": [
-        "Verwandeln Sie diese Notiz in einen sauberen Entwurf",
-        "Finden Sie die wichtigsten Punkte",
-        "Schlagen Sie die nächsten Schritte vor"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Gehen Sie zu Verfeinern",
       "goToListen": "Gehen Sie zu Zuhören",
       "openSettings": "Öffnen Sie Einstellungen",
-      "openJotPad": "Öffnen Sie Jot Pad",
       "disablePostProcess": "Deaktivieren Sie die Nachbearbeitung",
       "enablePostProcess": "Aktivieren Sie die Nachbearbeitung",
       "postProcessOn": "Die AI-Bereinigung ist aktiviert",
@@ -2565,10 +2520,6 @@
       "saveModel": "Modell speichern",
       "analyzeRoute": "Route analysieren",
       "analyzing": "Analysieren...",
-      "createNote": "Notiz erstellen",
-      "loadingNotes": "Notizen werden geladen...",
-      "untitled": "Ohne Titel",
-      "emptyNote": "Leere Notiz",
       "loadingSection": "Abschnitt wird geladen..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Verwalten Sie Sprachprofile und konvertieren Sie aufgezeichnete Audiodaten mit einem Offline-Sprachwechsler.",
       "voiceCloningTitle": "Klonen von Stimmen",
       "voiceCloningDescription": "Erstellen Sie Klonprofile aus Referenzaudio und wandeln Sie diese dann in gespeicherte Hörstimmen um.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Erfassen Sie schnelle Notizen im Floating-Pad und öffnen Sie sie erneut, wenn Sie weiterarbeiten müssen.",
       "studioTitle": "Studio",
       "studioDescription": "Weisen Sie Charakteren gespeicherte Stimmen zu, bearbeiten Sie ein Skript und rendern Sie den Ton der Geschichte.",
       "generatedAudioTitle": "Generiertes Audio",
@@ -2748,7 +2697,7 @@
       "version": "Version {{version}}",
       "versionUnknown": "unbekannt",
       "summaryPrimary": "Vox Jot basiert auf lokalen Spracherkennungs-, Übersetzungs- und Wiedergabetools, einschließlich Modellen der Whisper-Familie, TTS-Engines und Systemtypisierungsintegrationen.",
-      "summarySecondary": "Die App kombiniert lokale Audioaufnahme, AI-Bereinigung, Verlauf und Jot Pad in einem Desktop-Workflow.",
+      "summarySecondary": "Die App kombiniert lokale Audioaufnahme, AI-Bereinigung und Verlauf in einem Desktop-Workflow.",
       "highlightsTitle": "Was ist drin?",
       "highlightLocalTitle": "Lokale Rede",
       "highlightLocalDetail": "Whisper / Parakeet-Inferenz mit optionalem Silero VAD.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust Audio-Pipeline"
-    },
-    "jotPad": {
-      "empty": "Beginnen Sie mit Ihrer ersten Notiz",
-      "emptyDescription": "Diktieren oder tippen Sie in das Jot Pad, um Ihre Gedanken griffbereit zu haben.",
-      "emptyExample": "Diktieren Sie hier beispielsweise Besprechungsnotizen und verfeinern Sie diese dann zu einer übersichtlichen Zusammenfassung."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Start",
         "corrections": "Wörterbuch",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Dateitranskription"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Diktatziel",
-        "description": "Wählen Sie, ob das übersetzte Diktat direkt eingefügt wird, zuerst eine Vorschau öffnet oder zu Jot Pad wechselt."
+        "description": "Wählen Sie, ob das übersetzte Diktat direkt eingefügt wird oder zuerst eine Vorschau öffnet."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Zuerst Vorschau",
         "description": "Bestätigen Sie die Übersetzung vor dem Einfügen."
-      },
-      "openInJotPad": {
-        "title": "In Jot Pad öffnen",
-        "description": "Leiten Sie den übersetzten Text zum Notizblock weiter."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Zuerst Vorschau",
         "description": "Überprüfen Sie den ausgewählten Text, bevor Sie ihn ersetzen."
-      },
-      "openInJotPad": {
-        "title": "In Jot Pad öffnen",
-        "description": "Senden Sie die übersetzte Auswahl an den Notizblock."
       }
     }
   },

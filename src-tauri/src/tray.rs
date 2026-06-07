@@ -184,9 +184,6 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             true,
             None::<&str>,
         )?;
-        let scratchpad_i =
-            MenuItem::with_id(app, "scratchpad", &strings.jot_pad, true, None::<&str>)?;
-
         let menu = match state {
             TrayIconState::Recording | TrayIconState::Transcribing => {
                 let cancel_i =
@@ -210,7 +207,6 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
                     &copy_last_transcript_i,
                     &speak_selected_i,
                     &separator()?,
-                    &scratchpad_i,
                     &navigate_dictate_i,
                     &navigate_refine_i,
                     &navigate_listen_i,

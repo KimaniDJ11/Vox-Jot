@@ -43,7 +43,6 @@ These are embedded inline with `#[test]` blocks and already cover a lot of core 
 - [`src-tauri/src/helpers/clamshell.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/helpers/clamshell.rs)
 - [`src-tauri/src/github_release.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/github_release.rs)
 - [`src-tauri/src/tray.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/tray.rs)
-- [`src-tauri/src/scratchpad.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/scratchpad.rs)
 - [`src-tauri/src/regression.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/regression.rs)
 - [`src-tauri/src/apple_intelligence.rs`](/Users/dinamikjames/Apps/Vox Jot/src-tauri/src/apple_intelligence.rs)
 

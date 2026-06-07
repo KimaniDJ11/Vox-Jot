@@ -5,7 +5,6 @@
     "copyLastTranscript": "Son Transkripti Kopyala",
     "quit": "Çık",
     "cancel": "İptal",
-    "jotPad": "Jot Pad",
     "speakSelected": "Seçileni Konuş",
     "dictateMode": "Dikte et",
     "refineMode": "Hassaslaştır",
@@ -1631,31 +1630,6 @@
     "quality": "Kalite",
     "speed": "Hız"
   },
-  "jotPad": {
-    "newNote": "Yeni not",
-    "empty": "Henüz not yok.",
-    "untitled": "İsimsiz",
-    "titlePlaceholder": "Not başlığı",
-    "contentPlaceholder": "Yazmaya başlayın…",
-    "noNoteSelected": "Bir not seçin veya yeni bir tane oluşturun",
-    "createFirst": "Not oluştur",
-    "pin": "Sabitle",
-    "unpin": "Sabitlemeyi kaldır",
-    "emptyDescription": "Dikte edilen düşünceleri, taslakları ve parçacıkları el altında tutmak için bir not oluşturun.",
-    "emptyExample": "Örneğin, toplantı notlarını buraya dikte edin ve ardından Convo'dan bunları temiz bir özete dönüştürmesini isteyin.",
-    "title": "Jot Pad",
-    "untitledNote": "Başlıksız not",
-    "speak": "Yüksek sesle oku",
-    "stopSpeaking": "Okumayı bırak",
-    "saveHint": "Kaydet",
-    "lastEdited": "Son düzenleme",
-    "charCount_one": "{{count}} karakteri",
-    "charCount_other": "{{count}} karakterleri",
-    "deleteConfirm": "\"{{noteTitle}}\" notu silinsin mi?",
-    "notes": "Notlar",
-    "search": "Notlarda ara",
-    "pinned": "Sabitlendi"
-  },
   "convo": {
     "title": "Görüşme",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Seçilen metni özetle",
         "Daha net bir şekilde yeniden yazın",
         "Eylem öğelerini dışarı çekin"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Mevcut notunuzla ilgili bir konuşma başlatın.",
-      "replaceNote": "Notu Değiştir",
-      "appendToNote": "Nota Ekle",
-      "copyDraft": "Taslağı Kopyala",
-      "noteReplaced": "Mevcut not değiştirildi.",
-      "noteReplaceFailed": "Not değiştirilemedi.",
-      "noteAppended": "Taslağı nota ekledim.",
-      "noteAppendFailed": "Nota eklenemedi.",
-      "draftCopied": "Taslağı kopyaladım.",
-      "starterPrompts": [
-        "Bu notu temiz bir taslağa dönüştürün",
-        "Ana noktaları bulun",
-        "Sonraki adımları öner"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Hassaslaştırmaya Git",
       "goToListen": "Dinlemeye Git",
       "openSettings": "Ayarları Aç",
-      "openJotPad": "Jot Pad'yu açın",
       "disablePostProcess": "İşlem sonrası devre dışı bırak",
       "enablePostProcess": "İşlem sonrasını etkinleştir",
       "postProcessOn": "AI temizleme açık",
@@ -2565,10 +2520,6 @@
       "saveModel": "Modeli kaydet",
       "analyzeRoute": "Rotayı analiz et",
       "analyzing": "Analiz ediliyor...",
-      "createNote": "Not oluştur",
-      "loadingNotes": "Notlar yükleniyor...",
-      "untitled": "İsimsiz",
-      "emptyNote": "Boş not",
       "loadingSection": "Bölüm yükleniyor..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Çevrimdışı Ses Değiştirici ile ses profillerini yönetin ve kayıtlı sesi dönüştürün.",
       "voiceCloningTitle": "Ses klonlama",
       "voiceCloningDescription": "Referans sesten klon profilleri oluşturun ve bunları kayıtlı Dinleme seslerine dönüştürün.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Kayan pedde hızlı notlar alın ve çalışmaya devam etmeniz gerektiğinde bunları yeniden açın.",
       "studioTitle": "stüdyo",
       "studioDescription": "Kaydedilen sesleri karakterlere atayın, bir komut dosyasını düzenleyin ve hikaye sesini işleyin.",
       "generatedAudioTitle": "Oluşturulan ses",
@@ -2748,7 +2697,7 @@
       "version": "Sürüm {{version}}",
       "versionUnknown": "bilinmiyor",
       "summaryPrimary": "Vox Jot, Whisper ailesi modelleri, TTS motorları ve sistem yazma entegrasyonlarını içeren yerel konuşma tanıma, çeviri ve oynatma araçları etrafında oluşturulmuştur.",
-      "summarySecondary": "Uygulama, yerel ses yakalamayı, AI temizlemeyi, geçmişi ve Jot Pad'yu tek bir masaüstü iş akışında birleştirir.",
+      "summarySecondary": "Uygulama, yerel ses yakalamayı, AI temizlemeyi ve geçmişi tek bir masaüstü iş akışında birleştirir.",
       "highlightsTitle": "İçinde ne var",
       "highlightLocalTitle": "Yerel konuşma",
       "highlightLocalDetail": "İsteğe bağlı Silero VAD ile Whisper / Parakeet çıkarımı.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust ses hattı"
-    },
-    "jotPad": {
-      "empty": "İlk notunuza başlayın",
-      "emptyDescription": "Düşüncelerinizi elinizin altında tutmak için Jot Pad'ya dikte edin veya yazın.",
-      "emptyExample": "Örneğin, toplantı notlarını buraya yazdırın ve ardından bunları net bir özete dönüştürün."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Ana sayfa",
         "corrections": "Sözlük",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Dosya Transkripsiyonu"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Dikte Hedefi",
-        "description": "Çevrilmiş diktenin doğrudan mı yapıştırılacağını, önce bir önizlemenin mi açılacağını yoksa Jot Pad'ya mı gideceğini seçin."
+        "description": "Çevrilmiş diktenin doğrudan mı yapıştırılacağını yoksa önce bir önizlemenin mi açılacağını seçin."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Önce önizleme",
         "description": "Yapıştırmadan önce çeviriyi onaylayın."
-      },
-      "openInJotPad": {
-        "title": "Jot Pad’de aç",
-        "description": "Çevrilen metni karalama defterine yönlendirin."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Önce önizleme",
         "description": "Seçilen metni değiştirmeden önce inceleyin."
-      },
-      "openInJotPad": {
-        "title": "Jot Pad’de aç",
-        "description": "Çevrilmiş seçimi karalama defterine gönderin."
       }
     }
   },

@@ -5,7 +5,6 @@
     "copyLastTranscript": "Sao chép bản ghi cuối cùng",
     "quit": "Thoát",
     "cancel": "Hủy bỏ",
-    "jotPad": "Jot Pad",
     "speakSelected": "Nói đã chọn",
     "dictateMode": "Ra lệnh",
     "refineMode": "Tinh chỉnh",
@@ -1631,31 +1630,6 @@
     "quality": "chất lượng",
     "speed": "Tốc độ"
   },
-  "jotPad": {
-    "newNote": "Ghi chú mới",
-    "empty": "Chưa có ghi chú nào.",
-    "untitled": "Không có tiêu đề",
-    "titlePlaceholder": "tiêu đề ghi chú",
-    "contentPlaceholder": "Bắt đầu nhập…",
-    "noNoteSelected": "Chọn ghi chú hoặc tạo ghi chú mới",
-    "createFirst": "Tạo ghi chú",
-    "pin": "Ghim",
-    "unpin": "Bỏ ghim",
-    "emptyDescription": "Tạo một ghi chú để lưu giữ những suy nghĩ, bản nháp và đoạn trích đã được soạn sẵn.",
-    "emptyExample": "Ví dụ: đọc chính tả các ghi chú cuộc họp tại đây, sau đó yêu cầu Convo chuyển chúng thành một bản tóm tắt rõ ràng.",
-    "title": "Jot Pad",
-    "untitledNote": "ghi chú không có tiêu đề",
-    "speak": "Đọc to",
-    "stopSpeaking": "Dừng đọc",
-    "saveHint": "Lưu",
-    "lastEdited": "Chỉnh sửa lần cuối",
-    "charCount_one": "ký tự {{count}}",
-    "charCount_other": "Ký tự {{count}}",
-    "deleteConfirm": "Xóa ghi chú \"{{noteTitle}}\"?",
-    "notes": "Ghi chú",
-    "search": "Tìm kiếm ghi chú",
-    "pinned": "Đã ghim"
-  },
   "convo": {
     "title": "đoàn xe",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Tóm tắt văn bản đã chọn",
         "Viết lại rõ ràng hơn",
         "Kéo ra các mục hành động"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Bắt đầu cuộc trò chuyện về ghi chú hiện tại của bạn.",
-      "replaceNote": "Thay thế ghi chú",
-      "appendToNote": "Thêm vào ghi chú",
-      "copyDraft": "Sao chép bản nháp",
-      "noteReplaced": "Đã thay thế ghi chú hiện tại.",
-      "noteReplaceFailed": "Không thể thay thế ghi chú.",
-      "noteAppended": "Đã thêm bản dự thảo vào ghi chú.",
-      "noteAppendFailed": "Không thể thêm vào ghi chú.",
-      "draftCopied": "Đã sao chép bản thảo.",
-      "starterPrompts": [
-        "Biến ghi chú này thành một bản nháp rõ ràng",
-        "Tìm những điểm chính",
-        "Đề xuất các bước tiếp theo"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Đi tới Tinh chỉnh",
       "goToListen": "Đi tới Nghe",
       "openSettings": "Mở Cài đặt",
-      "openJotPad": "Mở Jot Pad",
       "disablePostProcess": "Vô hiệu hóa quá trình hậu kỳ",
       "enablePostProcess": "Kích hoạt quá trình hậu kỳ",
       "postProcessOn": "Tính năng dọn dẹp AI đang bật",
@@ -2565,10 +2520,6 @@
       "saveModel": "Lưu mô hình",
       "analyzeRoute": "Phân tích tuyến đường",
       "analyzing": "Đang phân tích...",
-      "createNote": "Tạo ghi chú",
-      "loadingNotes": "Đang tải ghi chú...",
-      "untitled": "Không có tiêu đề",
-      "emptyNote": "ghi chú trống",
       "loadingSection": "Đang tải phần..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Quản lý cấu hình giọng nói và chuyển đổi âm thanh đã ghi bằng Trình thay đổi giọng nói ngoại tuyến.",
       "voiceCloningTitle": "Nhân bản giọng nói",
       "voiceCloningDescription": "Tạo hồ sơ sao chép từ âm thanh tham chiếu, sau đó biến chúng thành giọng nói Nghe đã lưu.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Ghi lại các ghi chú nhanh trong bảng nổi và mở lại chúng khi bạn cần tiếp tục làm việc.",
       "studioTitle": "Studio",
       "studioDescription": "Gán giọng nói đã lưu cho các nhân vật, chỉnh sửa tập lệnh và hiển thị âm thanh câu chuyện.",
       "generatedAudioTitle": "Âm thanh được tạo",
@@ -2748,7 +2697,7 @@
       "version": "Phiên bản {{version}}",
       "versionUnknown": "không rõ",
       "summaryPrimary": "Vox Jot được xây dựng dựa trên công cụ nhận dạng, dịch và phát lại giọng nói cục bộ, bao gồm các mô hình dòng Whisper, công cụ TTS và tích hợp nhập hệ thống.",
-      "summarySecondary": "Ứng dụng kết hợp tính năng thu âm cục bộ, dọn dẹp, lịch sử AI và Jot Pad vào một quy trình làm việc trên máy tính để bàn.",
+      "summarySecondary": "Ứng dụng kết hợp tính năng thu âm cục bộ, dọn dẹp AI và lịch sử vào một quy trình làm việc trên máy tính để bàn.",
       "highlightsTitle": "Có gì bên trong",
       "highlightLocalTitle": "Bài phát biểu địa phương",
       "highlightLocalDetail": "Suy luận Whisper / Parakeet với Silero VAD tùy chọn.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Đường dẫn âm thanh Rust"
-    },
-    "jotPad": {
-      "empty": "Bắt đầu ghi chú đầu tiên của bạn",
-      "emptyDescription": "Đọc chính tả hoặc nhập vào Jot Pad để luôn sẵn sàng suy nghĩ.",
-      "emptyExample": "Ví dụ: viết ghi chú cuộc họp ở đây, sau đó tinh chỉnh chúng thành một bản tóm tắt rõ ràng."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Trang chủ",
         "corrections": "từ điển",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Phiên âm tập tin"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Đích đến của chính tả",
-        "description": "Chọn xem chính tả đã dịch sẽ dán trực tiếp hay mở bản xem trước trước hoặc đi tới Jot Pad."
+        "description": "Chọn xem chính tả đã dịch sẽ dán trực tiếp hay mở bản xem trước trước."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Xem trước trước",
         "description": "Xác nhận bản dịch trước khi dán."
-      },
-      "openInJotPad": {
-        "title": "Mở trong Jot Pad",
-        "description": "Định tuyến văn bản đã dịch tới bảng nháp."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Xem trước trước",
         "description": "Xem lại trước khi thay thế văn bản đã chọn."
-      },
-      "openInJotPad": {
-        "title": "Mở trong Jot Pad",
-        "description": "Gửi lựa chọn đã dịch tới bảng nháp."
       }
     }
   },

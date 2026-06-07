@@ -17,7 +17,6 @@ use crate::correction_tracker::store::CorrectionStore;
 use crate::correction_tracker::InsertedSpanTracker;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::{HistoryManager, TranslationHistoryContext};
-use crate::managers::notes::NotesManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
     apply_personal_dictionary, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
@@ -32,8 +31,7 @@ use crate::shortcut;
 use crate::snippets::apply_snippets;
 use crate::translation::{
     destination_label_for_dictation, dictation_requires_preview, normalize_language_code,
-    selection_destination_label, selection_requires_preview, should_open_jot_pad_for_dictation,
-    should_open_jot_pad_for_selection, translate_text, TranslationExecution, TranslationOrigin,
+    selection_destination_label, selection_requires_preview, translate_text, TranslationOrigin,
 };
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::tts::{
@@ -296,16 +294,10 @@ async fn run_translate_selection(app: AppHandle) {
     );
     remember_last_output(&app, &execution.final_text, readback_locale.clone());
 
-    let mut routed_to_jot_pad = false;
-    if should_open_jot_pad_for_selection(&settings, false) {
-        send_translation_to_jot_pad(&app, &execution, destination_label);
-        routed_to_jot_pad = true;
-    } else {
-        if let Err(err) = utils::paste(execution.final_text.clone(), app.clone()) {
-            warn!("Failed to replace selected text with translation: {}", err);
-            send_translation_to_jot_pad(&app, &execution, destination_label);
-            routed_to_jot_pad = true;
-        }
+    let mut pasted_text = Some(execution.final_text.clone());
+    if let Err(err) = utils::paste(execution.final_text.clone(), app.clone()) {
+        warn!("Failed to replace selected text with translation: {}", err);
+        pasted_text = None;
     }
 
     let auto_speak_plan = build_auto_speak_plan(
@@ -325,11 +317,7 @@ async fn run_translate_selection(app: AppHandle) {
                 Some(execution.final_text.clone()),
                 None,
                 Vec::new(),
-                if routed_to_jot_pad {
-                    None
-                } else {
-                    Some(execution.final_text.clone())
-                },
+                pasted_text,
                 TranslationHistoryContext {
                     source_language_detected: execution.source_language_detected.clone(),
                     translation_target_language: execution.target_language.clone(),
@@ -338,11 +326,7 @@ async fn run_translate_selection(app: AppHandle) {
                     translation_provider_id: execution.provider_id.clone(),
                     translation_model_id: execution.model_id.clone(),
                     translation_origin: Some("selection".to_string()),
-                    translation_destination: Some(if routed_to_jot_pad {
-                        "open_in_jot_pad".to_string()
-                    } else {
-                        destination_label.to_string()
-                    }),
+                    translation_destination: Some(destination_label.to_string()),
                 },
                 tts_history_context_from_plan(&auto_speak_plan),
                 None,
@@ -511,49 +495,6 @@ async fn maybe_preview_translation_result(
             None
         }
     }
-}
-
-fn build_translation_note(
-    execution: &TranslationExecution,
-    destination_label: &str,
-) -> (String, String) {
-    let timestamp = chrono::Local::now().format("%Y-%m-%d %I:%M %p").to_string();
-    let target = execution
-        .target_language
-        .clone()
-        .unwrap_or_else(|| "translated".to_string());
-    let title = format!("Translation {timestamp}");
-    let content = format!(
-        "Origin: {}\nDestination: {}\nSource language: {}\nTarget language: {}\n\nSource:\n{}\n\nTranslated:\n{}",
-        match execution.origin {
-            TranslationOrigin::Dictation => "dictation",
-            TranslationOrigin::Selection => "selection",
-        },
-        destination_label,
-        execution
-            .source_language_detected
-            .clone()
-            .unwrap_or_else(|| "auto".to_string()),
-        target,
-        execution.source_text,
-        execution.final_text
-    );
-    (title, content)
-}
-
-fn send_translation_to_jot_pad(
-    app: &AppHandle,
-    execution: &TranslationExecution,
-    destination_label: &str,
-) {
-    if let Some(notes_manager) = app.try_state::<Arc<NotesManager>>() {
-        let (title, content) = build_translation_note(execution, destination_label);
-        if let Err(err) = notes_manager.create_note(&title, &content) {
-            error!("Failed to create translation note: {}", err);
-        }
-    }
-
-    crate::scratchpad::show_scratchpad(app);
 }
 
 fn remember_last_output(app: &AppHandle, text: &str, locale: Option<String>) {
@@ -801,7 +742,6 @@ impl ShortcutAction for TranscribeAction {
 
         // Load after recording starts so rule URL capture cannot add start latency.
         let tm = app.state::<Arc<TranscriptionManager>>();
-        crate::scratchpad::snapshot_pending_insert_target(app);
         if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
             context_manager.request_immediate_capture("dictation_start");
         }
@@ -935,7 +875,6 @@ impl ShortcutAction for TranscribeAction {
             // the guard drops only after paste completes on the main thread,
             // preventing a new dictation from racing the in-flight paste.
             let mut finish_guard = Some(FinishGuard(ah.clone()));
-            let _scratchpad_guard = crate::scratchpad::PendingScratchpadInsertGuard::new(&ah);
             crate::overlay::emit_partial_transcription(&ah, "");
             let binding_id = binding_id.clone(); // Clone for the inner async task
             let prepared_write_context = take_prepared_active_app_context(&binding_id);
@@ -1419,23 +1358,6 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
-                            let mut routed_to_jot_pad = false;
-                            if !rewrite_selection {
-                                if let Some(execution) = translation_execution.as_ref() {
-                                    if execution.translated_text.is_some()
-                                        && should_open_jot_pad_for_dictation(&effective_settings)
-                                    {
-                                        send_translation_to_jot_pad(
-                                            &ah,
-                                            execution,
-                                            destination_label_for_dictation(&effective_settings),
-                                        );
-                                        text_to_paste = None;
-                                        routed_to_jot_pad = true;
-                                    }
-                                }
-                            }
-
                             let (cleaned_text, submit_override) =
                                 extract_spoken_submit_command(&final_text);
                             if let Some(text) = text_to_paste.as_mut() {
@@ -1486,13 +1408,9 @@ impl ShortcutAction for TranscribeAction {
                                     .as_ref()
                                     .and_then(|execution| execution.target_language.as_deref()),
                             );
-                            let spoken_output_text = if routed_to_jot_pad {
-                                cleaned_text.clone()
-                            } else {
-                                text_to_paste
-                                    .clone()
-                                    .unwrap_or_else(|| cleaned_text.clone())
-                            };
+                            let spoken_output_text = text_to_paste
+                                .clone()
+                                .unwrap_or_else(|| cleaned_text.clone());
                             if !spoken_output_text.trim().is_empty() {
                                 remember_last_output(
                                     &ah,
@@ -1500,11 +1418,11 @@ impl ShortcutAction for TranscribeAction {
                                     readback_locale.clone(),
                                 );
                             }
-                            let mut auto_speak_plan = build_auto_speak_plan(
+                            let auto_speak_plan = build_auto_speak_plan(
                                 &effective_settings,
                                 TranslationOrigin::Dictation,
                                 preview_was_shown,
-                                if routed_to_jot_pad || text_to_paste.is_some() {
+                                if text_to_paste.is_some() {
                                     &spoken_output_text
                                 } else {
                                     ""
@@ -1529,12 +1447,10 @@ impl ShortcutAction for TranscribeAction {
                                     translation_provider_id: execution.provider_id.clone(),
                                     translation_model_id: execution.model_id.clone(),
                                     translation_origin: Some("dictation".to_string()),
-                                    translation_destination: Some(if routed_to_jot_pad {
-                                        "open_in_jot_pad".to_string()
-                                    } else {
+                                    translation_destination: Some(
                                         destination_label_for_dictation(&effective_settings)
-                                            .to_string()
-                                    }),
+                                            .to_string(),
+                                    ),
                                 })
                                 .unwrap_or_default();
                             let history_save_request = DeferredHistorySave {
@@ -1589,34 +1505,7 @@ impl ShortcutAction for TranscribeAction {
                                     .map(|ctx| ctx.bundle_id.clone()),
                             };
 
-                            if routed_to_jot_pad {
-                                if dictation_run_cancelled(
-                                    &tm,
-                                    processing_generation,
-                                    "before jot pad routing",
-                                ) {
-                                    return;
-                                }
-                                spawn_history_save(&ah, Arc::clone(&hm), history_save_request);
-                                if auto_speak_plan.should_speak {
-                                    spawn_tts_playback(
-                                        &ah,
-                                        SpeakRequest {
-                                            text: auto_speak_plan.text.clone(),
-                                            locale: auto_speak_plan.locale.clone(),
-                                            preferred_voice_id: None,
-                                            preset_id: None,
-                                            inline_preset: None,
-                                            trigger: Some(auto_speak_plan.trigger.clone()),
-                                            remember_last_output: false,
-                                        },
-                                        None,
-                                    );
-                                    auto_speak_plan.should_speak = false;
-                                }
-                                utils::hide_recording_overlay(&ah);
-                                change_tray_icon(&ah, TrayIconState::Idle);
-                            } else if let Some(ref text_to_paste) = text_to_paste {
+                            if let Some(ref text_to_paste) = text_to_paste {
                                 if dictation_run_cancelled(
                                     &tm,
                                     processing_generation,
@@ -1657,7 +1546,6 @@ impl ShortcutAction for TranscribeAction {
                                 let paste_settings = effective_settings.clone();
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
-                                let scratchpad_guard = _scratchpad_guard;
                                 let hm_for_paste = Arc::clone(&hm);
                                 let tm_for_paste = Arc::clone(&tm);
                                 let history_save_request = history_save_request;
@@ -1687,7 +1575,6 @@ impl ShortcutAction for TranscribeAction {
                                     ) {
                                         return;
                                     }
-                                    let _scratchpad_guard = scratchpad_guard;
                                     let paste_result = if let Some(submit_key) = submit_override {
                                         utils::paste_with_settings_and_submit_override(
                                             text_for_paste,

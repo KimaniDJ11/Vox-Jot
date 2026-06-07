@@ -9,7 +9,6 @@ import {
   FileText,
   HardDrive,
   Languages,
-  NotebookText,
   Replace,
   Wand2,
   Zap,
@@ -275,18 +274,6 @@ const DeliveryPreview: React.FC<{
     );
   }
 
-  if (kind === "open_in_jot_pad") {
-    return (
-      <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-2">
-        <div className="mb-2 flex gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-gold)]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-teal)]" />
-        </div>
-        <TextLinePreview primary widths={["w-5/6", "w-1/2"]} />
-      </div>
-    );
-  }
-
   if (kind === "replace_selection") {
     return (
       <div className="rounded-md bg-[var(--card)] p-2">
@@ -425,15 +412,6 @@ export const TranslationSettingsCard: React.FC = () => {
       icon: <Eye className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="preview_then_paste" />,
     },
-    {
-      value: "open_in_jot_pad",
-      title: t("translationSettings.destination.openInJotPad.title"),
-      description: t(
-        "translationSettings.destination.openInJotPad.description",
-      ),
-      icon: <NotebookText className="h-4 w-4" aria-hidden />,
-      preview: <DeliveryPreview kind="open_in_jot_pad" />,
-    },
   ];
 
   const selectionDestinationOptions: Array<
@@ -457,14 +435,11 @@ export const TranslationSettingsCard: React.FC = () => {
       icon: <Eye className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="preview_then_replace" />,
     },
-    {
-      value: "open_in_jot_pad",
-      title: t("translationSettings.selection.openInJotPad.title"),
-      description: t("translationSettings.selection.openInJotPad.description"),
-      icon: <NotebookText className="h-4 w-4" aria-hidden />,
-      preview: <DeliveryPreview kind="open_in_jot_pad" />,
-    },
   ];
+  const selectionDestinationMode =
+    settings.selection_translation_destination_mode ?? "replace_selection";
+  const dictationDestinationMode =
+    settings.translation_destination_mode ?? "paste_in_place";
 
   return (
     <>
@@ -476,10 +451,7 @@ export const TranslationSettingsCard: React.FC = () => {
       >
         <ChoiceGrid
           options={selectionDestinationOptions}
-          value={
-            settings.selection_translation_destination_mode ??
-            "replace_selection"
-          }
+          value={selectionDestinationMode}
           onChange={(value) =>
             void updateSetting("selection_translation_destination_mode", value)
           }
@@ -603,7 +575,7 @@ export const TranslationSettingsCard: React.FC = () => {
       >
         <ChoiceGrid
           options={destinationOptions}
-          value={settings.translation_destination_mode ?? "paste_in_place"}
+          value={dictationDestinationMode}
           onChange={(value) =>
             void updateSetting("translation_destination_mode", value)
           }

@@ -235,8 +235,7 @@ function exerciseNavigation() {
       sections: [
         ["History", sectionPoint(58)],
         ["Dictionary", sectionPoint(98)],
-        ["Jot Pad", sectionPoint(138)],
-        ["File Transcription", sectionPoint(178)],
+        ["File Transcription", sectionPoint(138)],
       ],
     },
     {

@@ -10,10 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ROOT / "src" / "i18n" / "locales"
 EN_PATH = LOCALES / "en" / "translation.json"
 
-# Sidebar + tray label + experimental titles: localized short labels (brand "Jot Pad" kept).
+# Sidebar + experimental titles: localized short labels.
 LOCALE_SIDEBAR_TRAY = {
     "de": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Datenschutz & Daten",
         "experimental": "Labor",
         "snippets": "Phrase-Tasten",
@@ -24,7 +23,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "In-Entwicklung-Optionen aktivieren. Mit Vorsicht nutzen.",
     },
     "fr": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Confidentialité et données",
         "experimental": "Labo",
         "snippets": "Clés de phrase",
@@ -35,7 +33,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Activer les options en cours de développement. À utiliser avec prudence.",
     },
     "es": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Privacidad y datos",
         "experimental": "Laboratorio",
         "snippets": "Claves de frase",
@@ -46,7 +43,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Activa opciones en desarrollo. Úsalas con cuidado.",
     },
     "it": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Privacy e dati",
         "experimental": "Laboratorio",
         "snippets": "Chiavi di frase",
@@ -57,7 +53,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Attiva opzioni in sviluppo. Usa con cautela.",
     },
     "pt": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Privacidade e dados",
         "experimental": "Laboratório",
         "snippets": "Chaves de frase",
@@ -68,7 +63,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Ative opções em desenvolvimento. Use com cuidado.",
     },
     "vi": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Quyền riêng tư & dữ liệu",
         "experimental": "Phòng thử",
         "snippets": "Khóa cụm từ",
@@ -79,7 +73,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Bật các tùy chọn đang phát triển. Dùng cẩn thận.",
     },
     "zh": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "隐私与数据",
         "experimental": "实验室",
         "snippets": "短语快捷键",
@@ -90,7 +83,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "开启开发中的选项，请谨慎使用。",
     },
     "zh-TW": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "隱私與資料",
         "experimental": "實驗室",
         "snippets": "片語快速鍵",
@@ -101,7 +93,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "開啟開發中的選項，請謹慎使用。",
     },
     "ja": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "プライバシーとデータ",
         "experimental": "ラボ",
         "snippets": "フレーズキー",
@@ -112,7 +103,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "開発中のオプションを有効にします。注意してご利用ください。",
     },
     "ko": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "개인정보 및 데이터",
         "experimental": "실험실",
         "snippets": "문구 키",
@@ -123,7 +113,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "개발 중인 옵션을 켭니다. 신중하게 사용하세요.",
     },
     "pl": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Prywatność i dane",
         "experimental": "Laboratorium",
         "snippets": "Klucze fraz",
@@ -134,7 +123,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Włącz opcje w rozwoju. Używaj ostrożnie.",
     },
     "ru": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Конфиденциальность и данные",
         "experimental": "Лаборатория",
         "snippets": "Ключи фраз",
@@ -145,7 +133,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Включить опции в разработке. Используйте с осторожностью.",
     },
     "uk": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Конфіденційність і дані",
         "experimental": "Лабораторія",
         "snippets": "Ключі фраз",
@@ -156,7 +143,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Увімкнути опції в розробці. Використовуйте обережно.",
     },
     "tr": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Gizlilik ve veriler",
         "experimental": "Laboratuvar",
         "snippets": "İfade anahtarları",
@@ -167,7 +153,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Geliştirme aşamasındaki seçenekleri açın. Dikkatli kullanın.",
     },
     "cs": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "Soukromí a data",
         "experimental": "Laboratoř",
         "snippets": "Klíče frází",
@@ -178,7 +163,6 @@ LOCALE_SIDEBAR_TRAY = {
         "experimental_toggle_desc": "Zapnout rozpracované možnosti. Používejte opatrně.",
     },
     "ar": {
-        "tray_jotPad": "Jot Pad",
         "dataPrivacy": "الخصوصية والبيانات",
         "experimental": "المختبر",
         "snippets": "مفاتيح العبارات",
@@ -206,7 +190,6 @@ def main() -> None:
     en = load_json(EN_PATH)
     snippets_block = copy.deepcopy(en["settings"]["snippets"])
     styles_block = copy.deepcopy(en["settings"]["styles"])
-    jotpad_block = copy.deepcopy(en["jotPad"])
 
     for locale_dir in sorted(LOCALES.iterdir()):
         if not locale_dir.is_dir():
@@ -218,12 +201,10 @@ def main() -> None:
 
         data = load_json(path)
         tray = data.setdefault("tray", {})
-        tray.pop("scratchpad", None)
         sidebar = data.setdefault("sidebar", {})
 
         if code in LOCALE_SIDEBAR_TRAY:
             loc = LOCALE_SIDEBAR_TRAY[code]
-            tray["jotPad"] = loc["tray_jotPad"]
             sidebar["dataPrivacy"] = loc["dataPrivacy"]
             sidebar["experimental"] = loc["experimental"]
             sidebar["snippets"] = loc["snippets"]
@@ -378,7 +359,6 @@ def main() -> None:
                 data["settings"]["snippets"] = copy.deepcopy(snippets_block)
                 data["settings"]["styles"] = copy.deepcopy(styles_block)
         else:
-            tray["jotPad"] = "Jot Pad"
             sidebar["dataPrivacy"] = "Privacy & data"
             sidebar["experimental"] = "Labs"
             sidebar["snippets"] = "Phrase keys"
@@ -396,9 +376,6 @@ def main() -> None:
             ] = "Turn on in-development options. Use with care."
             data["settings"]["snippets"] = copy.deepcopy(snippets_block)
             data["settings"]["styles"] = copy.deepcopy(styles_block)
-
-        data.pop("scratchpad", None)
-        data["jotPad"] = copy.deepcopy(jotpad_block)
 
         save_json(path, data)
         print(f"updated {path.relative_to(ROOT)}")

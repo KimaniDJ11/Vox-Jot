@@ -5,7 +5,6 @@
     "copyLastTranscript": "نسخ النص الأخير",
     "quit": "استقال",
     "cancel": "إلغاء",
-    "jotPad": "Jot Pad",
     "speakSelected": "التحدث المحدد",
     "dictateMode": "إملاء",
     "refineMode": "صقل",
@@ -1631,31 +1630,6 @@
     "quality": "الجودة",
     "speed": "السرعة"
   },
-  "jotPad": {
-    "newNote": "ملاحظة جديدة",
-    "empty": "لا توجد ملاحظات حتى الآن.",
-    "untitled": "بدون عنوان",
-    "titlePlaceholder": "ملاحظة العنوان",
-    "contentPlaceholder": "ابدأ بالكتابة…",
-    "noNoteSelected": "حدد ملاحظة أو قم بإنشاء ملاحظة جديدة",
-    "createFirst": "قم بإنشاء ملاحظة",
-    "pin": "دبوس",
-    "unpin": "إزالة التثبيت",
-    "emptyDescription": "قم بإنشاء ملاحظة لإبقاء الأفكار والمسودات والمقتطفات في متناول يديك.",
-    "emptyExample": "على سبيل المثال، قم بإملاء ملاحظات الاجتماع هنا، ثم اطلب من Convo تحويلها إلى ملخص واضح.",
-    "title": "Jot Pad",
-    "untitledNote": "مذكرة بلا عنوان",
-    "speak": "اقرأ بصوت عالٍ",
-    "stopSpeaking": "توقف عن القراءة",
-    "saveHint": "حفظ",
-    "lastEdited": "تم التعديل الأخير",
-    "charCount_one": "{{count}} شار",
-    "charCount_other": "{{count}} الأحرف",
-    "deleteConfirm": "هل تريد حذف الملاحظة \"{{noteTitle}}\"؟",
-    "notes": "ملاحظات",
-    "search": "ملاحظات البحث",
-    "pinned": "مثبت"
-  },
   "convo": {
     "title": "محادثة",
     "selection": {
@@ -1671,24 +1645,6 @@
         "تلخيص النص المحدد",
         "أعد كتابتها بشكل أكثر وضوحا",
         "سحب عناصر العمل"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "ابدأ محادثة حول ملاحظتك الحالية.",
-      "replaceNote": "استبدال الملاحظة",
-      "appendToNote": "إلحاق بالملاحظة",
-      "copyDraft": "نسخ المسودة",
-      "noteReplaced": "تم استبدال الملاحظة الحالية.",
-      "noteReplaceFailed": "لا يمكن استبدال الملاحظة.",
-      "noteAppended": "تم إلحاق المسودة بالمذكرة.",
-      "noteAppendFailed": "تعذر الإلحاق بالملاحظة.",
-      "draftCopied": "نسخ المسودة.",
-      "starterPrompts": [
-        "تحويل هذه المذكرة إلى مسودة نظيفة",
-        "العثور على النقاط الرئيسية",
-        "اقترح الخطوات التالية"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "انتقل إلى التحسين",
       "goToListen": "اذهب إلى الاستماع",
       "openSettings": "افتح الإعدادات",
-      "openJotPad": "افتح Jot Pad",
       "disablePostProcess": "تعطيل ما بعد العملية",
       "enablePostProcess": "تمكين ما بعد العملية",
       "postProcessOn": "تنظيف AI قيد التشغيل",
@@ -2565,10 +2520,6 @@
       "saveModel": "حفظ النموذج",
       "analyzeRoute": "تحليل الطريق",
       "analyzing": "جارٍ التحليل...",
-      "createNote": "إنشاء ملاحظة",
-      "loadingNotes": "جارٍ تحميل الملاحظات...",
-      "untitled": "بدون عنوان",
-      "emptyNote": "ملاحظة فارغة",
       "loadingSection": "جارٍ تحميل القسم..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "إدارة ملفات التعريف الصوتية وتحويل الصوت المسجل باستخدام Voice Changer غير المتصل بالإنترنت.",
       "voiceCloningTitle": "استنساخ الصوت",
       "voiceCloningDescription": "أنشئ ملفات تعريف مستنسخة من الصوت المرجعي، ثم قم بتحويلها إلى أصوات استماع محفوظة.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "قم بتسجيل ملاحظات سريعة في اللوحة العائمة وأعد فتحها عندما تحتاج إلى مواصلة العمل.",
       "studioTitle": "استوديو",
       "studioDescription": "قم بتعيين الأصوات المحفوظة للشخصيات، وتحرير البرنامج النصي، وتقديم صوت القصة.",
       "generatedAudioTitle": "الصوت المولد",
@@ -2748,7 +2697,7 @@
       "version": "الإصدار {{version}}",
       "versionUnknown": "غير معروف",
       "summaryPrimary": "تم تصميم Vox Jot حول أدوات التعرف على الكلام والترجمة والتشغيل المحلية بما في ذلك نماذج عائلة Whisper ومحركات TTS وتكامل كتابة النظام.",
-      "summarySecondary": "يجمع التطبيق بين التقاط الصوت المحلي وتنظيف AI والتاريخ وJot Pad في سير عمل سطح مكتب واحد.",
+      "summarySecondary": "يجمع التطبيق بين التقاط الصوت المحلي وتنظيف AI والتاريخ في سير عمل سطح مكتب واحد.",
       "highlightsTitle": "ماذا يوجد بالداخل",
       "highlightLocalTitle": "خطاب محلي",
       "highlightLocalDetail": "Whisper / Parakeet الاستدلال مع Silero VAD الاختياري.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "خط أنابيب الصوت Rust"
-    },
-    "jotPad": {
-      "empty": "ابدأ ملاحظتك الأولى",
-      "emptyDescription": "قم بالإملاء أو الكتابة في Jot Pad لإبقاء الأفكار في متناول يدك.",
-      "emptyExample": "على سبيل المثال، قم بإملاء ملاحظات الاجتماع هنا، ثم قم بتنقيحها وتحويلها إلى ملخص واضح."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "الرئيسية",
         "corrections": "قاموس",
-        "jotPad": "Jot Pad",
         "fileTranscription": "نسخ الملف"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "وجهة الإملاء",
-        "description": "اختر ما إذا كان سيتم لصق الإملاء المترجم مباشرةً، أو فتح المعاينة أولاً، أو الانتقال إلى Jot Pad."
+        "description": "اختر ما إذا كان سيتم لصق الإملاء المترجم مباشرةً أو فتح المعاينة أولاً."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "المعاينة أولا",
         "description": "قم بتأكيد الترجمة قبل اللصق."
-      },
-      "openInJotPad": {
-        "title": "فتح في Jot Pad",
-        "description": "قم بتوجيه النص المترجم إلى لوحة المسودة."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "المعاينة أولا",
         "description": "قم بالمراجعة قبل استبدال النص المحدد."
-      },
-      "openInJotPad": {
-        "title": "فتح في Jot Pad",
-        "description": "أرسل التحديد المترجم إلى لوحة المسودة."
       }
     }
   },

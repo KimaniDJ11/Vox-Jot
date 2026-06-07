@@ -107,7 +107,7 @@ impl CorrectionStore {
         if let Err(err) = store.init_database() {
             // Recover from databases this build can't open instead of crash-looping
             // on every launch: a newer-than-build schema, or an on-disk corruption.
-            // Mirrors the recovery in HistoryManager/NotesManager.
+            // Mirrors the recovery in HistoryManager.
             let reason = if is_database_too_far_ahead(&err) {
                 Some("too-far-ahead")
             } else if is_corrupt_database(&err) {

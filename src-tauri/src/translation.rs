@@ -72,7 +72,6 @@ pub fn destination_label_for_dictation(settings: &AppSettings) -> &'static str {
     match settings.translation_destination_mode {
         TranslationDestinationMode::PasteInPlace => "paste_in_place",
         TranslationDestinationMode::PreviewThenPaste => "preview_then_paste",
-        TranslationDestinationMode::OpenInJotPad => "open_in_jot_pad",
     }
 }
 
@@ -86,7 +85,6 @@ pub fn selection_destination_label(
         crate::settings::SelectionTranslationDestinationMode::PreviewThenReplace => {
             "preview_then_replace"
         }
-        crate::settings::SelectionTranslationDestinationMode::OpenInJotPad => "open_in_jot_pad",
     }
 }
 
@@ -104,16 +102,6 @@ pub fn dictation_requires_preview(settings: &AppSettings, translated_text: &str)
             TranslationOutputMode::Bilingual
         )
         || translated_text.chars().count() > 1200
-}
-
-pub fn should_open_jot_pad_for_dictation(settings: &AppSettings) -> bool {
-    settings.translation_destination_mode == TranslationDestinationMode::OpenInJotPad
-}
-
-pub fn should_open_jot_pad_for_selection(settings: &AppSettings, replace_failed: bool) -> bool {
-    replace_failed
-        || settings.selection_translation_destination_mode
-            == crate::settings::SelectionTranslationDestinationMode::OpenInJotPad
 }
 
 fn translate_route(

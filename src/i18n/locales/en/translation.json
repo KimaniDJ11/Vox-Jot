@@ -32,24 +32,6 @@
       "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
       "copiedReply": "Copied the last reply."
     },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Start a conversation about your current note.",
-      "starterPrompts": [
-        "Turn this note into a clean draft",
-        "Find the main points",
-        "Suggest next steps"
-      ],
-      "replaceNote": "Replace Note",
-      "appendToNote": "Append to Note",
-      "copyDraft": "Copy Draft",
-      "noteReplaced": "Replaced the current note.",
-      "noteReplaceFailed": "Couldn't replace the note.",
-      "noteAppended": "Appended the draft to the note.",
-      "noteAppendFailed": "Couldn't append to the note.",
-      "draftCopied": "Copied the draft."
-    },
     "settingsCoach": {
       "label": "Settings Coach",
       "title": "Settings Coach",
@@ -373,7 +355,6 @@
     "startRecording": "Start Recording",
     "settings": "Settings",
     "copyLastTranscript": "Copy Last Transcript",
-    "jotPad": "Jot Pad",
     "quit": "Quit",
     "cancel": "Cancel",
     "speakSelected": "Speak Selected",
@@ -2135,31 +2116,6 @@
     "processing": "Processing...",
     "recording": "Recording"
   },
-  "jotPad": {
-    "title": "Jot Pad",
-    "newNote": "New note",
-    "empty": "No notes yet.",
-    "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
-    "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
-    "untitled": "Untitled",
-    "untitledNote": "Untitled note",
-    "titlePlaceholder": "Note title",
-    "contentPlaceholder": "Start typing…",
-    "noNoteSelected": "Select a note or create a new one",
-    "createFirst": "Create a note",
-    "pin": "Pin",
-    "unpin": "Unpin",
-    "speak": "Read aloud",
-    "stopSpeaking": "Stop reading",
-    "saveHint": "Save",
-    "lastEdited": "Last edited",
-    "charCount_one": "{{count}} char",
-    "charCount_other": "{{count}} chars",
-    "deleteConfirm": "Delete note \"{{noteTitle}}\"?",
-    "notes": "Notes",
-    "search": "Search notes",
-    "pinned": "Pinned"
-  },
   "listen": {
     "tuning": {
       "styleInstructions": "Style notes",
@@ -2436,7 +2392,6 @@
       "goToRefine": "Go to Refine",
       "goToListen": "Go to Listen",
       "openSettings": "Open Settings",
-      "openJotPad": "Open Jot Pad",
       "disablePostProcess": "Disable post-process",
       "enablePostProcess": "Enable post-process",
       "postProcessOn": "AI cleanup is on",
@@ -2581,10 +2536,6 @@
       "saveModel": "Save model",
       "analyzeRoute": "Analyze route",
       "analyzing": "Analyzing...",
-      "createNote": "Create note",
-      "loadingNotes": "Loading notes...",
-      "untitled": "Untitled",
-      "emptyNote": "Empty note",
       "loadingSection": "Loading section..."
     },
     "routePreview": {
@@ -2653,8 +2604,6 @@
       "myVoicesDescription": "Reuse saved and tuned voice profiles for Listen workflows.",
       "voiceCloningTitle": "Voice cloning",
       "voiceCloningDescription": "Create clone profiles from reference audio, then turn them into saved Listen voices.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Capture quick notes in the floating pad and reopen them when you need to keep working.",
       "studioTitle": "Studio",
       "studioDescription": "Assign saved voices to characters, edit a script, and render story audio.",
       "generatedAudioTitle": "Generated audio",
@@ -2720,11 +2669,6 @@
       "appleNotice": "Apple Intelligence does not need a separate model override here.",
       "translatePhraseKeysLabel": "Translate phrase keys",
       "translatePhraseKeysDescription": "Apply translation rules to phrase-key expansions when they are inserted into translated output."
-    },
-    "jotPad": {
-      "empty": "Start your first note",
-      "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
-      "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
     },
     "hero": {
       "general": {
@@ -2799,7 +2743,6 @@
       "dictate": {
         "history": "Home",
         "corrections": "Dictionary",
-        "jotPad": "Jot Pad",
         "fileTranscription": "File Transcription"
       },
       "refine": {
@@ -3081,7 +3024,7 @@
       "version": "Version {{version}}",
       "versionUnknown": "unknown",
       "summaryPrimary": "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.",
-      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.",
+      "summarySecondary": "The app combines local audio capture, AI cleanup, and history into one desktop workflow.",
       "highlightsTitle": "What's inside",
       "highlightLocalTitle": "Local speech",
       "highlightLocalDetail": "Whisper / Parakeet inference with optional Silero VAD.",
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Dictation Destination",
-        "description": "Choose whether translated dictation pastes directly, opens a preview first, or goes to Jot Pad."
+        "description": "Choose whether translated dictation pastes directly or opens a preview first."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Preview first",
         "description": "Confirm the translation before pasting."
-      },
-      "openInJotPad": {
-        "title": "Open in Jot Pad",
-        "description": "Route the translated text to the scratchpad."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Preview first",
         "description": "Review before replacing selected text."
-      },
-      "openInJotPad": {
-        "title": "Open in Jot Pad",
-        "description": "Send the translated selection to the scratchpad."
       }
     }
   },

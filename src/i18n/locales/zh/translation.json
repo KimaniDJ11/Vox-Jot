@@ -5,7 +5,6 @@
     "copyLastTranscript": "复制最后的成绩单",
     "quit": "戒烟",
     "cancel": "取消",
-    "jotPad": "Jot Pad",
     "speakSelected": "说出所选内容",
     "dictateMode": "口授",
     "refineMode": "精炼",
@@ -1631,31 +1630,6 @@
     "quality": "品质",
     "speed": "速度"
   },
-  "jotPad": {
-    "newNote": "新笔记",
-    "empty": "还没有笔记。",
-    "untitled": "无题",
-    "titlePlaceholder": "注释标题",
-    "contentPlaceholder": "开始输入...",
-    "noNoteSelected": "选择注释或创建新注释",
-    "createFirst": "创建注释",
-    "pin": "销",
-    "unpin": "取消固定",
-    "emptyDescription": "创建笔记以方便保存口述的想法、草稿和片段。",
-    "emptyExample": "例如，在此处口述会议记录，然后要求 Convo 将其转化为清晰的摘要。",
-    "title": "Jot Pad",
-    "untitledNote": "无标题笔记",
-    "speak": "大声朗读",
-    "stopSpeaking": "停止阅读",
-    "saveHint": "保存",
-    "lastEdited": "最后编辑",
-    "charCount_one": "{{count}} 字符",
-    "charCount_other": "{{count}} 字符",
-    "deleteConfirm": "删除注释“{{noteTitle}}”？",
-    "notes": "注释",
-    "search": "搜索笔记",
-    "pinned": "已固定"
-  },
   "convo": {
     "title": "康沃",
     "selection": {
@@ -1667,29 +1641,7 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": [
-        "总结所选文本",
-        "重写一下更清楚",
-        "拉出行动项目"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "开始讨论您当前的笔记。",
-      "replaceNote": "替换注释",
-      "appendToNote": "附加到注释",
-      "copyDraft": "复制草稿",
-      "noteReplaced": "替换了当前的注释。",
-      "noteReplaceFailed": "无法替换注释。",
-      "noteAppended": "将草稿附加到说明中。",
-      "noteAppendFailed": "无法附加到注释。",
-      "draftCopied": "抄了草稿。",
-      "starterPrompts": [
-        "把这张纸条变成干净的草稿",
-        "找到要点",
-        "建议后续步骤"
-      ]
+      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -2420,7 +2372,6 @@
       "goToRefine": "前往细化",
       "goToListen": "前往收听",
       "openSettings": "打开设置",
-      "openJotPad": "打开Jot Pad",
       "disablePostProcess": "禁用后处理",
       "enablePostProcess": "启用后处理",
       "postProcessOn": "AI 清理已开启",
@@ -2565,10 +2516,6 @@
       "saveModel": "保存模型",
       "analyzeRoute": "分析路线",
       "analyzing": "正在分析...",
-      "createNote": "创建笔记",
-      "loadingNotes": "正在加载笔记...",
-      "untitled": "无题",
-      "emptyNote": "空注",
       "loadingSection": "加载部分..."
     },
     "corrections": {
@@ -2636,8 +2583,6 @@
       "myVoicesDescription": "使用离线语音转换器管理语音配置文件并转换录制的音频。",
       "voiceCloningTitle": "语音克隆",
       "voiceCloningDescription": "从参考音频创建克隆配置文件，然后将其转换为保存的聆听声音。",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "在浮动板上捕捉快速笔记，并在需要继续工作时重新打开它们。",
       "studioTitle": "工作室",
       "studioDescription": "将保存的声音分配给角色、编辑脚本并渲染故事音频。",
       "generatedAudioTitle": "生成的音频",
@@ -2748,7 +2693,7 @@
       "version": "版本{{version}}",
       "versionUnknown": "未知",
       "summaryPrimary": "Vox Jot 围绕本地语音识别、翻译和播放工具构建，包括 Whisper 系列模型、TTS 引擎和系统打字集成。",
-      "summarySecondary": "该应用程序将本地音频捕获、AI 清理、历史记录和 Jot Pad 整合到一个桌面工作流程中。",
+      "summarySecondary": "该应用程序将本地音频捕获、AI 清理和历史记录整合到一个桌面工作流程中。",
       "highlightsTitle": "里面有什么",
       "highlightLocalTitle": "本地演讲",
       "highlightLocalDetail": "Whisper / Parakeet 推理，可选 Silero VAD。",
@@ -2760,11 +2705,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust 音频管道"
-    },
-    "jotPad": {
-      "empty": "开始你的第一个笔记",
-      "emptyDescription": "听写或输入 Jot Pad 以便轻松掌握想法。",
-      "emptyExample": "例如，在此处口述会议记录，然后将其细化为清晰的摘要。"
     },
     "hero": {
       "general": {
@@ -2952,7 +2892,6 @@
       "dictate": {
         "history": "首页",
         "corrections": "词典",
-        "jotPad": "Jot Pad",
         "fileTranscription": "文件转录"
       },
       "refine": {
@@ -3223,7 +3162,7 @@
       },
       "dictationDestination": {
         "title": "听写目的地",
-        "description": "选择是直接粘贴翻译后的听写、先打开预览还是转到 Jot Pad。"
+        "description": "选择是直接粘贴翻译后的听写还是先打开预览。"
       }
     },
     "labels": {
@@ -3284,10 +3223,6 @@
       "previewThenPaste": {
         "title": "先预览",
         "description": "粘贴前确认翻译。"
-      },
-      "openInJotPad": {
-        "title": "在 Jot Pad 中打开",
-        "description": "将翻译后的文本传送到草稿本。"
       }
     },
     "selection": {
@@ -3298,10 +3233,6 @@
       "previewThenReplace": {
         "title": "先预览",
         "description": "替换所选文本之前先进行检查。"
-      },
-      "openInJotPad": {
-        "title": "在 Jot Pad 中打开",
-        "description": "将翻译后的选择发送到草稿本。"
       }
     }
   },

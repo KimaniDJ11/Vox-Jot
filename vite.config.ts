@@ -28,7 +28,6 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(__dirname, "index.html"),
         overlay: resolve(__dirname, "src/overlay/index.html"),
-        scratchpad: resolve(__dirname, "src/scratchpad/index.html"),
         detail: resolve(__dirname, "src/detail/index.html"),
       },
       output: {

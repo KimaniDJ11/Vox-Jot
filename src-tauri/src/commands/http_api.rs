@@ -5,7 +5,7 @@
 //! the user-visible settings to disk; the `settings-changed` listener in
 //! `lib.rs` then asks the manager to start/stop the server. This split
 //! keeps the UI thin and means flipping the toggle from any window
-//! (main, scratchpad, etc.) is consistent.
+//! (main, detail, etc.) is consistent.
 
 use crate::http_api::HttpApiManager;
 use crate::secret_store;

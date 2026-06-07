@@ -42,7 +42,6 @@ mod product_architecture;
 mod refine_models;
 #[cfg(not(feature = "ci-mock-transcription"))]
 mod regression;
-mod scratchpad;
 mod screen_context;
 #[cfg(target_os = "linux")]
 mod screen_context_linux;
@@ -133,7 +132,6 @@ use managers::continuous_cloning::ContinuousCloningManager;
 use managers::convo::ConvoController;
 use managers::history::HistoryManager;
 use managers::model::ModelManager;
-use managers::notes::NotesManager;
 use managers::transcription::TranscriptionManager;
 use managers::watch_folders::WatchFolderManager;
 use post_processing::PreviewManager;
@@ -152,7 +150,6 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::detail_view::DetailViewRoutingState;
-use crate::scratchpad::ScratchpadRoutingState;
 use crate::screen_context::ContextCaptureManager;
 use crate::settings::get_settings;
 use crate::sidecar::SidecarManager;
@@ -474,10 +471,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
         HistoryManager::new(app_handle)
             .map_err(|error| anyhow::anyhow!("Failed to initialize history manager: {error:#}"))?,
     );
-    let notes_manager = Arc::new(
-        NotesManager::new(app_handle)
-            .map_err(|error| anyhow::anyhow!("Failed to initialize notes manager: {error:#}"))?,
-    );
     let tts_manager = Arc::new(TtsManager::new(app_handle));
     let continuous_cloning_manager = Arc::new(ContinuousCloningManager::new(app_handle));
     let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
@@ -500,7 +493,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     app_handle.manage(model_manager.clone());
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
-    app_handle.manage(notes_manager.clone());
     app_handle.manage(tts_manager.clone());
     app_handle.manage(continuous_cloning_manager.clone());
     app_handle.manage(sidecar_manager.clone());
@@ -508,7 +500,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     app_handle.manage(context_capture_manager.clone());
     app_handle.manage(watch_folder_manager.clone());
     app_handle.manage(http_api_manager.clone());
-    app_handle.manage(ScratchpadRoutingState::default());
     app_handle.manage(DetailViewRoutingState::default());
 
     // The watch-folders supervisor reads `settings.watch_folders` lazily
@@ -641,9 +632,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
                     Ok(()) => log::info!("Model unloaded via tray."),
                     Err(e) => log::error!("Failed to unload model via tray: {}", e),
                 }
-            }
-            "scratchpad" => {
-                crate::scratchpad::toggle_scratchpad(app);
             }
             "navigate_dictate" => {
                 navigate_main_window(app, "dictate");
@@ -1063,20 +1051,6 @@ pub fn run(cli_args: CliArgs) {
         ocr_models::set_ocr_model_selection,
         ocr_models::download_ocr_model,
         ocr_models::get_active_ocr_downloads,
-        commands::notes::get_notes,
-        commands::notes::get_note,
-        commands::notes::create_note,
-        commands::notes::update_note,
-        commands::notes::delete_note,
-        commands::notes::toggle_note_pin,
-        commands::notes::export_notes,
-        commands::notes::delete_all_notes,
-        commands::notes::show_scratchpad,
-        commands::notes::show_scratchpad_for_note,
-        commands::notes::toggle_scratchpad,
-        commands::notes::set_scratchpad_editor_armed,
-        commands::notes::set_scratchpad_titlebar_drag_enabled,
-        commands::notes::consume_scratchpad_target_note,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
         commands::corrections::update_correction,
@@ -1132,8 +1106,6 @@ pub fn run(cli_args: CliArgs) {
         commands::convo::convo_pick_files_context,
         commands::convo::convo_pick_folder_context,
         commands::convo::convo_get_settings_catalog,
-        commands::convo::convo_get_current_note,
-        commands::convo::convo_apply_note_edit,
         commands::convo::convo_start_audio_capture,
         commands::convo::convo_stop_audio_capture,
         commands::convo::convo_save_audio_capture,
@@ -1447,11 +1419,7 @@ pub fn run(cli_args: CliArgs) {
                 // Update tray icon to match new theme, maintaining idle state
                 utils::change_tray_icon(window.app_handle(), utils::TrayIconState::Idle);
             }
-            tauri::WindowEvent::Focused(focused) => {
-                if window.label() == scratchpad::SCRATCHPAD_LABEL {
-                    scratchpad::notify_scratchpad_focus_change(window.app_handle(), *focused);
-                }
-            }
+            tauri::WindowEvent::Focused(_) => {}
             _ => {}
         })
         .invoke_handler(specta_builder.invoke_handler())

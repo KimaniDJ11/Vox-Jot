@@ -28,7 +28,6 @@ const AUDIO_SERVER_SEARCH_PATHS: &[&str] = &[
 #[serde(rename_all = "snake_case")]
 pub enum ConvoMode {
     Selection,
-    Jotpad,
     SettingsCoach,
     FilesContext,
 }
@@ -46,14 +45,14 @@ pub struct ConvoTranscriptItem {
 pub struct ConvoContextItem {
     pub id: String,
     pub label: String,
-    pub source_type: String, // "selection", "pasted_text", "file", "folder", "note", "settings_catalog"
+    pub source_type: String, // "selection", "pasted_text", "file", "folder", "settings_catalog"
     pub content: String,
     pub char_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ConvoActionSuggestion {
-    pub action_type: String, // "open_setting", "replace_note", "append_note", "copy_draft"
+    pub action_type: String, // "open_setting", "copy_draft"
     pub label: String,
     pub payload: String,
 }

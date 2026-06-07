@@ -5,7 +5,6 @@
     "copyLastTranscript": "Skopiuj ostatnią transkrypcję",
     "quit": "Przestań",
     "cancel": "Anuluj",
-    "jotPad": "Jot Pad",
     "speakSelected": "Mów wybrane",
     "dictateMode": "Dyktuj",
     "refineMode": "Udoskonalaj",
@@ -1631,31 +1630,6 @@
     "quality": "Jakość",
     "speed": "Prędkość"
   },
-  "jotPad": {
-    "newNote": "Nowa notatka",
-    "empty": "Nie ma jeszcze żadnych notatek.",
-    "untitled": "Bez tytułu",
-    "titlePlaceholder": "Tytuł notatki",
-    "contentPlaceholder": "Zacznij pisać…",
-    "noNoteSelected": "Wybierz notatkę lub utwórz nową",
-    "createFirst": "Utwórz notatkę",
-    "pin": "Przypnij",
-    "unpin": "Odepnij",
-    "emptyDescription": "Utwórz notatkę, aby mieć pod ręką podyktowane przemyślenia, wersje robocze i fragmenty.",
-    "emptyExample": "Na przykład dyktuj tutaj notatki ze spotkań, a następnie poproś Convo o przekształcenie ich w przejrzyste podsumowanie.",
-    "title": "Jot Pad",
-    "untitledNote": "Notatka bez tytułu",
-    "speak": "Przeczytaj na głos",
-    "stopSpeaking": "Przestań czytać",
-    "saveHint": "Zapisz",
-    "lastEdited": "Ostatnio edytowane",
-    "charCount_one": "{{count}} znak",
-    "charCount_other": "Znaki {{count}}",
-    "deleteConfirm": "Usunąć notatkę „{{noteTitle}}”?",
-    "notes": "Notatki",
-    "search": "Szukaj notatek",
-    "pinned": "Przypięty"
-  },
   "convo": {
     "title": "Konwój",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Podsumuj zaznaczony tekst",
         "Napisz to jeszcze jaśniej",
         "Wyciągnij elementy akcji"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Rozpocznij rozmowę na temat bieżącej notatki.",
-      "replaceNote": "Zamień notatkę",
-      "appendToNote": "Dołącz do notatki",
-      "copyDraft": "Kopiuj wersję roboczą",
-      "noteReplaced": "Zastąpił bieżącą notatkę.",
-      "noteReplaceFailed": "Nie udało się zastąpić notatki.",
-      "noteAppended": "Załączono projekt do notatki.",
-      "noteAppendFailed": "Nie udało się dołączyć do notatki.",
-      "draftCopied": "Skopiowano wersję roboczą.",
-      "starterPrompts": [
-        "Zmień tę notatkę w czystą wersję roboczą",
-        "Znajdź główne punkty",
-        "Zaproponuj kolejne kroki"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Przejdź do opcji Udoskonalaj",
       "goToListen": "Przejdź do opcji Słuchaj",
       "openSettings": "Otwórz Ustawienia",
-      "openJotPad": "Otwórz Jot Pad",
       "disablePostProcess": "Wyłącz proces końcowy",
       "enablePostProcess": "Włącz proces końcowy",
       "postProcessOn": "Czyszczenie AI jest włączone",
@@ -2565,10 +2520,6 @@
       "saveModel": "Zapisz model",
       "analyzeRoute": "Analizuj trasę",
       "analyzing": "Analizuję...",
-      "createNote": "Utwórz notatkę",
-      "loadingNotes": "Ładowanie notatek...",
-      "untitled": "Bez tytułu",
-      "emptyNote": "Pusta notatka",
       "loadingSection": "Ładowanie sekcji..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Zarządzaj profilami głosowymi i konwertuj nagrany dźwięk za pomocą Zmieniacza Głosu offline.",
       "voiceCloningTitle": "Klonowanie głosu",
       "voiceCloningDescription": "Twórz profile klonowania z referencyjnego dźwięku, a następnie przekształcaj je w zapisane głosy Listen.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Rób szybkie notatki na ruchomym panelu i otwieraj je ponownie, gdy chcesz kontynuować pracę.",
       "studioTitle": "Studio",
       "studioDescription": "Przypisz zapisane głosy do postaci, edytuj scenariusz i renderuj dźwięk historii.",
       "generatedAudioTitle": "Wygenerowany dźwięk",
@@ -2748,7 +2697,7 @@
       "version": "Wersja {{version}}",
       "versionUnknown": "nieznany",
       "summaryPrimary": "Vox Jot opiera się na narzędziach do lokalnego rozpoznawania mowy, tłumaczenia i odtwarzania, w tym na modelach z rodziny Whisper, silnikach TTS i integracji systemowego wpisywania tekstu.",
-      "summarySecondary": "Aplikacja łączy lokalne przechwytywanie dźwięku, czyszczenie AI, historię i Jot Pad w jeden przepływ pracy na komputerze.",
+      "summarySecondary": "Aplikacja łączy lokalne przechwytywanie dźwięku, czyszczenie AI i historię w jeden przepływ pracy na komputerze.",
       "highlightsTitle": "Co jest w środku",
       "highlightLocalTitle": "Lokalna mowa",
       "highlightLocalDetail": "Wnioskowanie Whisper / Parakeet z opcjonalnym Silero VAD.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Potok audio Rust"
-    },
-    "jotPad": {
-      "empty": "Zacznij swoją pierwszą notatkę",
-      "emptyDescription": "Dyktuj lub pisz w Jot Pad, aby mieć pod ręką swoje myśli.",
-      "emptyExample": "Możesz na przykład dyktować tutaj notatki ze spotkań, a następnie udoskonalić je w przejrzyste podsumowanie."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Start",
         "corrections": "Słownik",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Transkrypcja pliku"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Miejsce docelowe dyktowania",
-        "description": "Wybierz, czy przetłumaczone dyktando ma być wklejane bezpośrednio, najpierw otwiera podgląd, czy też przechodzi do Jot Pad."
+        "description": "Wybierz, czy przetłumaczone dyktando ma być wklejane bezpośrednio, czy najpierw otwierać podgląd."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Najpierw podgląd",
         "description": "Potwierdź tłumaczenie przed wklejeniem."
-      },
-      "openInJotPad": {
-        "title": "Otwórz w Jot Pad",
-        "description": "Prześlij przetłumaczony tekst do notatnika."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Najpierw podgląd",
         "description": "Przejrzyj przed zastąpieniem zaznaczonego tekstu."
-      },
-      "openInJotPad": {
-        "title": "Otwórz w Jot Pad",
-        "description": "Wyślij przetłumaczony wybór do notatnika."
       }
     }
   },

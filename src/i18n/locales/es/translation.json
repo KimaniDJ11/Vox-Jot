@@ -5,7 +5,6 @@
     "copyLastTranscript": "Copiar la última transcripción",
     "quit": "dejar de fumar",
     "cancel": "Cancelar",
-    "jotPad": "Jot Pad",
     "speakSelected": "Habla seleccionado",
     "dictateMode": "Dictar",
     "refineMode": "Refinar",
@@ -1631,31 +1630,6 @@
     "quality": "Calidad",
     "speed": "Velocidad"
   },
-  "jotPad": {
-    "newNote": "Nueva nota",
-    "empty": "Aún no hay notas.",
-    "untitled": "Sin título",
-    "titlePlaceholder": "Título de la nota",
-    "contentPlaceholder": "Empieza a escribir…",
-    "noNoteSelected": "Seleccione una nota o cree una nueva",
-    "createFirst": "crear una nota",
-    "pin": "Alfiler",
-    "unpin": "Desanclar",
-    "emptyDescription": "Cree una nota para tener a mano pensamientos, borradores y fragmentos dictados.",
-    "emptyExample": "Por ejemplo, dicte notas de la reunión aquí y luego pídale a Convo que las convierta en un resumen limpio.",
-    "title": "Jot Pad",
-    "untitledNote": "Nota sin título",
-    "speak": "leer en voz alta",
-    "stopSpeaking": "dejar de leer",
-    "saveHint": "Guardar",
-    "lastEdited": "Última edición",
-    "charCount_one": "Carácter {{count}}",
-    "charCount_other": "Caracteres {{count}}",
-    "deleteConfirm": "¿Eliminar nota \"{{noteTitle}}\"?",
-    "notes": "Notas",
-    "search": "Notas de búsqueda",
-    "pinned": "Fijado"
-  },
   "convo": {
     "title": "conversación",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Resumir el texto seleccionado",
         "Reescríbelo más claramente",
         "Sacar elementos de acción"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Inicie una conversación sobre su nota actual.",
-      "replaceNote": "Reemplazar nota",
-      "appendToNote": "Agregar a la nota",
-      "copyDraft": "Copiar borrador",
-      "noteReplaced": "Reemplazó la nota actual.",
-      "noteReplaceFailed": "No se pudo reemplazar la nota.",
-      "noteAppended": "Adjunto el borrador a la nota.",
-      "noteAppendFailed": "No se pudo agregar a la nota.",
-      "draftCopied": "Copié el borrador.",
-      "starterPrompts": [
-        "Convierte esta nota en un borrador limpio",
-        "Encuentra los puntos principales",
-        "Sugerir próximos pasos"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Ir a refinar",
       "goToListen": "Ir a escuchar",
       "openSettings": "Abrir configuración",
-      "openJotPad": "Abrir Jot Pad",
       "disablePostProcess": "Deshabilitar el posproceso",
       "enablePostProcess": "Habilitar posproceso",
       "postProcessOn": "La limpieza AI está activada",
@@ -2565,10 +2520,6 @@
       "saveModel": "Guardar modelo",
       "analyzeRoute": "Analizar ruta",
       "analyzing": "Analizando...",
-      "createNote": "Crear nota",
-      "loadingNotes": "Cargando notas...",
-      "untitled": "Sin título",
-      "emptyNote": "nota vacia",
       "loadingSection": "Cargando sección..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Administre perfiles de voz y convierta audio grabado con un cambiador de voz sin conexión.",
       "voiceCloningTitle": "Clonación de voz",
       "voiceCloningDescription": "Cree perfiles clonados a partir de audio de referencia y luego conviértalos en voces Escucha guardadas.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Capture notas rápidas en el panel flotante y vuelva a abrirlas cuando necesite seguir trabajando.",
       "studioTitle": "estudio",
       "studioDescription": "Asigne voces guardadas a personajes, edite un guión y reproduzca el audio de la historia.",
       "generatedAudioTitle": "audio generado",
@@ -2748,7 +2697,7 @@
       "version": "Versión {{version}}",
       "versionUnknown": "desconocido",
       "summaryPrimary": "Vox Jot se basa en herramientas locales de reconocimiento de voz, traducción y reproducción, incluidos los modelos de la familia Whisper, motores TTS e integraciones de escritura de sistemas.",
-      "summarySecondary": "La aplicación combina captura de audio local, limpieza de AI, historial y Jot Pad en un flujo de trabajo de escritorio.",
+      "summarySecondary": "La aplicación combina captura de audio local, limpieza de AI e historial en un flujo de trabajo de escritorio.",
       "highlightsTitle": "¿Qué hay dentro?",
       "highlightLocalTitle": "discurso local",
       "highlightLocalDetail": "Inferencia Whisper / Parakeet con Silero VAD opcional.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Pipeline de audio en Rust"
-    },
-    "jotPad": {
-      "empty": "Comienza tu primera nota",
-      "emptyDescription": "Dicte o escriba en el Jot Pad para tener sus ideas a mano.",
-      "emptyExample": "Por ejemplo, dicte notas de la reunión aquí y luego refinelas hasta convertirlas en un resumen claro."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Inicio",
         "corrections": "Diccionario",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Transcripción de archivos"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Destino de dictado",
-        "description": "Elija si el dictado traducido se pega directamente, abre primero una vista previa o va a Jot Pad."
+        "description": "Elija si el dictado traducido se pega directamente o abre primero una vista previa."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Vista previa primero",
         "description": "Confirme la traducción antes de pegar."
-      },
-      "openInJotPad": {
-        "title": "Abrir en Jot Pad",
-        "description": "Enrute el texto traducido al bloc de notas."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Vista previa primero",
         "description": "Revise antes de reemplazar el texto seleccionado."
-      },
-      "openInJotPad": {
-        "title": "Abrir en Jot Pad",
-        "description": "Envíe la selección traducida al bloc de notas."
       }
     }
   },

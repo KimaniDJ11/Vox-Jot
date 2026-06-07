@@ -38,11 +38,6 @@ const LearnedCorrectionsSection = lazy(() =>
     default: module.LearnedCorrectionsSection,
   })),
 );
-const JotPadSection = lazy(() =>
-  import("@/components/app-sections/dictate").then((module) => ({
-    default: module.JotPadSection,
-  })),
-);
 const FileTranscriptionSection = lazy(() =>
   import("@/components/app-sections/dictate").then((module) => ({
     default: module.FileTranscriptionSection,
@@ -92,10 +87,6 @@ const SECTION_MAP: Record<
     component: () => (
       <LearnedCorrectionsSection titleActionTargetId="learned-corrections-section-actions" />
     ),
-  },
-  "jot-pad": {
-    titleKey: "appSections.nav.dictate.jotPad",
-    component: JotPadSection,
   },
   "file-transcription": {
     titleKey: "appSections.nav.dictate.fileTranscription",

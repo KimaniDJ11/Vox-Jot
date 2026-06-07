@@ -5,7 +5,6 @@
     "copyLastTranscript": "Copiar a última transcrição",
     "quit": "Sair",
     "cancel": "Cancelar",
-    "jotPad": "Jot Pad",
     "speakSelected": "Falar selecionado",
     "dictateMode": "Ditar",
     "refineMode": "Refinar",
@@ -1631,31 +1630,6 @@
     "quality": "Qualidade",
     "speed": "Velocidade"
   },
-  "jotPad": {
-    "newNote": "Nova nota",
-    "empty": "Ainda não há notas.",
-    "untitled": "Sem título",
-    "titlePlaceholder": "Título da nota",
-    "contentPlaceholder": "Comece a digitar…",
-    "noNoteSelected": "Selecione uma nota ou crie uma nova",
-    "createFirst": "Crie uma nota",
-    "pin": "Fixar",
-    "unpin": "Liberar",
-    "emptyDescription": "Crie uma nota para manter pensamentos, rascunhos e trechos ditados à mão.",
-    "emptyExample": "Por exemplo, dite as notas da reunião aqui e peça ao Convo para transformá-las em um resumo limpo.",
-    "title": "Jot Pad",
-    "untitledNote": "Nota sem título",
-    "speak": "Leia em voz alta",
-    "stopSpeaking": "Pare de ler",
-    "saveHint": "Salvar",
-    "lastEdited": "Última edição",
-    "charCount_one": "Caractere {{count}}",
-    "charCount_other": "Caracteres {{count}}",
-    "deleteConfirm": "Excluir nota \"{{noteTitle}}\"?",
-    "notes": "Notas",
-    "search": "Notas de pesquisa",
-    "pinned": "Fixado"
-  },
   "convo": {
     "title": "Conversa",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Resuma o texto selecionado",
         "Reescreva com mais clareza",
         "Retire itens de ação"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Inicie uma conversa sobre sua nota atual.",
-      "replaceNote": "Substituir nota",
-      "appendToNote": "Anexar à nota",
-      "copyDraft": "Copiar rascunho",
-      "noteReplaced": "Substituída a nota atual.",
-      "noteReplaceFailed": "Não foi possível substituir a nota.",
-      "noteAppended": "Anexado o rascunho à nota.",
-      "noteAppendFailed": "Não foi possível anexar à nota.",
-      "draftCopied": "Copiou o rascunho.",
-      "starterPrompts": [
-        "Transforme esta nota em um rascunho limpo",
-        "Encontre os pontos principais",
-        "Sugira próximos passos"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Vá para refinar",
       "goToListen": "Vá para ouvir",
       "openSettings": "Abra Configurações",
-      "openJotPad": "Abra Jot Pad",
       "disablePostProcess": "Desativar pós-processamento",
       "enablePostProcess": "Habilitar pós-processamento",
       "postProcessOn": "A limpeza AI está ativada",
@@ -2565,10 +2520,6 @@
       "saveModel": "Salvar modelo",
       "analyzeRoute": "Analisar rota",
       "analyzing": "Analisando...",
-      "createNote": "Criar nota",
-      "loadingNotes": "Carregando notas...",
-      "untitled": "Sem título",
-      "emptyNote": "Nota vazia",
       "loadingSection": "Carregando seção..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Gerencie perfis de voz e converta áudio gravado com um Voice Changer offline.",
       "voiceCloningTitle": "Clonagem de voz",
       "voiceCloningDescription": "Crie perfis clones a partir de áudio de referência e transforme-os em vozes de escuta salvas.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Capture notas rápidas no bloco flutuante e reabra-as quando precisar continuar trabalhando.",
       "studioTitle": "Estúdio",
       "studioDescription": "Atribua vozes salvas aos personagens, edite um roteiro e renderize o áudio da história.",
       "generatedAudioTitle": "Áudio gerado",
@@ -2748,7 +2697,7 @@
       "version": "Versão {{version}}",
       "versionUnknown": "desconhecido",
       "summaryPrimary": "Vox Jot é construído em torno de ferramentas locais de reconhecimento de fala, tradução e reprodução, incluindo modelos da família Whisper, mecanismos TTS e integrações de digitação de sistema.",
-      "summarySecondary": "O aplicativo combina captura de áudio local, limpeza AI, histórico e Jot Pad em um fluxo de trabalho de desktop.",
+      "summarySecondary": "O aplicativo combina captura de áudio local, limpeza AI e histórico em um fluxo de trabalho de desktop.",
       "highlightsTitle": "O que há dentro",
       "highlightLocalTitle": "Discurso local",
       "highlightLocalDetail": "Inferência Whisper / Parakeet com Silero VAD opcional.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Pipeline de áudio Rust"
-    },
-    "jotPad": {
-      "empty": "Comece sua primeira nota",
-      "emptyDescription": "Dite ou digite no Jot Pad para manter os pensamentos à mão.",
-      "emptyExample": "Por exemplo, dite notas de reunião aqui e depois refine-as em um resumo claro."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Inicio",
         "corrections": "Dicionário",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Transcrição de arquivo"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Destino do ditado",
-        "description": "Escolha se o ditado traduzido é colado diretamente, abre uma visualização primeiro ou vai para Jot Pad."
+        "description": "Escolha se o ditado traduzido é colado diretamente ou abre uma visualização primeiro."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Pré-visualizar primeiro",
         "description": "Confirme a tradução antes de colar."
-      },
-      "openInJotPad": {
-        "title": "Abrir no Jot Pad",
-        "description": "Direcione o texto traduzido para o scratchpad."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Pré-visualizar primeiro",
         "description": "Revise antes de substituir o texto selecionado."
-      },
-      "openInJotPad": {
-        "title": "Abrir no Jot Pad",
-        "description": "Envie a seleção traduzida para o scratchpad."
       }
     }
   },

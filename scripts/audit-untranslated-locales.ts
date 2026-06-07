@@ -21,7 +21,6 @@ const EXACT_VALUE_ALLOWLIST = new Set([
   "GPU",
   "GGUF",
   "JSON",
-  "Jot Pad",
   "LLM",
   "Model Hub",
   "OCR",

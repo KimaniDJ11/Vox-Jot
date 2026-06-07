@@ -26,7 +26,6 @@ import {
   Keyboard,
   Languages,
   Monitor,
-  NotebookPen,
   Paintbrush,
   Play,
   Scale,
@@ -192,11 +191,6 @@ const DictateHistorySection = lazy(() =>
 const CorrectionsSection = lazy(() =>
   import("@/components/app-sections/dictate").then((module) => ({
     default: module.CorrectionsSection,
-  })),
-);
-const JotPadSection = lazy(() =>
-  import("@/components/app-sections/dictate").then((module) => ({
-    default: module.JotPadSection,
   })),
 );
 const FileTranscriptionSection = lazy(() =>
@@ -546,13 +540,6 @@ function App() {
           SpellCheck,
           <CorrectionsSection />,
           "teal",
-        ),
-        makeSection(
-          "jot-pad",
-          "appSections.nav.dictate.jotPad",
-          NotebookPen,
-          <JotPadSection />,
-          "gold",
         ),
         makeSection(
           "file-transcription",

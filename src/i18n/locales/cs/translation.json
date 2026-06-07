@@ -5,7 +5,6 @@
     "copyLastTranscript": "Kopírovat poslední přepis",
     "quit": "Konec",
     "cancel": "Zrušit",
-    "jotPad": "Jot Pad",
     "speakSelected": "Mluvte vybrané",
     "dictateMode": "diktovat",
     "refineMode": "Upřesnit",
@@ -1631,31 +1630,6 @@
     "quality": "Kvalita",
     "speed": "Rychlost"
   },
-  "jotPad": {
-    "newNote": "Nová poznámka",
-    "empty": "Zatím žádné poznámky.",
-    "untitled": "Bez názvu",
-    "titlePlaceholder": "Název poznámky",
-    "contentPlaceholder": "Začněte psát…",
-    "noNoteSelected": "Vyberte poznámku nebo vytvořte novou",
-    "createFirst": "Vytvořte poznámku",
-    "pin": "Pin",
-    "unpin": "Odepnout",
-    "emptyDescription": "Vytvořte poznámku, abyste měli nadiktované myšlenky, koncepty a úryvky po ruce.",
-    "emptyExample": "Zde například nadiktujte poznámky ze schůzky a poté požádejte Convo, aby je převedl do čistého shrnutí.",
-    "title": "Jot Pad",
-    "untitledNote": "Poznámka bez názvu",
-    "speak": "Čtěte nahlas",
-    "stopSpeaking": "Přestaňte číst",
-    "saveHint": "Uložit",
-    "lastEdited": "Naposledy upraveno",
-    "charCount_one": "{{count}} char",
-    "charCount_other": "{{count}} znaky",
-    "deleteConfirm": "Smazat poznámku \"{{noteTitle}}\"?",
-    "notes": "Poznámky",
-    "search": "Hledat poznámky",
-    "pinned": "Připnuto"
-  },
   "convo": {
     "title": "Convo",
     "selection": {
@@ -1671,24 +1645,6 @@
         "Shrňte vybraný text",
         "Přepiš to jasněji",
         "Vytáhněte akční předměty"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "Zahajte konverzaci o vaší aktuální poznámce.",
-      "replaceNote": "Vyměnit poznámku",
-      "appendToNote": "Připojit k poznámce",
-      "copyDraft": "Kopírovat koncept",
-      "noteReplaced": "Nahradil aktuální poznámku.",
-      "noteReplaceFailed": "Poznámku se nepodařilo nahradit.",
-      "noteAppended": "Připojil koncept k poznámce.",
-      "noteAppendFailed": "K poznámce se nepodařilo připojit.",
-      "draftCopied": "Koncept zkopírován.",
-      "starterPrompts": [
-        "Proměňte tuto poznámku v čistý koncept",
-        "Najděte hlavní body",
-        "Navrhněte další kroky"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "Přejděte na Upřesnit",
       "goToListen": "Přejděte na Poslouchat",
       "openSettings": "Otevřete Nastavení",
-      "openJotPad": "Otevřete Jot Pad",
       "disablePostProcess": "Zakázat následné zpracování",
       "enablePostProcess": "Povolit následné zpracování",
       "postProcessOn": "Vyčištění AI je zapnuto",
@@ -2565,10 +2520,6 @@
       "saveModel": "Uložit model",
       "analyzeRoute": "Analyzujte trasu",
       "analyzing": "Probíhá analýza...",
-      "createNote": "Vytvořte poznámku",
-      "loadingNotes": "Načítání poznámek...",
-      "untitled": "Bez názvu",
-      "emptyNote": "Prázdná poznámka",
       "loadingSection": "Načítání sekce..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "Spravujte hlasové profily a převádějte nahraný zvuk pomocí offline Voice Changer.",
       "voiceCloningTitle": "Klonování hlasu",
       "voiceCloningDescription": "Vytvářejte profily klonů z referenčního zvuku a poté je přeměňte na uložené hlasy poslechu.",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Zachyťte rychlé poznámky na plovoucí podložku a znovu je otevřete, když potřebujete pokračovat v práci.",
       "studioTitle": "Studio",
       "studioDescription": "Přiřaďte uložené hlasy postavám, upravte scénář a vykreslete zvuk příběhu.",
       "generatedAudioTitle": "Generovaný zvuk",
@@ -2748,7 +2697,7 @@
       "version": "Verze {{version}}",
       "versionUnknown": "neznámý",
       "summaryPrimary": "Vox Jot je postaven na nástrojích pro místní rozpoznávání řeči, překlady a přehrávání, včetně modelů řady Whisper, motorů TTS a integrací systémového psaní.",
-      "summarySecondary": "Aplikace spojuje místní snímání zvuku, čištění AI, historii a Jot Pad do jednoho pracovního postupu na ploše.",
+      "summarySecondary": "Aplikace spojuje místní snímání zvuku, čištění AI a historii do jednoho pracovního postupu na ploše.",
       "highlightsTitle": "Co je uvnitř",
       "highlightLocalTitle": "Místní řeč",
       "highlightLocalDetail": "Whisper / Parakeet odvození s volitelným Silero VAD.",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Zvukový kanál Rust"
-    },
-    "jotPad": {
-      "empty": "Začněte svou první poznámku",
-      "emptyDescription": "Diktujte nebo zadejte do Jot Pad, abyste měli myšlenky po ruce.",
-      "emptyExample": "Zde můžete například nadiktovat poznámky ze schůzky a poté je upravit do čistého shrnutí."
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "Domu",
         "corrections": "Slovník",
-        "jotPad": "Jot Pad",
         "fileTranscription": "Přepis souboru"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "Destinace diktátu",
-        "description": "Vyberte, zda se přeložený diktát vloží přímo, nejprve otevře náhled nebo přejde na Jot Pad."
+        "description": "Vyberte, zda se přeložený diktát vloží přímo, nebo nejprve otevře náhled."
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "Nejprve si prohlédněte náhled",
         "description": "Před vložením potvrďte překlad."
-      },
-      "openInJotPad": {
-        "title": "Otevřít v Jot Pad",
-        "description": "Nasměrujte přeložený text do zápisníku."
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "Nejprve si prohlédněte náhled",
         "description": "Zkontrolujte před nahrazením vybraného textu."
-      },
-      "openInJotPad": {
-        "title": "Otevřít v Jot Pad",
-        "description": "Přeložený výběr odešlete do zápisníku."
       }
     }
   },

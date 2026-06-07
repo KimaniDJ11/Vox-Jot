@@ -137,11 +137,10 @@ function main() {
       ["Corrections", "Dictionary"],
       { x: () => 82, y: () => 124 },
     ],
-    ["Jot Pad", ["Jot Pad"], { x: () => 82, y: () => 170 }],
     [
       "File Transcription",
       ["File Transcription"],
-      { x: () => 82, y: () => 216 },
+      { x: () => 82, y: () => 170 },
     ],
     ["Refine", ["Refine"], { x: (width) => width / 2, y: () => 24 }],
     ["Listen", ["Listen"], { x: (width) => width / 2 + 92, y: () => 24 }],

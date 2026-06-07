@@ -5,7 +5,6 @@
     "copyLastTranscript": "最後のトランスクリプトをコピー",
     "quit": "やめる",
     "cancel": "キャンセル",
-    "jotPad": "Jot Pad",
     "speakSelected": "選択したものを読み上げる",
     "dictateMode": "口述する",
     "refineMode": "絞り込む",
@@ -1631,31 +1630,6 @@
     "quality": "品質",
     "speed": "速度"
   },
-  "jotPad": {
-    "newNote": "新しいメモ",
-    "empty": "まだメモはありません。",
-    "untitled": "無題",
-    "titlePlaceholder": "ノートのタイトル",
-    "contentPlaceholder": "入力を開始してください…",
-    "noNoteSelected": "メモを選択するか、新しいメモを作成します",
-    "createFirst": "メモを作成する",
-    "pin": "ピン",
-    "unpin": "固定を解除する",
-    "emptyDescription": "メモを作成して、口述筆記した考え、下書き、断片を手元に置いておきます。",
-    "emptyExample": "たとえば、ここで会議のメモを口述筆記し、Convo に依頼してきれいな要約に変換してもらいます。",
-    "title": "Jot Pad",
-    "untitledNote": "無題のメモ",
-    "speak": "声に出して読む",
-    "stopSpeaking": "読むのをやめる",
-    "saveHint": "保存",
-    "lastEdited": "最終編集",
-    "charCount_one": "{{count}} 文字",
-    "charCount_other": "{{count}} 文字",
-    "deleteConfirm": "メモ「{{noteTitle}}」を削除しますか?",
-    "notes": "注意事項",
-    "search": "メモを検索する",
-    "pinned": "固定された"
-  },
   "convo": {
     "title": "コンボ",
     "selection": {
@@ -1671,24 +1645,6 @@
         "選択したテキストを要約します",
         "もっとわかりやすく書き直してください",
         "アクションアイテムを引き出す"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "現在のメモについて会話を始めます。",
-      "replaceNote": "メモを置き換える",
-      "appendToNote": "メモに追加",
-      "copyDraft": "ドラフトのコピー",
-      "noteReplaced": "現在のノートを置き換えました。",
-      "noteReplaceFailed": "メモを置き換えることはできませんでした。",
-      "noteAppended": "ドラフトをメモに追加しました。",
-      "noteAppendFailed": "メモに追加できませんでした。",
-      "draftCopied": "ドラフトをコピーしました。",
-      "starterPrompts": [
-        "このメモを白紙に戻します",
-        "要点を見つける",
-        "次のステップを提案する"
       ]
     },
     "settingsCoach": {
@@ -2420,7 +2376,6 @@
       "goToRefine": "絞り込みに移動",
       "goToListen": "聞きに行く",
       "openSettings": "設定を開く",
-      "openJotPad": "Jot Padを開く",
       "disablePostProcess": "ポストプロセスを無効にする",
       "enablePostProcess": "後処理を有効にする",
       "postProcessOn": "AI クリーンアップがオンになっています",
@@ -2565,10 +2520,6 @@
       "saveModel": "モデルの保存",
       "analyzeRoute": "ルートを解析する",
       "analyzing": "分析中...",
-      "createNote": "メモを作成する",
-      "loadingNotes": "メモを読み込んでいます...",
-      "untitled": "無題",
-      "emptyNote": "空のメモ",
       "loadingSection": "セクションを読み込み中..."
     },
     "corrections": {
@@ -2636,8 +2587,6 @@
       "myVoicesDescription": "音声プロファイルを管理し、オフライン ボイス チェンジャーを使用して録音された音声を変換します。",
       "voiceCloningTitle": "音声クローン",
       "voiceCloningDescription": "リファレンスオーディオからクローンプロファイルを作成し、保存されたリッスンボイスに変換します。",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "フローティング パッドに簡単なメモを取り込み、作業を続ける必要があるときに再度メモを開きます。",
       "studioTitle": "スタジオ",
       "studioDescription": "保存した音声をキャラクターに割り当て、スクリプトを編集し、ストーリー音声をレンダリングします。",
       "generatedAudioTitle": "生成された音声",
@@ -2748,7 +2697,7 @@
       "version": "バージョン {{version}}",
       "versionUnknown": "不明",
       "summaryPrimary": "Vox Jot は、Whisper ファミリ モデル、TTS エンジン、システム タイピング統合などのローカル音声認識、翻訳、再生ツールを中心に構築されています。",
-      "summarySecondary": "このアプリは、ローカル オーディオ キャプチャ、AI クリーンアップ、履歴、Jot Pad を 1 つのデスクトップ ワークフローに結合します。",
+      "summarySecondary": "このアプリは、ローカル オーディオ キャプチャ、AI クリーンアップ、履歴を 1 つのデスクトップ ワークフローに結合します。",
       "highlightsTitle": "中には何が入っているのか",
       "highlightLocalTitle": "現地でのスピーチ",
       "highlightLocalDetail": "オプションの Silero VAD を使用した Whisper / Parakeet 推論。",
@@ -2760,11 +2709,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust オーディオ パイプライン"
-    },
-    "jotPad": {
-      "empty": "最初のメモを開始する",
-      "emptyDescription": "Jot Pad に口述または入力して、考えを手元に置いておきます。",
-      "emptyExample": "たとえば、ここで会議のメモを口述筆記し、それを洗練して簡潔な要約にします。"
     },
     "hero": {
       "general": {
@@ -2952,7 +2896,6 @@
       "dictate": {
         "history": "ホーム",
         "corrections": "辞書",
-        "jotPad": "Jot Pad",
         "fileTranscription": "ファイルの転写"
       },
       "refine": {
@@ -3223,7 +3166,7 @@
       },
       "dictationDestination": {
         "title": "ディクテーションの宛先",
-        "description": "翻訳されたディクテーションを直接貼り付けるか、最初にプレビューを開くか、Jot Pad に移動するかを選択します。"
+        "description": "翻訳されたディクテーションを直接貼り付けるか、最初にプレビューを開くかを選択します。"
       }
     },
     "labels": {
@@ -3284,10 +3227,6 @@
       "previewThenPaste": {
         "title": "最初にプレビューする",
         "description": "貼り付ける前に翻訳を確認してください。"
-      },
-      "openInJotPad": {
-        "title": "Jot Pad で開く",
-        "description": "翻訳されたテキストをスクラッチパッドにルーティングします。"
       }
     },
     "selection": {
@@ -3298,10 +3237,6 @@
       "previewThenReplace": {
         "title": "最初にプレビューする",
         "description": "選択したテキストを置換する前に確認してください。"
-      },
-      "openInJotPad": {
-        "title": "Jot Pad で開く",
-        "description": "翻訳された選択範囲をスクラッチパッドに送信します。"
       }
     }
   },

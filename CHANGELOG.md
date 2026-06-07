@@ -30,7 +30,7 @@ project formerly known as Handy.
   OuteTTS, and refreshed MLX benchmark catalog.
 - **Refine surface**: Phrase Keys, Write Profiles (app-aware tone),
   Translation, Refine Models, local refine onboarding.
-- **Dictate surface**: Recent History, Corrections, Jot Pad, Speech Models.
+- **Dictate surface**: Recent History, Corrections, File Transcription, Speech Models.
 - **Localization**: 16 locales at 100% key coverage with translation audits.
 - **Distribution audit** (`bun run audit:distribution`) wired into the release
   workflow.

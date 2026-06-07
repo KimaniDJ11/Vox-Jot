@@ -5,7 +5,6 @@
     "copyLastTranscript": "複製最後的成績單",
     "quit": "戒菸",
     "cancel": "取消",
-    "jotPad": "Jot Pad",
     "speakSelected": "說出所選內容",
     "dictateMode": "口授",
     "refineMode": "精煉",
@@ -1631,31 +1630,6 @@
     "quality": "品質",
     "speed": "速度"
   },
-  "jotPad": {
-    "newNote": "新筆記",
-    "empty": "還沒有筆記。",
-    "untitled": "無題",
-    "titlePlaceholder": "註釋標題",
-    "contentPlaceholder": "開始輸入...",
-    "noNoteSelected": "選擇註釋或建立新註釋",
-    "createFirst": "建立註釋",
-    "pin": "插銷",
-    "unpin": "取消固定",
-    "emptyDescription": "建立筆記以方便保存口述的想法、草稿和片段。",
-    "emptyExample": "例如，在此處口述會議記錄，然後要求 Convo 將其轉化為清晰的摘要。",
-    "title": "Jot Pad",
-    "untitledNote": "無標題筆記",
-    "speak": "大聲朗讀",
-    "stopSpeaking": "停止閱讀",
-    "saveHint": "儲存",
-    "lastEdited": "最後編輯",
-    "charCount_one": "{{count}} 字符",
-    "charCount_other": "{{count}} 字符",
-    "deleteConfirm": "刪除註釋“{{noteTitle}}”？",
-    "notes": "註解",
-    "search": "搜尋筆記",
-    "pinned": "已固定"
-  },
   "convo": {
     "title": "康沃",
     "selection": {
@@ -1667,29 +1641,7 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": [
-        "總結所選文本",
-        "重寫一下更清楚",
-        "拉出行動項目"
-      ]
-    },
-    "jotpad": {
-      "label": "Jot Pad",
-      "title": "Jot Pad",
-      "emptyState": "開始討論您當前的筆記。",
-      "replaceNote": "替換註釋",
-      "appendToNote": "附加到註釋",
-      "copyDraft": "複製草稿",
-      "noteReplaced": "替換了當前的註釋。",
-      "noteReplaceFailed": "無法替換註釋。",
-      "noteAppended": "將草稿附加到說明中。",
-      "noteAppendFailed": "無法附加到註釋。",
-      "draftCopied": "抄了草稿。",
-      "starterPrompts": [
-        "把這張紙條變成乾淨的草稿",
-        "找到重點",
-        "建議後續步驟"
-      ]
+      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2420,7 +2372,6 @@
       "goToRefine": "前往細化",
       "goToListen": "前往收聽",
       "openSettings": "開啟設定",
-      "openJotPad": "開啟Jot Pad",
       "disablePostProcess": "禁用後處理",
       "enablePostProcess": "啟用後處理",
       "postProcessOn": "AI 清理已開啟",
@@ -2565,10 +2516,6 @@
       "saveModel": "保存模型",
       "analyzeRoute": "分析路線",
       "analyzing": "正在分析...",
-      "createNote": "創建筆記",
-      "loadingNotes": "正在載入筆記...",
-      "untitled": "無題",
-      "emptyNote": "空註",
       "loadingSection": "加載部分..."
     },
     "corrections": {
@@ -2636,8 +2583,6 @@
       "myVoicesDescription": "使用離線語音轉換器管理語音設定檔並轉換錄製的音訊。",
       "voiceCloningTitle": "語音克隆",
       "voiceCloningDescription": "從參考音訊建立克隆配置文件，然後將其轉換為已儲存的聆聽聲音。",
-      "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "在浮動板上捕捉快速筆記，並在需要繼續工作時重新打開它們。",
       "studioTitle": "工作室",
       "studioDescription": "將已儲存的聲音指派給角色、編輯腳本並渲染故事音訊。",
       "generatedAudioTitle": "產生的音訊",
@@ -2748,7 +2693,7 @@
       "version": "版本{{version}}",
       "versionUnknown": "未知",
       "summaryPrimary": "Vox Jot 圍繞著本地語音識別、翻譯和播放工具構建，包括 Whisper 系列模型、TTS 引擎和系統打字整合。",
-      "summarySecondary": "該應用程式將本地音訊擷取、AI 清理、歷史記錄和 Jot Pad 整合到一個桌面工作流程中。",
+      "summarySecondary": "該應用程式將本地音訊擷取、AI 清理和歷史記錄整合到一個桌面工作流程中。",
       "highlightsTitle": "裡面有什麼",
       "highlightLocalTitle": "本地演講",
       "highlightLocalDetail": "Whisper / Parakeet 推理，可選 Silero VAD。",
@@ -2760,11 +2705,6 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust 音訊管道"
-    },
-    "jotPad": {
-      "empty": "開始你的第一個筆記",
-      "emptyDescription": "聽寫或輸入 Jot Pad 以便輕鬆掌握想法。",
-      "emptyExample": "例如，在此處口述會議記錄，然後將其細化為清晰的摘要。"
     },
     "hero": {
       "general": {
@@ -2952,7 +2892,6 @@
       "dictate": {
         "history": "首頁",
         "corrections": "字典",
-        "jotPad": "Jot Pad",
         "fileTranscription": "檔案轉錄"
       },
       "refine": {
@@ -3223,7 +3162,7 @@
       },
       "dictationDestination": {
         "title": "聽寫目的地",
-        "description": "選擇是直接貼上翻譯後的聽寫、先開啟預覽還是前往 Jot Pad。"
+        "description": "選擇是直接貼上翻譯後的聽寫還是先開啟預覽。"
       }
     },
     "labels": {
@@ -3284,10 +3223,6 @@
       "previewThenPaste": {
         "title": "先預覽",
         "description": "貼上前確認翻譯。"
-      },
-      "openInJotPad": {
-        "title": "在 Jot Pad 中開啟",
-        "description": "將翻譯後的文字傳送到草稿本。"
       }
     },
     "selection": {
@@ -3298,10 +3233,6 @@
       "previewThenReplace": {
         "title": "先預覽",
         "description": "替換所選文字之前先進行檢查。"
-      },
-      "openInJotPad": {
-        "title": "在 Jot Pad 中開啟",
-        "description": "將翻譯後的選擇傳送到草稿本。"
       }
     }
   },

@@ -18,7 +18,6 @@ import {
   XCircle,
   Compass,
   Palette,
-  StickyNote,
   ArrowRight,
   Sparkles,
   Copy,
@@ -155,14 +154,6 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
         keywords: ["preferences", "config"],
         shortcut: ["⌘", ","],
         onRun: () => onNavigate("settings"),
-      },
-      {
-        id: "jot.toggle",
-        title: t("commandMenu.actions.openJotPad"),
-        icon: StickyNote,
-        group: groups.actions,
-        keywords: ["scratchpad", "note", "pad"],
-        onRun: () => void commands.toggleScratchpad(),
       },
       {
         id: "post-process.toggle",

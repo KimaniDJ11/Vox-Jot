@@ -699,7 +699,6 @@ pub fn change_translation_destination_mode_setting(
     settings.translation_destination_mode = match mode.as_str() {
         "paste_in_place" => TranslationDestinationMode::PasteInPlace,
         "preview_then_paste" => TranslationDestinationMode::PreviewThenPaste,
-        "open_in_jot_pad" => TranslationDestinationMode::OpenInJotPad,
         other => return Err(format!("Invalid translation destination '{}'", other)),
     };
     settings::write_settings(&app, settings);
@@ -720,7 +719,6 @@ pub fn change_selection_translation_destination_mode_setting(
         "preview_then_replace" => {
             crate::settings::SelectionTranslationDestinationMode::PreviewThenReplace
         }
-        "open_in_jot_pad" => crate::settings::SelectionTranslationDestinationMode::OpenInJotPad,
         other => {
             return Err(format!(
                 "Invalid selection translation destination '{}'",

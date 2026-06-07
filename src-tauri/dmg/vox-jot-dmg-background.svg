@@ -70,10 +70,4 @@
       stroke="#d89a5c" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="382" cy="321" r="7" fill="#d89a5c"/>
   </g>
-
-  <text x="380" y="491" text-anchor="middle"
-    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, Arial, sans-serif"
-    font-size="13" font-weight="700" letter-spacing="0.5" fill="#6a5a4a">
-    Website edition
-  </text>
 </svg>

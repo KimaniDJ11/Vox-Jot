@@ -17,8 +17,8 @@ fi
 DMG_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}.dmg"
 DMG_RW_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}-rw.dmg"
 DMG_STAGE_DIR="${DMG_DIR}/${APP_NAME}-dmg-stage"
-DMG_BACKGROUND_SOURCE="${REPO_ROOT}/src-tauri/dmg/vox-jot-dmg-background.png"
-DMG_BACKGROUND_NAME="vox-jot-dmg-background.png"
+DMG_BACKGROUND_SOURCE="${REPO_ROOT}/src-tauri/dmg/vox-jot-dmg-background.tiff"
+DMG_BACKGROUND_NAME="vox-jot-dmg-background.tiff"
 DMG_WINDOW_WIDTH=760
 DMG_WINDOW_HEIGHT=520
 DMG_APP_ICON_X=217

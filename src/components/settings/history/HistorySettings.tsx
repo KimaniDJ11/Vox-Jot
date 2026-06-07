@@ -148,7 +148,7 @@ export const HistorySettings: React.FC = () => {
     // Listen for history update events
     const setupListeners = async () => {
       const unlistenUpdated = await listen("history-updated", () => {
-        void loadHistoryEntries(true);
+        void loadHistoryEntries(true, false);
       });
 
       // Listen for save failures so the user knows when history couldn't be saved

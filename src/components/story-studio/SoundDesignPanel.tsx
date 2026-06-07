@@ -164,14 +164,28 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
 
   const selectedModel = useMemo(() => {
     const models = catalog?.models ?? [];
+    const selectedRunnableModel = models.find(
+      (model) => model.id === selectedModelId && model.runnable,
+    );
     return (
-      models.find((model) => model.id === selectedModelId) ??
+      selectedRunnableModel ??
       models.find((model) => model.active) ??
       models.find((model) => model.runnable) ??
-      models[0] ??
       null
     );
   }, [catalog?.models, selectedModelId]);
+  const setupModel = useMemo(() => {
+    const models = catalog?.models ?? [];
+    return (
+      selectedModel ??
+      models.find(
+        (model) => model.downloadable && model.modes.includes(mode),
+      ) ??
+      models.find((model) => model.downloadable) ??
+      models[0] ??
+      null
+    );
+  }, [catalog?.models, mode, selectedModel]);
   const selectedModelSupportsMode =
     selectedModel?.modes.includes(mode) ?? false;
   const modeReady = Boolean(
@@ -208,7 +222,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
       : mode === "song" || mode === "composition"
         ? { min: 10, max: 600 }
         : { min: 5, max: 60 };
-  const setupActionAvailable = Boolean(selectedModel?.downloadable);
+  const setupActionAvailable = Boolean(setupModel?.downloadable);
 
   const refreshCatalog = useCallback(async (showError = true) => {
     setIsLoadingCatalog(true);
@@ -220,8 +234,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
       setSelectedModelId(
         (
           next.models.find((model) => model.active) ??
-          next.models.find((model) => model.runnable) ??
-          next.models[0]
+          next.models.find((model) => model.runnable)
         )?.id ?? "",
       );
     } catch (error) {
@@ -477,7 +490,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
               ? t("storyStudio.sound.loadingModels", {
                   defaultValue: "Loading models",
                 })
-              : (selectedModel?.status_label ??
+              : (setupModel?.status_label ??
                 t("storyStudio.sound.needsSetup", {
                   defaultValue: "Model needed",
                 }))}

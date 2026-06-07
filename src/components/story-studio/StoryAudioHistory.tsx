@@ -346,7 +346,7 @@ export const StoryAudioSidebar: React.FC = () => {
 
   useEffect(() => {
     const unlisten = listen("story-audio-updated", () => {
-      void loadItems();
+      void loadItems(false);
     });
     return () => {
       void unlisten.then((fn) => fn());

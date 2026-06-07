@@ -6,6 +6,8 @@ export interface ModelHubControlValues {
   sortMode: ModelSortMode;
 }
 
+export type ModelHubFilterValues = Omit<ModelHubControlValues, "sortMode">;
+
 export type ModelHubControlScope =
   | "stt"
   | "llm"
@@ -20,23 +22,27 @@ export interface ModelHubControlState extends ModelHubControlValues {
   setSortMode: (value: ModelSortMode) => void;
 }
 
-export const DEFAULT_MODEL_HUB_CONTROL_VALUES: ModelHubControlValues = {
+export const DEFAULT_MODEL_HUB_FILTER_VALUES: ModelHubFilterValues = {
   providerFilter: "all",
   languageFilter: "all",
+};
+
+export const DEFAULT_MODEL_HUB_CONTROL_VALUES: ModelHubControlValues = {
+  ...DEFAULT_MODEL_HUB_FILTER_VALUES,
   sortMode: "best_match",
 };
 
 export type ScopedModelHubControlValues = Record<
   ModelHubControlScope,
-  ModelHubControlValues
+  ModelHubFilterValues
 >;
 
 export const DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES: ScopedModelHubControlValues =
   {
-    stt: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
-    llm: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
-    tts: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
-    creative_audio: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
-    ocr: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
-    analysis: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
+    stt: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    llm: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    tts: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    creative_audio: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    ocr: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    analysis: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
   };

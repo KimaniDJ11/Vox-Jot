@@ -83,6 +83,7 @@ const ModelHubSection: React.FC = () => {
   const [analysisTabLabelOverride, setAnalysisTabLabelOverride] = useState<
     string | null
   >(null);
+  const [sortMode, setSortMode] = useState<ModelSortMode>("best_match");
   const [controlValuesByScope, setControlValuesByScope] =
     useState<ScopedModelHubControlValues>(() => ({
       stt: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.stt },
@@ -123,14 +124,14 @@ const ModelHubSection: React.FC = () => {
   const modelHubControls: ModelHubControlState = useMemo(
     () => ({
       ...controlValuesByScope[controlScope],
-      setProviderFilter: (value) =>
+      sortMode,
+      setProviderFilter: (value: string) =>
         setControlValue(controlScope, "providerFilter", value),
-      setLanguageFilter: (value) =>
+      setLanguageFilter: (value: string) =>
         setControlValue(controlScope, "languageFilter", value),
-      setSortMode: (value: ModelSortMode) =>
-        setControlValue(controlScope, "sortMode", value),
+      setSortMode,
     }),
-    [controlScope, controlValuesByScope, setControlValue],
+    [controlScope, controlValuesByScope, setControlValue, sortMode],
   );
 
   useEffect(() => {

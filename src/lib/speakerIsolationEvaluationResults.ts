@@ -110,7 +110,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
     {
       modelId: "nemo-sortformer-4spk-v1",
       label: "NVIDIA Sortformer 4spk v1",
-      status: "tested",
+      status: "blocked",
       rank: 4,
       sampleCount: 1,
       expectedSpeakers: 4,
@@ -124,7 +124,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       latencyMs: 6976,
       device: "mps",
       notes:
-        "Recovered the turn structure but merged speakers; useful fallback behind Polyvoice and the MLX Sortformer variants.",
+        "Historical benchmark: recovered the turn structure but merged speakers. Currently blocked because NeMo 2.7.3 requires Transformers <4.58, which conflicts with the patched runtime.",
     },
     {
       modelId: "pyannote-3-1",
@@ -167,7 +167,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
     {
       modelId: "whisper-diarization",
       label: "Whisper Diarization",
-      status: "tested",
+      status: "blocked",
       rank: 7,
       sampleCount: 1,
       expectedSpeakers: 4,
@@ -181,7 +181,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       latencyMs: 31727,
       device: "cpu",
       notes:
-        "WhisperX ASR ran, but diarization matched the one-speaker pyannote behavior and was the slowest tested option.",
+        "Historical benchmark: WhisperX ASR ran, but diarization matched the one-speaker pyannote behavior and was the slowest tested option. Currently blocked because WhisperX requires Hugging Face Hub <1.0 while patched Transformers requires Hub 1.x.",
     },
     {
       modelId: "reverb-diarization-v2",

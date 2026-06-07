@@ -24,6 +24,7 @@ pub const NO_DIARIZATION_ID: &str = "no_speaker_labels";
 pub const DEFAULT_DIARIZATION_ID: &str = NO_DIARIZATION_ID;
 pub const PYANNOTE_COMMUNITY_DIARIZATION_ID: &str = "pyannote-community-1";
 pub const POLYVOICE_DIARIZATION_ID: &str = "onnx-polyvoice-diarization";
+const BLOCKED_PYTHON_ADAPTER_IDS: &[&str] = &["nemo-sortformer-4spk-v1", "whisper-diarization"];
 
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 static DOWNLOAD_CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
@@ -122,6 +123,7 @@ pub enum SpeechAnalysisReadiness {
     RequiresRuntimeInstall,
     RequiresModelDownload,
     RequiresHfToken,
+    Blocked,
     Ready,
 }
 
@@ -618,13 +620,13 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             None,
             Some("CC-BY-NC-4.0"),
             false,
-            true,
+            false,
             Some("~500 MB"),
             SpeechAnalysisTask::Diarization,
             SpeechAnalysisEngine::Nemo,
             SpeechAnalysisRuntime::PythonSidecar,
-            "NVIDIA NeMo Sortformer diarization adapter for up to four speakers.",
-            SpeechAnalysisReadiness::Ready,
+            "Blocked until NeMo ships a Transformers 5 compatible dependency set.",
+            SpeechAnalysisReadiness::Blocked,
             &["mul"],
             &["speaker_turns", "rttm"],
             capability(true, true, false, false, true, true, true, false, false),
@@ -698,13 +700,13 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             None,
             Some("MIT"),
             false,
-            true,
+            false,
             Some("~3 GB"),
             SpeechAnalysisTask::AsrDiarization,
             SpeechAnalysisEngine::WhisperDiarization,
             SpeechAnalysisRuntime::PythonSidecar,
-            "Combined Whisper ASR and diarization adapter.",
-            SpeechAnalysisReadiness::Ready,
+            "Blocked until WhisperX supports the patched Transformers 5 runtime stack.",
+            SpeechAnalysisReadiness::Blocked,
             &["mul"],
             &["text", "segments", "speaker_turns", "speaker_segments"],
             capability(true, true, true, false, true, true, false, false, false),
@@ -799,11 +801,22 @@ fn bundled_polyvoice_dir() -> Option<PathBuf> {
     candidate.exists().then_some(candidate)
 }
 
+fn model_blocked_by_runtime_security(model_id: &str) -> bool {
+    BLOCKED_PYTHON_ADAPTER_IDS.contains(&model_id)
+}
+
+fn model_selectable_for_settings(model: &SpeechAnalysisModelDescriptor) -> bool {
+    !model_blocked_by_runtime_security(&model.id)
+}
+
 fn readiness_for(
     app: &AppHandle,
     model: &SpeechAnalysisModelDescriptor,
     installed: bool,
 ) -> SpeechAnalysisReadiness {
+    if model_blocked_by_runtime_security(&model.id) {
+        return SpeechAnalysisReadiness::Blocked;
+    }
     if installed {
         if model_uses_gemma_audio_runtime(&model.id)
             && !crate::sidecar::SidecarManager::gemma_audio_runtime_installed_for_app(app)
@@ -1772,11 +1785,17 @@ pub fn get_model(app: &AppHandle, model_id: &str) -> Option<SpeechAnalysisModelD
 pub fn selection_from_settings(app: &AppHandle) -> SpeechAnalysisSelection {
     let mut settings = get_settings(app);
     let mut changed = false;
-    if model_by_id(&settings.file_transcription_asr_model_id).is_none() {
+    if model_by_id(&settings.file_transcription_asr_model_id)
+        .as_ref()
+        .is_none_or(|model| !model_selectable_for_settings(model))
+    {
         settings.file_transcription_asr_model_id = default_asr_model_id();
         changed = true;
     }
-    if model_by_id(&settings.file_transcription_diarization_model_id).is_none() {
+    if model_by_id(&settings.file_transcription_diarization_model_id)
+        .as_ref()
+        .is_none_or(|model| !model_selectable_for_settings(model))
+    {
         settings.file_transcription_diarization_model_id = default_diarization_model_id();
         changed = true;
     }
@@ -1805,16 +1824,28 @@ pub fn set_selection(
     asr_model_id: String,
     diarization_model_id: String,
 ) -> Result<SpeechAnalysisSelection, String> {
-    if model_by_id(&asr_model_id).is_none() {
+    let Some(asr_model) = model_by_id(&asr_model_id) else {
         return Err(format!(
             "Unknown speech analysis ASR model '{}'.",
             asr_model_id
         ));
+    };
+    if !model_selectable_for_settings(&asr_model) {
+        return Err(format!(
+            "{} is blocked until its runtime dependencies are compatible with the patched speech-analysis environment.",
+            asr_model.label
+        ));
     }
-    if model_by_id(&diarization_model_id).is_none() {
+    let Some(diarization_model) = model_by_id(&diarization_model_id) else {
         return Err(format!(
             "Unknown speech analysis diarization model '{}'.",
             diarization_model_id
+        ));
+    };
+    if !model_selectable_for_settings(&diarization_model) {
+        return Err(format!(
+            "{} is blocked until its runtime dependencies are compatible with the patched speech-analysis environment.",
+            diarization_model.label
         ));
     }
 
@@ -1944,6 +1975,20 @@ mod tests {
                     model.id
                 );
             }
+        }
+    }
+
+    #[test]
+    fn blocked_python_adapters_are_not_downloadable_or_selectable() {
+        let catalog = built_in_catalog_models();
+        for blocked_id in BLOCKED_PYTHON_ADAPTER_IDS {
+            let model = catalog
+                .iter()
+                .find(|model| model.id == *blocked_id)
+                .unwrap_or_else(|| panic!("missing blocked model {blocked_id}"));
+            assert_eq!(model.readiness, SpeechAnalysisReadiness::Blocked);
+            assert!(!model.downloadable);
+            assert!(!model_selectable_for_settings(model));
         }
     }
 

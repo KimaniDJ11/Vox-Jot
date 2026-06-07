@@ -53,7 +53,7 @@ const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
 const SPEECH_ANALYSIS_RUNTIME_MARKER: &str =
-    "speech-analysis-runtime-2026-06-07-py311-transformers-4573-v1";
+    "speech-analysis-runtime-2026-06-07-py311-transformers-500-v1";
 const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
 const GEMMA_AUDIO_VENV_DIR: &str = "gemma-audio-venv";
 const GEMMA_AUDIO_VERSION_MARKER: &str = "gemma-audio.version";

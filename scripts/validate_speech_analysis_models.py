@@ -62,11 +62,9 @@ MODEL_CHECKS: tuple[ModelCheck, ...] = (
     ModelCheck("mlx-vibevoice-asr-bf16", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("pyannote-community-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("pyannote-3-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
-    ModelCheck("nemo-sortformer-4spk-v1", "diarization", "nemo", ("torch", "nemo.collections.asr"), cloud_gpu_preferred=True),
     ModelCheck("mlx-sortformer-4spk-v1", "diarization", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-sortformer-4spk-v2-1", "diarization", "mlx_audio", ("mlx_audio",)),
     ModelCheck("reverb-diarization-v2", "diarization", "reverb", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
-    ModelCheck("whisper-diarization", "asr_diarization", "whisper_diarization", ("torch", "whisperx"), cloud_gpu_preferred=True),
     ModelCheck("onnx-polyvoice-diarization", "diarization", "onnx_runtime", ()),
 )
 

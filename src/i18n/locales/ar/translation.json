@@ -195,6 +195,7 @@
       "permissions": "الأذونات",
       "setup": "نموذج",
       "refine": "صقل",
+      "modes": "Modes",
       "learn": "الإملاء الأول",
       "progress": "تقدم الإعداد"
     },
@@ -244,6 +245,25 @@
         "installFailed": "تعذر تثبيت Ollama تلقائيًا. يمكنك تخطي هذه الخطوة وتثبيتها لاحقًا من الإعدادات > النماذج وAI.",
         "startFailed": "تم تثبيت Ollama ولكن تعذر بدء تشغيله. يمكنك التخطي والمحاولة مرة أخرى من الإعدادات.",
         "pullFailed": "تعذر تنزيل نموذج التحسين الافتراضي. ويمكنك تخطيه وتنزيله لاحقًا."
+      }
+    },
+    "modes": {
+      "eyebrow": "Optional app tuning",
+      "title": "Create Dictation Modes from your apps",
+      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
+      "scanning": "Scanning installed apps...",
+      "detected": "{{count}} starter modes found",
+      "loading": "Looking for apps that match common writing workflows.",
+      "refreshApps": "Refresh installed apps",
+      "emptyTitle": "No starter app matches found",
+      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
+      "cardTitle": "Starter modes",
+      "cardDescription": "Modes match the app in front and apply saved output choices.",
+      "skipCta": "Skip",
+      "continueCta": "Continue",
+      "createCta": "Create selected modes",
+      "errors": {
+        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
       }
     },
     "welcome": {

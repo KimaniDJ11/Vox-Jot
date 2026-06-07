@@ -161,7 +161,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
   {
     modelId: "whisper-diarization",
     label: "Whisper Diarization",
-    status: "tested",
+    status: "blocked",
     rank: 7,
     sampleCount: 5,
     exactMatches: 0,
@@ -170,7 +170,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     realTimeFactor: 3,
     device: "cpu",
     notes:
-      "Full five-format local suite completed after the WhisperX runtime readiness fix; accuracy is acceptable for file experiments, but CPU latency is much slower than real time.",
+      "Historical five-format result from the WhisperX runtime. Currently blocked because WhisperX requires Hugging Face Hub <1.0 while patched Transformers requires Hub 1.x.",
   },
   {
     modelId: "gemma4-e2b-audio",

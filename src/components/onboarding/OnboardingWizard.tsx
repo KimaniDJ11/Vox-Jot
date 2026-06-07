@@ -10,6 +10,7 @@ import ThemeStep from "./ThemeStep";
 import PermissionsStep from "./PermissionsStep";
 import ModelStep from "./ModelStep";
 import RefineStep from "./RefineStep";
+import DictationModesStep from "./DictationModesStep";
 import TutorialStep from "./TutorialStep";
 
 type WizardStep =
@@ -18,6 +19,7 @@ type WizardStep =
   | "permissions"
   | "model"
   | "refine"
+  | "modes"
   | "tutorial";
 
 interface OnboardingWizardProps {
@@ -58,6 +60,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const goToPermissions = useCallback(() => setStep("permissions"), []);
   const goToModel = useCallback(() => setStep("model"), []);
   const goToRefine = useCallback(() => setStep("refine"), []);
+  const goToModes = useCallback(() => setStep("modes"), []);
   const goToTutorial = useCallback(() => setStep("tutorial"), []);
   const handlePermissionsComplete = useCallback(() => {
     if (skipToPermissions) {
@@ -77,8 +80,10 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           return "permissions";
         case "refine":
           return "model";
-        case "tutorial":
+        case "modes":
           return "refine";
+        case "tutorial":
+          return "modes";
         default:
           return prev;
       }
@@ -101,11 +106,12 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       case "model":
         return <ModelStep onModelSelected={goToRefine} onBack={goBack} />;
       case "refine":
-        return <RefineStep onComplete={goToTutorial} onBack={goBack} />;
+        return <RefineStep onComplete={goToModes} onBack={goBack} />;
+      case "modes":
+        return <DictationModesStep onComplete={goToTutorial} onBack={goBack} />;
       case "tutorial":
         // Terminal step — intentionally no Back. Going back would land on
-        // Refine, which auto-completes when a refine model is ready and bounces
-        // straight back here. Everything on this step is adjustable later from
+        // the optional setup screens, all of which are adjustable later from
         // Settings, so onboarding finishes forward-only.
         return <TutorialStep onComplete={onComplete} />;
       default:

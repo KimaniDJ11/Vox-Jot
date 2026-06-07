@@ -145,6 +145,10 @@ const engineLabel = (model: SpeechAnalysisModelDescriptor): string =>
 const readinessLabel = (model: SpeechAnalysisModelDescriptor): string =>
   model.readiness.replace(/_/g, " ");
 
+const isBlockedAnalysisModel = (
+  model: SpeechAnalysisModelDescriptor,
+): boolean => model.readiness === "blocked";
+
 const sourceKindLabel = (model: SpeechAnalysisModelDescriptor): string =>
   model.source_kind.replace(/_/g, " ");
 
@@ -1005,7 +1009,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
       inProgress: (model: SpeechAnalysisModelDescriptor) =>
         activeDownloads.has(model.id),
       gated: (model: SpeechAnalysisModelDescriptor) => model.gated,
-      blocked: () => false,
+      blocked: isBlockedAnalysisModel,
       rank: (model: SpeechAnalysisModelDescriptor) =>
         group === "asr"
           ? getFileAsrEvaluationResult(model.id)?.rank
@@ -1035,7 +1039,25 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
     () =>
       orderModelList(
         models.filter(
-          (model) => !model.installed && !activeDownloads.has(model.id),
+          (model) =>
+            !model.installed &&
+            !activeDownloads.has(model.id) &&
+            !isBlockedAnalysisModel(model),
+        ),
+        "available",
+        sortMode,
+        accessors,
+      ),
+    [accessors, activeDownloads, models, sortMode],
+  );
+  const orderedUnavailableModels = useMemo(
+    () =>
+      orderModelList(
+        models.filter(
+          (model) =>
+            !model.installed &&
+            !activeDownloads.has(model.id) &&
+            isBlockedAnalysisModel(model),
         ),
         "available",
         sortMode,
@@ -1052,6 +1074,11 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
     {
       title: "Available to Download",
       models: orderedAvailableModels,
+      showHeader: true,
+    },
+    {
+      title: "Unavailable",
+      models: orderedUnavailableModels,
       showHeader: true,
     },
   ].filter((section) => section.models.length > 0);
@@ -1087,6 +1114,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                   const deleteConfirmOpen = deleteConfirmModelId === model.id;
                   const progress = downloadProgress[model.id];
                   const isFailed = progress?.phase === "failed";
+                  const isBlocked = isBlockedAnalysisModel(model);
                   const hasKnownTotal = Boolean(
                     progress && progress.total_bytes > 0,
                   );
@@ -1217,6 +1245,19 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                       : null,
                   ].filter(Boolean) as CompactBadgeItem[];
                   const titleBadges: CompactBadgeItem[] = [
+                    isBlocked
+                      ? {
+                          id: "blocked",
+                          label: t("testing.status.blocked", {
+                            defaultValue: "Blocked",
+                          }),
+                          variant: "secondary",
+                          icon: (
+                            <AlertTriangle className="h-3 w-3" aria-hidden />
+                          ),
+                          detail: model.description,
+                        }
+                      : null,
                     speechAnalysisLicenseGate(model)
                       ? {
                           id: "license-gate",
@@ -1309,7 +1350,8 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                     model.repo_id,
                   ].filter(Boolean) as string[];
                   let trailing: HubTrailing = null;
-                  const actionDisabled = Boolean(busyModelId) || isDownloading;
+                  const actionDisabled =
+                    Boolean(busyModelId) || isDownloading || isBlocked;
                   trailing = {
                     kind: "custom",
                     node: (
@@ -1468,6 +1510,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                       trailing={trailing}
                       downloadState={downloadState}
                       footerExtra={footerExtra}
+                      disabled={isBlocked}
                       onClick={handleClick}
                     />
                   );

@@ -641,6 +641,220 @@
   line-height: 1.6;
 }
 
+/* ── Dictation Modes onboarding ─────────────────────────── */
+.ob-modes-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -8px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ob-mode-refresh {
+  display: inline-flex;
+  min-width: 34px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ob-border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ob-mode-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ob-modes-loading,
+.ob-modes-empty {
+  display: flex;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  padding: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ob-modes-empty {
+  display: grid;
+}
+
+.ob-modes-empty p,
+.ob-modes-empty span {
+  margin: 0;
+}
+
+.ob-modes-empty p {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.ob-modes-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ob-mode-option {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto 26px;
+  min-height: 104px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 12px;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color 0.16s,
+    background 0.16s,
+    box-shadow 0.16s;
+}
+
+.ob-mode-option:hover,
+.ob-mode-option-selected {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--card));
+}
+
+.ob-mode-option-selected {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.ob-mode-option-icon,
+.ob-mode-mini-icon,
+.ob-mode-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-mode-option-icon,
+.ob-mode-mini-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ob-mode-option-body {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.ob-mode-option-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.ob-mode-option-description {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ob-mode-app-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.ob-mode-app-row span,
+.ob-mode-tone {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid color-mix(in srgb, var(--text), transparent 88%);
+  border-radius: 7px;
+  background: var(--surface-muted);
+  padding: 3px 7px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ob-mode-tone {
+  color: var(--accent);
+}
+
+.ob-mode-check {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: transparent;
+}
+
+.ob-mode-check-selected {
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.ob-modes-preview {
+  display: grid;
+  gap: 18px;
+}
+
+.ob-modes-preview-header {
+  align-items: flex-start;
+}
+
+.ob-modes-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ob-mode-mini-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  padding: 11px 12px;
+}
+
+.ob-mode-mini-card p,
+.ob-mode-mini-card span {
+  margin: 0;
+}
+
+.ob-mode-mini-card p {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.ob-mode-mini-card span {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Product preview panels ─────────────────────────────── */
 .ob-product-preview,
 .ob-first-run-panel {
@@ -1911,6 +2125,20 @@
   .ob-bottom-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ob-mode-option {
+    grid-template-columns: 34px minmax(0, 1fr) 24px;
+  }
+
+  .ob-mode-tone {
+    grid-column: 2 / 3;
+    justify-self: start;
+  }
+
+  .ob-mode-check {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
   }
 
   .ob-btn-secondary {

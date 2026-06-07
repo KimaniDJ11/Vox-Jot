@@ -9,6 +9,7 @@ export type OnboardingStepName =
   | "permissions"
   | "setup"
   | "refine"
+  | "modes"
   | "learn";
 
 interface OnboardingLayoutProps {
@@ -44,6 +45,7 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
     { key: "permissions", label: t("onboarding.steps.permissions") },
     { key: "setup", label: t("onboarding.steps.setup") },
     { key: "refine", label: t("onboarding.steps.refine") },
+    { key: "modes", label: t("onboarding.steps.modes") },
     { key: "learn", label: t("onboarding.steps.learn") },
   ];
   const currentIndex = steps.findIndex((s) => s.key === currentStep);

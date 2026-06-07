@@ -486,13 +486,16 @@ echo "Verifying built bundle signature..."
 /usr/bin/codesign --verify --deep --strict "${BUILT_APP_PATH}"
 notarize_built_app
 
-if [[ -d "${APP_PATH}" ]]; then
-  echo "Updating installed app in place..."
-  /usr/bin/rsync -a --delete "${BUILT_APP_PATH}/" "${APP_PATH}/"
-else
-  echo "Installing app bundle..."
-  /usr/bin/ditto "${BUILT_APP_PATH}" "${APP_PATH}"
-fi
+echo "Installing built app into ${APP_PATH}..."
+# Stage a fresh copy and swap it in. A fresh `ditto` write is not gated by macOS
+# App Management (TCC) the way an in-place rsync/modify of an already-installed
+# signed app is, so this succeeds from any shell without Full Disk Access. The
+# in-place rsync path fails with "utimensat: Operation not permitted" otherwise.
+STAGE_APP_PATH="${APP_PATH}.new"
+/bin/rm -rf "${STAGE_APP_PATH}"
+/usr/bin/ditto "${BUILT_APP_PATH}" "${STAGE_APP_PATH}"
+/bin/rm -rf "${APP_PATH}"
+/bin/mv "${STAGE_APP_PATH}" "${APP_PATH}"
 
 /usr/bin/xattr -cr "${APP_PATH}"
 /usr/bin/codesign --verify --deep --strict "${APP_PATH}"

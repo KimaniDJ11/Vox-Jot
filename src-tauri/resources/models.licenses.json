@@ -128,6 +128,72 @@
       "catalog_ids": ["mlx-vibevoice-asr-bf16"]
     },
     {
+      "id": "gemma4-e2b-audio",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Google Gemma 4 E2B Audio",
+      "upstream": "https://huggingface.co/google/gemma-4-E2B-it",
+      "distribution_source": "https://huggingface.co/google/gemma-4-E2B-it",
+      "license": "Apache-2.0 / Gemma terms",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "license_link", "copyright_notice"]
+    },
+    {
+      "id": "gemma4-e2b-audio-mlx",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Google Gemma 4 E2B Audio MLX conversion",
+      "upstream": "https://huggingface.co/google/gemma-4-E2B-it",
+      "distribution_source": "https://huggingface.co/mlx-community/gemma-4-e2b-it-4bit",
+      "license": "Apache-2.0 / Gemma terms",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "license_link",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "gemma4-e4b-audio",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Google Gemma 4 E4B Audio",
+      "upstream": "https://huggingface.co/google/gemma-4-E4B-it",
+      "distribution_source": "https://huggingface.co/google/gemma-4-E4B-it",
+      "license": "Apache-2.0 / Gemma terms",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "license_link", "copyright_notice"]
+    },
+    {
+      "id": "nemotron-3-5-asr-streaming",
+      "domains": ["stt", "speech_analysis"],
+      "name": "NVIDIA Nemotron 3.5 ASR Streaming MLX conversion",
+      "upstream": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+      "distribution_source": "https://huggingface.co/mlx-community/nemotron-3.5-asr-streaming-0.6b",
+      "license": "NVIDIA Open Model License",
+      "commercial_status": "needs_review",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-nemotron-asr-streaming-0.6b"]
+    },
+    {
+      "id": "mega-asr-8bit",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Mega-ASR 8-bit MLX conversion",
+      "upstream": "https://huggingface.co/zhifeixie/Mega-ASR",
+      "distribution_source": "https://huggingface.co/mlx-community/Mega-ASR-8bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-mega-asr"]
+    },
+    {
       "id": "granite-speech-4-1-2b",
       "domains": ["speech_analysis"],
       "name": "IBM Granite Speech 4.1 2B",
@@ -482,6 +548,40 @@
       "commercial_status": "allowed_with_notice",
       "required_notices": ["license_text", "copyright_notice"],
       "catalog_ids": ["omnivoice"]
+    },
+    {
+      "id": "kitten-tts-0-8",
+      "domains": ["tts"],
+      "name": "KittenTTS 0.8 MLX conversions",
+      "upstream": "https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32",
+      "distribution_source": "https://huggingface.co/mlx-community/kitten-tts-nano-0.8",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": [
+        "kitten-tts-nano-0.8",
+        "kitten-tts-micro-0.8",
+        "kitten-tts-mini-0.8"
+      ]
+    },
+    {
+      "id": "misolabs-misotts",
+      "domains": ["tts"],
+      "name": "MisoLabs MisoTTS MLX conversions",
+      "upstream": "https://huggingface.co/MisoLabs/MisoTTS",
+      "distribution_source": "https://huggingface.co/mlx-community/MisoLabs-MisoTTS-8bit",
+      "license": "Modified MIT",
+      "commercial_status": "needs_review",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["miso-tts-8bit", "miso-tts-bf16"]
     },
     {
       "id": "vibevoice-realtime",

@@ -468,6 +468,11 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("voxcpm2-bf16", "MLX VoxCPM2 bf16", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-bf16", "MLX/mlx-community/VoxCPM2-bf16"), "mlx-community/VoxCPM2-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("voxtral-tts-4b-4bit", "MLX Voxtral TTS 4B 4-bit", "mlx", "mlx_voxtral", ("MLX/Voxtral-4B-TTS-2603-mlx-4bit", "MLX/mlx-community/Voxtral-4B-TTS-2603-mlx-4bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-4bit"),
     ModelSpec("fish-audio-s2-pro-8bit", "MLX Fish Audio S2 Pro 8-bit", "mlx", "mlx_fish", ("MLX/fish-audio-s2-pro-8bit", "MLX/mlx-community/fish-audio-s2-pro-8bit"), "mlx-community/fish-audio-s2-pro-8bit", supports_voice_cloning=True),
+    ModelSpec("kitten-tts-nano-0.8", "MLX KittenTTS Nano 0.8", "mlx", "mlx_kitten_tts", ("MLX/kitten-tts-nano-0.8", "MLX/mlx-community/kitten-tts-nano-0.8"), "mlx-community/kitten-tts-nano-0.8"),
+    ModelSpec("kitten-tts-micro-0.8", "MLX KittenTTS Micro 0.8", "mlx", "mlx_kitten_tts", ("MLX/kitten-tts-micro-0.8", "MLX/mlx-community/kitten-tts-micro-0.8"), "mlx-community/kitten-tts-micro-0.8"),
+    ModelSpec("kitten-tts-mini-0.8", "MLX KittenTTS Mini 0.8", "mlx", "mlx_kitten_tts", ("MLX/kitten-tts-mini-0.8", "MLX/mlx-community/kitten-tts-mini-0.8"), "mlx-community/kitten-tts-mini-0.8"),
+    ModelSpec("miso-tts-8bit", "MLX MisoTTS 8-bit", "mlx", "mlx_miso_tts", ("MLX/MisoLabs-MisoTTS-8bit", "MLX/mlx-community/MisoLabs-MisoTTS-8bit"), "mlx-community/MisoLabs-MisoTTS-8bit", supports_voice_cloning=True),
+    ModelSpec("miso-tts-bf16", "MLX MisoTTS bf16", "mlx", "mlx_miso_tts", ("MLX/MisoLabs-MisoTTS-bf16", "MLX/mlx-community/MisoLabs-MisoTTS-bf16"), "mlx-community/MisoLabs-MisoTTS-bf16", supports_voice_cloning=True),
 )
 
 

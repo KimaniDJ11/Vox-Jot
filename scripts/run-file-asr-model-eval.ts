@@ -28,6 +28,10 @@ const STT_MODEL_ROOT = resolve(
   process.env.HOME ?? "",
   "Library/Application Support/com.iriedinamik.voxjot/models/stt",
 );
+const MLX_AUDIO_PYTHON = resolve(
+  process.env.HOME ?? "",
+  "Library/Application Support/com.iriedinamik.voxjot/mlx-audio-venv/bin/python",
+);
 const REFERENCE =
   "This is a file transcription test for Vox Jot. One, two, three, four, five.";
 
@@ -43,6 +47,15 @@ interface ModelSpec {
   label: string;
   sidecar: boolean;
 }
+
+const MLX_ASR_MODEL_IDS = new Set([
+  "mlx-qwen3-asr-0.6b",
+  "mlx-qwen3-asr",
+  "mlx-fireredasr2-aed",
+  "mlx-vibevoice-asr-bf16",
+  "mlx-nemotron-asr-streaming-0.6b",
+  "mlx-mega-asr",
+]);
 
 interface SidecarPayload {
   ok: boolean;
@@ -132,6 +145,16 @@ const MODELS: ModelSpec[] = [
   {
     id: "mlx-vibevoice-asr-bf16",
     label: "VibeVoice ASR 9B (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "mlx-nemotron-asr-streaming-0.6b",
+    label: "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "mlx-mega-asr",
+    label: "Mega-ASR 8-bit (MLX)",
     sidecar: true,
   },
   {
@@ -276,6 +299,9 @@ function modelDownloaded(modelId: string): boolean {
     "mlx-qwen3-asr": "MLX/mlx-community/Qwen3-ASR-1.7B-8bit",
     "mlx-fireredasr2-aed": "MLX/mlx-community/FireRedASR2-AED-mlx",
     "mlx-vibevoice-asr-bf16": "MLX/mlx-community/VibeVoice-ASR-bf16",
+    "mlx-nemotron-asr-streaming-0.6b":
+      "MLX/mlx-community/nemotron-3.5-asr-streaming-0.6b",
+    "mlx-mega-asr": "MLX/mlx-community/Mega-ASR-8bit",
   };
   const sttPath = sttMlxPaths[modelId];
   return sttPath
@@ -305,7 +331,18 @@ function runSidecar(
   sample16k: string,
   durationMs: number,
 ): ModelResult {
-  const python = resolve(PROJECT_ROOT, ".venv/bin/python");
+  const python = MLX_ASR_MODEL_IDS.has(model.id)
+    ? MLX_AUDIO_PYTHON
+    : resolve(PROJECT_ROOT, ".venv/bin/python");
+  if (!existsSync(python)) {
+    return {
+      model_id: model.id,
+      label: model.label,
+      status: "failed",
+      attempts: 1,
+      reason: `Python runtime is missing at ${python}`,
+    };
+  }
   const sidecar = resolve(PROJECT_ROOT, "scripts/speech_analysis_sidecar.py");
   const started = performance.now();
   const result = spawnSync(

@@ -386,6 +386,66 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             capability(false, true, false, true, true, true, false, false, false),
         ),
         descriptor(
+            "gemma4-e2b-audio",
+            "Gemma 4 E2B Audio",
+            "Google",
+            Some("google/gemma-4-E2B-it"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("Apache-2.0"),
+            false,
+            true,
+            Some("~5.1 GB"),
+            SpeechAnalysisTask::Asr,
+            SpeechAnalysisEngine::Transformers,
+            SpeechAnalysisRuntime::PythonSidecar,
+            "Gemma 4 multimodal ASR through Transformers AutoModelForMultimodalLM.",
+            SpeechAnalysisReadiness::Ready,
+            &["mul"],
+            &["text"],
+            capability(false, false, false, false, false, false, false, false, false),
+        ),
+        descriptor(
+            "gemma4-e2b-audio-mlx",
+            "Gemma 4 E2B Audio 4-bit (MLX)",
+            "MLX Community",
+            Some("mlx-community/gemma-4-e2b-it-4bit"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("Apache-2.0"),
+            false,
+            true,
+            Some("~2.6 GB"),
+            SpeechAnalysisTask::Asr,
+            SpeechAnalysisEngine::Mlx,
+            SpeechAnalysisRuntime::PythonSidecar,
+            "Quantized Gemma 4 E2B audio transcription through mlx-vlm on Apple Silicon.",
+            SpeechAnalysisReadiness::Ready,
+            &["mul"],
+            &["text"],
+            capability(false, false, false, false, false, false, false, false, false),
+        ),
+        descriptor(
+            "gemma4-e4b-audio",
+            "Gemma 4 E4B Audio",
+            "Google",
+            Some("google/gemma-4-E4B-it"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("Apache-2.0"),
+            false,
+            true,
+            Some("~8 GB"),
+            SpeechAnalysisTask::Asr,
+            SpeechAnalysisEngine::Transformers,
+            SpeechAnalysisRuntime::PythonSidecar,
+            "Larger Gemma 4 multimodal ASR model through Transformers.",
+            SpeechAnalysisReadiness::Ready,
+            &["mul"],
+            &["text"],
+            capability(false, false, false, false, false, false, false, false, false),
+        ),
+        descriptor(
             "mlx-qwen3-asr-0.6b",
             "Qwen3 ASR 0.6B (MLX)",
             "Alibaba Qwen",
@@ -464,6 +524,50 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             &["en", "zh"],
             &["text", "segments"],
             capability(true, true, false, false, true, false, false, false, true),
+        ),
+        descriptor(
+            "mlx-nemotron-asr-streaming-0.6b",
+            "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+            "NVIDIA",
+            Some("mlx-community/nemotron-3.5-asr-streaming-0.6b"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("NVIDIA Open Model License"),
+            false,
+            true,
+            Some("~800 MB"),
+            SpeechAnalysisTask::Asr,
+            SpeechAnalysisEngine::Mlx,
+            SpeechAnalysisRuntime::MlxNative,
+            "Streaming FastConformer-RNNT multilingual ASR through mlx-audio.",
+            SpeechAnalysisReadiness::Ready,
+            &[
+                "en", "es", "de", "fr", "it", "ar", "ja", "ko", "pt", "ru", "hi", "zh", "vi",
+                "he", "nl", "cs", "da", "pl", "no", "sv", "th", "tr", "bg", "el", "et", "fi",
+                "hr", "hu", "lt", "lv", "ro", "sk", "uk", "mt",
+            ],
+            &["text"],
+            capability(false, true, false, false, true, false, false, false, true),
+        ),
+        descriptor(
+            "mlx-mega-asr",
+            "Mega-ASR 8-bit (MLX)",
+            "Mega-ASR",
+            Some("mlx-community/Mega-ASR-8bit"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("Apache-2.0"),
+            false,
+            true,
+            Some("~1.1 GB"),
+            SpeechAnalysisTask::Asr,
+            SpeechAnalysisEngine::Mlx,
+            SpeechAnalysisRuntime::MlxNative,
+            "Quantized Mega-ASR for English and Mandarin file transcription through mlx-audio.",
+            SpeechAnalysisReadiness::Ready,
+            &["en", "zh"],
+            &["text"],
+            capability(false, true, false, false, true, false, false, false, true),
         ),
         descriptor(
             "pyannote-community-1",
@@ -701,6 +805,11 @@ fn readiness_for(
     installed: bool,
 ) -> SpeechAnalysisReadiness {
     if installed {
+        if model_uses_gemma_audio_runtime(&model.id)
+            && !crate::sidecar::SidecarManager::gemma_audio_runtime_installed_for_app(app)
+        {
+            return SpeechAnalysisReadiness::RequiresRuntimeInstall;
+        }
         if matches!(model.runtime, SpeechAnalysisRuntime::MlxNative)
             && !crate::sidecar::SidecarManager::mlx_audio_runtime_installed_for_app(app)
         {
@@ -776,6 +885,12 @@ fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
     let required_files: &[&str] = match model_id {
         "granite-speech-4-1-2b" => &["config.json", "model.safetensors.index.json"],
         "cohere-transcribe-03-2026" => &["config.json", "model.safetensors"],
+        "gemma4-e2b-audio" | "gemma4-e4b-audio" => &[
+            "config.json",
+            "model.safetensors",
+            "processor_config.json",
+            "tokenizer.json",
+        ],
         "mlx-sortformer-4spk-v1" | "mlx-sortformer-4spk-v2-1" => {
             &["config.json", "model.safetensors"]
         }
@@ -1643,6 +1758,13 @@ pub fn model_uses_managed_python_runtime(model_id: &str) -> bool {
     })
 }
 
+pub fn model_uses_gemma_audio_runtime(model_id: &str) -> bool {
+    matches!(
+        model_id,
+        "gemma4-e2b-audio" | "gemma4-e2b-audio-mlx" | "gemma4-e4b-audio"
+    )
+}
+
 pub fn get_model(app: &AppHandle, model_id: &str) -> Option<SpeechAnalysisModelDescriptor> {
     model_by_id(model_id).map(|model| descriptor_with_install_state(app, model))
 }
@@ -1782,6 +1904,8 @@ mod tests {
             "mlx-qwen3-asr",
             "mlx-fireredasr2-aed",
             "mlx-vibevoice-asr-bf16",
+            "mlx-nemotron-asr-streaming-0.6b",
+            "mlx-mega-asr",
             "pyannote-community-1",
             "pyannote-3-1",
             "nemo-sortformer-4spk-v1",

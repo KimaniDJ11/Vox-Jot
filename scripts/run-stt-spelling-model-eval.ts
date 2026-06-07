@@ -335,6 +335,22 @@ const NATIVE_MODELS: NativeModel[] = [
     runtime: "mlx",
   },
   {
+    id: "mlx-nemotron-asr-streaming-0.6b",
+    label: "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+    engine: "mlx-audio",
+    path: "MLX/mlx-community/nemotron-3.5-asr-streaming-0.6b",
+    directory: true,
+    runtime: "mlx",
+  },
+  {
+    id: "mlx-mega-asr",
+    label: "Mega-ASR 8-bit (MLX)",
+    engine: "mlx-audio",
+    path: "MLX/mlx-community/Mega-ASR-8bit",
+    directory: true,
+    runtime: "mlx",
+  },
+  {
     id: "apple-speech-analyzer",
     label: "Apple Speech",
     engine: "Apple SpeechAnalyzer",

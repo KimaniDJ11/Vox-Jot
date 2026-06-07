@@ -1,16 +1,16 @@
 # Vox Jot speech-analysis runtime dependencies.
 #
 # This environment is intentionally separate from speech-runtime/.venv.
-# It covers file-transcription ASR, speaker diarization, ONNX, CoreML,
-# and MLX validation paths. Model adapters still pin model revisions
-# separately before a model is marked runnable.
+# It covers file-transcription ASR, speaker diarization, ONNX, and CoreML.
+# MLX-Audio and Gemma audio use separate app-managed venvs because their
+# Hugging Face/Transformers constraints conflict with WhisperX.
 
 torch==2.8.0
 torchaudio==2.8.0
 torchvision==0.23.0
 torchcodec==0.7.0
 
-transformers==5.0.0rc3
+transformers==4.57.3
 huggingface-hub==0.36.2
 librosa==0.11.0
 soundfile==0.13.1
@@ -22,5 +22,3 @@ nemo_toolkit[asr]==2.7.3
 onnx==1.21.0
 onnxruntime==1.25.1
 coremltools==9.0
-mlx==0.31.2
-mlx-audio==0.4.3

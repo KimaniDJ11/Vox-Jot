@@ -3,14 +3,15 @@ use crate::settings::{
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
     TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
     TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID, TTS_PROVIDER_MLX_IRODORI_TTS_ID,
-    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID,
-    TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID, TTS_PROVIDER_MLX_MELOTTS_ID,
-    TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID,
-    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
-    TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
-    TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID,
-    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_MLX_KITTEN_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
+    TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
+    TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MISO_TTS_ID,
+    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_OUTE_ID,
+    TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID,
+    TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
+    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
+    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1113,6 +1114,81 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_KITTEN_TTS_ID,
+        provider_label: "MLX KittenTTS",
+        provider_description: "Ultra-light KittenTTS voices running through mlx-audio.",
+        model_id: "kitten-tts-nano-0.8",
+        hf_model_id: "mlx-community/kitten-tts-nano-0.8",
+        local_dir_names: &["kitten-tts-nano-0.8"],
+        label: "KittenTTS Nano 0.8",
+        description: "Tiny ~15M-parameter English TTS for fast, low-footprint local speech.",
+        engine_family: "mlx_audio",
+        license_label: Some("Apache-2.0"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_KITTEN_TTS_ID,
+        provider_label: "MLX KittenTTS",
+        provider_description: "Ultra-light KittenTTS voices running through mlx-audio.",
+        model_id: "kitten-tts-micro-0.8",
+        hf_model_id: "mlx-community/kitten-tts-micro-0.8",
+        local_dir_names: &["kitten-tts-micro-0.8"],
+        label: "KittenTTS Micro 0.8",
+        description: "Compact English KittenTTS checkpoint balancing size and quality.",
+        engine_family: "mlx_audio",
+        license_label: Some("Apache-2.0"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_KITTEN_TTS_ID,
+        provider_label: "MLX KittenTTS",
+        provider_description: "Ultra-light KittenTTS voices running through mlx-audio.",
+        model_id: "kitten-tts-mini-0.8",
+        hf_model_id: "mlx-community/kitten-tts-mini-0.8",
+        local_dir_names: &["kitten-tts-mini-0.8"],
+        label: "KittenTTS Mini 0.8",
+        description: "Largest KittenTTS variant for higher-quality lightweight English TTS.",
+        engine_family: "mlx_audio",
+        license_label: Some("Apache-2.0"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_MISO_TTS_ID,
+        provider_label: "MLX MisoTTS",
+        provider_description: "MisoLabs MisoTTS conversational voice cloning through mlx-audio.",
+        model_id: "miso-tts-8bit",
+        hf_model_id: "mlx-community/MisoLabs-MisoTTS-8bit",
+        local_dir_names: &["MisoLabs-MisoTTS-8bit"],
+        label: "MisoTTS 8-bit",
+        description: "Quantized Sesame-architecture MisoTTS with reference-audio voice cloning.",
+        engine_family: "mlx_audio",
+        license_label: Some("Modified MIT"),
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_MISO_TTS_ID,
+        provider_label: "MLX MisoTTS",
+        provider_description: "MisoLabs MisoTTS conversational voice cloning through mlx-audio.",
+        model_id: "miso-tts-bf16",
+        hf_model_id: "mlx-community/MisoLabs-MisoTTS-bf16",
+        local_dir_names: &["MisoLabs-MisoTTS-bf16"],
+        label: "MisoTTS bf16",
+        description: "Full-precision MisoTTS (8B, high memory) with reference-audio voice cloning.",
+        engine_family: "mlx_audio",
+        license_label: Some("Modified MIT"),
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
 ];
 
 pub fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
@@ -1153,6 +1229,8 @@ pub fn provider_is_mlx_audio(provider_id: &str) -> bool {
             | TTS_PROVIDER_MLX_VIBEVOICE_ID
             | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+            | TTS_PROVIDER_MLX_KITTEN_TTS_ID
+            | TTS_PROVIDER_MLX_MISO_TTS_ID
     )
 }
 
@@ -1304,6 +1382,8 @@ pub fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_VIBEVOICE_ID
             | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+            | TTS_PROVIDER_MLX_KITTEN_TTS_ID
+            | TTS_PROVIDER_MLX_MISO_TTS_ID
             | TTS_PROVIDER_LFM_AUDIO_GGUF_ID
             | TTS_PROVIDER_VIBEVOICE_ID
     )

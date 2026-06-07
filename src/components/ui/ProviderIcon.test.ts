@@ -256,6 +256,16 @@ describe("resolveModelProviderId", () => {
         expected: "mlx_indextts",
       },
       {
+        title: "KittenTTS Nano 0.8",
+        runtimeProviderId: "mlx_kitten_tts",
+        expected: "mlx_kitten_tts",
+      },
+      {
+        title: "MisoTTS 8-bit",
+        runtimeProviderId: "mlx_miso_tts",
+        expected: "mlx_miso_tts",
+      },
+      {
         title: "System Voices",
         runtimeProviderId: "system_builtin",
         expected: "system_builtin",
@@ -575,6 +585,8 @@ describe("resolveModelProviderId", () => {
       "mlx_moss_tts",
       "mlx_irodori_tts",
       "mlx_indextts",
+      "mlx_kitten_tts",
+      "mlx_miso_tts",
       "lfm_audio_gguf",
       "vibevoice",
       "polyvoice",

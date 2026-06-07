@@ -50,6 +50,8 @@ pub const TTS_PROVIDER_MLX_IRODORI_TTS_ID: &str = "mlx_irodori_tts";
 pub const TTS_PROVIDER_MLX_INDEXTTS_ID: &str = "mlx_indextts";
 pub const TTS_PROVIDER_MLX_OMNIVOICE_ID: &str = "mlx_omnivoice";
 pub const TTS_PROVIDER_MLX_VIBEVOICE_ID: &str = "mlx_vibevoice";
+pub const TTS_PROVIDER_MLX_KITTEN_TTS_ID: &str = "mlx_kitten_tts";
+pub const TTS_PROVIDER_MLX_MISO_TTS_ID: &str = "mlx_miso_tts";
 pub const TTS_PROVIDER_LFM_AUDIO_GGUF_ID: &str = "lfm_audio_gguf";
 pub const TTS_PROVIDER_VIBEVOICE_ID: &str = "vibevoice";
 pub const TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID: &str = "lfm2-5-audio-1-5b-q4-0";
@@ -410,19 +412,19 @@ pub enum TranslationBilingualLayout {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationDestinationMode {
-    #[default]
-    PasteInPlace,
     PreviewThenPaste,
-    OpenInJotPad,
+    #[default]
+    #[serde(other)]
+    PasteInPlace,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SelectionTranslationDestinationMode {
-    #[default]
-    ReplaceSelection,
     PreviewThenReplace,
-    OpenInJotPad,
+    #[default]
+    #[serde(other)]
+    ReplaceSelection,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]

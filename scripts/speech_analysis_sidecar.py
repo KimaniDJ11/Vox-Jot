@@ -33,12 +33,23 @@ ASR_REPOS = {
     "cohere-transcribe-03-2026": "CohereLabs/cohere-transcribe-03-2026",
 }
 
+GEMMA4_AUDIO_REPOS = {
+    "gemma4-e2b-audio": "google/gemma-4-E2B-it",
+    "gemma4-e4b-audio": "google/gemma-4-E4B-it",
+}
+
+GEMMA4_MLX_AUDIO_REPOS = {
+    "gemma4-e2b-audio-mlx": "mlx-community/gemma-4-e2b-it-4bit",
+}
+
 MLX_ASR_REPOS = {
     "mlx-qwen3-asr-0.6b": "mlx-community/Qwen3-ASR-0.6B-8bit",
     "mlx-qwen3-asr": "mlx-community/Qwen3-ASR-1.7B-8bit",
     "mlx-qwen3-asr-1.7b": "mlx-community/Qwen3-ASR-1.7B-8bit",
     "mlx-fireredasr2-aed": "mlx-community/FireRedASR2-AED-mlx",
     "mlx-vibevoice-asr-bf16": "mlx-community/VibeVoice-ASR-bf16",
+    "mlx-nemotron-asr-streaming-0.6b": "mlx-community/nemotron-3.5-asr-streaming-0.6b",
+    "mlx-mega-asr": "mlx-community/Mega-ASR-8bit",
 }
 
 MLX_DIARIZATION_REPOS = {
@@ -157,6 +168,34 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
         if has_mlx_snapshot_weights(stt_path):
             return str(stt_path)
 
+    if model_id in GEMMA4_AUDIO_REPOS:
+        stt_root = Path(
+            os.environ.get(
+                "VOX_JOT_STT_MODEL_ROOT",
+                str(APP_SUPPORT_MODEL_ROOT / "stt"),
+            )
+        )
+        stt_path = stt_root / "Gemma" / repo_id
+        if (
+            stt_path.is_dir()
+            and (stt_path / "config.json").exists()
+            and (stt_path / "model.safetensors").exists()
+            and (stt_path / "processor_config.json").exists()
+            and (stt_path / "tokenizer.json").exists()
+        ):
+            return str(stt_path)
+
+    if model_id in GEMMA4_MLX_AUDIO_REPOS:
+        stt_root = Path(
+            os.environ.get(
+                "VOX_JOT_STT_MODEL_ROOT",
+                str(APP_SUPPORT_MODEL_ROOT / "stt"),
+            )
+        )
+        stt_path = stt_root / "GemmaMLX" / repo_id
+        if has_mlx_snapshot_weights(stt_path):
+            return str(stt_path)
+
     return repo_id
 
 
@@ -225,9 +264,18 @@ def diarization_tracks(diarization: Any) -> Any:
 def normalize_text(value: Any) -> str:
     if value is None:
         return ""
+    if isinstance(value, dict):
+        for key in ("text", "content", "answer", "response"):
+            if key in value:
+                return normalize_text(value[key])
+        return " ".join(normalize_text(item) for item in value.values()).strip()
     if isinstance(value, list):
-        return " ".join(str(item) for item in value).strip()
-    return str(value).strip()
+        return " ".join(normalize_text(item) for item in value).strip()
+    text = str(value).strip()
+    for marker in ("<|channel|>final", "<|channel|>analysis", "<|channel|>thought"):
+        if marker in text:
+            text = text.split(marker)[-1].strip()
+    return text.replace("\n", " ").strip()
 
 
 def coerce_timestamp_ms(timestamp: Any) -> tuple[int, int] | None:
@@ -275,6 +323,88 @@ def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[S
             start_ms, end_ms = bounds
             segments.append(Segment(start_ms=start_ms, end_ms=max(end_ms, start_ms), text=chunk_text))
     return text, segments
+
+
+def transcribe_gemma4_audio(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
+    import torch
+    from transformers import AutoModelForMultimodalLM, AutoProcessor
+
+    model_name = repo_or_local(model_id, GEMMA4_AUDIO_REPOS[model_id])
+    processor = AutoProcessor.from_pretrained(model_name)
+    model = AutoModelForMultimodalLM.from_pretrained(
+        model_name,
+        dtype="auto",
+        device_map="auto",
+    )
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "Transcribe the following speech segment in its original language. "
+                        "Only output the transcription, with no newlines. "
+                        "When transcribing numbers, write digits where appropriate."
+                    ),
+                },
+                {"type": "audio", "audio": audio_path},
+            ],
+        }
+    ]
+    template_kwargs = {
+        "tokenize": True,
+        "return_dict": True,
+        "return_tensors": "pt",
+        "add_generation_prompt": True,
+    }
+    try:
+        inputs = processor.apply_chat_template(
+            messages,
+            enable_thinking=False,
+            **template_kwargs,
+        )
+    except TypeError:
+        inputs = processor.apply_chat_template(messages, **template_kwargs)
+    target_device = getattr(model, "device", None)
+    if target_device is not None:
+        inputs = inputs.to(target_device)
+    input_len = inputs["input_ids"].shape[-1]
+    with torch.inference_mode():
+        outputs = model.generate(**inputs, max_new_tokens=512, do_sample=False)
+    response = processor.decode(outputs[0][input_len:], skip_special_tokens=False)
+    parsed = processor.parse_response(response)
+    return normalize_text(parsed if parsed else response), []
+
+
+def transcribe_gemma4_mlx_audio(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
+    from mlx_vlm.generate import generate
+    from mlx_vlm.prompt_utils import apply_chat_template
+    from mlx_vlm.utils import load
+
+    model, processor = load(repo_or_local(model_id, GEMMA4_MLX_AUDIO_REPOS[model_id]))
+    prompt = apply_chat_template(
+        processor,
+        model.config,
+        (
+            "Transcribe the following speech segment in its original language. "
+            "Only output the transcription, with no newlines. "
+            "When transcribing numbers, write digits where appropriate."
+        ),
+        num_audios=1,
+        enable_thinking=False,
+    )
+    result = generate(
+        model,
+        processor,
+        prompt,
+        audio=audio_path,
+        max_tokens=512,
+        temperature=0.0,
+        enable_thinking=False,
+        verbose=False,
+    )
+    return normalize_text(getattr(result, "text", result)), []
 
 
 def coerce_segment(segment: Any) -> Segment | None:
@@ -686,6 +816,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         text, segments = transcribe_granite(args.audio)
     elif args.asr_model == "cohere-transcribe-03-2026":
         text, segments = transcribe_cohere(args.audio)
+    elif args.asr_model in GEMMA4_AUDIO_REPOS:
+        text, segments = transcribe_gemma4_audio(args.audio, args.asr_model)
+    elif args.asr_model in GEMMA4_MLX_AUDIO_REPOS:
+        text, segments = transcribe_gemma4_mlx_audio(args.audio, args.asr_model)
     elif args.asr_model in MLX_ASR_REPOS:
         text, segments = transcribe_mlx_audio(args.audio, args.asr_model)
     elif args.asr_model in ASR_REPOS:

@@ -541,6 +541,16 @@ fn known_model_runtime(model_id: &str) -> Option<(EngineType, &'static str, bool
             "MLX/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
             true,
         )),
+        "mlx-nemotron-asr-streaming-0.6b" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/nemotron-3.5-asr-streaming-0.6b",
+            true,
+        )),
+        "mlx-mega-asr" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/Mega-ASR-8bit",
+            true,
+        )),
         "apple-speech-analyzer" => Some((
             EngineType::AppleSpeech,
             "app-runtime://apple-speech-analyzer",
@@ -735,6 +745,7 @@ fn load_regression_engine(model_runtime: &ModelRuntime) -> Result<RegressionEngi
         EngineType::MlxAudioStt => Ok(RegressionEngine::MlxAudioStt(
             MlxAudioRegressionEngine::new(model_runtime.model_path.display().to_string())?,
         )),
+        EngineType::GemmaAudioStt => Err(anyhow!("Gemma audio models are app-sidecar backed.")),
         EngineType::AppleSpeech => Ok(RegressionEngine::AppleSpeech(AppleSpeechEngine::new(
             AppleSpeechMode::Offline,
         )?)),

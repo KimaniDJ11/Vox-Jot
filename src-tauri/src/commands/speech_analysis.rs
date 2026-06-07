@@ -98,7 +98,24 @@ pub async fn download_speech_analysis_model(
     let sidecar_manager = sidecar_manager.inner().clone();
     run_speech_analysis_command_on_stack("download-speech-analysis-model", move || async move {
         let descriptor = speech_analysis::download_model(&app, model_id).await?;
-        let runtime_result = if speech_analysis::model_uses_managed_python_runtime(&descriptor.id) {
+        let runtime_result = if speech_analysis::model_uses_gemma_audio_runtime(&descriptor.id) {
+            speech_analysis::emit_download_progress(
+                &app,
+                &descriptor.id,
+                "installing-runtime",
+                0,
+                0,
+                Some("Gemma audio Python runtime"),
+                None,
+                None,
+                None,
+            );
+            let sidecar = sidecar_manager.clone();
+            tokio::task::spawn_blocking(move || sidecar.ensure_gemma_audio_environment())
+                .await
+                .map_err(|err| format!("Failed to join Gemma audio runtime setup task: {err}"))
+                .and_then(|result| result.map(|_| ()))
+        } else if speech_analysis::model_uses_managed_python_runtime(&descriptor.id) {
             speech_analysis::emit_download_progress(
                 &app,
                 &descriptor.id,

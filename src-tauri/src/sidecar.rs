@@ -41,17 +41,36 @@ fn health_client() -> &'static reqwest::blocking::Client {
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
-    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|patches=voxtral_eos_v1,parakeet_stt_remap_v1";
+    "mlx-audio[server,stt,tts]==0.4.4|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|phonemizer-fork|setuptools<81|patches=voxtral_eos_v1,parakeet_stt_remap_v1,kitten_sine_len_v1,server_stt_inline_v1";
 const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
-    "mlx-audio==0.4.3",
+    "mlx-audio[server,stt,tts]==0.4.4",
     "torch==2.11.0",
     "g2p_en==2.1.0",
     "misaki[zh]",
+    "phonemizer-fork",
+    "setuptools<81",
 ];
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
-const SPEECH_ANALYSIS_RUNTIME_MARKER: &str = "speech-analysis-runtime-2026-05-12-py311-v1";
+const SPEECH_ANALYSIS_RUNTIME_MARKER: &str =
+    "speech-analysis-runtime-2026-06-07-py311-transformers-4573-v1";
 const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
+const GEMMA_AUDIO_VENV_DIR: &str = "gemma-audio-venv";
+const GEMMA_AUDIO_VERSION_MARKER: &str = "gemma-audio.version";
+const GEMMA_AUDIO_RUNTIME_MARKER: &str =
+    "gemma-audio-runtime-2026-06-07-py311-transformers-mlxvlm-v1";
+const GEMMA_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
+    "torchvision==0.23.0",
+    "transformers==5.10.2",
+    "mlx-vlm==0.4.3",
+    "huggingface-hub==1.18.0",
+    "accelerate==1.12.0",
+    "librosa==0.11.0",
+    "pillow==12.2.0",
+    "soundfile==0.13.1",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidecarBackend {
@@ -728,6 +747,12 @@ impl SidecarManager {
         Ok(app_data_dir.join(SPEECH_ANALYSIS_VENV_DIR))
     }
 
+    fn gemma_audio_venv_dir(&self) -> Result<PathBuf, String> {
+        let app_data_dir = crate::portable::app_data_dir(&self.app_handle)
+            .map_err(|err| format!("Failed to resolve app data dir for Gemma audio: {err}"))?;
+        Ok(app_data_dir.join(GEMMA_AUDIO_VENV_DIR))
+    }
+
     fn speech_analysis_python_path(venv_dir: &Path) -> PathBuf {
         #[cfg(target_os = "windows")]
         {
@@ -755,23 +780,77 @@ impl SidecarManager {
             .unwrap_or(false)
     }
 
-    fn find_bootstrap_python() -> Option<String> {
-        if let Ok(value) = std::env::var("VOX_JOT_MLX_AUDIO_PYTHON") {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                return Some(trimmed.to_string());
+    pub fn gemma_audio_runtime_installed_for_app(app: &tauri::AppHandle) -> bool {
+        let Ok(app_data_dir) = crate::portable::app_data_dir(app) else {
+            return false;
+        };
+        let venv_dir = app_data_dir.join(GEMMA_AUDIO_VENV_DIR);
+        let python = Self::speech_analysis_python_path(&venv_dir);
+        if !python.exists() {
+            return false;
+        }
+        std::fs::read_to_string(venv_dir.join(GEMMA_AUDIO_VERSION_MARKER))
+            .ok()
+            .map(|value| value.trim() == GEMMA_AUDIO_RUNTIME_MARKER)
+            .unwrap_or(false)
+    }
+
+    fn gemma_audio_runtime_installed(&self) -> bool {
+        Self::gemma_audio_runtime_installed_for_app(&self.app_handle)
+    }
+
+    fn env_python_override(var_name: &str) -> Option<String> {
+        std::env::var(var_name)
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+    }
+
+    fn supported_env_python_override(var_name: &str) -> Option<String> {
+        Self::env_python_override(var_name)
+            .filter(|candidate| Self::python_is_supported_bootstrap(candidate))
+    }
+
+    fn python_is_supported_bootstrap(candidate: &str) -> bool {
+        Command::new(candidate)
+            .args([
+                "-c",
+                "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)",
+            ])
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    }
+
+    fn find_python_on_path() -> Option<String> {
+        #[cfg(target_os = "macos")]
+        for candidate in [
+            "/opt/homebrew/bin/python3.11",
+            "/opt/homebrew/opt/python@3.11/bin/python3.11",
+            "/usr/local/bin/python3.11",
+        ] {
+            if Self::python_is_supported_bootstrap(candidate) {
+                return Some(candidate.to_string());
             }
         }
 
-        for candidate in ["python3", "python"] {
-            if let Ok(status) = Command::new(candidate).arg("--version").status() {
-                if status.success() {
-                    return Some(candidate.to_string());
-                }
+        for candidate in ["python3.11", "python3", "python"] {
+            if Self::python_is_supported_bootstrap(candidate) {
+                return Some(candidate.to_string());
             }
         }
 
         None
+    }
+
+    fn find_bootstrap_python() -> Option<String> {
+        Self::supported_env_python_override("VOX_JOT_MLX_AUDIO_PYTHON")
+            .or_else(Self::find_python_on_path)
+    }
+
+    fn find_gemma_bootstrap_python() -> Option<String> {
+        Self::supported_env_python_override("VOX_JOT_GEMMA_AUDIO_PYTHON")
+            .or_else(Self::find_bootstrap_python)
     }
 
     pub fn ensure_mlx_audio_environment(&self) -> Result<PathBuf, String> {
@@ -792,25 +871,23 @@ impl SidecarManager {
         std::fs::create_dir_all(&venv_dir)
             .map_err(|err| format!("Failed to create mlx-audio venv dir: {err}"))?;
 
-        if !python.exists() {
-            let bootstrap_python = Self::find_bootstrap_python().ok_or_else(|| {
-                "mlx-audio requires Python 3 on PATH (or VOX_JOT_MLX_AUDIO_PYTHON set).".to_string()
-            })?;
+        let bootstrap_python = Self::find_bootstrap_python().ok_or_else(|| {
+            "mlx-audio requires Python 3.11 on PATH (or VOX_JOT_MLX_AUDIO_PYTHON set).".to_string()
+        })?;
 
-            self.emit_setup_progress("creating_venv", "Preparing mlx-audio Python environment.");
-            let venv_status = Command::new(&bootstrap_python)
-                .args(["-m", "venv"])
-                .arg(&venv_dir)
-                .status()
-                .map_err(|err| {
-                    format!("Failed to create mlx-audio venv with {bootstrap_python}: {err}")
-                })?;
-            if !venv_status.success() {
-                return Err(format!(
-                    "Failed to create mlx-audio venv with {} (exit status {}).",
-                    bootstrap_python, venv_status
-                ));
-            }
+        self.emit_setup_progress("creating_venv", "Preparing mlx-audio Python environment.");
+        let venv_status = Command::new(&bootstrap_python)
+            .args(["-m", "venv", "--clear"])
+            .arg(&venv_dir)
+            .status()
+            .map_err(|err| {
+                format!("Failed to create mlx-audio venv with {bootstrap_python}: {err}")
+            })?;
+        if !venv_status.success() {
+            return Err(format!(
+                "Failed to create mlx-audio venv with {} (exit status {}).",
+                bootstrap_python, venv_status
+            ));
         }
 
         self.emit_setup_progress("installing", "Installing pinned mlx-audio runtime.");
@@ -853,6 +930,76 @@ impl SidecarManager {
         Ok(python)
     }
 
+    pub fn ensure_gemma_audio_environment(&self) -> Result<PathBuf, String> {
+        let venv_dir = self.gemma_audio_venv_dir()?;
+        let python = Self::speech_analysis_python_path(&venv_dir);
+        if self.gemma_audio_runtime_installed() {
+            return Ok(python);
+        }
+
+        std::fs::create_dir_all(&venv_dir)
+            .map_err(|err| format!("Failed to create Gemma audio venv dir: {err}"))?;
+
+        let bootstrap_python = Self::find_gemma_bootstrap_python().ok_or_else(|| {
+            "Gemma audio requires Python 3.11 on PATH (or VOX_JOT_GEMMA_AUDIO_PYTHON set)."
+                .to_string()
+        })?;
+        let venv_status = Command::new(&bootstrap_python)
+            .args(["-m", "venv", "--clear"])
+            .arg(&venv_dir)
+            .status()
+            .map_err(|err| {
+                format!("Failed to create Gemma audio venv with {bootstrap_python}: {err}")
+            })?;
+        if !venv_status.success() {
+            return Err(format!(
+                "Failed to create Gemma audio venv with {} (exit status {}).",
+                bootstrap_python, venv_status
+            ));
+        }
+
+        for pip_args in [
+            vec![
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "pip",
+                "setuptools",
+                "wheel",
+            ],
+            {
+                let mut args = vec!["-m", "pip", "install", "--upgrade", "--force-reinstall"];
+                args.extend(GEMMA_AUDIO_RUNTIME_PACKAGES.iter().copied());
+                args
+            },
+        ] {
+            let status = Command::new(&python)
+                .args(&pip_args)
+                .status()
+                .map_err(|err| {
+                    format!(
+                        "Failed to run '{}' inside the Gemma audio venv: {err}",
+                        pip_args.join(" ")
+                    )
+                })?;
+            if !status.success() {
+                return Err(format!(
+                    "Gemma audio environment setup failed while running '{}' (exit status {}).",
+                    pip_args.join(" "),
+                    status
+                ));
+            }
+        }
+
+        std::fs::write(
+            venv_dir.join(GEMMA_AUDIO_VERSION_MARKER),
+            GEMMA_AUDIO_RUNTIME_MARKER,
+        )
+        .map_err(|err| format!("Failed to write Gemma audio version marker: {err}"))?;
+        Ok(python)
+    }
+
     pub fn ensure_speech_analysis_environment(&self) -> Result<PathBuf, String> {
         if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_PYTHON") {
             let python = PathBuf::from(path);
@@ -877,28 +1024,27 @@ impl SidecarManager {
         std::fs::create_dir_all(&venv_dir)
             .map_err(|err| format!("Failed to create speech-analysis venv dir: {err}"))?;
 
-        if !python.exists() {
-            let bootstrap_python = Self::find_bootstrap_python().ok_or_else(|| {
-                "Speech analysis requires Python 3 on PATH (or VOX_JOT_SPEECH_ANALYSIS_PYTHON set).".to_string()
-            })?;
+        let bootstrap_python = Self::find_bootstrap_python().ok_or_else(|| {
+            "Speech analysis requires Python 3.11 on PATH (or VOX_JOT_SPEECH_ANALYSIS_PYTHON set)."
+                .to_string()
+        })?;
 
-            self.emit_setup_progress(
-                "creating_venv",
-                "Preparing speech-analysis Python environment.",
-            );
-            let venv_status = Command::new(&bootstrap_python)
-                .args(["-m", "venv"])
-                .arg(&venv_dir)
-                .status()
-                .map_err(|err| {
-                    format!("Failed to create speech-analysis venv with {bootstrap_python}: {err}")
-                })?;
-            if !venv_status.success() {
-                return Err(format!(
-                    "Failed to create speech-analysis venv with {} (exit status {}).",
-                    bootstrap_python, venv_status
-                ));
-            }
+        self.emit_setup_progress(
+            "creating_venv",
+            "Preparing speech-analysis Python environment.",
+        );
+        let venv_status = Command::new(&bootstrap_python)
+            .args(["-m", "venv", "--clear"])
+            .arg(&venv_dir)
+            .status()
+            .map_err(|err| {
+                format!("Failed to create speech-analysis venv with {bootstrap_python}: {err}")
+            })?;
+        if !venv_status.success() {
+            return Err(format!(
+                "Failed to create speech-analysis venv with {} (exit status {}).",
+                bootstrap_python, venv_status
+            ));
         }
 
         let requirements_path = venv_dir.join("requirements.txt");
@@ -1019,6 +1165,42 @@ impl SidecarManager {
             }
         }
 
+        let kitten_istftnet_file = site_packages
+            .join("mlx_audio")
+            .join("tts")
+            .join("models")
+            .join("kitten_tts")
+            .join("istftnet.py");
+
+        if kitten_istftnet_file.exists() {
+            let kitten_contents =
+                std::fs::read_to_string(&kitten_istftnet_file).map_err(|err| {
+                    format!("Failed to read '{}': {err}", kitten_istftnet_file.display())
+                })?;
+            if let Some(kitten_patched) = Self::patch_mlx_audio_kitten_istftnet(&kitten_contents) {
+                std::fs::write(&kitten_istftnet_file, kitten_patched).map_err(|err| {
+                    format!(
+                        "Failed to write patched mlx-audio KittenTTS file '{}': {err}",
+                        kitten_istftnet_file.display()
+                    )
+                })?;
+            }
+        }
+
+        let server_file = site_packages.join("mlx_audio").join("server.py");
+        if server_file.exists() {
+            let server_contents = std::fs::read_to_string(&server_file)
+                .map_err(|err| format!("Failed to read '{}': {err}", server_file.display()))?;
+            if let Some(server_patched) = Self::patch_mlx_audio_server(&server_contents) {
+                std::fs::write(&server_file, server_patched).map_err(|err| {
+                    format!(
+                        "Failed to write patched mlx-audio server file '{}': {err}",
+                        server_file.display()
+                    )
+                })?;
+            }
+        }
+
         Ok(())
     }
 
@@ -1083,6 +1265,111 @@ impl SidecarManager {
             "MODEL_REMAPPING = {\n",
             "MODEL_REMAPPING = {\n    \"parakeet\": \"parakeet\",\n",
         );
+        (patched != contents).then_some(patched)
+    }
+
+    fn mlx_audio_kitten_istftnet_has_sine_length_patch(contents: &str) -> bool {
+        contents.contains("_vox_jot_target_len = min(sine_waves.shape[1], f0.shape[1])")
+    }
+
+    fn patch_mlx_audio_kitten_istftnet(contents: &str) -> Option<String> {
+        if Self::mlx_audio_kitten_istftnet_has_sine_length_patch(contents) {
+            return None;
+        }
+
+        let old_block = r#"        # Generate sine waveforms
+        sine_waves = self._f02sine(fn) * self.sine_amp
+
+        # Generate UV signal
+        uv = self._f02uv(f0)
+"#;
+        let new_block = r#"        # Generate sine waveforms
+        sine_waves = self._f02sine(fn) * self.sine_amp
+        if sine_waves.shape[1] != f0.shape[1]:
+            _vox_jot_target_len = min(sine_waves.shape[1], f0.shape[1])
+            sine_waves = sine_waves[:, :_vox_jot_target_len, :]
+            f0 = f0[:, :_vox_jot_target_len, :]
+
+        # Generate UV signal
+        uv = self._f02uv(f0)
+"#;
+
+        let patched = contents.replace(old_block, new_block);
+        (patched != contents).then_some(patched)
+    }
+
+    fn mlx_audio_server_has_stt_thread_load_patch(contents: &str) -> bool {
+        contents.contains("_vox_jot_stt_inline_transcription = True")
+    }
+
+    fn patch_mlx_audio_server(contents: &str) -> Option<String> {
+        if Self::mlx_audio_server_has_stt_thread_load_patch(contents) {
+            return None;
+        }
+
+        let old_block = r#"    tmp.close()
+
+    await _preflight_model_load(payload.model)
+"#;
+        let new_block = r#"    tmp.close()
+
+    # Vox Jot: run STT inline on the server request thread.
+    # MLX GPU stream state is thread-local; the upstream inference broker worker
+    # can make Qwen/Mega ASR fail with "There is no Stream(gpu, 1) in current thread."
+    _vox_jot_stt_inline_transcription = True
+    del _vox_jot_stt_inline_transcription
+    tmp_path = f"/tmp/{time.time()}_{uuid.uuid4().hex}_{file.filename or 'audio.wav'}"
+    audio_write(tmp_path, audio, sr)
+    try:
+        stt_model = _load_model_for_inference(payload.model)
+        gen_kwargs = payload.model_dump(exclude={"model"}, exclude_none=True)
+        signature = inspect.signature(stt_model.generate)
+        gen_kwargs = {
+            key: value
+            for key, value in gen_kwargs.items()
+            if key in signature.parameters or key in _STT_EXTRA_KWARGS
+        }
+        result = stt_model.generate(tmp_path, **gen_kwargs)
+        if hasattr(result, "__iter__") and hasattr(result, "__next__"):
+            accumulated = ""
+            final_payload = None
+            for chunk in result:
+                if isinstance(chunk, str):
+                    accumulated += chunk
+                else:
+                    final_payload = sanitize_for_json(chunk)
+                    chunk_text = getattr(chunk, "text", None)
+                    if isinstance(chunk_text, str):
+                        accumulated += chunk_text
+            if isinstance(final_payload, dict):
+                payload_obj = final_payload
+                payload_obj.setdefault("text", accumulated)
+            else:
+                payload_obj = {"text": accumulated}
+        else:
+            payload_obj = sanitize_for_json(result)
+            if not isinstance(payload_obj, dict):
+                payload_obj = {"text": getattr(result, "text", "") or str(result)}
+            elif "text" not in payload_obj and hasattr(result, "text"):
+                payload_obj["text"] = getattr(result, "text", "")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    text_out = (payload_obj.get("text") or "").strip()
+    if response_format == "text":
+        return PlainTextResponse(text_out)
+    if response_format == "verbose_json":
+        return JSONResponse(payload_obj)
+    return JSONResponse({"text": text_out})
+"#;
+
+        let patched = contents
+            .replace(old_block, new_block)
+            .replace(
+                "    tmp.close()\n\n    # Vox Jot: STT models must load on the inference broker thread.\n    # MLX GPU stream state is thread-local; preloading here can make Qwen/Mega\n    # ASR fail later with \"There is no Stream(gpu, 1) in current thread.\"\n",
+                new_block,
+            );
         (patched != contents).then_some(patched)
     }
 
@@ -1208,13 +1495,52 @@ mod tests {
     }
 
     #[test]
+    fn mlx_audio_kitten_patch_aligns_sine_and_f0_lengths() {
+        let original = r#"        # Generate sine waveforms
+        sine_waves = self._f02sine(fn) * self.sine_amp
+
+        # Generate UV signal
+        uv = self._f02uv(f0)
+"#;
+
+        let patched =
+            SidecarManager::patch_mlx_audio_kitten_istftnet(original).expect("patch should apply");
+
+        assert!(SidecarManager::mlx_audio_kitten_istftnet_has_sine_length_patch(&patched));
+        assert!(SidecarManager::patch_mlx_audio_kitten_istftnet(&patched).is_none());
+    }
+
+    #[test]
+    fn mlx_audio_server_patch_runs_stt_inline_on_request_thread() {
+        let original = r#"    tmp.close()
+
+    await _preflight_model_load(payload.model)
+
+    handle = get_inference_broker().submit(
+"#;
+
+        let patched = SidecarManager::patch_mlx_audio_server(original).expect("patch should apply");
+
+        assert!(SidecarManager::mlx_audio_server_has_stt_thread_load_patch(
+            &patched
+        ));
+        assert!(!patched.contains("await _preflight_model_load(payload.model)"));
+        assert!(patched.contains("return JSONResponse({\"text\": text_out})"));
+        assert!(SidecarManager::patch_mlx_audio_server(&patched).is_none());
+    }
+
+    #[test]
     fn mlx_audio_runtime_patcher_continues_after_prepatched_voxtral() {
         let temp_dir = tempfile::tempdir().expect("temp dir");
         let site_packages = temp_dir.path();
         let voxtral_dir = site_packages.join("mlx_audio/stt/models/voxtral");
         let stt_dir = site_packages.join("mlx_audio/stt");
+        let kitten_dir = site_packages.join("mlx_audio/tts/models/kitten_tts");
+        let server_dir = site_packages.join("mlx_audio");
         std::fs::create_dir_all(&voxtral_dir).expect("voxtral dir");
         std::fs::create_dir_all(&stt_dir).expect("stt dir");
+        std::fs::create_dir_all(&kitten_dir).expect("kitten dir");
+        std::fs::create_dir_all(&server_dir).expect("server dir");
 
         std::fs::write(
             voxtral_dir.join("voxtral.py"),
@@ -1227,6 +1553,18 @@ mod tests {
             "MODEL_REMAPPING = {\n    \"moonshine\": \"moonshine\",\n}\n",
         )
         .expect("write stt utils");
+        let kitten_istftnet = kitten_dir.join("istftnet.py");
+        std::fs::write(
+            &kitten_istftnet,
+            "        # Generate sine waveforms\n        sine_waves = self._f02sine(fn) * self.sine_amp\n\n        # Generate UV signal\n        uv = self._f02uv(f0)\n",
+        )
+        .expect("write kitten istftnet");
+        let server_file = server_dir.join("server.py");
+        std::fs::write(
+            &server_file,
+            "    tmp.close()\n\n    await _preflight_model_load(payload.model)\n\n    handle = get_inference_broker().submit(\n",
+        )
+        .expect("write server");
 
         SidecarManager::apply_mlx_audio_runtime_patches_in_site_packages(site_packages)
             .expect("patch runtime");
@@ -1234,6 +1572,13 @@ mod tests {
         let patched = std::fs::read_to_string(stt_utils).expect("read stt utils");
         assert!(SidecarManager::mlx_audio_stt_utils_has_parakeet_remap(
             &patched
+        ));
+        let patched_kitten =
+            std::fs::read_to_string(kitten_istftnet).expect("read kitten istftnet");
+        assert!(SidecarManager::mlx_audio_kitten_istftnet_has_sine_length_patch(&patched_kitten));
+        let patched_server = std::fs::read_to_string(server_file).expect("read server");
+        assert!(SidecarManager::mlx_audio_server_has_stt_thread_load_patch(
+            &patched_server
         ));
     }
 }

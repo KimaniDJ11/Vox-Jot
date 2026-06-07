@@ -345,6 +345,12 @@ fn stt_provider_meta(
             "mlx-audio",
             "Shared mlx-audio sidecar",
         ),
+        EngineType::GemmaAudioStt => (
+            "stt_gemma_audio",
+            "Google Gemma Audio",
+            "Google Gemma 4 / mlx-vlm / Transformers",
+            "Cached Gemma audio sidecar",
+        ),
         EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => (
             "stt_apple_speech",
             "Apple Speech",
@@ -376,6 +382,7 @@ fn stt_provider_source_url(provider_id: &str) -> Option<&'static str> {
         "stt_sensevoice" => Some("https://huggingface.co/FunAudioLLM/SenseVoiceSmall"),
         "stt_gigaam" => Some("https://huggingface.co/ai-sage/GigaAM-v3"),
         "stt_mlx_audio" => Some("https://github.com/Blaizzy/mlx-audio"),
+        "stt_gemma_audio" => Some("https://huggingface.co/google/gemma-4-E2B-it"),
         "stt_apple_speech" => Some("https://developer.apple.com/documentation/speech"),
         "stt_qwen" => Some("https://huggingface.co/Qwen"),
         _ => None,
@@ -397,6 +404,9 @@ fn stt_model_source_url(model: &ModelInfo) -> Option<&'static str> {
         }
         "sense-voice-int8" => Some("https://huggingface.co/FunAudioLLM/SenseVoiceSmall"),
         "gigaam-v3-e2e-ctc" => Some("https://huggingface.co/ai-sage/GigaAM-v3"),
+        "gemma4-e2b-audio-mlx" => Some("https://huggingface.co/mlx-community/gemma-4-e2b-it-4bit"),
+        "gemma4-e2b-audio" => Some("https://huggingface.co/google/gemma-4-E2B-it"),
+        "gemma4-e4b-audio" => Some("https://huggingface.co/google/gemma-4-E4B-it"),
         "mlx-whisper-large-v3-turbo" => {
             Some("https://huggingface.co/mlx-community/whisper-large-v3-turbo-asr-fp16")
         }
@@ -406,6 +416,10 @@ fn stt_model_source_url(model: &ModelInfo) -> Option<&'static str> {
         "mlx-qwen3-asr" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit"),
         "mlx-qwen3-asr-0.6b" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-0.6B-8bit"),
         "mlx-fireredasr2-aed" => Some("https://huggingface.co/mlx-community/FireRedASR2-AED-mlx"),
+        "mlx-nemotron-asr-streaming-0.6b" => {
+            Some("https://huggingface.co/mlx-community/nemotron-3.5-asr-streaming-0.6b")
+        }
+        "mlx-mega-asr" => Some("https://huggingface.co/mlx-community/Mega-ASR-8bit"),
         "mlx-vibevoice-asr-bf16" => Some("https://huggingface.co/mlx-community/VibeVoice-ASR-bf16"),
         "mlx-voxtral-mini-3b" => {
             Some("https://huggingface.co/mlx-community/Voxtral-Mini-3B-2507-bf16")
@@ -434,7 +448,12 @@ fn stt_model_license_label(model: &ModelInfo) -> Option<&'static str> {
         | "mlx-fireredasr2-aed"
         | "mlx-voxtral-mini-3b"
         | "mlx-voxtral-mini-4b-realtime"
+        | "gemma4-e2b-audio-mlx"
+        | "gemma4-e2b-audio"
+        | "gemma4-e4b-audio"
+        | "mlx-mega-asr"
         | "breeze-asr" => Some("Apache-2.0"),
+        "mlx-nemotron-asr-streaming-0.6b" => Some("NVIDIA Open Model License"),
         "mlx-vibevoice-asr-bf16"
         | "gigaam-v3-e2e-ctc"
         | "moonshine-base"
@@ -515,6 +534,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
 
     let provider_order = [
         "stt_mlx_audio",
+        "stt_gemma_audio",
         "stt_whisper",
         "stt_parakeet",
         "stt_moonshine",

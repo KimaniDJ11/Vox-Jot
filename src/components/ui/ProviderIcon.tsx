@@ -878,6 +878,53 @@ function MeloTtsMark({ size }: { size: number; color: string }) {
   );
 }
 
+function KittenMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6 4l2.4 3.6M18 4l-2.4 3.6"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="13" r="6.4" fill="#FFFFFF" />
+      <circle cx="9.7" cy="12.4" r="1" fill="#F472B6" />
+      <circle cx="14.3" cy="12.4" r="1" fill="#F472B6" />
+      <path
+        d="M12 14.2v1.1M10.3 15.8c.6.6 2.8.6 3.4 0"
+        fill="none"
+        stroke="#F472B6"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function MisoMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M4.5 11h15c-.4 4-3.6 7-7.5 7s-7.1-3-7.5-7z" fill="#FFFFFF" />
+      <path
+        d="M3.5 11h17"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M9 4.5c-.9 1-.9 2.1 0 3.1M12 4c-.9 1-.9 2.1 0 3.1M15 4.5c-.9 1-.9 2.1 0 3.1"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function CohereMark({ size }: { size: number; color: string }) {
   const s = size * 0.72;
   return (
@@ -1633,6 +1680,8 @@ const BRANDS: Record<string, BrandConfig> = {
   melotts: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M", mark: MeloTtsMark },
   openmoss: { bg: "#059669", fg: "#FFFFFF", letter: "M", mark: OpenMossMark },
   irodori: { bg: "#EC4899", fg: "#FFFFFF", letter: "I", mark: IrodoriMark },
+  kitten: { bg: "#F472B6", fg: "#FFFFFF", letter: "K", mark: KittenMark },
+  miso: { bg: "#D97706", fg: "#FFFFFF", letter: "M", mark: MisoMark },
   indextts: {
     bg: "#F97316",
     fg: "#FFFFFF",
@@ -1715,6 +1764,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   figaro: "figaro",
   rule_guided_music: "rule_guided_music",
   stt_mlx_audio: "apple",
+  stt_gemma_audio: "google",
   stt_apple_speech: "apple",
   stt_hf_verified: "huggingface",
   polyvoice: "polyvoice",
@@ -1767,6 +1817,8 @@ const PROVIDER_BRAND: Record<string, string> = {
   mlx_irodori_tts: "irodori",
   mlx_indextts: "indextts",
   mlx_omnivoice: "k2fsa",
+  mlx_kitten_tts: "kitten",
+  mlx_miso_tts: "miso",
   mlx_vibevoice: "microsoft",
   mlx_pocket_tts: "kyutai",
   mlx_voxcpm: "openbmb",
@@ -1805,6 +1857,8 @@ const PROVIDER_BRAND: Record<string, string> = {
   openmoss: "openmoss",
   irodori: "irodori",
   indextts: "indextts",
+  kitten: "kitten",
+  miso: "miso",
   k2fsa: "k2fsa",
   firered: "firered",
   // Speech-analysis / file-ASR providers
@@ -1843,6 +1897,7 @@ const ENGINE_TO_PROVIDER: Record<EngineType, string> = {
   SenseVoice: "stt_sensevoice",
   GigaAM: "stt_gigaam",
   MlxAudioStt: "stt_mlx_audio",
+  GemmaAudioStt: "stt_gemma_audio",
   AppleSpeech: "stt_apple_speech",
   AppleSpeechStreaming: "stt_apple_speech",
 };
@@ -1874,6 +1929,7 @@ const RUNTIME_HOST_IDS = new Set([
   "stt_gigaam",
   "stt_qwen",
   "stt_mlx_audio",
+  "stt_gemma_audio",
   "stt_apple_speech",
   "local_sidecar_api",
   "custom",
@@ -1990,6 +2046,12 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "indextts", providerId: "mlx_indextts" },
   { keyword: "index tts", providerId: "mlx_indextts" },
   { keyword: "omnivoice", providerId: "mlx_omnivoice" },
+  { keyword: "kittentts", providerId: "mlx_kitten_tts" },
+  { keyword: "kitten tts", providerId: "mlx_kitten_tts" },
+  { keyword: "kitten", providerId: "mlx_kitten_tts" },
+  { keyword: "misolabs", providerId: "mlx_miso_tts" },
+  { keyword: "misotts", providerId: "mlx_miso_tts" },
+  { keyword: "miso tts", providerId: "mlx_miso_tts" },
   { keyword: "pocket tts", providerId: "mlx_pocket_tts" },
   { keyword: "pocket-tts", providerId: "mlx_pocket_tts" },
   { keyword: "voxcpm", providerId: "mlx_voxcpm" },
@@ -2079,6 +2141,7 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   stt_gigaam: "Sber GigaAM",
   stt_qwen: "Alibaba Qwen",
   stt_mlx_audio: "MLX Audio",
+  stt_gemma_audio: "Google Gemma Audio",
   stt_apple_speech: "Apple Speech",
   mlx_longcat_audiodit: "Meituan LongCat",
   stability_ai: "Stability AI",
@@ -2099,6 +2162,8 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   mlx_irodori_tts: "Irodori TTS",
   mlx_indextts: "IndexTTS",
   mlx_omnivoice: "OmniVoice",
+  mlx_kitten_tts: "KittenTTS",
+  mlx_miso_tts: "MisoTTS",
   mlx_vibevoice: "Microsoft VibeVoice",
   qwen: "Alibaba Qwen",
   apple: "Apple",
@@ -2126,6 +2191,8 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   openmoss: "OpenMOSS",
   irodori: "Irodori",
   indextts: "IndexTTS",
+  kitten: "KittenTTS",
+  miso: "MisoTTS",
   k2fsa: "k2-fsa",
   firered: "FireRedASR",
   supertonic: "Supertonic",

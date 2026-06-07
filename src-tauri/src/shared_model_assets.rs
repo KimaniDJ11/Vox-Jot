@@ -7,6 +7,8 @@ use crate::storage_paths;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SharedModelAssetFamily {
     MlxAsr,
+    GemmaAudio,
+    GemmaMlxAudio,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,13 +55,50 @@ const SHARED_MLX_ASR_MODELS: &[SharedModelAssetDefinition] = &[
         canonical_root: SharedModelStorageRoot::Stt,
         legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
     },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::MlxAsr,
+        model_ids: &["mlx-nemotron-asr-streaming-0.6b"],
+        repo_id: "mlx-community/nemotron-3.5-asr-streaming-0.6b",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::MlxAsr,
+        model_ids: &["mlx-mega-asr"],
+        repo_id: "mlx-community/Mega-ASR-8bit",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
 ];
 
-const SHARED_MODEL_REGISTRY: &[SharedModelAssetDefinition] = SHARED_MLX_ASR_MODELS;
+const SHARED_GEMMA_AUDIO_MODELS: &[SharedModelAssetDefinition] = &[
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::GemmaAudio,
+        model_ids: &["gemma4-e2b-audio"],
+        repo_id: "google/gemma-4-E2B-it",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::GemmaAudio,
+        model_ids: &["gemma4-e4b-audio"],
+        repo_id: "google/gemma-4-E4B-it",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::GemmaMlxAudio,
+        model_ids: &["gemma4-e2b-audio-mlx"],
+        repo_id: "mlx-community/gemma-4-e2b-it-4bit",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
+];
 
 fn definition_for_model_id(model_id: &str) -> Option<&'static SharedModelAssetDefinition> {
-    SHARED_MODEL_REGISTRY
+    SHARED_MLX_ASR_MODELS
         .iter()
+        .chain(SHARED_GEMMA_AUDIO_MODELS.iter())
         .find(|definition| definition.model_ids.contains(&model_id))
 }
 
@@ -78,8 +117,9 @@ pub fn shared_model_repo_id(model_id: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 fn shared_model_ids_for_family(family: SharedModelAssetFamily) -> Vec<&'static str> {
-    SHARED_MODEL_REGISTRY
+    SHARED_MLX_ASR_MODELS
         .iter()
+        .chain(SHARED_GEMMA_AUDIO_MODELS.iter())
         .filter(|definition| definition.family == family)
         .flat_map(|definition| definition.model_ids.iter().copied())
         .collect()
@@ -88,12 +128,16 @@ fn shared_model_ids_for_family(family: SharedModelAssetFamily) -> Vec<&'static s
 fn canonical_relative_path(definition: &SharedModelAssetDefinition) -> PathBuf {
     match definition.family {
         SharedModelAssetFamily::MlxAsr => Path::new("MLX").join(definition.repo_id),
+        SharedModelAssetFamily::GemmaAudio => Path::new("Gemma").join(definition.repo_id),
+        SharedModelAssetFamily::GemmaMlxAudio => Path::new("GemmaMLX").join(definition.repo_id),
     }
 }
 
 fn legacy_relative_path(definition: &SharedModelAssetDefinition, model_id: &str) -> PathBuf {
     match definition.family {
         SharedModelAssetFamily::MlxAsr => PathBuf::from(model_id),
+        SharedModelAssetFamily::GemmaAudio => PathBuf::from(model_id),
+        SharedModelAssetFamily::GemmaMlxAudio => PathBuf::from(model_id),
     }
 }
 
@@ -186,6 +230,8 @@ pub fn delete_shared_model_assets(app: &AppHandle, model_id: &str) -> Result<boo
 pub fn shared_model_has_required_files(model_id: &str, path: &Path) -> bool {
     match shared_model_family(model_id) {
         Some(SharedModelAssetFamily::MlxAsr) => shared_mlx_asr_has_required_files(path),
+        Some(SharedModelAssetFamily::GemmaAudio) => shared_gemma_audio_has_required_files(path),
+        Some(SharedModelAssetFamily::GemmaMlxAudio) => shared_mlx_asr_has_required_files(path),
         None => false,
     }
 }
@@ -227,6 +273,14 @@ fn shared_mlx_asr_has_required_files(path: &Path) -> bool {
         })
 }
 
+fn shared_gemma_audio_has_required_files(path: &Path) -> bool {
+    path.is_dir()
+        && path.join("config.json").exists()
+        && path.join("model.safetensors").exists()
+        && path.join("processor_config.json").exists()
+        && path.join("tokenizer.json").exists()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,8 +297,20 @@ mod tests {
             Path::new("MLX").join("mlx-community/FireRedASR2-AED-mlx")
         );
         assert_eq!(
+            shared_model_primary_relative_path("mlx-nemotron-asr-streaming-0.6b").unwrap(),
+            Path::new("MLX").join("mlx-community/nemotron-3.5-asr-streaming-0.6b")
+        );
+        assert_eq!(
+            shared_model_primary_relative_path("mlx-mega-asr").unwrap(),
+            Path::new("MLX").join("mlx-community/Mega-ASR-8bit")
+        );
+        assert_eq!(
             shared_model_repo_id("mlx-qwen3-asr-1.7b"),
             Some("mlx-community/Qwen3-ASR-1.7B-8bit")
+        );
+        assert_eq!(
+            shared_model_primary_relative_path("gemma4-e2b-audio-mlx").unwrap(),
+            Path::new("GemmaMLX").join("mlx-community/gemma-4-e2b-it-4bit")
         );
         assert!(shared_model_primary_relative_path("mlx-sortformer-4spk-v1").is_none());
     }
@@ -259,6 +325,8 @@ mod tests {
                 "mlx-qwen3-asr-1.7b",
                 "mlx-fireredasr2-aed",
                 "mlx-vibevoice-asr-bf16",
+                "mlx-nemotron-asr-streaming-0.6b",
+                "mlx-mega-asr",
             ]
         );
     }

@@ -28,6 +28,7 @@ pub enum EngineType {
     SenseVoice,
     GigaAM,
     MlxAudioStt,
+    GemmaAudioStt,
     AppleSpeech,
     AppleSpeechStreaming,
 }
@@ -35,7 +36,10 @@ pub enum EngineType {
 pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
     matches!(
         engine_type,
-        EngineType::MlxAudioStt | EngineType::AppleSpeech | EngineType::AppleSpeechStreaming
+        EngineType::MlxAudioStt
+            | EngineType::GemmaAudioStt
+            | EngineType::AppleSpeech
+            | EngineType::AppleSpeechStreaming
     )
 }
 
@@ -99,6 +103,7 @@ impl ModelManager {
             EngineType::SenseVoice => "stt_sensevoice",
             EngineType::GigaAM => "stt_gigaam",
             EngineType::MlxAudioStt => "stt_mlx_audio",
+            EngineType::GemmaAudioStt => "stt_gemma_audio",
             EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => "stt_apple_speech",
         }
     }
@@ -1283,6 +1288,95 @@ impl ModelManager {
                 0.90,
                 0.35,
                 &["en", "zh"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-nemotron-asr-streaming-0.6b",
+                "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+                "Streaming FastConformer-RNNT multilingual ASR (33 languages) for low-latency Apple Silicon dictation.",
+                "mlx-community/nemotron-3.5-asr-streaming-0.6b",
+                800,
+                0.89,
+                0.92,
+                &[
+                    "en", "es", "de", "fr", "it", "ar", "ja", "ko", "pt", "ru", "hi", "zh", "vi",
+                    "he", "nl", "cs", "da", "pl", "no", "sv", "th", "tr", "bg", "el", "et", "fi",
+                    "hr", "hu", "lt", "lv", "ro", "sk", "uk", "mt",
+                ],
+            );
+            insert_mlx_audio_stt(
+                "mlx-mega-asr",
+                "Mega-ASR 8-bit (MLX)",
+                "Quantized Mega-ASR for English and Mandarin transcription through the shared mlx-audio runtime.",
+                "mlx-community/Mega-ASR-8bit",
+                1100,
+                0.88,
+                0.74,
+                &["en", "zh"],
+            );
+
+            let mut insert_gemma_audio_stt =
+                |id: &str,
+                 name: &str,
+                 description: &str,
+                 repo_id: &str,
+                 storage_prefix: &str,
+                 size_mb: u64,
+                 accuracy_score: f32,
+                 speed_score: f32| {
+                    available_models.insert(
+                        id.to_string(),
+                        ModelInfo {
+                            id: id.to_string(),
+                            name: name.to_string(),
+                            description: description.to_string(),
+                            filename: format!("{storage_prefix}/{repo_id}"),
+                            url: Some(Self::hf_snapshot_url(repo_id)),
+                            sha256: None,
+                            size_mb,
+                            is_downloaded: false,
+                            is_downloading: false,
+                            partial_size: 0,
+                            is_directory: true,
+                            engine_type: EngineType::GemmaAudioStt,
+                            accuracy_score,
+                            speed_score,
+                            supports_translation: false,
+                            is_recommended: false,
+                            supported_languages: vec!["mul".to_string()],
+                            is_custom: false,
+                        },
+                    );
+                };
+
+            insert_gemma_audio_stt(
+                "gemma4-e2b-audio-mlx",
+                "Gemma 4 E2B Audio 4-bit (MLX)",
+                "Quantized Gemma 4 E2B multimodal ASR through cached mlx-vlm.",
+                "mlx-community/gemma-4-e2b-it-4bit",
+                "GemmaMLX",
+                2620,
+                0.87,
+                0.62,
+            );
+            insert_gemma_audio_stt(
+                "gemma4-e2b-audio",
+                "Gemma 4 E2B Audio",
+                "Google Gemma 4 E2B multimodal ASR through a cached Transformers sidecar.",
+                "google/gemma-4-E2B-it",
+                "Gemma",
+                5100,
+                0.88,
+                0.35,
+            );
+            insert_gemma_audio_stt(
+                "gemma4-e4b-audio",
+                "Gemma 4 E4B Audio",
+                "Google Gemma 4 E4B multimodal ASR through a cached Transformers sidecar.",
+                "google/gemma-4-E4B-it",
+                "Gemma",
+                8000,
+                0.90,
+                0.25,
             );
         }
 

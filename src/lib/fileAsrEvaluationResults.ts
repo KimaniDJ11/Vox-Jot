@@ -20,7 +20,7 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  generatedAt: "2026-05-12T17:50:11Z",
+  generatedAt: "2026-06-07T05:29:57Z",
   suite: "File ASR full local sample benchmark",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
@@ -34,7 +34,7 @@ export const FILE_ASR_EVALUATION_RUN = {
     "Device is informational.",
   ],
   reportPath:
-    "output/file-asr-restored-model-eval/2026-05-12T17-50-11/file-asr-summary.md",
+    "output/file-asr-model-eval-net-new-2026-06-07/2026-06-07T05-29-57/file-asr-summary.md",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
@@ -50,7 +50,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "granite-speech-4-1-2b",
     label: "Granite Speech 4.1 2B",
     status: "tested",
-    rank: 6,
+    rank: 8,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.357,
@@ -64,7 +64,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
     status: "tested",
-    rank: 7,
+    rank: 9,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 12.086,
@@ -73,6 +73,34 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     device: "mps",
     notes:
       "Full five-format local suite completed, but output was catastrophic multilingual token noise on every sample.",
+  },
+  {
+    modelId: "mlx-mega-asr",
+    label: "Mega-ASR 8-bit (MLX)",
+    status: "tested",
+    rank: 5,
+    sampleCount: 5,
+    exactMatches: 0,
+    averageWer: 0.143,
+    latencyMs: 2322,
+    realTimeFactor: 0.36,
+    device: "mps",
+    notes:
+      "Full five-format local suite rerun after the app-managed mlx-audio 0.4.4 runtime fix; all formats produced transcripts.",
+  },
+  {
+    modelId: "mlx-nemotron-asr-streaming-0.6b",
+    label: "Nemotron 3.5 ASR Streaming 0.6B (MLX)",
+    status: "tested",
+    rank: 4,
+    sampleCount: 5,
+    exactMatches: 0,
+    averageWer: 0.143,
+    latencyMs: 1932,
+    realTimeFactor: 0.3,
+    device: "mps",
+    notes:
+      "Full five-format local suite rerun after the app-managed mlx-audio 0.4.4 runtime fix; all formats produced transcripts.",
   },
   {
     modelId: "mlx-fireredasr2-aed",
@@ -120,7 +148,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "mlx-qwen3-asr",
     label: "Qwen3 ASR 1.7B (MLX)",
     status: "tested",
-    rank: 4,
+    rank: 6,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.143,
@@ -134,7 +162,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "whisper-diarization",
     label: "Whisper Diarization",
     status: "tested",
-    rank: 5,
+    rank: 7,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.214,

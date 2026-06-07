@@ -43,6 +43,19 @@ directly or mirrors/converts assets for app-managed installation.
   Source: https://huggingface.co/mlx-community/FireRedASR2-AED-mlx.
 - Microsoft VibeVoice ASR MLX conversion - MIT. Source:
   https://huggingface.co/mlx-community/VibeVoice-ASR-bf16.
+- Google Gemma 4 E2B/E4B Audio - Apache-2.0 with Gemma terms. Sources:
+  https://huggingface.co/google/gemma-4-E2B-it,
+  https://huggingface.co/google/gemma-4-E4B-it, and
+  https://huggingface.co/mlx-community/gemma-4-e2b-it-4bit.
+- NVIDIA Nemotron 3.5 ASR Streaming MLX conversion - NVIDIA Open Model
+  License; requires legal/product review before normal commercial
+  distribution. Sources:
+  https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b and
+  https://huggingface.co/mlx-community/nemotron-3.5-asr-streaming-0.6b.
+- Mega-ASR 8-bit MLX conversion - Apache-2.0. Sources:
+  https://huggingface.co/zhifeixie/Mega-ASR,
+  https://huggingface.co/Qwen/Qwen3-ASR-1.7B, and
+  https://huggingface.co/mlx-community/Mega-ASR-8bit.
 - Apple SpeechAnalyzer - platform runtime governed by Apple platform terms.
 
 ## Speech Analysis And Speaker Isolation
@@ -121,6 +134,16 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/mlx-community/IndexTTS-1.5.
 - OmniVoice - Apache-2.0. Source:
   https://huggingface.co/k2-fsa/OmniVoice.
+- KittenTTS 0.8 MLX conversions - Apache-2.0. Sources:
+  https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32,
+  https://huggingface.co/mlx-community/kitten-tts-nano-0.8,
+  https://huggingface.co/mlx-community/kitten-tts-micro-0.8, and
+  https://huggingface.co/mlx-community/kitten-tts-mini-0.8.
+- MisoLabs MisoTTS MLX conversions - Modified MIT; requires legal/product
+  review before normal commercial distribution. Sources:
+  https://huggingface.co/MisoLabs/MisoTTS,
+  https://huggingface.co/mlx-community/MisoLabs-MisoTTS-8bit, and
+  https://huggingface.co/mlx-community/MisoLabs-MisoTTS-bf16.
 - VibeVoice Realtime - MIT. Source:
   https://huggingface.co/mlx-community/VibeVoice-Realtime-0.5B-4bit.
 - Voxtral TTS - CC-BY-NC-4.0; gated before download for non-commercial terms.
@@ -155,6 +178,7 @@ directly or mirrors/converts assets for app-managed installation.
 
 The following catalog rows need legal/product review before normal commercial
 distribution or should be explicitly gated: XTTS v2, Fish Audio S2 Pro, Spark
-TTS, Llama OuteTTS, Voxtral TTS, NVIDIA Sortformer v1, Chandra OCR 2,
-Qwen2.5-VL OCR, Reverb Diarization V2, LFM Audio, and any row whose current
-license is `Other`, `Custom`, `Research-only`, or missing.
+TTS, Llama OuteTTS, Voxtral TTS, NVIDIA Sortformer v1, NVIDIA Nemotron 3.5
+ASR, MisoTTS, Chandra OCR 2, Qwen2.5-VL OCR, Reverb Diarization V2, LFM Audio,
+and any row whose current license is `Other`, `Custom`, `Research-only`, or
+missing.

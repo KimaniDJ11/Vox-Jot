@@ -6,11 +6,15 @@ use crate::managers::continuous_cloning::ContinuousCloningManager;
 use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
 use crate::settings::{get_settings, AppSettings, ModelUnloadTimeout};
 use anyhow::Result;
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fs;
 use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, MutexGuard};
 use std::thread;
@@ -51,6 +55,13 @@ struct MlxAudioSttEngine {
     model_source: String,
 }
 
+struct GemmaAudioSttEngine {
+    base_url: String,
+    model_source: String,
+    backend: &'static str,
+    child: Option<Child>,
+}
+
 const MLX_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
 static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::Agent::new_with_config(
@@ -58,6 +69,16 @@ static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
             .timeout_global(Some(MLX_AUDIO_STT_REQUEST_TIMEOUT))
             .build(),
     )
+});
+const GEMMA_AUDIO_STT_PORT: u16 = 8028;
+const GEMMA_AUDIO_STT_SERVER_SOURCE: &str = include_str!("../../../scripts/gemma4_stt_server.py");
+const GEMMA_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
+static GEMMA_AUDIO_STT_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(GEMMA_AUDIO_STT_REQUEST_TIMEOUT)
+        .build()
+        .expect("failed to build Gemma audio STT client")
 });
 
 struct FinalTranscriptionPendingGuard {
@@ -83,6 +104,7 @@ enum LoadedEngine {
     SenseVoice(SenseVoiceModel),
     GigaAM(GigaAMModel),
     MlxAudioStt(MlxAudioSttEngine),
+    GemmaAudioStt(GemmaAudioSttEngine),
     AppleSpeech(AppleSpeechEngine),
     AppleSpeechStreaming(AppleSpeechEngine),
 }
@@ -258,6 +280,253 @@ impl MlxAudioSttEngine {
     }
 }
 
+impl Drop for GemmaAudioSttEngine {
+    fn drop(&mut self) {
+        if let Some(child) = self.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+impl GemmaAudioSttEngine {
+    fn transcribe(
+        &self,
+        audio: Vec<f32>,
+        sample_rate: u32,
+    ) -> Result<transcribe_rs::TranscriptionResult> {
+        let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
+        let response = GEMMA_AUDIO_STT_CLIENT
+            .post(format!(
+                "{}/v1/audio/transcriptions",
+                self.base_url.trim_end_matches('/')
+            ))
+            .json(&serde_json::json!({
+                "model": self.model_source,
+                "audio_base64": BASE64_STANDARD.encode(wav_bytes),
+            }))
+            .send()
+            .map_err(|err| anyhow::anyhow!("Gemma audio transcription request failed: {err}"))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().unwrap_or_default();
+            return Err(anyhow::anyhow!(
+                "Gemma audio transcription request failed with HTTP {status}: {body}"
+            ));
+        }
+        let payload: MlxAudioTranscriptionResponse = response
+            .json()
+            .map_err(|err| anyhow::anyhow!("Failed to decode Gemma audio response: {err}"))?;
+        Ok(transcribe_rs::TranscriptionResult {
+            text: payload.text,
+            segments: None,
+        })
+    }
+
+    fn start(
+        app_handle: &AppHandle,
+        python: &Path,
+        model_source: String,
+        backend: &'static str,
+        token: Option<String>,
+    ) -> Result<Self> {
+        let base_url = gemma_audio_base_url();
+        if gemma_audio_server_matches(&base_url, &model_source, backend) {
+            return Ok(Self {
+                base_url,
+                model_source,
+                backend,
+                child: None,
+            });
+        }
+
+        terminate_listeners_on_port(GEMMA_AUDIO_STT_PORT)?;
+        let server_path = gemma_audio_stt_server_path(app_handle)?;
+        let mut command = Command::new(python);
+        command
+            .arg(&server_path)
+            .arg("--model")
+            .arg(&model_source)
+            .arg("--backend")
+            .arg(backend)
+            .arg("--port")
+            .arg(GEMMA_AUDIO_STT_PORT.to_string())
+            .env("PYTHONUNBUFFERED", "1")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
+        if let Some(token) = token {
+            command.env("HF_TOKEN", token);
+        }
+
+        let child = command
+            .spawn()
+            .map_err(|err| anyhow::anyhow!("Failed to start Gemma audio sidecar: {err}"))?;
+        let mut engine = Self {
+            base_url,
+            model_source,
+            backend,
+            child: Some(child),
+        };
+        engine.wait_until_ready()?;
+        Ok(engine)
+    }
+
+    fn wait_until_ready(&mut self) -> Result<()> {
+        for _ in 0..600 {
+            if gemma_audio_server_matches(&self.base_url, &self.model_source, self.backend) {
+                return Ok(());
+            }
+            if let Some(child) = self.child.as_mut() {
+                if let Some(status) = child.try_wait()? {
+                    let stderr = child
+                        .stderr
+                        .take()
+                        .map(|mut stderr| {
+                            use std::io::Read;
+                            let mut buf = String::new();
+                            let _ = stderr.read_to_string(&mut buf);
+                            buf
+                        })
+                        .unwrap_or_default();
+                    return Err(anyhow::anyhow!(
+                        "Gemma audio sidecar exited with {status}. Stderr: {}",
+                        stderr.chars().take(1000).collect::<String>()
+                    ));
+                }
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        Err(anyhow::anyhow!(
+            "Gemma audio sidecar did not become ready within 300 seconds."
+        ))
+    }
+}
+
+fn encode_wav_bytes(audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut cursor = Cursor::new(Vec::new());
+    {
+        let mut writer = hound::WavWriter::new(&mut cursor, spec)
+            .map_err(|err| anyhow::anyhow!("Failed to create WAV encoder: {}", err))?;
+        for sample in audio {
+            let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+            writer
+                .write_sample(value)
+                .map_err(|err| anyhow::anyhow!("Failed to encode WAV sample: {}", err))?;
+        }
+        writer
+            .finalize()
+            .map_err(|err| anyhow::anyhow!("Failed to finalize WAV output: {}", err))?;
+    }
+    Ok(cursor.into_inner())
+}
+
+fn gemma_audio_base_url() -> String {
+    format!("http://127.0.0.1:{GEMMA_AUDIO_STT_PORT}")
+}
+
+fn gemma_audio_stt_server_path(app_handle: &AppHandle) -> Result<PathBuf> {
+    if let Ok(path) = std::env::var("VOX_JOT_GEMMA4_STT_SERVER") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    let runtime_dir = crate::portable::app_data_dir(app_handle)
+        .map_err(|err| anyhow::anyhow!("Failed to resolve app data dir for Gemma STT: {err}"))?
+        .join("gemma4-stt-runtime");
+    fs::create_dir_all(&runtime_dir)
+        .map_err(|err| anyhow::anyhow!("Failed to create Gemma STT runtime dir: {err}"))?;
+    let server = runtime_dir.join("gemma4_stt_server.py");
+    let should_write = fs::read_to_string(&server)
+        .map(|existing| existing != GEMMA_AUDIO_STT_SERVER_SOURCE)
+        .unwrap_or(true);
+    if should_write {
+        fs::write(&server, GEMMA_AUDIO_STT_SERVER_SOURCE)
+            .map_err(|err| anyhow::anyhow!("Failed to write Gemma STT server: {err}"))?;
+    }
+    Ok(server)
+}
+
+fn gemma_audio_server_matches(base_url: &str, model_source: &str, backend: &str) -> bool {
+    let Ok(response) = GEMMA_AUDIO_STT_CLIENT
+        .get(format!("{}/health", base_url.trim_end_matches('/')))
+        .send()
+    else {
+        return false;
+    };
+    if !response.status().is_success() {
+        return false;
+    }
+    let Ok(value) = response.json::<Value>() else {
+        return false;
+    };
+    let model_matches = value
+        .get("model")
+        .and_then(Value::as_str)
+        .is_some_and(|model| model == model_source);
+    let backend_matches = value
+        .get("backend")
+        .and_then(Value::as_str)
+        .is_some_and(|reported_backend| reported_backend == backend);
+    model_matches && backend_matches
+}
+
+fn gemma_audio_backend_for_model(model_id: &str) -> &'static str {
+    match model_id {
+        "gemma4-e2b-audio-mlx" => "mlx-vlm",
+        _ => "transformers",
+    }
+}
+
+fn listener_pids_on_port(port: u16) -> Vec<u32> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = Command::new("lsof")
+            .args(["-t", "-nP", &format!("-iTCP:{port}"), "-sTCP:LISTEN"])
+            .output();
+        if let Ok(output) = output {
+            return String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .filter_map(|line| line.trim().parse::<u32>().ok())
+                .collect();
+        }
+    }
+    Vec::new()
+}
+
+fn terminate_listeners_on_port(port: u16) -> Result<()> {
+    for pid in listener_pids_on_port(port) {
+        let status = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status()
+            .map_err(|err| anyhow::anyhow!("Failed to stop Gemma sidecar process {pid}: {err}"))?;
+        if !status.success() {
+            return Err(anyhow::anyhow!(
+                "Failed to stop existing Gemma sidecar process {pid}."
+            ));
+        }
+    }
+    for _ in 0..20 {
+        if listener_pids_on_port(port).is_empty() {
+            return Ok(());
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    for pid in listener_pids_on_port(port) {
+        let _ = Command::new("kill")
+            .args(["-KILL", &pid.to_string()])
+            .status();
+    }
+    Ok(())
+}
+
 fn mlx_audio_stt_model_ref(model_id: &str) -> Option<&'static str> {
     if let Some(repo_id) = crate::shared_model_assets::shared_model_repo_id(model_id) {
         return Some(repo_id);
@@ -340,7 +609,10 @@ fn trim_partial_audio(mut samples: Vec<f32>, max_samples: Option<usize>) -> Vec<
 }
 
 fn supports_live_partial_provider(model_info: &ModelInfo) -> bool {
-    !matches!(model_info.engine_type, EngineType::MlxAudioStt)
+    !matches!(
+        model_info.engine_type,
+        EngineType::MlxAudioStt | EngineType::GemmaAudioStt
+    )
 }
 
 fn whisper_gpu_available() -> bool {
@@ -740,6 +1012,28 @@ impl TranscriptionManager {
                     model_source,
                 })
             }
+            EngineType::GemmaAudioStt => {
+                let sidecar = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                    .ok_or_else(|| anyhow::anyhow!("SidecarManager is not available."))?;
+                let python = sidecar
+                    .ensure_gemma_audio_environment()
+                    .map_err(|err| anyhow::anyhow!(err))?;
+                let model_source = self
+                    .model_manager
+                    .get_model_path(model_id)?
+                    .to_string_lossy()
+                    .to_string();
+                let backend = gemma_audio_backend_for_model(model_id);
+                LoadedEngine::GemmaAudioStt(GemmaAudioSttEngine::start(
+                    &self.app_handle,
+                    &python,
+                    model_source,
+                    backend,
+                    crate::speech_analysis::hugging_face_token_for_runtime(),
+                )?)
+            }
             EngineType::AppleSpeech => {
                 LoadedEngine::AppleSpeech(AppleSpeechEngine::new(AppleSpeechMode::Offline)?)
             }
@@ -901,6 +1195,13 @@ impl TranscriptionManager {
                         sidecar.as_deref().map(Arc::as_ref),
                     )
                     .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
+            }
+            LoadedEngine::GemmaAudioStt(gemma_engine) => {
+                let r = gemma_engine
+                    .transcribe(audio, 16_000)
+                    .map_err(|e| anyhow::anyhow!("Gemma audio transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
             }

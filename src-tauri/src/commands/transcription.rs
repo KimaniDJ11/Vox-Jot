@@ -314,6 +314,10 @@ fn speech_analysis_python_path(
     asr_model_id: &str,
     diarization_model_id: &str,
 ) -> Result<PathBuf, String> {
+    if speech_analysis::model_uses_gemma_audio_runtime(asr_model_id) {
+        return sidecar_manager.ensure_gemma_audio_environment();
+    }
+
     if speech_analysis::model_uses_managed_python_runtime(asr_model_id)
         || speech_analysis::model_uses_managed_python_runtime(diarization_model_id)
     {

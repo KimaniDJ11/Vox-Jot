@@ -1964,118 +1964,6 @@ async downloadOcrModel(catalogId: string) : Promise<Result<OcrModelDescriptor, s
 async getActiveOcrDownloads() : Promise<string[]> {
     return await TAURI_INVOKE("get_active_ocr_downloads");
 },
-async getNotes() : Promise<Result<Note[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_notes") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getNote(id: number) : Promise<Result<Note | null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_note", { id }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async createNote(title: string, content: string) : Promise<Result<Note, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("create_note", { title, content }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async updateNote(id: number, title: string, content: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("update_note", { id, title, content }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async deleteNote(id: number) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("delete_note", { id }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async toggleNotePin(id: number, pinned: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("toggle_note_pin", { id, pinned }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async exportNotes() : Promise<Result<string, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("export_notes") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async deleteAllNotes() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("delete_all_notes") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async showScratchpad() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("show_scratchpad") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async showScratchpadForNote(noteId: number) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("show_scratchpad_for_note", { noteId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async toggleScratchpad() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("toggle_scratchpad") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async setScratchpadEditorArmed(armed: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("set_scratchpad_editor_armed", { armed }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async setScratchpadTitlebarDragEnabled(enabled: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("set_scratchpad_titlebar_drag_enabled", { enabled }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async consumeScratchpadTargetNote() : Promise<Result<number | null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("consume_scratchpad_target_note") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 /**
  * Get all stored corrections.
  */
@@ -2582,22 +2470,6 @@ async convoGetSettingsCatalog() : Promise<Result<SettingsCatalogEntry[], string>
     else return { status: "error", error: e  as any };
 }
 },
-async convoGetCurrentNote(noteId: number) : Promise<Result<Note | null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("convo_get_current_note", { noteId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async convoApplyNoteEdit(noteId: number, action: string, content: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("convo_apply_note_edit", { noteId, action, content }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async convoStartAudioCapture() : Promise<Result<ConvoAudioCaptureStatus, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("convo_start_audio_capture") };
@@ -2730,7 +2602,7 @@ export type ConvoActionSuggestion = { action_type: string; label: string; payloa
 export type ConvoAudioCaptureStatus = { capturing: boolean }
 export type ConvoAvailability = { available: boolean; reason: string | null; helper_running: boolean }
 export type ConvoContextItem = { id: string; label: string; source_type: string; content: string; char_count: number }
-export type ConvoMode = "selection" | "jotpad" | "settings_coach" | "files_context"
+export type ConvoMode = "selection" | "settings_coach" | "files_context"
 export type ConvoSessionState = { session_id: string; mode: ConvoMode; transcript: ConvoTranscriptItem[]; context_description: string; voice_id: string; speak_replies: boolean; context_items: ConvoContextItem[]; suggested_actions: ConvoActionSuggestion[] }
 export type ConvoTranscriptItem = { id: string; role: string; text: string; timestamp_ms: number; has_audio: boolean }
 export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
@@ -2778,7 +2650,7 @@ top_app_bundle_id: string | null }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type DictionaryImportSummary = { imported: number; skipped: number }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
-export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
+export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
 export type GenerateStorySoundRequest = { render_id: string; project_id?: string | null; title: string; prompt: string; model_id: string; mode: StorySoundMode; duration_seconds: number; seed: number | null }
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
@@ -2806,7 +2678,6 @@ export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null
 export type ModelPlatformOverview = { stt: DomainCatalog; llm: DomainCatalog; tts: DomainCatalog; selection: ModelPlatformSelectionState }
 export type ModelPlatformSelectionState = { selected_stt_provider_id: string | null; selected_stt_model_id: string | null; selected_llm_provider_id: string | null; selected_llm_model_id: string | null; selected_tts_provider_id: string | null; selected_tts_model_id: string | null; selected_tts_voice_id: string | null; selected_tts_profile_id: string | null; active_tts_provider_id: string | null; active_tts_model_id: string | null }
 export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_5"
-export type Note = { id: number; title: string; content: string; created_at: number; updated_at: number; is_pinned: boolean; sort_order: number }
 /**
  * Inference runtime an entry uses once its files and backend are available.
  * Rows become runnable when their expected local assets are present.
@@ -2917,7 +2788,7 @@ export type ScreenContextHistoryMetadata = { source: string | null; capture_stat
  * QA parity, Intel Mac experiments, or comparing engines.
  */
 export type ScreenContextOcrEngine = "auto" | "native_only" | "backup_only" | "native_then_backup"
-export type SelectionTranslationDestinationMode = "replace_selection" | "preview_then_replace" | "open_in_jot_pad"
+export type SelectionTranslationDestinationMode = "preview_then_replace" | "replace_selection"
 export type SettingsCatalogEntry = { key: string; label: string; description: string; current_value: string; category: string; setting_section: string }
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 /**
@@ -2967,7 +2838,7 @@ export type ToneDefinition = { id: string; label: string; instruction: string }
  */
 export type TranscriptionFileResult = { text: string; segments: TimedSegment[]; speaker_segments: SpeakerLabeledSegment[] }
 export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
-export type TranslationDestinationMode = "paste_in_place" | "preview_then_paste" | "open_in_jot_pad"
+export type TranslationDestinationMode = "preview_then_paste" | "paste_in_place"
 export type TranslationOutputMode = "source" | "translated" | "bilingual"
 export type TranslationRoutePreference = "auto" | "whisper_english" | "offline_pack" | "local_ai" | "remote_ai"
 export type TtsAdvancedControlDescriptor = { id: string; group: TtsControlGroup; label: string; description: string | null; kind: TtsAdvancedControlKind; min: number | null; max: number | null; step: number | null; unit: string | null; options: TtsAdvancedControlOption[]; default_value: TtsStyleControlValue | null }

@@ -11,6 +11,10 @@ private let browserScripts: [String: String] = [
 
 @_cdecl("active_browser_url_for_bundle_id")
 public func activeBrowserURLForBundleID(_ bundleId: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+    guard Thread.isMainThread else {
+        return nil
+    }
+
     guard let bundleId else {
         return nil
     }
@@ -20,20 +24,22 @@ public func activeBrowserURLForBundleID(_ bundleId: UnsafePointer<CChar>?) -> Un
         return nil
     }
 
+    guard let url = getActiveBrowserURL(source: source), !url.isEmpty else {
+        return nil
+    }
+    return strdup(url)
+}
+
+private func getActiveBrowserURL(source: String) -> String? {
     var error: NSDictionary?
     guard let script = NSAppleScript(source: source) else {
         return nil
     }
 
-    let output = script.executeAndReturnError(&error)
-    if error != nil {
+    let output: NSAppleEventDescriptor? = script.executeAndReturnError(&error)
+    if error != nil || output == nil {
         return nil
     }
 
-    guard let url = output.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-          !url.isEmpty else {
-        return nil
-    }
-
-    return strdup(url)
+    return output?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
 }

@@ -192,7 +192,7 @@ fn calculate_overlay_position_for_size(
 
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
-pub fn create_recording_overlay(app_handle: &AppHandle) {
+fn create_recording_overlay_inner(app_handle: &AppHandle) {
     let position = calculate_overlay_position(app_handle);
 
     // On Linux (Wayland), monitor detection often fails, but we don't need exact coordinates
@@ -247,7 +247,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 
 /// Creates the recording overlay panel and keeps it hidden by default (macOS)
 #[cfg(target_os = "macos")]
-pub fn create_recording_overlay(app_handle: &AppHandle) {
+fn create_recording_overlay_inner(app_handle: &AppHandle) {
     if let Some((x, y)) = calculate_overlay_position(app_handle) {
         let settings = settings::get_settings(app_handle);
         let (w, h) = overlay_dimensions(settings.recording_overlay_style);
@@ -295,40 +295,54 @@ fn ensure_recording_overlay(app_handle: &AppHandle) -> bool {
         return false;
     }
 
-    create_recording_overlay(app_handle);
+    create_recording_overlay_inner(app_handle);
     app_handle.get_webview_window("recording_overlay").is_some()
 }
 
-fn show_overlay_state(app_handle: &AppHandle, state: &str) {
-    // Check if overlay should be shown based on position setting
-    let settings = settings::get_settings(app_handle);
-    if settings.overlay_position == OverlayPosition::None {
-        return;
-    }
+pub fn warm_recording_overlay(app_handle: &AppHandle) {
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        let settings = settings::get_settings(&app_handle_clone);
+        if settings.overlay_position != OverlayPosition::None {
+            let _ = ensure_recording_overlay(&app_handle_clone);
+        }
+    });
+}
 
-    if !ensure_recording_overlay(app_handle) {
-        return;
-    }
+fn show_overlay_state(app_handle: &AppHandle, state: &'static str) {
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        let app_handle = &app_handle_clone;
+        // Check if overlay should be shown based on position setting
+        let settings = settings::get_settings(app_handle);
+        if settings.overlay_position == OverlayPosition::None {
+            return;
+        }
 
-    apply_recording_overlay_metrics(app_handle);
+        if !ensure_recording_overlay(app_handle) {
+            return;
+        }
 
-    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let _ = overlay_window.show();
+        apply_recording_overlay_metrics_inner(app_handle);
 
-        // On Windows, aggressively re-assert "topmost" in the native Z-order after showing
-        #[cfg(target_os = "windows")]
-        force_overlay_topmost(&overlay_window);
+        if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let _ = overlay_window.show();
 
-        let style_str = match settings.recording_overlay_style {
-            RecordingOverlayStyle::Compact => "compact",
-            RecordingOverlayStyle::Detailed => "detailed",
-            RecordingOverlayStyle::Minimal => "minimal",
-            RecordingOverlayStyle::Notch => "notch",
-        };
-        let payload = serde_json::json!({ "state": state, "style": style_str });
-        let _ = overlay_window.emit("show-overlay", payload);
-    }
+            // On Windows, aggressively re-assert "topmost" in the native Z-order after showing
+            #[cfg(target_os = "windows")]
+            force_overlay_topmost(&overlay_window);
+
+            let style_str = match settings.recording_overlay_style {
+                RecordingOverlayStyle::Compact => "compact",
+                RecordingOverlayStyle::Detailed => "detailed",
+                RecordingOverlayStyle::Minimal => "minimal",
+                RecordingOverlayStyle::Notch => "notch",
+            };
+            let payload = serde_json::json!({ "state": state, "style": style_str });
+            let _ = overlay_window.emit("show-overlay", payload);
+        }
+    });
 }
 
 /// Shows the recording overlay window with fade-in animation
@@ -356,65 +370,77 @@ pub fn show_correction_overlay(
     confidence: f64,
     additional_count: usize,
 ) {
-    let settings = settings::get_settings(app_handle);
-    if settings.overlay_position == OverlayPosition::None {
-        return;
-    }
-
-    if !ensure_recording_overlay(app_handle) {
-        return;
-    }
-
-    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        let generation =
-            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-        let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
-            width: OVERLAY_WIDTH_CORRECTION,
-            height: OVERLAY_HEIGHT_CORRECTION,
-        }));
-
-        if let Some((x, y)) = calculate_overlay_position_for_size(
-            app_handle,
-            (OVERLAY_WIDTH_CORRECTION, OVERLAY_HEIGHT_CORRECTION),
-            RecordingOverlayStyle::Detailed,
-        ) {
-            let _ = overlay_window
-                .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+    let app_handle_clone = app_handle.clone();
+    let original_string = original.to_string();
+    let corrected_string = corrected.to_string();
+    let _ = app_handle.run_on_main_thread(move || {
+        let app_handle = &app_handle_clone;
+        let settings = settings::get_settings(app_handle);
+        if settings.overlay_position == OverlayPosition::None {
+            return;
         }
 
-        let _ = overlay_window.show();
+        if !ensure_recording_overlay(app_handle) {
+            return;
+        }
 
-        #[cfg(target_os = "windows")]
-        force_overlay_topmost(&overlay_window);
+        if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+            let generation =
+                OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                width: OVERLAY_WIDTH_CORRECTION,
+                height: OVERLAY_HEIGHT_CORRECTION,
+            }));
 
-        let payload = serde_json::json!({
-            "original": original,
-            "corrected": corrected,
-            "confidence": confidence,
-            "additionalCount": additional_count,
-        });
-        let _ = overlay_window.emit("show-correction-overlay", payload);
-
-        let window_clone = overlay_window.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(
-                CORRECTION_OVERLAY_VISIBLE_MS,
-            ));
-            if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed) != generation {
-                return;
+            if let Some((x, y)) = calculate_overlay_position_for_size(
+                app_handle,
+                (OVERLAY_WIDTH_CORRECTION, OVERLAY_HEIGHT_CORRECTION),
+                RecordingOverlayStyle::Detailed,
+            ) {
+                let _ = overlay_window
+                    .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
             }
-            let _ = window_clone.emit("hide-overlay", ());
-            std::thread::sleep(std::time::Duration::from_millis(300));
-            if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed) != generation {
-                return;
-            }
-            let _ = window_clone.hide();
-        });
-    }
+
+            let _ = overlay_window.show();
+
+            #[cfg(target_os = "windows")]
+            force_overlay_topmost(&overlay_window);
+
+            let payload = serde_json::json!({
+                "original": original_string,
+                "corrected": corrected_string,
+                "confidence": confidence,
+                "additionalCount": additional_count,
+            });
+            let _ = overlay_window.emit("show-correction-overlay", payload);
+
+            let window_clone = overlay_window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(
+                    CORRECTION_OVERLAY_VISIBLE_MS,
+                ));
+                if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+                    != generation
+                {
+                    return;
+                }
+                let _ = window_clone.emit("hide-overlay", ());
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+                    != generation
+                {
+                    return;
+                }
+                let window_clone_2 = window_clone.clone();
+                let _ = window_clone.run_on_main_thread(move || {
+                    let _ = window_clone_2.hide();
+                });
+            });
+        }
+    });
 }
 
-/// Applies current overlay style dimensions and re-centers the window.
-pub fn apply_recording_overlay_metrics(app_handle: &AppHandle) {
+fn apply_recording_overlay_metrics_inner(app_handle: &AppHandle) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         let settings = settings::get_settings(app_handle);
         let (w, h) = overlay_dimensions(settings.recording_overlay_style);
@@ -431,6 +457,14 @@ pub fn apply_recording_overlay_metrics(app_handle: &AppHandle) {
     }
 }
 
+/// Applies current overlay style dimensions and re-centers the window.
+pub fn apply_recording_overlay_metrics(app_handle: &AppHandle) {
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        apply_recording_overlay_metrics_inner(&app_handle_clone);
+    });
+}
+
 /// Convenience alias used by `change_overlay_position_setting`.
 pub fn update_overlay_position(app_handle: &AppHandle) {
     apply_recording_overlay_metrics(app_handle);
@@ -438,19 +472,26 @@ pub fn update_overlay_position(app_handle: &AppHandle) {
 
 /// Hides the recording overlay window with fade-out animation
 pub fn hide_recording_overlay(app_handle: &AppHandle) {
-    // Always hide the overlay regardless of settings - if setting was changed while recording,
-    // we still want to hide it properly
-    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        // Emit event to trigger fade-out animation
-        let _ = overlay_window.emit("hide-overlay", ());
-        // Hide the window after a short delay to allow animation to complete
-        let window_clone = overlay_window.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(300));
-            let _ = window_clone.hide();
-        });
-    }
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        let app_handle = &app_handle_clone;
+        // Always hide the overlay regardless of settings - if setting was changed while recording,
+        // we still want to hide it properly
+        if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            // Emit event to trigger fade-out animation
+            let _ = overlay_window.emit("hide-overlay", ());
+            // Hide the window after a short delay to allow animation to complete
+            let window_clone = overlay_window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                let window_clone_2 = window_clone.clone();
+                let _ = window_clone.run_on_main_thread(move || {
+                    let _ = window_clone_2.hide();
+                });
+            });
+        }
+    });
 }
 
 const MIC_LEVEL_EMIT_INTERVAL_MS: u128 = 33; // ~30 Hz cap

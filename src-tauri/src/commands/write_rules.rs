@@ -1,6 +1,6 @@
 use crate::post_processing::{ActiveAppContext, ResolvedWriteRule, WriteRule};
 use crate::settings::{get_settings, write_settings};
-use crate::write_rules::{validate_write_rules, RuleResolver};
+use crate::write_rules::{needs_url_capture, validate_write_rules, RuleResolver};
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -115,7 +115,15 @@ pub fn get_frontmost_url_for_write_rules(
         return Ok(None);
     }
 
-    Ok(crate::browser_url::active_browser_url(bundle_id))
+    let app_ctx = ActiveAppContext {
+        bundle_id: bundle_id.to_string(),
+        localized_name: String::new(),
+    };
+    if !needs_url_capture(&settings.write_rules, Some(&app_ctx)) {
+        return Ok(None);
+    }
+
+    Ok(crate::browser_url::active_browser_url(&app, bundle_id))
 }
 
 #[tauri::command]

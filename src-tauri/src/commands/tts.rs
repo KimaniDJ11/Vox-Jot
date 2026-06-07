@@ -318,21 +318,49 @@ pub fn download_tts_pack(app: AppHandle, pack_id: String) -> Result<(), String> 
     let event_app = app.clone();
     let event_pack_id = pack_id.clone();
     let cancel_flag = crate::artifact_download::register_download_cancel_flag("tts", &pack_id);
-    tauri::async_runtime::spawn(async move {
-        tokio::task::yield_now().await;
-        emit_tts_pack_download_progress(&event_app, &event_pack_id, "preparing", None);
-        let result = manager
-            .download_pack(&pack_id, Some(Arc::clone(&cancel_flag)))
-            .await;
-        crate::artifact_download::clear_download_cancel_flag("tts", &event_pack_id);
-        match result {
-            Ok(()) => emit_tts_pack_download_progress(&event_app, &event_pack_id, "complete", None),
-            Err(error) => {
-                warn!("TTS pack download failed for {event_pack_id}: {error}");
-                emit_tts_pack_download_progress(&event_app, &event_pack_id, "failed", Some(&error));
+    // download_pack has a large async state machine that overflows the default 2 MB tokio
+    // worker stack on macOS ARM64. Spawn a dedicated OS thread with TTS_COMMAND_STACK_BYTES.
+    thread::Builder::new()
+        .name("tts-command-download-pack".to_string())
+        .stack_size(TTS_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
+                Err(err) => {
+                    let msg = format!("Failed to start TTS download runtime: {err}");
+                    warn!("{msg}");
+                    emit_tts_pack_download_progress(
+                        &event_app,
+                        &event_pack_id,
+                        "failed",
+                        Some(&msg),
+                    );
+                    return;
+                }
+            };
+            emit_tts_pack_download_progress(&event_app, &event_pack_id, "preparing", None);
+            let result =
+                runtime.block_on(manager.download_pack(&pack_id, Some(Arc::clone(&cancel_flag))));
+            crate::artifact_download::clear_download_cancel_flag("tts", &event_pack_id);
+            match result {
+                Ok(()) => {
+                    emit_tts_pack_download_progress(&event_app, &event_pack_id, "complete", None)
+                }
+                Err(error) => {
+                    warn!("TTS pack download failed for {event_pack_id}: {error}");
+                    emit_tts_pack_download_progress(
+                        &event_app,
+                        &event_pack_id,
+                        "failed",
+                        Some(&error),
+                    );
+                }
             }
-        }
-    });
+        })
+        .map_err(|err| format!("Failed to start TTS download thread: {err}"))?;
     Ok(())
 }
 

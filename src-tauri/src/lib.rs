@@ -76,6 +76,8 @@ const MAIN_WINDOW_MIN_W: f64 = 940.0;
 const MAIN_WINDOW_MIN_H: f64 = 760.0;
 #[cfg(all(target_os = "macos", not(dev)))]
 const LOCALHOST_ASSET_PORT: u16 = 47635;
+#[cfg(all(target_os = "macos", dev))]
+const DEV_ASSET_ORIGIN: &str = "http://localhost:1420";
 #[cfg(all(target_os = "macos", not(dev)))]
 pub(crate) const MACOS_FORCE_POSTMESSAGE_IPC_SCRIPT: &str = r#"
 (() => {
@@ -225,6 +227,24 @@ pub(crate) fn show_main_window(app: &AppHandle) {
 pub(crate) fn app_webview_url(path: impl Into<String>) -> tauri::WebviewUrl {
     let path = path.into();
 
+    #[cfg(all(target_os = "macos", dev))]
+    {
+        // macOS 26 WebKit can terminate the shared web content process when a
+        // new custom-scheme WebView is created during a hotkey flow. In dev,
+        // load windows from Vite's localhost origin so first-use overlay
+        // creation does not bounce the main app WebView.
+        let asset_path = path.trim_start_matches('/');
+        let url = if asset_path.is_empty() {
+            DEV_ASSET_ORIGIN.to_string()
+        } else {
+            format!("{DEV_ASSET_ORIGIN}/{asset_path}")
+        };
+        tauri::WebviewUrl::External(
+            url.parse()
+                .expect("macOS dev localhost asset URL must be valid"),
+        )
+    }
+
     #[cfg(all(target_os = "macos", not(dev)))]
     {
         // macOS 26 WebKit can crash in WKURLSchemeHandler when Tauri's custom asset
@@ -235,13 +255,13 @@ pub(crate) fn app_webview_url(path: impl Into<String>) -> tauri::WebviewUrl {
         } else {
             format!("http://127.0.0.1:{LOCALHOST_ASSET_PORT}/{asset_path}")
         };
-        return tauri::WebviewUrl::External(
+        tauri::WebviewUrl::External(
             url.parse()
                 .expect("production localhost asset URL must be valid"),
-        );
+        )
     }
 
-    #[cfg(not(all(target_os = "macos", not(dev))))]
+    #[cfg(not(target_os = "macos"))]
     {
         tauri::WebviewUrl::App(path.into())
     }
@@ -1378,6 +1398,12 @@ pub fn run(cli_args: CliArgs) {
             if should_force_show || !should_hide || !tray_available {
                 show_main_window(&app_handle);
             }
+
+            let overlay_app_handle = app_handle.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(600));
+                crate::overlay::warm_recording_overlay(&overlay_app_handle);
+            });
 
             Ok(())
         })

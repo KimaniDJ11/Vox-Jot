@@ -66,6 +66,18 @@ impl RuleResolver {
     }
 }
 
+pub fn needs_url_capture(rules: &[WriteRule], app_ctx: Option<&ActiveAppContext>) -> bool {
+    rules.iter().any(|rule| {
+        rule.enabled
+            && rule_app_matches(rule, app_ctx)
+            && rule
+                .matchers
+                .url_patterns
+                .iter()
+                .any(|pattern| !normalize_pattern(pattern).is_empty())
+    })
+}
+
 pub fn validate_write_rules(rules: &[WriteRule]) -> Result<(), String> {
     let mut any_app_default: Option<&WriteRule> = None;
     let mut app_defaults: HashMap<String, &WriteRule> = HashMap::new();
@@ -459,6 +471,37 @@ mod tests {
         assert!(
             RuleResolver::resolve(&rules, None, Some("https://mail.gmail.com/inbox")).is_some()
         );
+    }
+
+    #[test]
+    fn url_capture_needed_only_for_matching_enabled_url_rules() {
+        let rules = vec![
+            rule("app-default", 30, vec!["com.browser"], vec![]),
+            rule(
+                "browser-url",
+                20,
+                vec!["com.browser"],
+                vec!["mail.example.com"],
+            ),
+            rule("other-url", 10, vec!["com.other"], vec!["docs.example.com"]),
+        ];
+
+        assert!(needs_url_capture(&rules, Some(&app_ctx("com.browser"))));
+        assert!(!needs_url_capture(&rules, Some(&app_ctx("com.notes"))));
+
+        let mut disabled_url = rule("disabled-url", 10, vec![], vec!["mail.example.com"]);
+        disabled_url.enabled = false;
+        assert!(!needs_url_capture(
+            &[disabled_url],
+            Some(&app_ctx("com.browser"))
+        ));
+    }
+
+    #[test]
+    fn url_only_rules_need_capture_without_app_context() {
+        let rules = vec![rule("url-only", 1, vec![], vec!["*.gmail.com"])];
+
+        assert!(needs_url_capture(&rules, None));
     }
 
     #[test]

@@ -8,7 +8,7 @@
 use crate::apple_intelligence;
 use crate::post_processing::ActiveAppContext;
 use crate::settings::AppSettings;
-use crate::write_rules::RuleResolver;
+use crate::write_rules::{needs_url_capture, RuleResolver};
 use log::debug;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -190,10 +190,14 @@ pub(super) fn capture_active_app_context(
 }
 
 pub(super) fn capture_active_browser_url(
+    app: &AppHandle,
     settings: &AppSettings,
     active_app_context: Option<&ActiveAppContext>,
 ) -> Option<String> {
     if !settings.write_rules_url_capture_enabled {
+        return None;
+    }
+    if !needs_url_capture(&settings.write_rules, active_app_context) {
         return None;
     }
 
@@ -202,7 +206,7 @@ pub(super) fn capture_active_browser_url(
         return None;
     }
 
-    crate::browser_url::active_browser_url(bundle_id)
+    crate::browser_url::active_browser_url(app, bundle_id)
 }
 
 pub(super) fn capture_prepared_write_context(
@@ -210,7 +214,7 @@ pub(super) fn capture_prepared_write_context(
     settings: &AppSettings,
 ) -> PreparedActiveAppContext {
     let active_app_context = capture_active_app_context(app, settings);
-    let active_url = capture_active_browser_url(settings, active_app_context.as_ref());
+    let active_url = capture_active_browser_url(app, settings, active_app_context.as_ref());
     PreparedActiveAppContext {
         active_app_context,
         active_url,

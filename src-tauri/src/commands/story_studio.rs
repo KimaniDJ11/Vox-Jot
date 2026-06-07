@@ -1740,14 +1740,13 @@ fn ensure_hf_creative_runtime_installed_blocking(
         .ok_or_else(|| "Bundled PyTorch/MPS runtime extraction produced no files.".to_string())?;
     // Validate the bundled runtime ships a usable interpreter (relocatable
     // `.python/` or legacy `.venv/`); the path itself is not needed here.
-    let _python = crate::sidecar::SidecarManager::runtime_python_path(&runtime_root).ok_or_else(
-        || {
+    let _python =
+        crate::sidecar::SidecarManager::runtime_python_path(&runtime_root).ok_or_else(|| {
             format!(
                 "Bundled PyTorch/MPS runtime is missing a Python interpreter under {}.",
                 runtime_root.display()
             )
-        },
-    )?;
+        })?;
 
     ensure_download_not_cancelled(stop_flag)?;
     let runtime_dir = hf_creative_runtime_dir(app)?;

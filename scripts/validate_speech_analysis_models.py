@@ -2,7 +2,8 @@
 """Validate Vox Jot speech-analysis model adapters.
 
 This script owns the model bring-up loop policy: each model gets at most
-11 full attempts before the runner records it as blocked and moves on.
+11 full attempts before the runner records that it still needs a fix and
+moves on.
 
 The runner validates concrete adapter readiness and writes a stable report
 schema for local and CI checks.
@@ -62,9 +63,11 @@ MODEL_CHECKS: tuple[ModelCheck, ...] = (
     ModelCheck("mlx-vibevoice-asr-bf16", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("pyannote-community-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("pyannote-3-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
+    ModelCheck("nemo-sortformer-4spk-v1", "diarization", "nemo", ("torch", "nemo.collections.asr"), cloud_gpu_preferred=True),
     ModelCheck("mlx-sortformer-4spk-v1", "diarization", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-sortformer-4spk-v2-1", "diarization", "mlx_audio", ("mlx_audio",)),
     ModelCheck("reverb-diarization-v2", "diarization", "reverb", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
+    ModelCheck("whisper-diarization", "asr_diarization", "whisper_diarization", ("torch", "whisperx"), cloud_gpu_preferred=True),
     ModelCheck("onnx-polyvoice-diarization", "diarization", "onnx_runtime", ()),
 )
 
@@ -206,7 +209,7 @@ AdapterCheck = Callable[[ModelCheck], tuple[bool, str]]
 
 def validate_model(check: ModelCheck, adapter_check: AdapterCheck) -> ModelReport:
     attempts: list[AttemptResult] = []
-    status = "blocked_after_11_attempts"
+    status = "needs_fix_after_11_attempts"
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         started = time.monotonic()
@@ -288,13 +291,13 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(encode_report(reports), indent=2), encoding="utf-8")
 
-    blocked = [report.model_id for report in reports if report.status not in {"ready", "download_required"}]
+    needs_fix = [report.model_id for report in reports if report.status not in {"ready", "download_required"}]
     pending_download = [report.model_id for report in reports if report.status == "download_required"]
     print(f"Wrote validation report to {output}")
     if pending_download:
         print(f"Download required: {', '.join(pending_download)}")
-    if blocked:
-        print(f"Blocked models: {', '.join(blocked)}")
+    if needs_fix:
+        print(f"Needs fix: {', '.join(needs_fix)}")
         return 1
     return 0
 

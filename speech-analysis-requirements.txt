@@ -2,8 +2,7 @@
 #
 # This environment is intentionally separate from speech-runtime/.venv.
 # It covers file-transcription ASR, speaker diarization, ONNX, and CoreML.
-# MLX-Audio and Gemma audio use separate app-managed venvs because their
-# Hugging Face/Transformers constraints conflict with WhisperX.
+# MLX-Audio and Gemma audio use separate app-managed venvs.
 
 torch==2.8.0
 torchaudio==2.8.0
@@ -16,6 +15,8 @@ librosa==0.11.0
 soundfile==0.13.1
 
 pyannote.audio==4.0.4
+whisperx==3.4.2
+nemo_toolkit[asr]==2.1.0
 
 onnx==1.21.0
 onnxruntime==1.25.1

@@ -51,6 +51,7 @@ const validStatuses = new Set([
   "needs_review",
   "non_commercial",
   "research_only",
+  "commercial_license_required",
   "restricted_custom",
   "platform_runtime",
 ]);
@@ -120,6 +121,19 @@ for (const entry of manifest.entries) {
       acknowledgementRequiredIds.add(catalogId);
     }
   }
+
+  if (entry.commercial_status === "commercial_license_required") {
+    if (!entry.ui_acknowledgement_required) {
+      warn(
+        `Commercial-license model ${entry.id} must require a UI acknowledgement gate.`,
+      );
+    }
+    if (!entry.required_notices.includes("commercial_license_confirmation")) {
+      warn(
+        `Commercial-license model ${entry.id} must include commercial_license_confirmation in required_notices.`,
+      );
+    }
+  }
 }
 
 const noticeText = read("src-tauri/resources/THIRD_PARTY_MODEL_NOTICES.md");
@@ -133,14 +147,26 @@ for (const entry of manifest.entries) {
   }
 }
 
-const extractRecordKeys = (source: string, recordName: string): string[] => {
+const extractRecordGates = (
+  source: string,
+  recordName: string,
+): Array<{ id: string; kind: string | null }> => {
   const start = source.indexOf(`const ${recordName}`);
   if (start < 0) return [];
   const end = source.indexOf("};", start);
   if (end < 0) return [];
-  return [...source.slice(start, end).matchAll(/"([^"]+)":\s*\{/g)].map(
-    (match) => match[1],
-  );
+  const body = source.slice(start, end);
+  const entries = [...body.matchAll(/"([^"]+)":\s*\{/g)];
+  return entries.map((match, index) => {
+    const blockStart = (match.index ?? 0) + match[0].length;
+    const blockEnd =
+      index + 1 < entries.length
+        ? (entries[index + 1].index ?? body.length)
+        : body.length;
+    const block = body.slice(blockStart, blockEnd);
+    const kind = block.match(/\bkind:\s*"([^"]+)"/)?.[1] ?? null;
+    return { id: match[1], kind };
+  });
 };
 
 const extractRustStringField = (source: string, field: string): string[] =>
@@ -187,22 +213,34 @@ for (const id of [...catalogIds].sort()) {
   }
 }
 
-const uiGateIds = new Set<string>([
-  ...extractRecordKeys(
-    read(
+const uiGateSources = [
+  {
+    source: read(
       "src/components/settings/general/listen/sections/EngineLibraryPanel.tsx",
     ),
-    "TTS_LICENSE_ACKNOWLEDGEMENT_GATES",
-  ),
-  ...extractRecordKeys(
-    read("src/components/model-hub/SpeechAnalysisEnginesSection.tsx"),
-    "SPEECH_ANALYSIS_LICENSE_GATES",
-  ),
-  ...extractRecordKeys(
-    read("src/components/model-hub/OcrEnginesSection.tsx"),
-    "OCR_LICENSE_ACKNOWLEDGEMENT_GATES",
-  ),
-]);
+    recordName: "TTS_LICENSE_ACKNOWLEDGEMENT_GATES",
+  },
+  {
+    source: read("src/components/model-hub/SpeechAnalysisEnginesSection.tsx"),
+    recordName: "SPEECH_ANALYSIS_LICENSE_GATES",
+  },
+  {
+    source: read("src/components/model-hub/OcrEnginesSection.tsx"),
+    recordName: "OCR_LICENSE_ACKNOWLEDGEMENT_GATES",
+  },
+];
+
+const uiGateKindsById = new Map<string, string | null>();
+for (const { source, recordName } of uiGateSources) {
+  for (const gate of extractRecordGates(source, recordName)) {
+    if (uiGateKindsById.has(gate.id)) {
+      warn(`Duplicate UI acknowledgement gate id: ${gate.id}.`);
+    }
+    uiGateKindsById.set(gate.id, gate.kind);
+  }
+}
+
+const uiGateIds = new Set(uiGateKindsById.keys());
 
 for (const id of [...acknowledgementRequiredIds].sort()) {
   if (!uiGateIds.has(id)) {
@@ -215,6 +253,18 @@ for (const id of [...acknowledgementRequiredIds].sort()) {
 for (const id of [...uiGateIds].sort()) {
   if (!coveredCatalogIds.has(id)) {
     warn(`UI acknowledgement gate ${id} has no manifest coverage.`);
+  }
+}
+
+for (const entry of manifest.entries) {
+  if (entry.commercial_status !== "commercial_license_required") continue;
+  const gateIds = entry.catalog_ids?.length ? entry.catalog_ids : [entry.id];
+  for (const catalogId of gateIds) {
+    if (uiGateKindsById.get(catalogId) !== "commercial_license_required") {
+      warn(
+        `Commercial-license model ${entry.id} must use a commercial_license_required UI gate for ${catalogId}.`,
+      );
+    }
   }
 }
 

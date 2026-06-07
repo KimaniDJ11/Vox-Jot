@@ -234,7 +234,7 @@ const SortHeaderButton: React.FC<{
         aria-describedby={showHelp ? tooltipId : undefined}
         title={help}
       >
-        <span className="min-w-0 truncate">{label}</span>
+        <span className="shrink-0 whitespace-nowrap">{label}</span>
         <SortIndicator active={active} direction={direction} />
       </button>
       {showHelp ? (
@@ -318,7 +318,7 @@ export const TestingTable: React.FC<TestingTableProps> = ({
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
       <div data-testing-table-viewport="" className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse text-sm">
+        <table className="min-w-[900px] w-full table-fixed border-collapse text-sm">
           <colgroup>
             <col style={{ width: `${widths.rank}%` }} />
             <col style={{ width: `${widths.model}%` }} />

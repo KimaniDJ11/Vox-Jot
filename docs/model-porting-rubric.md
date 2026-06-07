@@ -138,7 +138,9 @@ Run this in order. Stop at the first **STOP** result.
 ```
 1. License?
    □ Apache-2.0 / MIT / BSD        → continue
-   □ Unknown or non-commercial     → STOP: skip
+   □ Custom but commercial use allowed with review → continue behind acknowledgement
+   □ Commercial license required   → BYO license gate only; do not mirror/bundle unless Vox Jot has distribution rights
+   □ Unknown or no commercial path → STOP: skip
 
 2. Domain?
    □ STT, TTS, or LLM              → continue
@@ -200,6 +202,28 @@ Matches: `TtsEngineKind::Sidecar`, `SidecarBackend::LegacyPythonRuntime`
 - May require manual setup steps during local development only
 - Must not be exposed as usable catalog functionality until the provider and model path are implemented, app-managed, and validated
 - If validation fails, mark the model blocked/failed and keep it out of runnable surfaces instead of exposing a promise-only catalog row
+
+### Lane E — Bring Your Own Commercial License
+
+Matches: `LicenseAcknowledgementGate.kind = "commercial_license_required"` and
+`commercial_status = "commercial_license_required"` in
+`src-tauri/resources/models.licenses.json`.
+
+- Use only when the publisher offers a separate commercial license and the app
+  path otherwise works.
+- The UI must say Vox Jot does not grant or verify the license.
+- Require an explicit checkbox acknowledgement before download/use:
+  "I have the required commercial license or written permission."
+- Store the acknowledgement locally with the model ID, gate kind, license label,
+  publisher, terms URL, timestamp, and app version or schema version.
+- Prefer user-initiated upstream download or local-folder import. Do not mirror,
+  bundle, host, or redistribute weights from Vox Jot infrastructure unless the
+  publisher agreement grants Vox Jot those distribution rights.
+- Voice-cloning consent remains a separate acknowledgement when the model
+  supports reference voices.
+- Do not rank the model in Testing until the normal full app-path benchmark
+  suite passes. A BYO-license gate solves licensing UX only; it does not prove
+  runtime readiness, latency, quality, or safety.
 
 ---
 

@@ -1,0 +1,106 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-06-07",
+  "evaluator": "Codex",
+
+  "source": {
+    "url": "https://huggingface.co/bosonai/higgs-audio-v3-tts-4b",
+    "repo_url": "https://github.com/boson-ai/higgs-audio",
+    "paper_url": "",
+    "license": "Boson Higgs Audio v3 Research and Non-Commercial License",
+    "license_allows_commercial": false,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "higgs-audio-v3-tts-4b",
+    "label": "Higgs Audio v3 TTS 4B",
+    "publisher": "Boson AI",
+    "description": "Conversational multilingual TTS model with zero-shot voice cloning and inline emotion, style, prosody, pause, and sound-effect control tokens.",
+    "domain": "tts",
+    "parameter_count": "4.65B BF16",
+    "model_format": "safetensors",
+    "dtype": "bfloat16"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": true,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "byo_commercial_license_prototype",
+    "can_run_as_local_process": false,
+    "api_surface": ["transformers", "mlx_audio.tts.models.higgs_audio_v3"],
+    "output_format": "wav",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": null,
+    "vram_estimate_gb": null,
+    "disk_size_mb": 9100
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": false,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": true,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": true
+  },
+
+  "languages": ["100+ languages per upstream model card"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": false,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 9100,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "Apple Silicon config-only probe through Vox Jot app-managed mlx-audio venv",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "No synthesis benchmark was run because the model is blocked for production use by license and the current Vox Jot mlx-audio load path fails before weights are loaded."
+  },
+
+  "validation": {
+    "hugging_face_sha": "e47035915457a842f97199cf7dc005abe5ad93da",
+    "hugging_face_gated": false,
+    "hugging_face_used_storage_bytes": 18642537708,
+    "model_safetensors_bytes": 9309834930,
+    "model_safetensors_sha256": "2f7965264c360b38180885006944aa16bd1de20f4e6cff79f6473bfcf8ae3d5a",
+    "config_model_type": "higgs_multimodal_qwen3",
+    "mlx_audio_module_present": true,
+    "mlx_audio_loader_probe": "failed: mlx_audio.tts.utils.load_model attempted to import mlx_audio.tts.models.higgs_multimodal_qwen3 instead of remapping to higgs_audio_v3",
+    "patched_config_probe": "with model_type changed to higgs_audio_v3, loader reached weight loading and failed only because the 9.3 GB model.safetensors file was intentionally not downloaded",
+    "future_license_gate_kind": "commercial_license_required",
+    "app_catalog_status": "not present",
+    "app_path_status": "not verified"
+  },
+
+  "verdict": {
+    "score": 24,
+    "decision": "prototype",
+    "blockers": [
+      "Research/non-commercial license forbids production, hosted API, revenue-generating, and end-user app use without a separate Boson commercial license",
+      "Official config model_type higgs_multimodal_qwen3 currently fails Vox Jot's app-managed mlx-audio load path before weights are loaded",
+      "No Vox Jot catalog row, app-managed artifact, voice inventory, or create-voice preview path exists for this model",
+      "No full TTS hard, style, or voice-clone suite has run through the installed app API"
+    ],
+    "notes": "Do not add a user-facing or ranked Testing view row for Higgs Audio v3 TTS 4B yet. Revisit only after the mlx-audio remap/load path is fixed. If exposed for users who already have a Boson commercial license, use the commercial_license_required acknowledgement gate, avoid Vox Jot-hosted mirroring unless distribution rights are granted, then download through the app-managed TTS store and run full installed-app hard/style/voice-clone suites."
+  }
+}

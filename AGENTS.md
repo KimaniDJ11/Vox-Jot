@@ -5,6 +5,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## External Claude Delegation
+
+Codex may use Claude Code as an external read-only reviewer through `./scripts/ask-claude` when a second model opinion would materially improve the work, such as architecture alternatives, patch critique, debugging hypotheses, edge-case review, or risk analysis.
+
+- Use `./scripts/ask-claude`, not raw `claude`, so local runtime quirks and read-only defaults are handled consistently.
+- Default Claude delegation to Opus. `./scripts/ask-claude` already passes `--model opus` unless `ASK_CLAUDE_MODEL` is explicitly set for a cheaper/faster review.
+- The installed Claude CLI does not expose a separate thinking-level flag. For high-value Claude reviews, prompt Claude for the deepest practical analysis, but do not claim a hidden thinking budget was set unless the local CLI later exposes that control.
+- Opus delegation may consume more Claude plan usage than cheaper models. Use it only when a second model review is genuinely useful, keep prompts scoped, and report quota/rate-limit responses plainly.
+- Treat Claude output as unverified advice. Codex must still inspect the code, make final technical decisions, perform edits, and run validation.
+- Do not ask Claude to edit files, run commands, approve destructive actions, handle secrets, or make final release/benchmark/catalog decisions.
+- Keep prompts scoped and evidence-oriented. Include relevant file paths, diffs, errors, and constraints, but do not pass credentials, tokens, private customer data, or large unrelated logs.
+- If `./scripts/ask-claude` fails because Claude is missing, unauthenticated, or blocked by local configuration, report that exact blocker and continue independently unless the user explicitly required a Claude pass.
+
 ## No Deferred Placeholder Work Policy
 
 There is no accepted product plan that justifies leaving requested functionality unfinished. Agents must treat every requested task as a request for a fully working implementation unless the user explicitly narrows the scope.

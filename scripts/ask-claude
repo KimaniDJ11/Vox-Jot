@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  scripts/ask-claude "prompt"
+  printf '%s\n' "prompt" | scripts/ask-claude
+
+Runs Claude Code in non-interactive print mode for read-only critique,
+alternative designs, and edge-case review. Codex remains responsible for
+code edits, validation, and final decisions.
+
+Environment:
+  CLAUDE_BIN=/path/to/claude       Override the Claude CLI path.
+  ASK_CLAUDE_RUNTIME=/path/to/bin  Run the Claude CLI script through a runtime.
+  ASK_CLAUDE_MODEL=sonnet          Optional Claude model/alias; defaults to opus.
+USAGE
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ $# -gt 0 ]]; then
+  prompt="$*"
+else
+  if [[ -t 0 ]]; then
+    usage >&2
+    exit 64
+  fi
+  prompt="$(cat)"
+fi
+
+if [[ -z "${prompt//[[:space:]]/}" ]]; then
+  echo "ask-claude: prompt is empty" >&2
+  exit 64
+fi
+
+claude_bin="${CLAUDE_BIN:-}"
+if [[ -z "$claude_bin" ]]; then
+  claude_bin="$(command -v claude || true)"
+fi
+
+if [[ -n "$claude_bin" ]] && head -n 1 "$claude_bin" 2>/dev/null | grep -q 'claude native binary not installed'; then
+  claude_bin=""
+fi
+
+if [[ -z "$claude_bin" && -x /opt/homebrew/bin/claude ]]; then
+  claude_bin="/opt/homebrew/bin/claude"
+fi
+
+if [[ -z "$claude_bin" ]]; then
+  echo "ask-claude: Claude CLI not found on PATH; install Claude Code or set CLAUDE_BIN" >&2
+  exit 127
+fi
+
+claude_args=(
+  --print
+  --output-format text
+  --setting-sources user
+  --mcp-config '{"mcpServers":{}}'
+  --strict-mcp-config
+  --model "${ASK_CLAUDE_MODEL:-opus}"
+  --append-system-prompt "Use the deepest practical analysis for the request. Be concise in the final answer, but do not skip edge cases, risks, or alternatives during review."
+)
+
+claude_args+=(
+  --disallowedTools
+  Bash
+  Edit
+  Write
+  MultiEdit
+  NotebookEdit
+  WebFetch
+  WebSearch
+)
+
+run_claude() {
+  if [[ -n "${ASK_CLAUDE_RUNTIME:-}" ]]; then
+    exec "$ASK_CLAUDE_RUNTIME" "$claude_bin" "${claude_args[@]}" -- "$prompt"
+  fi
+
+  node_major=""
+  if command -v node >/dev/null 2>&1; then
+    node_version="$(node --version 2>/dev/null || true)"
+    node_major="${node_version#v}"
+    node_major="${node_major%%.*}"
+  fi
+
+  if [[ "$node_major" =~ ^[0-9]+$ ]] && (( node_major >= 25 )); then
+    if command -v bun >/dev/null 2>&1; then
+      exec bun "$claude_bin" "${claude_args[@]}" -- "$prompt"
+    fi
+
+    echo "ask-claude: Claude CLI is installed, but Node $node_major is too new for this Claude build." >&2
+    echo "ask-claude: Install a compatible Node runtime or install Bun, then retry." >&2
+    exit 70
+  fi
+
+  exec "$claude_bin" "${claude_args[@]}" -- "$prompt"
+}
+
+run_claude

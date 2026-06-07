@@ -13,12 +13,16 @@ import { Button } from "@/components/ui/Button";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
-export type LicenseGateKind = "non_commercial" | "custom_review";
+export type LicenseGateKind =
+  | "non_commercial"
+  | "custom_review"
+  | "commercial_license_required";
 
 export interface LicenseAcknowledgementGate {
   kind: LicenseGateKind;
   licenseLabel: string;
   termsUrl: string;
+  publisherName?: string;
   requiresVoiceConsent?: boolean;
   note?: string;
 }
@@ -70,6 +74,13 @@ const LicenseAcknowledgementDialog: React.FC<
   const requiresVoiceConsent = Boolean(gate.requiresVoiceConsent);
   const canConfirm = usageAck && (!requiresVoiceConsent || voiceAck);
   const isCustomReview = gate.kind === "custom_review";
+  const isCommercialLicenseRequired =
+    gate.kind === "commercial_license_required";
+  const publisherName =
+    gate.publisherName ??
+    t("modelHub.licenseGate.publisherFallback", {
+      defaultValue: "the model publisher",
+    });
   const handleBackdropCancel = () => {
     if (!busy) onCancel();
   };
@@ -78,9 +89,16 @@ const LicenseAcknowledgementDialog: React.FC<
       window.localStorage.setItem(
         `voxjot.modelLicenseAcknowledgement.${acknowledgementId}`,
         JSON.stringify({
+          schemaVersion: 2,
+          acknowledgementId,
+          gateKind: gate.kind,
           modelName,
           licenseLabel: gate.licenseLabel,
           termsUrl: gate.termsUrl,
+          publisherName: gate.publisherName ?? null,
+          requiresVoiceConsent,
+          usageAcknowledged: true,
+          voiceConsentAcknowledged: requiresVoiceConsent ? voiceAck : null,
           acknowledgedAt: new Date().toISOString(),
         }),
       );
@@ -121,20 +139,31 @@ const LicenseAcknowledgementDialog: React.FC<
               id={titleId}
               className="text-base font-semibold text-[var(--text)]"
             >
-              {t("modelHub.licenseGate.title", {
-                defaultValue: "License acknowledgement required",
-              })}
+              {isCommercialLicenseRequired
+                ? t("modelHub.licenseGate.commercialTitle", {
+                    defaultValue: "Commercial license required",
+                  })
+                : t("modelHub.licenseGate.title", {
+                    defaultValue: "License acknowledgement required",
+                  })}
             </h2>
             <p
               id={descriptionId}
               className="mt-1 text-sm leading-5 text-[var(--muted)]"
             >
-              {t("modelHub.licenseGate.description", {
-                defaultValue:
-                  "{{modelName}} is distributed under {{licenseLabel}}. Review the publisher terms before downloading.",
-                modelName,
-                licenseLabel: gate.licenseLabel,
-              })}
+              {isCommercialLicenseRequired
+                ? t("modelHub.licenseGate.commercialDescription", {
+                    defaultValue:
+                      "{{modelName}} requires a separate commercial license or written agreement from {{publisherName}} before download or use in Vox Jot.",
+                    modelName,
+                    publisherName,
+                  })
+                : t("modelHub.licenseGate.description", {
+                    defaultValue:
+                      "{{modelName}} is distributed under {{licenseLabel}}. Review the publisher terms before downloading.",
+                    modelName,
+                    licenseLabel: gate.licenseLabel,
+                  })}
             </p>
           </div>
           <ActionIconButton
@@ -156,15 +185,20 @@ const LicenseAcknowledgementDialog: React.FC<
                 aria-hidden
               />
               <p className="text-[var(--text)]">
-                {isCustomReview
-                  ? t("modelHub.licenseGate.customCopy", {
+                {isCommercialLicenseRequired
+                  ? t("modelHub.licenseGate.commercialCopy", {
                       defaultValue:
-                        "This model uses a custom or gated license. Download only if your intended use is allowed by the publisher terms, or you have obtained separate written permission.",
+                        "Vox Jot does not grant this license. Continue only if you already have a commercial license or written permission that allows this model to be downloaded and used through Vox Jot on this device.",
                     })
-                  : t("modelHub.licenseGate.nonCommercialCopy", {
-                      defaultValue:
-                        "This model appears restricted to permitted non-commercial, research, or personal use. For business, paid, workplace, client, or redistributed use, obtain a separate license from the model publisher before using it.",
-                    })}
+                  : isCustomReview
+                    ? t("modelHub.licenseGate.customCopy", {
+                        defaultValue:
+                          "This model uses a custom or gated license. Download only if your intended use is allowed by the publisher terms, or you have obtained separate written permission.",
+                      })
+                    : t("modelHub.licenseGate.nonCommercialCopy", {
+                        defaultValue:
+                          "This model appears restricted to permitted non-commercial, research, or personal use. For business, paid, workplace, client, or redistributed use, obtain a separate license from the model publisher before using it.",
+                      })}
               </p>
             </div>
           </div>
@@ -197,15 +231,21 @@ const LicenseAcknowledgementDialog: React.FC<
               onChange={(event) => setUsageAck(event.target.checked)}
             />
             <span>
-              {isCustomReview
-                ? t("modelHub.licenseGate.customAck", {
+              {isCommercialLicenseRequired
+                ? t("modelHub.licenseGate.commercialAck", {
                     defaultValue:
-                      "I confirm my intended use is allowed by the publisher terms, or I have obtained any required separate permission.",
+                      "I confirm I have the required commercial license or written permission from {{publisherName}} for my intended use of this model.",
+                    publisherName,
                   })
-                : t("modelHub.licenseGate.nonCommercialAck", {
-                    defaultValue:
-                      "I understand this model is restricted to permitted non-commercial, research, or personal use unless I obtain separate rights from the publisher.",
-                  })}
+                : isCustomReview
+                  ? t("modelHub.licenseGate.customAck", {
+                      defaultValue:
+                        "I confirm my intended use is allowed by the publisher terms, or I have obtained any required separate permission.",
+                    })
+                  : t("modelHub.licenseGate.nonCommercialAck", {
+                      defaultValue:
+                        "I understand this model is restricted to permitted non-commercial, research, or personal use unless I obtain separate rights from the publisher.",
+                    })}
             </span>
           </label>
 
@@ -232,7 +272,7 @@ const LicenseAcknowledgementDialog: React.FC<
             <p>
               {t("modelHub.licenseGate.localOnly", {
                 defaultValue:
-                  "Vox Jot stores this acknowledgement locally and does not verify legal rights or collect license documents.",
+                  "Vox Jot stores this acknowledgement locally. It does not verify, upload, or manage license documents, and it does not grant rights from the publisher.",
               })}
             </p>
           </div>

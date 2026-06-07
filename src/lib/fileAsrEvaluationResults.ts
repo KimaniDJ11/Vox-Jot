@@ -20,12 +20,12 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  generatedAt: "2026-06-07T05:29:57Z",
+  generatedAt: "2026-06-07T07:20:23Z",
   suite: "File ASR full local sample benchmark",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
   limitations:
-    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions.",
+    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio was added from the 2026-06-07T07:20 run via the gemma-audio-venv Transformers path.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
@@ -64,7 +64,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
     status: "tested",
-    rank: 9,
+    rank: 10,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 12.086,
@@ -171,6 +171,20 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     device: "cpu",
     notes:
       "Full five-format local suite completed after the WhisperX runtime readiness fix; accuracy is acceptable for file experiments, but CPU latency is much slower than real time.",
+  },
+  {
+    modelId: "gemma4-e2b-audio",
+    label: "Gemma 4 E2B Audio",
+    status: "tested",
+    rank: 9,
+    sampleCount: 5,
+    exactMatches: 0,
+    averageWer: 0.5,
+    latencyMs: 8922,
+    realTimeFactor: 1.38,
+    device: "mps",
+    notes:
+      "Full five-format local suite via the gemma-audio-venv Transformers path; Gemma 4 multimodal LLM ASR trails the dedicated ASR models on accuracy and runs slower than real time.",
   },
 ];
 

@@ -32,6 +32,10 @@ const MLX_AUDIO_PYTHON = resolve(
   process.env.HOME ?? "",
   "Library/Application Support/com.iriedinamik.voxjot/mlx-audio-venv/bin/python",
 );
+const GEMMA_AUDIO_PYTHON = resolve(
+  process.env.HOME ?? "",
+  "Library/Application Support/com.iriedinamik.voxjot/gemma-audio-venv/bin/python",
+);
 const REFERENCE =
   "This is a file transcription test for Vox Jot. One, two, three, four, five.";
 
@@ -56,6 +60,10 @@ const MLX_ASR_MODEL_IDS = new Set([
   "mlx-nemotron-asr-streaming-0.6b",
   "mlx-mega-asr",
 ]);
+
+// Gemma 4 multimodal ASR runs through Transformers and needs the dedicated
+// gemma-audio-venv (pinned torch + transformers), not the .venv or mlx venv.
+const GEMMA_ASR_MODEL_IDS = new Set(["gemma4-e2b-audio"]);
 
 interface SidecarPayload {
   ok: boolean;
@@ -155,6 +163,11 @@ const MODELS: ModelSpec[] = [
   {
     id: "mlx-mega-asr",
     label: "Mega-ASR 8-bit (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "gemma4-e2b-audio",
+    label: "Gemma 4 E2B Audio",
     sidecar: true,
   },
   {
@@ -304,8 +317,14 @@ function modelDownloaded(modelId: string): boolean {
     "mlx-mega-asr": "MLX/mlx-community/Mega-ASR-8bit",
   };
   const sttPath = sttMlxPaths[modelId];
-  return sttPath
-    ? modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true)
+  if (sttPath) return modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true);
+
+  const sttOtherPaths: Record<string, string> = {
+    "gemma4-e2b-audio": "Gemma/google/gemma-4-E2B-it",
+  };
+  const otherPath = sttOtherPaths[modelId];
+  return otherPath
+    ? modelSnapshotReady(resolve(STT_MODEL_ROOT, otherPath), true)
     : false;
 }
 
@@ -331,9 +350,11 @@ function runSidecar(
   sample16k: string,
   durationMs: number,
 ): ModelResult {
-  const python = MLX_ASR_MODEL_IDS.has(model.id)
-    ? MLX_AUDIO_PYTHON
-    : resolve(PROJECT_ROOT, ".venv/bin/python");
+  const python = GEMMA_ASR_MODEL_IDS.has(model.id)
+    ? GEMMA_AUDIO_PYTHON
+    : MLX_ASR_MODEL_IDS.has(model.id)
+      ? MLX_AUDIO_PYTHON
+      : resolve(PROJECT_ROOT, ".venv/bin/python");
   if (!existsSync(python)) {
     return {
       model_id: model.id,

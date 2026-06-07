@@ -23,7 +23,7 @@ export const STT_EVALUATION_RUN = {
   corpus:
     "35 OpenSLR Mini LibriSpeech dev-clean-2 WAV clips with post-processing disabled",
   limitations:
-    "Clean read-speech coverage only. It does not yet cover casual dictation, meeting-room audio, code dictation, accents, noise, or long-form chunking.",
+    "Clean read-speech coverage only. It does not yet cover casual dictation, meeting-room audio, code dictation, accents, noise, or long-form chunking. Gemma 4 E2B Audio 4-bit (MLX) was added on 2026-06-07 via the app /v1/transcribe API rather than the offline harness.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
@@ -500,10 +500,23 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
       "Whisper Large underperformed the Turbo and Medium variants on this short clean-speech corpus.",
   },
   {
+    modelId: "gemma4-e2b-audio-mlx",
+    label: "Gemma 4 E2B Audio 4-bit (MLX)",
+    status: "tested",
+    rank: 32,
+    normalizedMatches: 9,
+    exactMatches: 0,
+    totalCases: 35,
+    averageWer: 0.367,
+    latencyP50Ms: 283,
+    notes:
+      "Measured via the app /v1/transcribe API (this live Gemma engine is not in the offline STT harness, which lacks mlx_vlm) on the same 35-clip Mini LibriSpeech suite. Output is inconsistent: some clips transcribe cleanly, others truncate or hallucinate.",
+  },
+  {
     modelId: "gigaam-v3-e2e-ctc",
     label: "GigaAM v3",
     status: "tested",
-    rank: 32,
+    rank: 33,
     normalizedMatches: 0,
     exactMatches: 0,
     totalCases: 35,

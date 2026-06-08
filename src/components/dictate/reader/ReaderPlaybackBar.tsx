@@ -1,13 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ListFilter,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  Square,
-} from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
 
 import { ActionIconButton } from "@/components/ui";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
@@ -27,6 +20,7 @@ export type ReaderPlaybackBarProps = {
   status: ReaderPlaybackStatus;
   index: number;
   total: number;
+  playbackRate: number;
   pageLabel: string | null;
   currentText: string;
   voiceLabel: string | null;
@@ -35,17 +29,19 @@ export type ReaderPlaybackBarProps = {
   onPrev: () => void;
   onNext: () => void;
   onSeek: (index: number) => void;
-  skipHeadersFooters: boolean;
-  onToggleSkip: (value: boolean) => void;
+  onPlaybackRateChange: (rate: number) => void;
   presets: TtsVoicePreset[];
   selectedPresetId: string | null;
   onSelectPreset: (presetId: string | null) => void;
 };
 
+const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
+
 export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   status,
   index,
   total,
+  playbackRate,
   pageLabel,
   currentText,
   voiceLabel,
@@ -54,8 +50,7 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   onPrev,
   onNext,
   onSeek,
-  skipHeadersFooters,
-  onToggleSkip,
+  onPlaybackRateChange,
   presets,
   selectedPresetId,
   onSelectPreset,
@@ -160,58 +155,62 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <label className="sr-only" htmlFor="reader-playback-voice">
-            {t("dictate.reader.voice", { defaultValue: "Voice" })}
-          </label>
-          <select
-            id="reader-playback-voice"
-            value={selectedPresetId ?? ""}
-            onChange={(event) => onSelectPreset(event.target.value || null)}
-            title={
-              voiceLabel ??
-              t("dictate.reader.currentVoice", {
-                defaultValue: "Current voice",
-              })
-            }
-            className="h-8 max-w-[200px] rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
-          >
-            {presets.length === 0 ? (
-              <option value="">
-                {t("dictate.reader.currentVoice", {
-                  defaultValue: "Current voice",
-                })}
-              </option>
-            ) : null}
-            {presets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {voicePresetOptionLabel(preset)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onToggleSkip(!skipHeadersFooters)}
-          aria-pressed={skipHeadersFooters}
-          title={t("dictate.reader.player.skipHeadersFootersHint", {
-            defaultValue:
-              "Skip repeated page headers, footers, and page numbers",
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-medium text-[var(--muted)]">
+          {t("dictate.reader.player.defaultVoice", {
+            defaultValue: "Default voice",
           })}
-          className={[
-            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
-            skipHeadersFooters
-              ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-              : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]",
-          ].join(" ")}
+        </span>
+        <label className="sr-only" htmlFor="reader-playback-voice">
+          {t("dictate.reader.voice", { defaultValue: "Voice" })}
+        </label>
+        <select
+          id="reader-playback-voice"
+          value={selectedPresetId ?? ""}
+          onChange={(event) => onSelectPreset(event.target.value || null)}
+          title={
+            voiceLabel ??
+            t("dictate.reader.currentVoice", {
+              defaultValue: "Current voice",
+            })
+          }
+          className="h-8 max-w-[200px] rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
         >
-          <ListFilter size={12} aria-hidden="true" />
-          {t("dictate.reader.player.skipHeadersFooters", {
-            defaultValue: "Skip headers & footers",
-          })}
-        </button>
+          {presets.length === 0 ? (
+            <option value="">
+              {t("dictate.reader.currentVoice", {
+                defaultValue: "Current voice",
+              })}
+            </option>
+          ) : null}
+          {presets.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {voicePresetOptionLabel(preset)}
+            </option>
+          ))}
+        </select>
+
+        <span className="text-[11px] font-medium text-[var(--muted)]">
+          {t("dictate.reader.player.speed", { defaultValue: "Speed" })}
+        </span>
+        <label className="sr-only" htmlFor="reader-playback-speed">
+          {t("dictate.reader.player.speed", { defaultValue: "Speed" })}
+        </label>
+        <select
+          id="reader-playback-speed"
+          value={String(playbackRate)}
+          onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
+          className="h-8 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
+        >
+          {readerPlaybackRateOptions.map((rate) => (
+            <option key={rate} value={rate}>
+              {t("dictate.reader.player.speedOption", {
+                defaultValue: "{{rate}}x",
+                rate,
+              })}
+            </option>
+          ))}
+        </select>
       </div>
 
       {currentText ? (

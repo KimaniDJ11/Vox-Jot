@@ -160,9 +160,27 @@ impl AudioEnhancer {
     }
 }
 
+pub fn enhance_audio_samples(
+    samples: &[f32],
+    input_sample_rate: u32,
+    config: AudioEnhancementConfig,
+) -> Result<Vec<f32>, String> {
+    if samples.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut enhancer = AudioEnhancer::new(input_sample_rate, config)?;
+    let mut enhanced = Vec::with_capacity(samples.len());
+    enhancer.push(samples, |frame| enhanced.extend_from_slice(frame));
+    enhancer.finish(|frame| enhanced.extend_from_slice(frame));
+    Ok(enhanced)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AudioEnhancementConfig, AudioEnhancementModel, AudioEnhancer};
+    use super::{
+        enhance_audio_samples, AudioEnhancementConfig, AudioEnhancementModel, AudioEnhancer,
+    };
     use nnnoiseless::DenoiseState;
 
     #[test]
@@ -208,5 +226,23 @@ mod tests {
             .iter()
             .flat_map(|frame| frame.iter())
             .all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn enhance_audio_samples_returns_finite_whisper_audio() {
+        let config = AudioEnhancementConfig {
+            model: AudioEnhancementModel::Rnnoise,
+        };
+        let input: Vec<f32> = (0..(DenoiseState::FRAME_SIZE * 6))
+            .map(|index| {
+                let theta = index as f32 * 2.0 * std::f32::consts::PI * 440.0 / 48_000.0;
+                theta.sin() * 0.1
+            })
+            .collect();
+
+        let output = enhance_audio_samples(&input, 48_000, config).expect("enhance audio");
+
+        assert!(!output.is_empty());
+        assert!(output.iter().all(|sample| sample.is_finite()));
     }
 }

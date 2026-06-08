@@ -11,7 +11,10 @@ import {
   Mic,
 } from "lucide-react";
 import { commands, type HistoryEntry } from "@/bindings";
-import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
+import {
+  FileTranscriptionPanel,
+  ReaderPanel,
+} from "@/components/dictate/FileTranscriptionPanel";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
@@ -541,6 +544,12 @@ const FirstDictationReminder: React.FC<{ shortcut: string }> = ({
 export const FileTranscriptionSection: React.FC = () => (
   <div className="space-y-6">
     <FileTranscriptionPanel />
+  </div>
+);
+
+export const ReaderSection: React.FC = () => (
+  <div className="space-y-6">
+    <ReaderPanel />
   </div>
 );
 

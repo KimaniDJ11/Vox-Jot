@@ -32,7 +32,9 @@ import argparse
 import base64
 import html
 import json
+import os
 import re
+import shutil
 import sys
 import zipfile
 from html.parser import HTMLParser
@@ -53,6 +55,47 @@ SUPPORTED_EXTENSIONS = {
 
 class ExtractionError(Exception):
     pass
+
+
+# OCR fallback for scanned / image-only PDF pages (no text layer). PyMuPDF
+# shells out to the Tesseract binary and needs TESSDATA_PREFIX pointing at the
+# traineddata directory.
+OCR_DPI = 200
+# Bound worst-case OCR time on very large scans; pages beyond this keep whatever
+# native text they have (usually none) so a huge document still imports.
+READER_OCR_MAX_PAGES = 200
+_TESSERACT_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/opt/local/bin")
+_TESSDATA_DIRS = (
+    "/opt/homebrew/share/tessdata",
+    "/usr/local/share/tessdata",
+    "/usr/share/tessdata",
+    "/opt/local/share/tessdata",
+    "/opt/homebrew/share/tesseract-ocr/tessdata",
+)
+
+
+def ensure_reader_ocr() -> bool:
+    """Make Tesseract usable for PyMuPDF OCR. Returns True if OCR can run."""
+    if shutil.which("tesseract") is None:
+        for directory in _TESSERACT_DIRS:
+            if os.path.isfile(os.path.join(directory, "tesseract")):
+                os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
+                break
+    if shutil.which("tesseract") is None:
+        return False
+    if not os.environ.get("TESSDATA_PREFIX"):
+        for directory in _TESSDATA_DIRS:
+            if os.path.isfile(os.path.join(directory, "eng.traineddata")):
+                os.environ["TESSDATA_PREFIX"] = directory
+                break
+    return True
+
+
+def raw_blocks_have_text(raw_blocks: Any) -> bool:
+    for raw in raw_blocks:
+        if len(raw) >= 5 and normalize_document_text(str(raw[4])).strip():
+            return True
+    return False
 
 
 class HtmlTextCollector(HTMLParser):
@@ -158,6 +201,9 @@ def split_paragraphs(text: str) -> list[str]:
 
 
 def extract_pdf(path: Path) -> dict[str, Any]:
+    # Enable Tesseract OCR for scanned pages BEFORE importing PyMuPDF — it reads
+    # TESSDATA_PREFIX at import time, so setting it afterwards has no effect.
+    ocr_available = ensure_reader_ocr()
     try:
         import fitz  # type: ignore
     except Exception as exc:  # pragma: no cover - depends on packaged runtime
@@ -166,6 +212,8 @@ def extract_pdf(path: Path) -> dict[str, Any]:
     document = fitz.open(path)
     page_blocks: list[dict[str, Any]] = []
     repeated_candidates: dict[tuple[str, str, int], int] = {}
+    ocr_pages_used = 0
+    used_ocr = False
     try:
         thumbnail = make_pdf_thumbnail(document, fitz)
     except Exception:
@@ -177,6 +225,23 @@ def extract_pdf(path: Path) -> dict[str, Any]:
         height = float(rect.height)
         blocks: list[dict[str, Any]] = []
         raw_blocks = page.get_text("blocks", sort=True)
+        # Scanned / image-only page (no text layer): OCR the rendered page so it
+        # can still be read aloud. OCR'd blocks carry bboxes, so header/footer
+        # detection and the rest of the layout pipeline keep working.
+        if (
+            ocr_available
+            and ocr_pages_used < READER_OCR_MAX_PAGES
+            and not raw_blocks_have_text(raw_blocks)
+        ):
+            try:
+                ocr_textpage = page.get_textpage_ocr(flags=0, dpi=OCR_DPI, full=True)
+                ocr_blocks = page.get_text("blocks", sort=True, textpage=ocr_textpage)
+                if raw_blocks_have_text(ocr_blocks):
+                    raw_blocks = ocr_blocks
+                    ocr_pages_used += 1
+                    used_ocr = True
+            except Exception:
+                pass
         text_block_index = 0
         for raw in raw_blocks:
             if len(raw) < 5:
@@ -242,7 +307,7 @@ def extract_pdf(path: Path) -> dict[str, Any]:
         "title": document.metadata.get("title") or path.stem,
         "kind": "pdf",
         "meta": {
-            "engine": "pymupdf",
+            "engine": "pymupdf-ocr" if used_ocr else "pymupdf",
             "page_count": len(page_blocks),
         },
         "thumbnail": thumbnail,

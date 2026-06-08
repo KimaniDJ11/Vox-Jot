@@ -304,9 +304,9 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "Reader",
-      "description": "Transcribe recordings, read documents aloud, and keep watched folders local.",
-      "dropHint": "Drag & drop an audio or video file here",
+      "title": "File Transcription",
+      "description": "Drop audio or video to transcribe, clean noise, or both.",
+      "dropHint": "Drop audio or video to transcribe",
       "orLabel": "or",
       "pickFile": "Pick File",
       "transcribing": "Transcribing…",
@@ -319,7 +319,7 @@
       "outputLabel": "Transcript",
       "fileDialogLabel": "Audio / Video",
       "errors": {
-        "heading": "Transcription failed",
+        "heading": "Processing failed",
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
         "copyFailed": "Failed to copy transcription.",
         "exportFailed": "Failed to export subtitles."
@@ -2799,7 +2799,7 @@
       "dictate": {
         "history": "Home",
         "corrections": "Dictionary",
-        "fileTranscription": "Reader"
+        "fileTranscription": "File Transcription"
       },
       "refine": {
         "writeProfiles": "Dictation Modes",
@@ -2939,8 +2939,8 @@
       "localRouteHeading": "Local-first",
       "cloudRouteHeading": "Cloud assist",
       "advancedEvaluationTitle": "Refine model evaluation (advanced)",
-      "fileTranscriptionTitle": "Reader",
-      "fileTranscriptionDetail": "Drop in audio, video, or documents",
+      "fileTranscriptionTitle": "File Transcription",
+      "fileTranscriptionDetail": "Drop in audio or video to transcribe, clean noise, or both",
       "managementTitle": "Manage models from these views",
       "managementSubtitle": "Settings only carries provider routing. Browse, download, and swap individual models in the dedicated catalogs.",
       "cleanupLabel": "Cleanup",

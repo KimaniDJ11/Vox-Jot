@@ -21,11 +21,14 @@ export type ReaderPlaybackController = {
 
 type UseReaderPlaybackOptions = {
   units: ReadingUnit[];
-  /** Speak one unit; must resolve when that unit's audio finishes (or is stopped). */
-  speak: (text: string) => Promise<void>;
+  initialIndex?: number;
+  resetKey?: string | null;
+  /** Speak one unit (with its per-section voice); resolves when its audio finishes or is stopped. */
+  speak: (unit: ReadingUnit) => Promise<void>;
   /** Stop any in-flight audio immediately. */
   stopAudio: () => Promise<void>;
   onError?: (error: unknown) => void;
+  onIndexChange?: (index: number) => void;
 };
 
 /**
@@ -37,18 +40,23 @@ type UseReaderPlaybackOptions = {
  */
 export function useReaderPlayback({
   units,
+  initialIndex = 0,
+  resetKey = null,
   speak,
   stopAudio,
   onError,
+  onIndexChange,
 }: UseReaderPlaybackOptions): ReaderPlaybackController {
   const [status, setStatus] = useState<ReaderPlaybackStatus>("idle");
   const [index, setIndex] = useState(0);
 
   const generationRef = useRef(0);
+  const resetKeyRef = useRef(resetKey);
   const unitsRef = useRef(units);
   const speakRef = useRef(speak);
   const stopAudioRef = useRef(stopAudio);
   const onErrorRef = useRef(onError);
+  const onIndexChangeRef = useRef(onIndexChange);
 
   useEffect(() => {
     speakRef.current = speak;
@@ -59,14 +67,22 @@ export function useReaderPlayback({
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
+  useEffect(() => {
+    onIndexChangeRef.current = onIndexChange;
+  }, [onIndexChange]);
+
+  const setPlaybackIndex = useCallback((nextIndex: number) => {
+    setIndex(nextIndex);
+    onIndexChangeRef.current?.(nextIndex);
+  }, []);
 
   const runLoop = useCallback(async (generation: number, start: number) => {
     const list = unitsRef.current;
     for (let i = start; i < list.length; i += 1) {
       if (generation !== generationRef.current) return;
-      setIndex(i);
+      setPlaybackIndex(i);
       try {
-        await speakRef.current(list[i].text);
+        await speakRef.current(list[i]);
       } catch (error) {
         if (generation === generationRef.current) {
           generationRef.current += 1;
@@ -80,9 +96,9 @@ export function useReaderPlayback({
     if (generation === generationRef.current) {
       generationRef.current += 1;
       setStatus("idle");
-      setIndex(0);
+      setPlaybackIndex(0);
     }
-  }, []);
+  }, [setPlaybackIndex]);
 
   const startAt = useCallback(
     (start: number) => {
@@ -92,10 +108,10 @@ export function useReaderPlayback({
       const generation = (generationRef.current += 1);
       void stopAudioRef.current();
       setStatus("playing");
-      setIndex(clamped);
+      setPlaybackIndex(clamped);
       void runLoop(generation, clamped);
     },
-    [runLoop],
+    [runLoop, setPlaybackIndex],
   );
 
   const play = useCallback(() => {
@@ -115,8 +131,8 @@ export function useReaderPlayback({
     generationRef.current += 1;
     void stopAudioRef.current();
     setStatus("idle");
-    setIndex(0);
-  }, []);
+    setPlaybackIndex(0);
+  }, [setPlaybackIndex]);
 
   const toggle = useCallback(() => {
     if (status === "playing") {
@@ -134,10 +150,10 @@ export function useReaderPlayback({
       if (status === "playing") {
         startAt(clamped);
       } else {
-        setIndex(clamped);
+        setPlaybackIndex(clamped);
       }
     },
-    [status, startAt],
+    [status, startAt, setPlaybackIndex],
   );
 
   const next = useCallback(() => {
@@ -147,15 +163,24 @@ export function useReaderPlayback({
     seek(index - 1);
   }, [seek, index]);
 
-  // When the unit list changes (new document or the skip-headers toggle), keep
-  // the ref current and reset playback so we never read a stale index.
+  // When the unit list changes, keep the ref current and stop stale audio. A
+  // resetKey change means a new document, so restore that document's saved
+  // index; section toggles preserve the nearest current index.
   useEffect(() => {
     unitsRef.current = units;
     generationRef.current += 1;
     void stopAudioRef.current();
     setStatus("idle");
-    setIndex(0);
-  }, [units]);
+    const isNewResetKey = resetKeyRef.current !== resetKey;
+    resetKeyRef.current = resetKey;
+    const maxIndex = Math.max(units.length - 1, 0);
+    setIndex((current) => {
+      const next = isNewResetKey ? initialIndex : current;
+      const clamped = Math.max(0, Math.min(next, maxIndex));
+      onIndexChangeRef.current?.(clamped);
+      return clamped;
+    });
+  }, [units, resetKey, initialIndex, setPlaybackIndex]);
 
   // Stop audio if the component using the hook unmounts mid-playback.
   useEffect(() => {

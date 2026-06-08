@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildReadingUnits,
+  buildSectionReadingUnits,
   chunkText,
   readingUnitPageNumbers,
 } from "./readerReadingUnits";
@@ -80,5 +81,40 @@ describe("buildReadingUnits", () => {
   it("reports distinct page numbers in order", () => {
     const units = buildReadingUnits(doc, { skipHeadersFooters: true });
     expect(readingUnitPageNumbers(units)).toEqual([0, 1]);
+  });
+});
+
+describe("buildSectionReadingUnits", () => {
+  const sections = [
+    { index: 0, text: "Narrator intro." },
+    { index: 1, text: "Character reply." },
+    { index: 2, text: "Skipped notes." },
+  ];
+
+  it("tags chunks with section indexes and voice preset ids", () => {
+    const units = buildSectionReadingUnits(sections, {
+      voiceForSection: (sectionIndex) =>
+        sectionIndex === 1 ? "voice-character" : "voice-narrator",
+      isSectionEnabled: () => true,
+    });
+
+    expect(units.map((unit) => unit.sectionIndex)).toEqual([0, 1, 2]);
+    expect(units.map((unit) => unit.presetId)).toEqual([
+      "voice-narrator",
+      "voice-character",
+      "voice-narrator",
+    ]);
+  });
+
+  it("omits disabled sections from the playback queue", () => {
+    const units = buildSectionReadingUnits(sections, {
+      voiceForSection: () => null,
+      isSectionEnabled: (sectionIndex) => sectionIndex !== 2,
+    });
+
+    expect(units.map((unit) => unit.text)).toEqual([
+      "Narrator intro.",
+      "Character reply.",
+    ]);
   });
 });

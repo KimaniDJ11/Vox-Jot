@@ -981,6 +981,22 @@ async ttsSpeakWithPreset(text: string, locale: string | null, presetId: string, 
     else return { status: "error", error: e  as any };
 }
 },
+async ttsSpeakReader(text: string, locale: string | null, presetId: string | null, playbackRate: number | null, trigger: string | null, rememberLastOutput: boolean | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("tts_speak_reader", { text, locale, presetId, playbackRate, trigger, rememberLastOutput }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async exportReaderAudio(units: ReaderAudioExportUnit[], outputPath: string, playbackRate: number | null) : Promise<Result<ReaderAudioExportResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_reader_audio", { units, outputPath, playbackRate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async ttsStop() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("tts_stop") };
@@ -1472,6 +1488,14 @@ async getRuntimeMemoryStatus() : Promise<Result<RuntimeMemoryStatus, string>> {
 async unloadModelManually() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("unload_model_manually") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cleanAudioFile(path: string, outputPath: string | null) : Promise<Result<CleanAudioFileResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clean_audio_file", { path, outputPath }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2637,6 +2661,7 @@ export type BindingResponse = { success: boolean; binding: ShortcutBinding | nul
 export type CapabilityFlags = { downloadable: boolean; loadable: boolean; local_only: boolean; supports_translation: boolean; supports_streaming: boolean; supports_voice_cloning: boolean; supports_instruction_prompt: boolean; supports_inline_tags: boolean }
 export type CatalogModelDescriptor = { id: string; provider_id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; installed: boolean; selected: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_label: string; source_url: string | null; runtime: RuntimeRequirement; license_label: string | null; locale: string | null; supported_languages: string[]; readiness_status: string | null; readiness_issues: string[]; capabilities: CapabilityFlags; delivery_support: TtsDeliverySupport }
 export type CatalogSourceKind = "builtin" | "runtime"
+export type CleanAudioFileResult = { output_path: string; duration_ms: number }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type ContextCaptureMode = "always_frequent" | "adaptive_cache" | "mostly_on_demand"
 export type ContextCaptureStatus = "ready" | "pending" | "stale" | "permission_denied" | "disabled" | "excluded_app" | "paused_idle" | "failed"
@@ -2792,6 +2817,8 @@ export type PostProcessRouteDebug = { route: string; word_count: number; has_cor
 export type PrepareStableAudio3Request = { mode: StorySoundMode }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; license_label: string | null; capabilities: CapabilityFlags }
+export type ReaderAudioExportResult = { output_path: string; unit_count: number; duration_ms: number }
+export type ReaderAudioExportUnit = { text: string; preset_id: string | null }
 export type ReaderDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; extraction_engine: string; thumbnail_data_url: string | null; text: string; pages: ReaderDocumentPage[]; sections: ReaderDocumentSection[] }
 export type ReaderDocumentBbox = { x0: number; y0: number; x1: number; y1: number }
 export type ReaderDocumentBlock = { index: number; text: string; kind: string; bbox: ReaderDocumentBbox | null }

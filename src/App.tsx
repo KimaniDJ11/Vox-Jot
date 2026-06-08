@@ -198,6 +198,11 @@ const FileTranscriptionSection = lazy(() =>
     default: module.FileTranscriptionSection,
   })),
 );
+const ReaderSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.ReaderSection,
+  })),
+);
 const ListenVoiceDesignSection = lazy(() =>
   import("@/components/app-sections/listen").then((module) => ({
     default: module.ListenVoiceDesignSection,
@@ -544,9 +549,18 @@ function App() {
         makeSection(
           "file-transcription",
           "appSections.nav.dictate.fileTranscription",
-          BookOpen,
+          FileAudio,
           <FileTranscriptionSection />,
+          "gold",
+        ),
+        makeSection(
+          "reader",
+          "appSections.nav.dictate.reader",
+          BookOpen,
+          <ReaderSection />,
           "green",
+          undefined,
+          "Reader",
         ),
       ],
       refine: [

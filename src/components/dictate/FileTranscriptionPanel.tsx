@@ -20,13 +20,13 @@ import {
   Check,
   ChevronDown,
   ClipboardCopy,
+  Download,
   FileText,
   Folder,
   FolderPlus,
   Layers,
   Loader2,
   Pause,
-  Search,
   Trash2,
   Upload,
   Volume2,
@@ -58,12 +58,14 @@ import { ReaderPlaybackBar } from "./reader/ReaderPlaybackBar";
 import { ReaderSearchControl } from "./reader/ReaderSearchControl";
 import { ReaderTransformTools } from "./reader/ReaderTransformTools";
 import {
-  buildReadingUnits,
-  readingUnitPageNumbers,
+  buildSectionReadingUnits,
+  type ReadingUnit,
 } from "./reader/readerReadingUnits";
 import { useReaderPlayback } from "./reader/useReaderPlayback";
 
 type FileTranscriptionView = "file" | "documents" | "folders";
+type FileProcessingMode = "transcribe" | "clean" | "clean_transcribe";
+type FileTranscriptionPanelKind = "media" | "reader";
 
 const AUDIO_VIDEO_EXTENSIONS = [
   "wav",
@@ -94,6 +96,8 @@ const READER_DOCUMENT_EXTENSIONS = [
 ];
 
 const readerLibraryStorageKey = "voxjot:reader-document-library:v1";
+const readerDocumentStateStorageKey = "voxjot:reader-document-state:v1";
+const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
 
 type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text";
 
@@ -169,6 +173,21 @@ type ReaderLibraryItem = {
   extractionEngine: string;
   thumbnailDataUrl: string | null;
   openedAt: number;
+};
+
+type ReaderDocumentProgress = {
+  sectionIndex: number;
+  unitIndex: number;
+  updatedAt: number;
+};
+
+type ReaderDocumentState = {
+  sectionVoices?: Record<number, string | null>;
+  sectionDisabled?: Record<number, boolean>;
+  selectedPresetId?: string | null;
+  playbackRate?: number;
+  progress?: ReaderDocumentProgress;
+  updatedAt?: number;
 };
 
 function basename(p: string): string {
@@ -302,6 +321,64 @@ function saveReaderLibrary(items: ReaderLibraryItem[]) {
   );
 }
 
+function clampIndex(value: number | null | undefined, maxExclusive: number) {
+  if (!Number.isFinite(value) || maxExclusive <= 0) return 0;
+  return Math.max(0, Math.min(Math.trunc(value ?? 0), maxExclusive - 1));
+}
+
+function normalizeReaderPlaybackRate(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+  return readerPlaybackRateOptions.includes(value) ? value : 1;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function loadAllReaderDocumentStates(): Record<string, ReaderDocumentState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(readerDocumentStateStorageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!isRecord(parsed)) return {};
+    return parsed as Record<string, ReaderDocumentState>;
+  } catch {
+    return {};
+  }
+}
+
+function loadReaderDocumentState(documentId: string): ReaderDocumentState {
+  return loadAllReaderDocumentStates()[documentId] ?? {};
+}
+
+function saveReaderDocumentState(
+  documentId: string,
+  patch: Partial<ReaderDocumentState>,
+) {
+  if (typeof window === "undefined" || !documentId) return;
+  try {
+    const states = loadAllReaderDocumentStates();
+    states[documentId] = {
+      ...(states[documentId] ?? {}),
+      ...patch,
+      updatedAt: Date.now(),
+    };
+    const entries = Object.entries(states)
+      .sort(
+        ([, left], [, right]) =>
+          (right.updatedAt ?? 0) - (left.updatedAt ?? 0),
+      )
+      .slice(0, 96);
+    window.localStorage.setItem(
+      readerDocumentStateStorageKey,
+      JSON.stringify(Object.fromEntries(entries)),
+    );
+  } catch {
+    // Ignore local persistence failures; the Reader remains usable.
+  }
+}
+
 function readerItemFromDocument(document: ReaderDocument): ReaderLibraryItem {
   return {
     id: document.id,
@@ -368,29 +445,17 @@ async function removeStoredReaderDocument(id: string): Promise<void> {
 async function speakReaderTextWithPreset(
   text: string,
   presetId: string | null,
+  playbackRate = 1,
 ): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
 
   const fallback = "Reader playback failed.";
-  if (presetId) {
-    const result = await commands.ttsSpeakWithPreset(
-      trimmed,
-      null,
-      presetId,
-      "reader_document",
-      false,
-    );
-    if (result.status === "error") {
-      throw new Error(readerErrorMessage(result.error, fallback));
-    }
-    return;
-  }
-
-  const result = await commands.ttsSpeak(
+  const result = await commands.ttsSpeakReader(
     trimmed,
     null,
-    null,
+    presetId,
+    playbackRate,
     "reader_document",
     false,
   );
@@ -468,19 +533,43 @@ const FileTranscriptionStatusHeader: React.FC<{
   error: string;
   isRunning: boolean;
   selectedPath: string;
+  cleanedPath: string;
   transcription: string;
+  processingMode: FileProcessingMode;
   selectedAsrModel: SpeechAnalysisModelDescriptor | null;
-}> = ({ error, isRunning, selectedPath, transcription, selectedAsrModel }) => {
+}> = ({
+  error,
+  isRunning,
+  selectedPath,
+  cleanedPath,
+  transcription,
+  processingMode,
+  selectedAsrModel,
+}) => {
   const { t } = useTranslation();
   const fileName = selectedPath ? basename(selectedPath) : "";
+  const cleanedFileName = cleanedPath ? basename(cleanedPath) : "";
   const hasTranscript = transcription.trim().length > 0;
+  const hasCleanedAudio = cleanedPath.trim().length > 0;
   const status = (() => {
     if (isRunning) {
+      const cleaningOnly = processingMode === "clean";
+      const cleanAndTranscribe = processingMode === "clean_transcribe";
       return {
-        label: t("dictate.fileTranscription.status.transcribing", {
-          count: 1,
-          defaultValue: "Transcribing {{count}} file",
-        }),
+        label: cleaningOnly
+          ? t("dictate.fileTranscription.status.cleaning", {
+              count: 1,
+              defaultValue: "Cleaning {{count}} file",
+            })
+          : cleanAndTranscribe
+            ? t("dictate.fileTranscription.status.cleaningAndTranscribing", {
+                count: 1,
+                defaultValue: "Cleaning and transcribing {{count}} file",
+              })
+            : t("dictate.fileTranscription.status.transcribing", {
+                count: 1,
+                defaultValue: "Transcribing {{count}} file",
+              }),
         detail: t("dictate.fileTranscription.status.remaining", {
           count: 0,
           defaultValue: "{{count}} remaining",
@@ -502,13 +591,27 @@ const FileTranscriptionStatusHeader: React.FC<{
     }
     if (hasTranscript) {
       return {
-        label: t("dictate.fileTranscription.status.transcriptReady", {
-          defaultValue: "Transcript ready",
-        }),
+        label:
+          processingMode === "clean_transcribe" && hasCleanedAudio
+            ? t("dictate.fileTranscription.status.cleanedTranscriptReady", {
+                defaultValue: "Cleaned transcript ready",
+              })
+            : t("dictate.fileTranscription.status.transcriptReady", {
+                defaultValue: "Transcript ready",
+              }),
         detail: t("dictate.fileTranscription.status.completeDetail", {
           count: 1,
           defaultValue: "{{count}} file complete",
         }),
+        icon: <Check size={12} aria-hidden="true" />,
+      };
+    }
+    if (hasCleanedAudio) {
+      return {
+        label: t("dictate.fileTranscription.status.cleanedReady", {
+          defaultValue: "Cleaned audio ready",
+        }),
+        detail: cleanedFileName,
         icon: <Check size={12} aria-hidden="true" />,
       };
     }
@@ -530,7 +633,7 @@ const FileTranscriptionStatusHeader: React.FC<{
           className="flex min-w-0 items-center gap-1.5 text-xs text-[var(--muted)]"
           role="status"
           aria-live="polite"
-          title={fileName || undefined}
+          title={cleanedFileName || fileName || undefined}
         >
           {status.icon && <span className="shrink-0">{status.icon}</span>}
           <span className="min-w-0 truncate">
@@ -549,24 +652,34 @@ const FileTranscriptionStatusHeader: React.FC<{
             </span>
           ) : null}
         </div>
-        <SelectedAsrModelInline model={selectedAsrModel} />
+        <SelectedAsrModelInline
+          model={processingMode === "clean" ? null : selectedAsrModel}
+        />
       </div>
       <div className="border-t border-[var(--border)]" aria-hidden="true" />
     </div>
   );
 };
 
-export const FileTranscriptionPanel: React.FC = () => {
+const FileTranscriptionPanelShell: React.FC<{
+  kind: FileTranscriptionPanelKind;
+  initialView: FileTranscriptionView;
+  availableViews: FileTranscriptionView[];
+}> = ({ kind, initialView, availableViews }) => {
   const { t } = useTranslation();
   const [selectedPath, setSelectedPath] = useState<string>("");
+  const [cleanedPath, setCleanedPath] = useState<string>("");
   const [transcription, setTranscription] = useState<string>("");
   const [segments, setSegments] = useState<TimedSegment[]>([]);
   const [error, setError] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isTranscriptSpeaking, setIsTranscriptSpeaking] = useState(false);
-  const [view, setView] = useState<FileTranscriptionView>("file");
+  const [processingMode, setProcessingMode] =
+    useState<FileProcessingMode>("transcribe");
+  const [view, setView] = useState<FileTranscriptionView>(initialView);
   const viewRef = useRef<FileTranscriptionView>(view);
+  const availableViewsRef = useRef<FileTranscriptionView[]>(availableViews);
   const [readerQuery, setReaderQuery] = useState("");
   const selectedAsrModel = useSelectedSpeechAnalysisAsrModel();
   const isRunningRef = useRef(false);
@@ -575,27 +688,59 @@ export const FileTranscriptionPanel: React.FC = () => {
     viewRef.current = view;
   }, [view]);
 
-  const runTranscription = useCallback(
+  useEffect(() => {
+    availableViewsRef.current = availableViews;
+    if (!availableViews.includes(viewRef.current)) {
+      setView(initialView);
+    }
+  }, [availableViews, initialView]);
+
+  const runMediaAction = useCallback(
     async (filePath: string) => {
       if (isRunningRef.current) return;
       isRunningRef.current = true;
       setIsRunning(true);
       setError("");
       setSelectedPath(filePath);
+      setCleanedPath("");
+      setTranscription("");
       setSegments([]);
       try {
-        const result = await commands.transcribeFile(filePath);
-        if (result.status === "ok") {
-          setTranscription(result.data.text);
-          setSegments(result.data.segments);
-        } else {
+        let transcriptionPath = filePath;
+        if (
+          processingMode === "clean" ||
+          processingMode === "clean_transcribe"
+        ) {
+          const cleanResult = await commands.cleanAudioFile(filePath, null);
+          if (cleanResult.status === "error") {
+            setError(
+              cleanResult.error ||
+                t("dictate.fileTranscription.errors.cleanFailed", {
+                  defaultValue: "Failed to clean audio.",
+                }),
+            );
+            return;
+          }
+          transcriptionPath = cleanResult.data.output_path;
+          setCleanedPath(cleanResult.data.output_path);
+          if (processingMode === "clean") {
+            return;
+          }
+        }
+
+        const result = await commands.transcribeFile(transcriptionPath);
+        if (result.status === "error") {
           setError(
             result.error ||
               t("dictate.fileTranscription.errors.failed", {
                 defaultValue: "Failed to transcribe file.",
               }),
           );
+          return;
         }
+
+        setTranscription(result.data.text);
+        setSegments(result.data.segments);
       } catch (e) {
         setError(
           e instanceof Error
@@ -609,7 +754,7 @@ export const FileTranscriptionPanel: React.FC = () => {
         setIsRunning(false);
       }
     },
-    [t],
+    [processingMode, t],
   );
 
   const exportSubtitles = useCallback(
@@ -663,8 +808,8 @@ export const FileTranscriptionPanel: React.FC = () => {
       ],
     });
     if (!filePath || Array.isArray(filePath)) return;
-    await runTranscription(filePath);
-  }, [runTranscription, t]);
+    await runMediaAction(filePath);
+  }, [runMediaAction, t]);
 
   const copyResult = useCallback(async () => {
     if (!transcription.trim()) return;
@@ -695,20 +840,36 @@ export const FileTranscriptionPanel: React.FC = () => {
           const first = payload.paths?.[0];
           if (!first) return;
           if (isReaderDocumentPath(first)) {
-            setView("documents");
-            window.setTimeout(() => {
-              window.dispatchEvent(
-                new CustomEvent<string>("reader-document-drop", {
-                  detail: first,
+            if (availableViewsRef.current.includes("documents")) {
+              setView("documents");
+              window.setTimeout(() => {
+                window.dispatchEvent(
+                  new CustomEvent<string>("reader-document-drop", {
+                    detail: first,
+                  }),
+                );
+              }, 0);
+            } else {
+              setError(
+                t("dictate.fileTranscription.errors.documentInMedia", {
+                  defaultValue: "Open Reader to add documents.",
                 }),
               );
-            }, 0);
+            }
+            return;
+          }
+          if (!availableViewsRef.current.includes("file")) {
+            setError(
+              t("dictate.fileTranscription.errors.mediaInReader", {
+                defaultValue: "Open File Transcription for audio or video.",
+              }),
+            );
             return;
           }
           if (viewRef.current === "documents") {
             setView("file");
           }
-          void runTranscription(first);
+          void runMediaAction(first);
         }
       });
       if (disposed) {
@@ -721,7 +882,7 @@ export const FileTranscriptionPanel: React.FC = () => {
       disposed = true;
       unlisten?.();
     };
-  }, [runTranscription]);
+  }, [runMediaAction, t]);
 
   const [copyFeedback, setCopyFeedback] = useState(false);
 
@@ -761,19 +922,32 @@ export const FileTranscriptionPanel: React.FC = () => {
     <div className="space-y-7" aria-busy={isRunning}>
       <SettingsGroup
         noCard
-        title={t("dictate.fileTranscription.title", {
-          defaultValue: "Reader",
-        })}
-        description={t("dictate.fileTranscription.description", {
-          defaultValue:
-            "Transcribe recordings, read documents aloud, and keep watched folders local.",
-        })}
+        title={
+          kind === "reader"
+            ? t("dictate.reader.title", { defaultValue: "Reader" })
+            : t("dictate.fileTranscription.title", {
+                defaultValue: "File Transcription",
+              })
+        }
+        description={
+          kind === "reader"
+            ? t("dictate.reader.description", {
+                defaultValue:
+                  "Import documents, read them aloud, and keep a local reading library.",
+              })
+            : t("dictate.fileTranscription.description", {
+                defaultValue:
+                  "Drop audio or video to transcribe, clean noise, or both.",
+              })
+        }
         showTitle={false}
         descriptionOnlyGap="controls"
       >
         <WatchedFoldersToolbar
+          kind={kind}
           view={view}
           onViewChange={setView}
+          availableViews={availableViews}
           searchQuery={readerQuery}
           onSearchQueryChange={setReaderQuery}
         />
@@ -791,9 +965,74 @@ export const FileTranscriptionPanel: React.FC = () => {
               error={error}
               isRunning={isRunning}
               selectedPath={selectedPath}
+              cleanedPath={cleanedPath}
               transcription={transcription}
+              processingMode={processingMode}
               selectedAsrModel={selectedAsrModel}
             />
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  {t("dictate.fileTranscription.actionLabel", {
+                    defaultValue: "Action",
+                  })}
+                </div>
+                <div className="mt-1 text-xs text-[var(--muted)]">
+                  {processingMode === "clean"
+                    ? t("dictate.fileTranscription.actionDescriptions.clean", {
+                        defaultValue:
+                          "Save a cleaned 16 kHz WAV beside the source file.",
+                      })
+                    : processingMode === "clean_transcribe"
+                      ? t(
+                          "dictate.fileTranscription.actionDescriptions.cleanTranscribe",
+                          {
+                            defaultValue:
+                              "Clean the recording first, then transcribe the cleaned audio.",
+                          },
+                        )
+                      : t(
+                          "dictate.fileTranscription.actionDescriptions.transcribe",
+                          {
+                            defaultValue:
+                              "Transcribe the original imported audio or video.",
+                          },
+                        )}
+                </div>
+              </div>
+              <SegmentedControl<FileProcessingMode>
+                value={processingMode}
+                onChange={setProcessingMode}
+                layoutId="file-processing-mode-toggle"
+                ariaLabel={t("dictate.fileTranscription.actionAriaLabel", {
+                  defaultValue: "File action",
+                })}
+                items={[
+                  {
+                    value: "transcribe",
+                    label: t("dictate.fileTranscription.actions.transcribe", {
+                      defaultValue: "Transcribe",
+                    }),
+                  },
+                  {
+                    value: "clean",
+                    label: t("dictate.fileTranscription.actions.clean", {
+                      defaultValue: "Clean Audio",
+                    }),
+                  },
+                  {
+                    value: "clean_transcribe",
+                    label: t(
+                      "dictate.fileTranscription.actions.cleanTranscribe",
+                      {
+                        defaultValue: "Clean + Transcribe",
+                      },
+                    ),
+                  },
+                ]}
+              />
+            </div>
 
             <div
               className={[
@@ -813,9 +1052,22 @@ export const FileTranscriptionPanel: React.FC = () => {
               ) : (
                 <>
                   <div className="text-sm text-[var(--muted)]">
-                    {t("dictate.fileTranscription.dropHint", {
-                      defaultValue: "Drop audio or video file here",
-                    })}
+                    {processingMode === "clean"
+                      ? t("dictate.fileTranscription.dropHintClean", {
+                          defaultValue:
+                            "Drop audio or video to clean background noise",
+                        })
+                      : processingMode === "clean_transcribe"
+                        ? t(
+                            "dictate.fileTranscription.dropHintCleanTranscribe",
+                            {
+                              defaultValue:
+                                "Drop audio or video to clean and transcribe",
+                            },
+                          )
+                        : t("dictate.fileTranscription.dropHint", {
+                            defaultValue: "Drop audio or video to transcribe",
+                          })}
                   </div>
                   <div className="text-[11px] text-[var(--muted)]">
                     {t("dictate.fileTranscription.orLabel", {
@@ -841,12 +1093,26 @@ export const FileTranscriptionPanel: React.FC = () => {
             </div>
 
             {selectedPath && (
-              <div
-                className="truncate px-1 pt-3 text-xs text-[var(--muted)]"
-                title={selectedPath}
-                aria-label={selectedPath}
-              >
-                {basename(selectedPath)}
+              <div className="space-y-1 px-1 pt-3 text-xs text-[var(--muted)]">
+                <div
+                  className="truncate"
+                  title={selectedPath}
+                  aria-label={selectedPath}
+                >
+                  {basename(selectedPath)}
+                </div>
+                {cleanedPath ? (
+                  <div
+                    className="truncate text-[var(--text)]"
+                    title={cleanedPath}
+                    aria-label={cleanedPath}
+                  >
+                    {t("dictate.fileTranscription.cleanedPathLabel", {
+                      defaultValue: "Cleaned:",
+                    })}{" "}
+                    {basename(cleanedPath)}
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -863,9 +1129,17 @@ export const FileTranscriptionPanel: React.FC = () => {
                 id="file-transcription-output"
                 value={transcription}
                 readOnly
-                placeholder={t("dictate.fileTranscription.placeholder", {
-                  defaultValue: "Transcript appears here after processing.",
-                })}
+                placeholder={
+                  cleanedPath && !transcription.trim()
+                    ? t("dictate.fileTranscription.cleanedPlaceholder", {
+                        defaultValue:
+                          "Cleaned audio saved. Switch to Clean + Transcribe if you also need a transcript.",
+                      })
+                    : t("dictate.fileTranscription.placeholder", {
+                        defaultValue:
+                          "Transcript appears here after processing.",
+                      })
+                }
                 aria-live="polite"
                 className="min-h-[110px] resize-none rounded-none border-none bg-transparent px-0 py-0 text-sm font-normal shadow-none placeholder:italic placeholder:text-[var(--muted)] hover:bg-transparent focus:ring-0"
               />
@@ -980,7 +1254,7 @@ export const FileTranscriptionPanel: React.FC = () => {
           <div className="min-w-0">
             <div className="font-medium text-[var(--danger)]">
               {t("dictate.fileTranscription.errors.heading", {
-                defaultValue: "Transcription failed",
+                defaultValue: "Processing failed",
               })}
             </div>
             <div className="mt-0.5 break-words text-[var(--text)]">{error}</div>
@@ -990,6 +1264,22 @@ export const FileTranscriptionPanel: React.FC = () => {
     </div>
   );
 };
+
+export const FileTranscriptionPanel: React.FC = () => (
+  <FileTranscriptionPanelShell
+    kind="media"
+    initialView="file"
+    availableViews={["file", "folders"]}
+  />
+);
+
+export const ReaderPanel: React.FC = () => (
+  <FileTranscriptionPanelShell
+    kind="reader"
+    initialView="documents"
+    availableViews={["documents"]}
+  />
+);
 
 // ─────────────────── Watched folders ──────────────────────────────────
 //
@@ -1469,13 +1759,46 @@ const addWatchFolder = async (): Promise<WatchFolderConfig | null> => {
 };
 
 const WatchedFoldersToolbar: React.FC<{
+  kind: FileTranscriptionPanelKind;
   view: FileTranscriptionView;
   onViewChange: (view: FileTranscriptionView) => void;
+  availableViews: FileTranscriptionView[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
-}> = ({ view, onViewChange, searchQuery, onSearchQueryChange }) => {
+}> = ({
+  kind,
+  view,
+  onViewChange,
+  availableViews,
+  searchQuery,
+  onSearchQueryChange,
+}) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  const segmentedItems = useMemo(
+    () =>
+      [
+        {
+          value: "file" as const,
+          label: t("dictate.fileTranscription.view.file", {
+            defaultValue: "Transcribe",
+          }),
+        },
+        {
+          value: "documents" as const,
+          label: t("dictate.fileTranscription.view.documents", {
+            defaultValue: "Documents",
+          }),
+        },
+        {
+          value: "folders" as const,
+          label: t("dictate.fileTranscription.view.folders", {
+            defaultValue: "Folders",
+          }),
+        },
+      ].filter((item) => availableViews.includes(item.value)),
+    [availableViews, t],
+  );
 
   const handlePrimaryAction = useCallback(async () => {
     if (view === "documents") {
@@ -1505,34 +1828,23 @@ const WatchedFoldersToolbar: React.FC<{
           ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
           : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
       </Button>
-      <SegmentedControl<FileTranscriptionView>
-        value={view}
-        onChange={onViewChange}
-        layoutId="file-transcription-view-toggle"
-        ariaLabel={t("dictate.fileTranscription.view.ariaLabel", {
-          defaultValue: "Reader view",
-        })}
-        items={[
-          {
-            value: "file",
-            label: t("dictate.fileTranscription.view.file", {
-              defaultValue: "Transcribe",
-            }),
-          },
-          {
-            value: "documents",
-            label: t("dictate.fileTranscription.view.documents", {
-              defaultValue: "Documents",
-            }),
-          },
-          {
-            value: "folders",
-            label: t("dictate.fileTranscription.view.folders", {
-              defaultValue: "Folders",
-            }),
-          },
-        ]}
-      />
+      {segmentedItems.length > 1 ? (
+        <SegmentedControl<FileTranscriptionView>
+          value={view}
+          onChange={onViewChange}
+          layoutId={`file-transcription-view-toggle-${kind}`}
+          ariaLabel={
+            kind === "reader"
+              ? t("dictate.reader.viewAriaLabel", {
+                  defaultValue: "Reader view",
+                })
+              : t("dictate.fileTranscription.view.ariaLabel", {
+                  defaultValue: "File transcription view",
+                })
+          }
+          items={segmentedItems}
+        />
+      ) : null}
       <div className="ml-auto flex items-center gap-2">
         {view === "documents" ? (
           <ReaderSearchControl
@@ -1572,12 +1884,23 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     null,
   );
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [readerRestoreIndex, setReaderRestoreIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExportingAudio, setIsExportingAudio] = useState(false);
   const [error, setError] = useState("");
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [skipHeadersFooters, setSkipHeadersFooters] = useState(true);
+  const [audioExportFeedback, setAudioExportFeedback] = useState("");
+  // Per-section voice profiles: sectionIndex -> preset id (null = default voice),
+  // and sectionIndex -> true when the user turned that section off.
+  const [sectionVoices, setSectionVoices] = useState<
+    Record<number, string | null>
+  >({});
+  const [sectionDisabled, setSectionDisabled] = useState<
+    Record<number, boolean>
+  >({});
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(
     null,
   );
@@ -1634,14 +1957,52 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     void refreshPresets();
   }, [refreshPresets]);
 
+  useEffect(() => {
+    if (presets.length === 0) return;
+    const validPresetIds = new Set(presets.map((preset) => preset.id));
+    setSelectedPresetId((current) =>
+      current && !validPresetIds.has(current) ? presets[0]?.id ?? null : current,
+    );
+    setSectionVoices((current) => {
+      let changed = false;
+      const next: Record<number, string | null> = {};
+      for (const [sectionIndex, presetId] of Object.entries(current)) {
+        if (presetId && !validPresetIds.has(presetId)) {
+          changed = true;
+          continue;
+        }
+        next[Number(sectionIndex)] = presetId;
+      }
+      return changed ? next : current;
+    });
+  }, [presets]);
+
   const loadDocument = useCallback(
     async (path: string) => {
       setIsLoading(true);
       setError("");
       try {
         const document = await readReaderDocument(path);
+        const documentState = loadReaderDocumentState(document.id);
+        const savedProgress = documentState.progress;
+        const nextSectionIndex = clampIndex(
+          savedProgress?.sectionIndex,
+          document.sections.length,
+        );
         setActiveDocument(document);
-        setActiveSectionIndex(0);
+        setActiveSectionIndex(nextSectionIndex);
+        setReaderRestoreIndex(
+          typeof savedProgress?.unitIndex === "number"
+            ? Math.max(0, Math.trunc(savedProgress.unitIndex))
+            : 0,
+        );
+        setSectionVoices(documentState.sectionVoices ?? {});
+        setSectionDisabled(documentState.sectionDisabled ?? {});
+        if ("selectedPresetId" in documentState) {
+          setSelectedPresetId(documentState.selectedPresetId ?? null);
+        }
+        setPlaybackRate(normalizeReaderPlaybackRate(documentState.playbackRate));
+        setAudioExportFeedback("");
         persistLibrary(
           upsertReaderLibraryItem(library, readerItemFromDocument(document)),
         );
@@ -1715,14 +2076,20 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
   const readingUnits = useMemo(
     () =>
       activeDocument
-        ? buildReadingUnits(activeDocument, { skipHeadersFooters })
+        ? buildSectionReadingUnits(activeDocument.sections, {
+            voiceForSection: (sectionIndex) =>
+              sectionVoices[sectionIndex] ?? selectedPresetId,
+            isSectionEnabled: (sectionIndex) =>
+              sectionDisabled[sectionIndex] !== true,
+          })
         : [],
-    [activeDocument, skipHeadersFooters],
+    [activeDocument, sectionVoices, sectionDisabled, selectedPresetId],
   );
 
   const speakUnit = useCallback(
-    (text: string) => speakReaderTextWithPreset(text, selectedPresetId),
-    [selectedPresetId],
+    (unit: ReadingUnit) =>
+      speakReaderTextWithPreset(unit.text, unit.presetId, playbackRate),
+    [playbackRate],
   );
   const stopReaderAudio = useCallback(async () => {
     await commands.ttsStop();
@@ -1743,20 +2110,56 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
   const player = useReaderPlayback({
     units: readingUnits,
+    initialIndex: readerRestoreIndex,
+    resetKey: activeDocument?.id ?? null,
     speak: speakUnit,
     stopAudio: stopReaderAudio,
     onError: handlePlaybackError,
   });
 
   const currentReadingUnit = readingUnits[player.index] ?? null;
-  const totalReaderPages =
-    activeDocument?.page_count ?? readingUnitPageNumbers(readingUnits).length;
+
+  useEffect(() => {
+    if (!activeDocument || currentReadingUnit?.sectionIndex === null) return;
+    if (typeof currentReadingUnit?.sectionIndex !== "number") return;
+    if (currentReadingUnit.sectionIndex !== activeSectionIndex) {
+      setActiveSectionIndex(currentReadingUnit.sectionIndex);
+    }
+  }, [activeDocument, activeSectionIndex, currentReadingUnit?.sectionIndex]);
+
+  useEffect(() => {
+    if (!activeDocument) return;
+    saveReaderDocumentState(activeDocument.id, {
+      sectionVoices,
+      sectionDisabled,
+      selectedPresetId,
+      playbackRate,
+    });
+  }, [
+    activeDocument,
+    sectionVoices,
+    sectionDisabled,
+    selectedPresetId,
+    playbackRate,
+  ]);
+
+  useEffect(() => {
+    if (!activeDocument || !currentReadingUnit) return;
+    saveReaderDocumentState(activeDocument.id, {
+      progress: {
+        sectionIndex: currentReadingUnit.sectionIndex ?? activeSectionIndex,
+        unitIndex: player.index,
+        updatedAt: Date.now(),
+      },
+    });
+  }, [activeDocument, activeSectionIndex, currentReadingUnit, player.index]);
+
   const playbackPageLabel =
-    currentReadingUnit && currentReadingUnit.pageIndex !== null
-      ? t("dictate.reader.player.pageLabel", {
-          defaultValue: "Page {{current}} of {{total}}",
-          current: currentReadingUnit.pageIndex + 1,
-          total: totalReaderPages,
+    currentReadingUnit && currentReadingUnit.sectionIndex !== null
+      ? t("dictate.reader.player.sectionPosition", {
+          defaultValue: "Section {{current}} of {{total}}",
+          current: currentReadingUnit.sectionIndex + 1,
+          total: activeDocument?.sections.length ?? 0,
         })
       : null;
 
@@ -1776,6 +2179,63 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     }
   }, [activeDocument?.text, currentSection?.text, t]);
 
+  const exportReaderAudio = useCallback(async () => {
+    if (!activeDocument || readingUnits.length === 0) return;
+    const target = await save({
+      defaultPath: `${stripExtension(activeDocument.name)}.wav`,
+      filters: [
+        {
+          name: t("dictate.reader.audioExportDialogLabel", {
+            defaultValue: "WAV audio",
+          }),
+          extensions: ["wav"],
+        },
+      ],
+    });
+    if (!target) return;
+
+    setIsExportingAudio(true);
+    setAudioExportFeedback("");
+    setError("");
+    try {
+      const result = await commands.exportReaderAudio(
+        readingUnits.map((unit) => ({
+          text: unit.text,
+          preset_id: unit.presetId,
+        })),
+        target,
+        playbackRate,
+      );
+      if (result.status === "error") {
+        throw new Error(
+          readerErrorMessage(
+            result.error,
+            t("dictate.reader.errors.audioExportFailed", {
+              defaultValue: "Failed to export Reader audio.",
+            }),
+          ),
+        );
+      }
+      setAudioExportFeedback(
+        t("dictate.reader.audioExportComplete", {
+          defaultValue: "Exported {{count}} parts to WAV.",
+          count: result.data.unit_count,
+        }),
+      );
+    } catch (err) {
+      setError(
+        readerErrorMessage(
+          err,
+          t("dictate.reader.errors.audioExportFailed", {
+            defaultValue: "Failed to export Reader audio.",
+          }),
+        ),
+      );
+    } finally {
+      setIsExportingAudio(false);
+    }
+  }, [activeDocument, playbackRate, readingUnits, t]);
+
   const removeLibraryItem = useCallback(
     async (item: ReaderLibraryItem) => {
       try {
@@ -1794,10 +2254,33 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
       ) {
         setActiveDocument(null);
         setActiveSectionIndex(0);
+        setReaderRestoreIndex(0);
+        setSectionVoices({});
+        setSectionDisabled({});
+        setAudioExportFeedback("");
       }
     },
     [activeDocument?.id, activeDocument?.path, library, persistLibrary],
   );
+
+  const closeReader = useCallback(() => {
+    player.stop();
+    setActiveDocument(null);
+    setActiveSectionIndex(0);
+    setReaderRestoreIndex(0);
+    setSectionVoices({});
+    setSectionDisabled({});
+    setAudioExportFeedback("");
+  }, [player.stop]);
+
+  useEffect(() => {
+    if (!activeDocument) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeReader();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [activeDocument, closeReader]);
 
   return (
     <div className="space-y-5">
@@ -1948,104 +2431,239 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
         })}
       >
         {activeDocument && currentSection ? (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {t("dictate.reader.sectionLabel", {
-                    defaultValue: "Section {{current}} of {{total}}",
-                    current: activeSectionIndex + 1,
-                    total: activeDocument.sections.length,
-                  })}
-                </div>
-                <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
-                  {currentSection.title}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(150px,0.42fr)_minmax(0,1fr)]">
-              <div className="max-h-[360px] space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-1">
-                {activeDocument.sections.map((section) => {
-                  const selected = section.index === activeSectionIndex;
-                  return (
-                    <button
-                      key={section.index}
-                      type="button"
-                      onClick={() => setActiveSectionIndex(section.index)}
-                      className={[
-                        "block w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors",
-                        selected
-                          ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                          : "text-[var(--muted)] hover:bg-[var(--input)] hover:text-[var(--text)]",
-                      ].join(" ")}
-                    >
-                      <span className="block truncate">{section.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="min-h-[360px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
-                <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-[var(--text)]">
-                  {currentSection.text}
-                </pre>
-              </div>
-            </div>
-
-            <ReaderPlaybackBar
-              status={player.status}
-              index={player.index}
-              total={player.total}
-              pageLabel={playbackPageLabel}
-              currentText={currentReadingUnit?.text ?? ""}
-              voiceLabel={selectedPreset?.label ?? null}
-              onToggle={() => {
-                setError("");
-                player.toggle();
-              }}
-              onStop={player.stop}
-              onPrev={player.prev}
-              onNext={player.next}
-              onSeek={player.seek}
-              skipHeadersFooters={skipHeadersFooters}
-              onToggleSkip={setSkipHeadersFooters}
-              presets={presets}
-              selectedPresetId={selectedPresetId}
-              onSelectPreset={setSelectedPresetId}
-            />
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={copyDocumentText}
-                className="gap-1.5 text-xs"
+          createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+              role="presentation"
+              onClick={closeReader}
+            >
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                aria-hidden="true"
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={activeDocument.name}
+                className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
+                onClick={(event) => event.stopPropagation()}
               >
-                {copyFeedback ? (
-                  <Check size={13} aria-hidden="true" />
-                ) : (
-                  <ClipboardCopy size={13} aria-hidden="true" />
-                )}
-                {copyFeedback
-                  ? t("dictate.reader.copied", { defaultValue: "Copied" })
-                  : t("dictate.reader.copySection", {
-                      defaultValue: "Copy section",
-                    })}
-              </Button>
-            </div>
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3">
+                  <div className="min-w-0 truncate text-sm font-semibold text-[var(--text)]">
+                    {activeDocument.name}
+                  </div>
+                  <ActionIconButton
+                    type="button"
+                    onClick={closeReader}
+                    aria-label={t("common.close", { defaultValue: "Close" })}
+                    title={t("common.close", { defaultValue: "Close" })}
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </ActionIconButton>
+                </div>
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                        {t("dictate.reader.sectionLabel", {
+                          defaultValue: "Section {{current}} of {{total}}",
+                          current: activeSectionIndex + 1,
+                          total: activeDocument.sections.length,
+                        })}
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
+                        {currentSection.title}
+                      </div>
+                    </div>
+                  </div>
 
-            <ReaderTransformTools
-              documentText={activeDocument.text}
-              onListen={(text) => {
-                setError("");
-                player.stop();
-                void speakReaderTextWithPreset(text, selectedPresetId).catch(
-                  handlePlaybackError,
-                );
-              }}
-            />
-          </>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(150px,0.42fr)_minmax(0,1fr)]">
+                    <div className="max-h-[360px] space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-1">
+                      {activeDocument.sections.map((section) => {
+                        const selected = section.index === activeSectionIndex;
+                        const enabled = sectionDisabled[section.index] !== true;
+                        return (
+                          <div
+                            key={section.index}
+                            className={[
+                              "rounded-lg px-2 py-1.5 transition-colors",
+                              selected
+                                ? "bg-[var(--accent-soft)]"
+                                : "hover:bg-[var(--input)]",
+                            ].join(" ")}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSectionDisabled((prev) => ({
+                                    ...prev,
+                                    [section.index]:
+                                      prev[section.index] !== true,
+                                  }))
+                                }
+                                aria-pressed={enabled}
+                                title={
+                                  enabled
+                                    ? t("dictate.reader.sections.read", {
+                                        defaultValue: "Read this section",
+                                      })
+                                    : t("dictate.reader.sections.skip", {
+                                        defaultValue: "Skip this section",
+                                      })
+                                }
+                                className={[
+                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                                  enabled
+                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent,#fff)]"
+                                    : "border-[var(--border)] text-transparent",
+                                ].join(" ")}
+                              >
+                                <Check size={10} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActiveSectionIndex(section.index)
+                                }
+                                className={[
+                                  "min-w-0 flex-1 truncate text-left text-xs",
+                                  selected
+                                    ? "font-semibold text-[var(--accent)]"
+                                    : enabled
+                                      ? "text-[var(--text)]"
+                                      : "text-[var(--muted)] line-through",
+                                ].join(" ")}
+                              >
+                                {section.title}
+                              </button>
+                            </div>
+                            <select
+                              value={sectionVoices[section.index] ?? ""}
+                              onChange={(event) =>
+                                setSectionVoices((prev) => ({
+                                  ...prev,
+                                  [section.index]: event.target.value || null,
+                                }))
+                              }
+                              disabled={!enabled}
+                              title={t("dictate.reader.sections.voice", {
+                                defaultValue: "Voice for this section",
+                              })}
+                              className="mt-1 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--input)] px-2 text-[11px] text-[var(--text)] outline-none focus:ring-1 focus:ring-[var(--accent-glow)] disabled:opacity-50"
+                            >
+                              <option value="">
+                                {t("dictate.reader.sections.defaultVoice", {
+                                  defaultValue: "Default voice",
+                                })}
+                              </option>
+                              {presets.map((preset) => (
+                                <option key={preset.id} value={preset.id}>
+                                  {preset.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="min-h-[360px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                      <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-[var(--text)]">
+                        {currentSection.text}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <ReaderPlaybackBar
+                    status={player.status}
+                    index={player.index}
+                    total={player.total}
+                    playbackRate={playbackRate}
+                    pageLabel={playbackPageLabel}
+                    currentText={currentReadingUnit?.text ?? ""}
+                    voiceLabel={selectedPreset?.label ?? null}
+                    onToggle={() => {
+                      setError("");
+                      player.toggle();
+                    }}
+                    onStop={player.stop}
+                    onPrev={player.prev}
+                    onNext={player.next}
+                    onSeek={player.seek}
+                    onPlaybackRateChange={setPlaybackRate}
+                    presets={presets}
+                    selectedPresetId={selectedPresetId}
+                    onSelectPreset={setSelectedPresetId}
+                  />
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {audioExportFeedback ? (
+                      <span className="text-xs text-[var(--muted)]">
+                        {audioExportFeedback}
+                      </span>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={exportReaderAudio}
+                      disabled={isExportingAudio || readingUnits.length === 0}
+                      className="gap-1.5 text-xs"
+                    >
+                      {isExportingAudio ? (
+                        <Loader2
+                          size={13}
+                          className="animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Download size={13} aria-hidden="true" />
+                      )}
+                      {isExportingAudio
+                        ? t("dictate.reader.exportingAudio", {
+                            defaultValue: "Exporting",
+                          })
+                        : t("dictate.reader.exportAudio", {
+                            defaultValue: "Export WAV",
+                          })}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={copyDocumentText}
+                      className="gap-1.5 text-xs"
+                    >
+                      {copyFeedback ? (
+                        <Check size={13} aria-hidden="true" />
+                      ) : (
+                        <ClipboardCopy size={13} aria-hidden="true" />
+                      )}
+                      {copyFeedback
+                        ? t("dictate.reader.copied", { defaultValue: "Copied" })
+                        : t("dictate.reader.copySection", {
+                            defaultValue: "Copy section",
+                          })}
+                    </Button>
+                  </div>
+
+                  <ReaderTransformTools
+                    documentText={activeDocument.text}
+                    onListen={(text) => {
+                      setError("");
+                      player.stop();
+                      void speakReaderTextWithPreset(
+                        text,
+                        selectedPresetId,
+                        playbackRate,
+                      ).catch(handlePlaybackError);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
         ) : isLoading ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center">
             <Loader2

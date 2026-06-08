@@ -2566,7 +2566,7 @@ pub(crate) fn sanitize_tts_voice_tuning_for_target(
     changed
 }
 
-fn build_tts_preset_from_legacy(
+pub(crate) fn build_tts_preset_from_legacy(
     settings: &AppSettings,
     preset_id: Option<String>,
 ) -> TtsVoicePreset {

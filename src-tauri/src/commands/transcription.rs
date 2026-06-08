@@ -1,3 +1,4 @@
+use crate::audio_toolkit::{enhance_audio_samples, AudioEnhancementConfig, AudioEnhancementModel};
 use crate::correction_tracker::store::CorrectionStore;
 use crate::helpers::subtitles::{to_srt, to_vtt, TimedSegment};
 use crate::managers::transcription::TranscriptionManager;
@@ -264,29 +265,130 @@ pub(crate) fn decode_with_ffmpeg_blocking(
     Ok(samples)
 }
 
-fn write_temp_wav_16k(samples: &[f32]) -> Result<PathBuf, String> {
-    let path = std::env::temp_dir().join(format!(
-        "vox-jot-speech-analysis-{}.wav",
-        uuid::Uuid::new_v4()
-    ));
+pub(crate) fn write_wav_16k(path: &Path, samples: &[f32]) -> Result<(), String> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: 16_000,
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
     };
-    let mut writer = hound::WavWriter::create(&path, spec)
-        .map_err(|e| format!("Failed to write temporary speech-analysis WAV: {}", e))?;
+    let mut writer = hound::WavWriter::create(path, spec)
+        .map_err(|e| format!("Failed to write WAV '{}': {}", path.display(), e))?;
     for sample in samples {
         let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
         writer
             .write_sample(value)
-            .map_err(|e| format!("Failed to encode speech-analysis WAV sample: {}", e))?;
+            .map_err(|e| format!("Failed to encode WAV sample: {}", e))?;
     }
     writer
         .finalize()
-        .map_err(|e| format!("Failed to finalize speech-analysis WAV: {}", e))?;
+        .map_err(|e| format!("Failed to finalize WAV '{}': {}", path.display(), e))?;
+    Ok(())
+}
+
+fn write_temp_wav_16k(samples: &[f32]) -> Result<PathBuf, String> {
+    let path = std::env::temp_dir().join(format!(
+        "vox-jot-speech-analysis-{}.wav",
+        uuid::Uuid::new_v4()
+    ));
+    write_wav_16k(&path, samples)?;
     Ok(path)
+}
+
+fn default_clean_audio_output_path(input_path: &str) -> PathBuf {
+    let source = Path::new(input_path);
+    let parent = source.parent().unwrap_or_else(|| Path::new("."));
+    let stem = source
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("audio");
+
+    for index in 0..1000 {
+        let file_name = if index == 0 {
+            format!("{stem}-cleaned.wav")
+        } else {
+            format!("{stem}-cleaned-{}.wav", index + 1)
+        };
+        let candidate = parent.join(file_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    parent.join(format!("{}-cleaned-{}.wav", stem, uuid::Uuid::new_v4()))
+}
+
+fn decode_audio_file_for_cleanup(path: &str) -> Result<(Vec<f32>, u32), String> {
+    if path.to_ascii_lowercase().ends_with(".wav") {
+        read_wav_as_mono_f32(path)
+    } else {
+        let ffmpeg_exe = resolve_ffmpeg_exe();
+        decode_with_ffmpeg_blocking(&ffmpeg_exe, path).map(|samples| (samples, 16_000))
+    }
+}
+
+#[derive(Serialize, Type)]
+pub struct CleanAudioFileResult {
+    pub output_path: String,
+    pub duration_ms: u64,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn clean_audio_file(
+    path: String,
+    output_path: Option<String>,
+) -> Result<CleanAudioFileResult, String> {
+    tokio::task::spawn_blocking(move || -> Result<CleanAudioFileResult, String> {
+        let source_path = PathBuf::from(&path);
+        if !source_path.is_file() {
+            return Err(format!("Audio file not found: {}", source_path.display()));
+        }
+
+        let output_path = output_path
+            .map(PathBuf::from)
+            .unwrap_or_else(|| default_clean_audio_output_path(&path));
+        if output_path == source_path {
+            return Err("Choose a different output path for cleaned audio.".to_string());
+        }
+        if let Some(parent) = output_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent).map_err(|err| {
+                    format!(
+                        "Failed to create output folder '{}': {}",
+                        parent.display(),
+                        err
+                    )
+                })?;
+            }
+        }
+
+        let (samples, sample_rate) = decode_audio_file_for_cleanup(&path)?;
+        if samples.is_empty() {
+            return Err("Audio file did not contain usable samples.".to_string());
+        }
+
+        let cleaned = enhance_audio_samples(
+            &samples,
+            sample_rate,
+            AudioEnhancementConfig {
+                model: AudioEnhancementModel::Rnnoise,
+            },
+        )?;
+        if cleaned.is_empty() {
+            return Err("Noise reduction produced no audio.".to_string());
+        }
+
+        write_wav_16k(&output_path, &cleaned)?;
+
+        Ok(CleanAudioFileResult {
+            output_path: output_path.to_string_lossy().to_string(),
+            duration_ms: ((cleaned.len() as f64 / 16_000.0) * 1000.0).round() as u64,
+        })
+    })
+    .await
+    .map_err(|err| format!("Task join error: {}", err))?
 }
 
 #[derive(Debug, Deserialize)]

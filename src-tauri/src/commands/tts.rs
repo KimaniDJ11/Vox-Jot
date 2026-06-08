@@ -1,7 +1,7 @@
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{
-    get_settings, sanitize_tts_voice_tuning_for_target, write_settings, TtsVoicePreset,
-    TtsVoicePresetInput, TtsVoiceTuningSettings,
+    build_tts_preset_from_legacy, get_settings, sanitize_tts_voice_tuning_for_target,
+    write_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -10,17 +10,23 @@ use crate::tts_profiles::{
     read_wav_as_mono_16k, resolve_voice_profile, set_continuous_improvement,
     TtsVoiceProfileDescriptor,
 };
+use hound::{WavSpec, WavWriter};
 use log::warn;
+use rodio::Source;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::fs::{self, File};
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
 const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+const READER_EXPORT_SAMPLE_RATE: u32 = 24_000;
+const READER_EXPORT_UNIT_GAP_SECONDS: f32 = 0.12;
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
@@ -31,6 +37,40 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
             Some(trimmed.to_string())
         }
     })
+}
+
+fn normalize_reader_playback_rate(value: Option<f32>) -> Result<Option<f32>, String> {
+    match value {
+        Some(rate) if !rate.is_finite() => {
+            Err("Reader playback speed must be a finite number.".to_string())
+        }
+        Some(rate) => Ok(Some(rate.clamp(0.5, 2.0))),
+        None => Ok(None),
+    }
+}
+
+fn reader_preset_for_request(
+    settings: &AppSettings,
+    preset_id: Option<&str>,
+    playback_rate: Option<f32>,
+) -> Result<TtsVoicePreset, String> {
+    let mut preset = if let Some(preset_id) = preset_id.filter(|value| !value.trim().is_empty()) {
+        settings
+            .tts_preset(preset_id)
+            .cloned()
+            .ok_or_else(|| format!("Unknown Reader voice preset '{}'.", preset_id))?
+    } else {
+        settings
+            .active_tts_preset()
+            .cloned()
+            .unwrap_or_else(|| build_tts_preset_from_legacy(settings, None))
+    };
+
+    if let Some(rate) = playback_rate {
+        preset.tuning.tempo_rate = rate.clamp(0.5, 2.0);
+    }
+
+    Ok(preset)
 }
 
 fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings, provider_id: &str, model_id: &str) {
@@ -51,6 +91,19 @@ pub struct VoiceChangerResult {
     pub target_profile_label: String,
     pub provider_id: String,
     pub model_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioExportUnit {
+    pub text: String,
+    pub preset_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioExportResult {
+    pub output_path: String,
+    pub unit_count: usize,
+    pub duration_ms: u32,
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -172,6 +225,53 @@ pub async fn tts_speak_with_preset(
         },
         "tts-command-speak-preset",
     )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn tts_speak_reader(
+    app: AppHandle,
+    text: String,
+    locale: Option<String>,
+    preset_id: Option<String>,
+    playback_rate: Option<f32>,
+    trigger: Option<String>,
+    remember_last_output: Option<bool>,
+) -> Result<(), String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    let settings = get_settings(&app);
+    let preset = reader_preset_for_request(&settings, preset_id.as_deref(), normalized_rate)?;
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_command_thread(
+        manager,
+        SpeakRequest {
+            text,
+            locale,
+            preferred_voice_id: None,
+            preset_id: None,
+            inline_preset: Some(preset),
+            trigger,
+            remember_last_output: remember_last_output.unwrap_or(false),
+        },
+        "tts-command-reader-speak",
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn export_reader_audio(
+    app: AppHandle,
+    units: Vec<ReaderAudioExportUnit>,
+    output_path: String,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioExportResult, String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    run_tts_async_command_on_stack("tts-command-reader-export", move || async move {
+        export_reader_audio_inner(app, manager, units, output_path, normalized_rate).await
+    })
     .await
 }
 
@@ -324,6 +424,171 @@ async fn speak_on_command_thread(
         move || async move { manager.speak(request).await },
     )
     .await
+}
+
+async fn export_reader_audio_inner(
+    app: AppHandle,
+    manager: Arc<TtsManager>,
+    units: Vec<ReaderAudioExportUnit>,
+    output_path: String,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioExportResult, String> {
+    let target = PathBuf::from(output_path.trim());
+    if target.as_os_str().is_empty() {
+        return Err("Choose where to save the Reader audio file.".to_string());
+    }
+    if let Some(parent) = target
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("Failed to create Reader audio export folder: {err}"))?;
+    }
+
+    let settings = get_settings(&app);
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let mut output_samples = Vec::new();
+    let mut rendered_units = 0usize;
+    let gap_samples =
+        (READER_EXPORT_SAMPLE_RATE as f32 * READER_EXPORT_UNIT_GAP_SECONDS).round() as usize;
+
+    for unit in units {
+        let text = unit.text.trim().to_string();
+        if text.is_empty() {
+            continue;
+        }
+        let preset =
+            reader_preset_for_request(&settings, unit.preset_id.as_deref(), playback_rate)?;
+        let temp_paths = manager
+            .synthesize_to_temp_files(
+                SpeakRequest {
+                    text,
+                    locale: None,
+                    preferred_voice_id: None,
+                    preset_id: None,
+                    inline_preset: Some(preset),
+                    trigger: Some("reader_audio_export".to_string()),
+                    remember_last_output: false,
+                },
+                Arc::clone(&stop_flag),
+            )
+            .await?;
+
+        let mut unit_samples = Vec::new();
+        for temp_path in temp_paths {
+            let decoded = decode_rendered_audio_file_mono(&temp_path, READER_EXPORT_SAMPLE_RATE)?;
+            unit_samples.extend(decoded);
+            let _ = fs::remove_file(temp_path);
+        }
+        if unit_samples.is_empty() {
+            continue;
+        }
+        if !output_samples.is_empty() && gap_samples > 0 {
+            output_samples.extend(std::iter::repeat_n(0.0, gap_samples));
+        }
+        output_samples.extend(unit_samples);
+        rendered_units += 1;
+    }
+
+    if rendered_units == 0 || output_samples.is_empty() {
+        return Err("There is no readable text to export.".to_string());
+    }
+
+    write_reader_export_wav(&output_samples, READER_EXPORT_SAMPLE_RATE, &target)?;
+    let duration_ms = ((output_samples.len() as f64 / f64::from(READER_EXPORT_SAMPLE_RATE))
+        * 1000.0)
+        .round() as u32;
+
+    Ok(ReaderAudioExportResult {
+        output_path: target.to_string_lossy().to_string(),
+        unit_count: rendered_units,
+        duration_ms,
+    })
+}
+
+fn decode_rendered_audio_file_mono(
+    path: &Path,
+    target_sample_rate: u32,
+) -> Result<Vec<f32>, String> {
+    let file = File::open(path).map_err(|err| {
+        format!(
+            "Failed to open rendered Reader audio '{}': {err}",
+            path.display()
+        )
+    })?;
+    let decoder = rodio::Decoder::try_from(file).map_err(|err| {
+        format!(
+            "Failed to decode rendered Reader audio '{}': {err}",
+            path.display()
+        )
+    })?;
+    let channels = usize::from(decoder.channels()).max(1);
+    let sample_rate = decoder.sample_rate();
+    let interleaved = decoder.collect::<Vec<f32>>();
+    let mono = if channels == 1 {
+        interleaved
+    } else {
+        interleaved
+            .chunks(channels)
+            .map(|frame| frame.iter().sum::<f32>() / frame.len() as f32)
+            .collect::<Vec<_>>()
+    };
+    Ok(resample_reader_audio_linear(
+        &mono,
+        sample_rate,
+        target_sample_rate,
+    ))
+}
+
+fn resample_reader_audio_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
+    if samples.is_empty() || source_rate == target_rate {
+        return samples.to_vec();
+    }
+
+    let output_len =
+        ((samples.len() as f64 * target_rate as f64) / source_rate as f64).round() as usize;
+    if output_len == 0 {
+        return Vec::new();
+    }
+    if samples.len() == 1 {
+        return vec![samples[0]; output_len];
+    }
+
+    let ratio = source_rate as f64 / target_rate as f64;
+    (0..output_len)
+        .map(|index| {
+            let source_pos = index as f64 * ratio;
+            let left = source_pos.floor() as usize;
+            let right = (left + 1).min(samples.len() - 1);
+            let frac = (source_pos - left as f64) as f32;
+            samples[left] * (1.0 - frac) + samples[right] * frac
+        })
+        .collect()
+}
+
+fn write_reader_export_wav(
+    samples: &[f32],
+    sample_rate: u32,
+    output_path: &Path,
+) -> Result<(), String> {
+    let spec = WavSpec {
+        channels: 1,
+        sample_rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer =
+        WavWriter::create(output_path, spec).map_err(|err| format!("WAV write error: {err}"))?;
+    for sample in samples {
+        let sample_i16 = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+        writer
+            .write_sample(sample_i16)
+            .map_err(|err| format!("WAV sample write error: {err}"))?;
+    }
+    writer
+        .finalize()
+        .map_err(|err| format!("WAV finalize error: {err}"))?;
+    Ok(())
 }
 
 #[tauri::command]

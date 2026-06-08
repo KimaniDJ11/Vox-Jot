@@ -244,9 +244,7 @@ pub async fn reader_transform_text(
         #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
         {
             let _ = system_prompt;
-            return Err(
-                "Apple Intelligence is only available on Apple silicon Macs.".to_string(),
-            );
+            return Err("Apple Intelligence is only available on Apple silicon Macs.".to_string());
         }
     }
 
@@ -304,7 +302,18 @@ fn read_reader_document_blocking(
         if let Some(document) =
             read_cached_reader_document(reader_data_dir, &id, metadata.len(), source_modified_ms)
         {
-            return Ok(document);
+            // Don't serve a degraded cache (Rust fallback / placeholder — no
+            // thumbnail, no layout) when the Python extractor is now available.
+            // Re-extract so the preview + layout upgrade takes effect without the
+            // user having to remove and re-add the document.
+            let python_available = extractor_path.is_some() && python_path.is_some();
+            let degraded = matches!(
+                document.extraction_engine.as_str(),
+                "rust-fallback" | "pdf-placeholder"
+            );
+            if !(degraded && python_available) {
+                return Ok(document);
+            }
         }
     }
 
@@ -473,27 +482,31 @@ fn ensure_reader_python(app: &AppHandle) -> Result<PathBuf, String> {
 
     let bootstrap_python = locate_reader_python()
         .ok_or_else(|| "Could not locate Python to create the Reader runtime.".to_string())?;
-    if !python.is_file() {
-        let output = Command::new(&bootstrap_python)
-            .arg("-m")
-            .arg("venv")
-            .arg(&venv_dir)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .map_err(|err| {
-                format!(
-                    "Failed to create Reader runtime with '{}': {err}",
-                    bootstrap_python.display()
-                )
-            })?;
-        if !output.status.success() {
-            return Err(command_stderr_or_status(
-                "Reader Python runtime creation failed",
-                &output,
-            ));
-        }
+    // Always (re)create with --clear. We only reach here when the version marker
+    // is missing or stale, so any existing venv is partial or broken (e.g. one
+    // created earlier from a relocatable uv-managed Python whose stdlib can't be
+    // resolved). --clear wipes it so we recover instead of pip-installing into a
+    // dead interpreter.
+    let output = Command::new(&bootstrap_python)
+        .arg("-m")
+        .arg("venv")
+        .arg("--clear")
+        .arg(&venv_dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|err| {
+            format!(
+                "Failed to create Reader runtime with '{}': {err}",
+                bootstrap_python.display()
+            )
+        })?;
+    if !output.status.success() {
+        return Err(command_stderr_or_status(
+            "Reader Python runtime creation failed",
+            &output,
+        ));
     }
 
     run_python_module(
@@ -561,6 +574,24 @@ fn command_stderr_or_status(label: &str, output: &std::process::Output) -> Strin
 fn locate_reader_python() -> Option<PathBuf> {
     for variable in ["VOX_JOT_READER_PYTHON", "OCR_RUNTIME_PYTHON"] {
         if let Some(path) = reader_python_from_env(variable) {
+            return Some(path);
+        }
+    }
+
+    // Prefer a Homebrew/framework Python 3.11. PATH can surface a uv-managed
+    // standalone python3.11 first, and `python -m venv` against those produces a
+    // broken venv: the stdlib path resolves to a build-time `/install` prefix, so
+    // the venv interpreter can't import `encodings` and every pip install fails
+    // (forcing the thumbnail-less Rust fallback). The Homebrew builds create
+    // working venvs, matching the other Vox Jot Python sidecars.
+    #[cfg(target_os = "macos")]
+    for candidate in [
+        "/opt/homebrew/bin/python3.11",
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "/usr/local/bin/python3.11",
+    ] {
+        let path = PathBuf::from(candidate);
+        if path.is_file() {
             return Some(path);
         }
     }

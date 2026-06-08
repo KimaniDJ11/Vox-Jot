@@ -9,7 +9,52 @@ export type ReadingUnit = {
   text: string;
   /** 0-based source page index, or null when derived from flat document text. */
   pageIndex: number | null;
+  /** 0-based source section index, or null when not section-derived. */
+  sectionIndex: number | null;
+  /** Voice preset to read this unit with (null = the reader's default voice). */
+  presetId: string | null;
 };
+
+export type ReaderSectionLike = {
+  index: number;
+  text: string;
+};
+
+export type BuildSectionReadingUnitsOptions = {
+  /** Voice preset id for a section (null = default voice). */
+  voiceForSection: (sectionIndex: number) => string | null;
+  /** Whether a section should be read aloud at all. */
+  isSectionEnabled: (sectionIndex: number) => boolean;
+};
+
+/**
+ * Section-aligned reading units: each enabled section is chunked into units
+ * tagged with its section index and the voice preset chosen for that section.
+ * This lets the player switch voices per section and skip sections the user
+ * turned off. Sections come from the extractor's content text, so running
+ * headers/footers are already excluded upstream.
+ */
+export function buildSectionReadingUnits(
+  sections: ReaderSectionLike[],
+  options: BuildSectionReadingUnitsOptions,
+): ReadingUnit[] {
+  const units: ReadingUnit[] = [];
+  let counter = 0;
+  for (const section of sections) {
+    if (!options.isSectionEnabled(section.index)) continue;
+    const presetId = options.voiceForSection(section.index);
+    for (const chunk of chunkText(section.text ?? "")) {
+      units.push({
+        id: `unit-${counter++}`,
+        text: chunk,
+        pageIndex: null,
+        sectionIndex: section.index,
+        presetId,
+      });
+    }
+  }
+  return units;
+}
 
 // Structural shape — the panel's ReaderDocument satisfies this without coupling
 // to its exact type. We only need the page/block text + kind and a flat-text
@@ -41,7 +86,13 @@ export function buildReadingUnits(
 
   const push = (text: string, pageIndex: number | null) => {
     for (const chunk of chunkText(text)) {
-      units.push({ id: `unit-${counter++}`, text: chunk, pageIndex });
+      units.push({
+        id: `unit-${counter++}`,
+        text: chunk,
+        pageIndex,
+        sectionIndex: null,
+        presetId: null,
+      });
     }
   };
 

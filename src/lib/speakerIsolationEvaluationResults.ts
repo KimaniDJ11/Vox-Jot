@@ -124,7 +124,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       latencyMs: 6976,
       device: "mps",
       notes:
-        "Recovered the turn structure but merged speakers (3/4) on this fixture. Runtime uses nemo-toolkit==2.1.0 with patched Transformers 5 / Hugging Face Hub 1.x pins.",
+        "Recovered the turn structure but merged speakers (3/4) on this fixture. Runtime now pins nemo-toolkit==2.6.2 with patched Transformers 5 / Hugging Face Hub 1.x pins.",
     },
     {
       modelId: "pyannote-3-1",

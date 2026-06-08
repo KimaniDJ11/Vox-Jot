@@ -195,7 +195,7 @@
       "permissions": "Permissões",
       "setup": "Modelo",
       "refine": "Refinar",
-      "modes": "Modes",
+      "modes": "Modos",
       "learn": "Primeiro Ditado",
       "progress": "Progresso de configuração"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "Ajuste opcional por app",
+      "title": "Criar modos de ditado a partir dos seus apps",
+      "description": "O Vox Jot pode configurar modos iniciais para apps que já estão neste Mac. Cada modo pode ser editado ou excluído depois em Ajustes.",
+      "scanning": "Verificando apps instalados...",
+      "detected": "{{count}} modos iniciais encontrados",
+      "loading": "Procurando apps que combinem com fluxos comuns de escrita.",
+      "refreshApps": "Atualizar apps instalados",
+      "emptyTitle": "Nenhum app inicial correspondente encontrado",
+      "emptyDescription": "Você pode continuar agora e criar modos de ditado personalizados depois em Ajustes.",
+      "cardTitle": "Modos iniciais",
+      "cardDescription": "Os modos reconhecem o app em primeiro plano e aplicam opções de saída salvas.",
+      "skipCta": "Pular",
+      "continueCta": "Continuar",
+      "createCta": "Criar modos selecionados",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "Não foi possível criar os modos de ditado. Tente novamente ou pule por enquanto."
       }
     },
     "welcome": {
@@ -571,7 +571,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "A transcrição do arquivo foi movida para Ditar → Transcrição do arquivo. Arraste um arquivo de áudio ou vídeo para transcrevê-lo."
+        "movedHint": "O leitor foi movido para Ditado → Leitor. Arraste um arquivo de áudio, vídeo ou documento."
       }
     },
     "models": {
@@ -798,7 +798,9 @@
           "title": "Chave API",
           "description": "Chave API para o provedor selecionado.",
           "placeholder": "sk-...",
-          "savedPlaceholder": "Armazenada no chaveiro do sistema. Insira um novo valor para substituir."
+          "savedPlaceholder": "Armazenada no chaveiro do sistema. Insira um novo valor para substituir.",
+          "getKeyLink": "Obtenha sua chave de API do {{provider}}",
+          "accountNote": "Abre o {{provider}} no navegador. Talvez seja necessário criar uma conta gratuita para gerar uma chave."
         },
         "model": {
           "title": "Modelo",
@@ -1196,7 +1198,7 @@
       "title": "Dicionário",
       "description": "Gerencie as palavras, a ortografia e as correções aprendidas que moldam a forma como Vox Jot transcreve para você.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "Transcrição de arquivo",
+        "sectionTitle": "Transcrição do leitor",
         "label": "Aplicar dicionário e correções aprendidas",
         "description": "Use seu dicionário pessoal e armazenamento de correções nas transcrições de arquivos, da mesma forma que no ditado ao vivo. Desligue para manter a saída bruta de fala para texto."
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "Transcrição de arquivo",
+      "title": "Leitor",
       "dropHint": "Arraste e solte um arquivo de áudio ou vídeo aqui",
       "orLabel": "ou",
       "pickFile": "Escolher arquivo",
@@ -2217,7 +2219,7 @@
       "exportSrt": "Salvar .srt",
       "exportVtt": "Salvar .vtt",
       "exportSrtUnavailable": "Este mecanismo não fornece carimbos de data/hora. Mude para Whisper ou Parakeet para exportação SRT/VTT.",
-      "description": "Transcreva um arquivo de áudio ou vídeo ou observe pastas e salve as transcrições automaticamente."
+      "description": "Transcreva gravações, leia documentos em voz alta e mantenha as pastas monitoradas locais."
     },
     "watchFolders": {
       "title": "Pastas monitoradas",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "Nenhuma pasta monitorada",
         "missing": "Pasta ausente",
         "paused": "Pausado"
+      }
+    },
+    "reader": {
+      "addDocument": "Adicionar documento",
+      "documentDialogLabel": "Documentos",
+      "documentTitle": "Documentos",
+      "documentStatus": "Leitor de documentos local",
+      "documentMeta": "{{kind}} · {{words}} palavras · {{minutes}} min",
+      "voice": "Voz",
+      "currentVoice": "Voz atual",
+      "search": "Pesquisar documentos",
+      "libraryItemMeta": "{{size}} · {{words}} palavras",
+      "libraryAriaLabel": "Biblioteca do leitor",
+      "previewAriaLabel": "Prévia do leitor",
+      "empty": "Ainda não há documentos.",
+      "noMatches": "Nenhum documento correspondente.",
+      "removeDocument": "Remover documento",
+      "confirmRemoveDocument": "Confirmar remoção do documento",
+      "cancelRemoveDocument": "Cancelar remoção do documento",
+      "sectionLabel": "Seção {{current}} de {{total}}",
+      "readSection": "Ler seção",
+      "readAll": "Ler tudo",
+      "readTranscript": "Ler",
+      "stop": "Parar",
+      "speaking": "Lendo com {{voice}}",
+      "ready": "Pronto",
+      "copied": "Copiado",
+      "copySection": "Copiar seção",
+      "loading": "Abrindo documento",
+      "emptyPreview": "Escolha um documento",
+      "errors": {
+        "openFailed": "Não foi possível abrir o documento.",
+        "playbackFailed": "Falha na reprodução do leitor.",
+        "copyFailed": "Não foi possível copiar o texto do documento."
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "Local primeiro",
       "cloudRouteHeading": "Assistência na nuvem",
       "advancedEvaluationTitle": "Refinar avaliação do modelo (avançado)",
-      "fileTranscriptionTitle": "Transcrição de arquivo",
-      "fileTranscriptionDetail": "Insira áudio ou vídeo para transcrever",
+      "fileTranscriptionTitle": "Leitor",
+      "fileTranscriptionDetail": "Solte áudio, vídeo ou documentos",
       "managementTitle": "Gerenciar modelos a partir dessas visualizações",
       "managementSubtitle": "As configurações carregam apenas o roteamento do provedor. Navegue, baixe e troque modelos individuais nos catálogos dedicados.",
       "cleanupLabel": "Limpeza",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "Inicio",
         "corrections": "Dicionário",
-        "fileTranscription": "Transcrição de arquivo"
+        "fileTranscription": "Leitor"
       },
       "refine": {
         "writeProfiles": "Escrever perfis",

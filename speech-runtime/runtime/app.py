@@ -53,11 +53,32 @@ selection_file = config.state_dir / "selection.json"
 
 app = FastAPI(title="Vox Jot Speech Runtime", version="0.1.0")
 
+REQUIRED_MODEL_FILES = {
+    "supertonic-3": (
+        "config.json",
+        "onnx/duration_predictor.onnx",
+        "onnx/text_encoder.onnx",
+        "onnx/tts.json",
+        "onnx/unicode_indexer.json",
+        "onnx/vector_estimator.onnx",
+        "onnx/vocoder.onnx",
+        "voice_styles/M1.json",
+        "voice_styles/F1.json",
+    ),
+}
+
+
+def model_has_required_assets(spec: EngineSpec, model_dir: Path) -> bool:
+    required = REQUIRED_MODEL_FILES.get(spec.model_id)
+    if not required:
+        return model_dir.exists() and any(model_dir.iterdir())
+    return all((model_dir / relative).exists() for relative in required)
+
 
 def discover_model(spec: EngineSpec) -> Path | None:
     for relative in spec.model_dirs:
         candidate = config.model_store / relative
-        if candidate.exists():
+        if candidate.exists() and model_has_required_assets(spec, candidate):
             return candidate
     return None
 

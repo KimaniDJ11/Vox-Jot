@@ -544,7 +544,7 @@ function App() {
         makeSection(
           "file-transcription",
           "appSections.nav.dictate.fileTranscription",
-          FileAudio,
+          BookOpen,
           <FileTranscriptionSection />,
           "green",
         ),

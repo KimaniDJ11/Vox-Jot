@@ -304,8 +304,8 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "File Transcription",
-      "description": "Transcribe one audio or video file, or watch folders and save transcripts automatically.",
+      "title": "Reader",
+      "description": "Transcribe recordings, read documents aloud, and keep watched folders local.",
       "dropHint": "Drag & drop an audio or video file here",
       "orLabel": "or",
       "pickFile": "Pick File",
@@ -323,6 +323,40 @@
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
         "copyFailed": "Failed to copy transcription.",
         "exportFailed": "Failed to export subtitles."
+      }
+    },
+    "reader": {
+      "addDocument": "Add document",
+      "documentDialogLabel": "Documents",
+      "documentTitle": "Documents",
+      "documentStatus": "Local document reader",
+      "documentMeta": "{{kind}} · {{words}} words · {{minutes}} min",
+      "voice": "Voice",
+      "currentVoice": "Current voice",
+      "search": "Search documents",
+      "libraryItemMeta": "{{size}} · {{words}} words",
+      "libraryAriaLabel": "Reader library",
+      "previewAriaLabel": "Reader preview",
+      "empty": "No documents yet.",
+      "noMatches": "No matching documents.",
+      "removeDocument": "Remove document",
+      "confirmRemoveDocument": "Confirm remove document",
+      "cancelRemoveDocument": "Cancel remove document",
+      "sectionLabel": "Section {{current}} of {{total}}",
+      "readSection": "Read section",
+      "readAll": "Read all",
+      "readTranscript": "Read",
+      "stop": "Stop",
+      "speaking": "Reading with {{voice}}",
+      "ready": "Ready",
+      "copied": "Copied",
+      "copySection": "Copy section",
+      "loading": "Opening document",
+      "emptyPreview": "Choose a document",
+      "errors": {
+        "openFailed": "Failed to open document.",
+        "playbackFailed": "Reader playback failed.",
+        "copyFailed": "Failed to copy document text."
       }
     },
     "watchFolders": {
@@ -856,7 +890,7 @@
       "title": "Dictionary",
       "description": "Manage the words, spellings, and learned corrections that shape how Vox Jot transcribes for you.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "File transcription",
+        "sectionTitle": "Reader transcription",
         "label": "Apply dictionary & learned corrections",
         "description": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output."
       },
@@ -1079,7 +1113,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it."
+        "movedHint": "Reader moved to Dictate → Reader. Drag in an audio, video, or document file."
       }
     },
     "models": {
@@ -1329,7 +1363,9 @@
           "title": "API Key",
           "description": "API key for the selected provider.",
           "placeholder": "sk-...",
-          "savedPlaceholder": "Stored in system keychain. Enter a new value to replace it."
+          "savedPlaceholder": "Stored in system keychain. Enter a new value to replace it.",
+          "getKeyLink": "Get your {{provider}} API key",
+          "accountNote": "Opens {{provider}} in your browser. You may need to create a free account to generate a key."
         },
         "model": {
           "title": "Model",
@@ -2763,7 +2799,7 @@
       "dictate": {
         "history": "Home",
         "corrections": "Dictionary",
-        "fileTranscription": "File Transcription"
+        "fileTranscription": "Reader"
       },
       "refine": {
         "writeProfiles": "Dictation Modes",
@@ -2903,8 +2939,8 @@
       "localRouteHeading": "Local-first",
       "cloudRouteHeading": "Cloud assist",
       "advancedEvaluationTitle": "Refine model evaluation (advanced)",
-      "fileTranscriptionTitle": "File transcription",
-      "fileTranscriptionDetail": "Drop in audio or video to transcribe",
+      "fileTranscriptionTitle": "Reader",
+      "fileTranscriptionDetail": "Drop in audio, video, or documents",
       "managementTitle": "Manage models from these views",
       "managementSubtitle": "Settings only carries provider routing. Browse, download, and swap individual models in the dedicated catalogs.",
       "cleanupLabel": "Cleanup",

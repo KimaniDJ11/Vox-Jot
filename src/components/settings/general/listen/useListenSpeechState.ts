@@ -39,6 +39,7 @@ import {
   previewPreparationMessage,
   profileSupportsModel,
   providerOptionContext,
+  renderableTtsProviders,
   verifiedTtsHuggingFaceRepoId,
 } from "./utils";
 
@@ -200,8 +201,9 @@ export function useListenSpeechState() {
 
   const allProviders = useMemo(
     () =>
-      (platformOverview?.tts.providers ?? []).filter(
-        (provider) => provider.available,
+      renderableTtsProviders(
+        platformOverview?.tts.providers ?? [],
+        platformOverview?.tts.models ?? [],
       ),
     [platformOverview],
   );

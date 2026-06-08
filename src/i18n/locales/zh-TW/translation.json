@@ -195,7 +195,7 @@
       "permissions": "權限",
       "setup": "型號",
       "refine": "精煉",
-      "modes": "Modes",
+      "modes": "模式",
       "learn": "第一次聽寫",
       "progress": "入門進度"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "選用的 App 調校",
+      "title": "從你的 App 建立聽寫模式",
+      "description": "Vox Jot 可以為這台 Mac 上已有的 App 設定入門模式。每個模式之後都可以在「設定」中編輯或刪除。",
+      "scanning": "正在掃描已安裝的 App...",
+      "detected": "找到 {{count}} 個入門模式",
+      "loading": "正在尋找符合常見寫作流程的 App。",
+      "refreshApps": "重新整理已安裝的 App",
+      "emptyTitle": "找不到相符的入門 App",
+      "emptyDescription": "你可以現在繼續，稍後再從「設定」建立自訂聽寫模式。",
+      "cardTitle": "入門模式",
+      "cardDescription": "模式會配對目前前景 App，並套用已儲存的輸出選項。",
+      "skipCta": "略過",
+      "continueCta": "繼續",
+      "createCta": "建立所選模式",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "無法建立聽寫模式。請再試一次，或暫時略過。"
       }
     },
     "welcome": {
@@ -571,7 +571,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "文件轉錄移至聽寫→文件轉錄。拖入音訊或視訊檔案進行轉錄。"
+        "movedHint": "閱讀器已移至聽寫 → 閱讀器。拖入音訊、影片或文件檔。"
       }
     },
     "models": {
@@ -798,7 +798,9 @@
           "title": "API 鑰匙",
           "description": "所選提供者的 API 金鑰。",
           "placeholder": "sk-...",
-          "savedPlaceholder": "已儲存在系統鑰匙圈中。輸入新值以取代。"
+          "savedPlaceholder": "已儲存在系統鑰匙圈中。輸入新值以取代。",
+          "getKeyLink": "取得您的 {{provider}} API 金鑰",
+          "accountNote": "在瀏覽器中開啟 {{provider}}。您可能需要建立免費帳戶才能產生金鑰。"
         },
         "model": {
           "title": "型號",
@@ -1196,7 +1198,7 @@
       "title": "字典",
       "description": "管理單字、拼字和學習的更正，從而影響 Vox Jot 的轉錄方式。",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "檔案轉錄",
+        "sectionTitle": "閱讀器轉寫",
         "label": "應用字典和習得的更正",
         "description": "使用您的個人字典和修正儲存在文件記錄中，與即時聽寫相同。關閉以保留原始語音到文字的輸出。"
       },
@@ -1661,7 +1663,11 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
+      "starterPrompts": [
+        "總結所選文本",
+        "重寫一下更清楚",
+        "拉出行動項目"
+      ]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2194,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "檔案轉錄",
+      "title": "閱讀器",
       "dropHint": "將音訊或視訊檔案拖放到此處",
       "orLabel": "或",
       "pickFile": "選擇文件",
@@ -2213,7 +2219,7 @@
       "exportSrt": "保存.srt",
       "exportVtt": "儲存.vtt",
       "exportSrtUnavailable": "該引擎不提供時間戳。對於 SRT/VTT 匯出，切換到 Whisper 或 Parakeet。",
-      "description": "轉錄一個音訊或視訊文件，或監視資料夾並自動保存轉錄內容。"
+      "description": "轉寫錄音、朗讀文件，並讓監看資料夾維持本機處理。"
     },
     "watchFolders": {
       "title": "觀看的資料夾",
@@ -2238,6 +2244,40 @@
         "emptyDetail": "沒有已監看資料夾",
         "missing": "資料夾遺失",
         "paused": "已暫停"
+      }
+    },
+    "reader": {
+      "addDocument": "新增文件",
+      "documentDialogLabel": "文件",
+      "documentTitle": "文件",
+      "documentStatus": "本機文件閱讀器",
+      "documentMeta": "{{kind}} · {{words}} 個字詞 · {{minutes}} 分鐘",
+      "voice": "語音",
+      "currentVoice": "目前語音",
+      "search": "搜尋文件",
+      "libraryItemMeta": "{{size}} · {{words}} 個字詞",
+      "libraryAriaLabel": "閱讀器資料庫",
+      "previewAriaLabel": "閱讀器預覽",
+      "empty": "尚無文件。",
+      "noMatches": "沒有相符的文件。",
+      "removeDocument": "移除文件",
+      "confirmRemoveDocument": "確認移除文件",
+      "cancelRemoveDocument": "取消移除文件",
+      "sectionLabel": "第 {{current}} 節，共 {{total}} 節",
+      "readSection": "朗讀此節",
+      "readAll": "朗讀全部",
+      "readTranscript": "朗讀",
+      "stop": "停止",
+      "speaking": "正在使用 {{voice}} 朗讀",
+      "ready": "就緒",
+      "copied": "已複製",
+      "copySection": "複製此節",
+      "loading": "正在開啟文件",
+      "emptyPreview": "選擇文件",
+      "errors": {
+        "openFailed": "無法開啟文件。",
+        "playbackFailed": "閱讀器播放失敗。",
+        "copyFailed": "無法複製文件文字。"
       }
     }
   },
@@ -2881,8 +2921,8 @@
       "localRouteHeading": "本地優先",
       "cloudRouteHeading": "雲端輔助",
       "advancedEvaluationTitle": "細化模型評估（進階）",
-      "fileTranscriptionTitle": "檔案轉錄",
-      "fileTranscriptionDetail": "放入音訊或影片進行轉錄",
+      "fileTranscriptionTitle": "閱讀器",
+      "fileTranscriptionDetail": "拖入音訊、影片或文件",
       "managementTitle": "從這些視圖管理模型",
       "managementSubtitle": "設定僅攜帶提供者路由。瀏覽、下載和交換專用目錄中的各個模型。",
       "cleanupLabel": "清理",
@@ -2912,7 +2952,7 @@
       "dictate": {
         "history": "首頁",
         "corrections": "字典",
-        "fileTranscription": "檔案轉錄"
+        "fileTranscription": "閱讀器"
       },
       "refine": {
         "writeProfiles": "寫個人資料",

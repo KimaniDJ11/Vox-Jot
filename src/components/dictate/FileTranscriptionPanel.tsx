@@ -8,12 +8,14 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
+  BookOpen,
   Captions,
   Check,
   ChevronDown,
@@ -23,8 +25,11 @@ import {
   FolderPlus,
   Layers,
   Loader2,
+  Pause,
+  Search,
   Trash2,
   Upload,
+  Volume2,
   X,
 } from "lucide-react";
 import type {
@@ -45,8 +50,20 @@ import { subtleCardClassName } from "@/components/ui/subtleCard";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { voiceAvatarGradient } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import { useSettingsSlice } from "@/hooks/useSettings";
+import {
+  listTtsVoicePresets,
+  type TtsVoicePreset,
+} from "@/lib/ttsVoicePresets";
+import { ReaderPlaybackBar } from "./reader/ReaderPlaybackBar";
+import { ReaderSearchControl } from "./reader/ReaderSearchControl";
+import { ReaderTransformTools } from "./reader/ReaderTransformTools";
+import {
+  buildReadingUnits,
+  readingUnitPageNumbers,
+} from "./reader/readerReadingUnits";
+import { useReaderPlayback } from "./reader/useReaderPlayback";
 
-type FileTranscriptionView = "file" | "folders";
+type FileTranscriptionView = "file" | "documents" | "folders";
 
 const AUDIO_VIDEO_EXTENSIONS = [
   "wav",
@@ -66,6 +83,94 @@ const AUDIO_VIDEO_EXTENSIONS = [
   "3gp",
 ];
 
+const READER_DOCUMENT_EXTENSIONS = [
+  "pdf",
+  "docx",
+  "epub",
+  "txt",
+  "text",
+  "md",
+  "markdown",
+];
+
+const readerLibraryStorageKey = "voxjot:reader-document-library:v1";
+
+type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text";
+
+type ReaderDocumentSection = {
+  index: number;
+  title: string;
+  text: string;
+};
+
+type ReaderDocumentBbox = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+};
+
+type ReaderDocumentBlock = {
+  index: number;
+  text: string;
+  kind: string;
+  bbox: ReaderDocumentBbox | null;
+};
+
+type ReaderDocumentPage = {
+  index: number;
+  width: number | null;
+  height: number | null;
+  blocks: ReaderDocumentBlock[];
+};
+
+type ReaderDocument = {
+  id: string;
+  path: string;
+  name: string;
+  kind: ReaderDocumentKind;
+  size_bytes: number;
+  source_modified_ms: number | null;
+  word_count: number;
+  page_count: number;
+  extraction_engine: string;
+  thumbnail_data_url: string | null;
+  text: string;
+  pages: ReaderDocumentPage[];
+  sections: ReaderDocumentSection[];
+};
+
+type ReaderStoredDocument = {
+  id: string;
+  path: string;
+  name: string;
+  kind: ReaderDocumentKind;
+  size_bytes: number;
+  source_modified_ms: number | null;
+  word_count: number;
+  page_count: number;
+  section_count: number;
+  extraction_engine: string;
+  thumbnail_data_url: string | null;
+  imported_at_ms: number;
+  updated_at_ms: number;
+};
+
+type ReaderLibraryItem = {
+  id: string;
+  path: string;
+  name: string;
+  kind: ReaderDocumentKind;
+  sizeBytes: number;
+  sourceModifiedMs: number | null;
+  wordCount: number;
+  pageCount: number;
+  sectionCount: number;
+  extractionEngine: string;
+  thumbnailDataUrl: string | null;
+  openedAt: number;
+};
+
 function basename(p: string): string {
   const parts = p.split(/[\\/]/);
   return parts[parts.length - 1] || p;
@@ -75,6 +180,223 @@ function stripExtension(p: string): string {
   const base = basename(p);
   const dot = base.lastIndexOf(".");
   return dot > 0 ? base.slice(0, dot) : base;
+}
+
+function extensionOf(p: string): string {
+  const base = basename(p);
+  const dot = base.lastIndexOf(".");
+  return dot > 0 ? base.slice(dot + 1).toLowerCase() : "";
+}
+
+function isReaderDocumentPath(p: string): boolean {
+  const ext = extensionOf(p);
+  return READER_DOCUMENT_EXTENSIONS.includes(ext);
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function kindLabel(kind: ReaderDocumentKind): string {
+  switch (kind) {
+    case "pdf":
+      return "PDF";
+    case "docx":
+      return "DOCX";
+    case "epub":
+      return "EPUB";
+    case "markdown":
+      return "MD";
+    case "text":
+      return "TXT";
+  }
+}
+
+function estimateReadingMinutes(wordCount: number): number {
+  return Math.max(1, Math.round(wordCount / 170));
+}
+
+function readerErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message;
+  if (typeof err === "string" && err.trim()) return err;
+  if (
+    err &&
+    typeof err === "object" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.trim()
+  ) {
+    return err.message;
+  }
+  return fallback;
+}
+
+function loadReaderLibrary(): ReaderLibraryItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(readerLibraryStorageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item): ReaderLibraryItem | null => {
+        if (
+          !item ||
+          typeof item !== "object" ||
+          typeof item.path !== "string" ||
+          typeof item.name !== "string" ||
+          typeof item.kind !== "string" ||
+          typeof item.sizeBytes !== "number" ||
+          typeof item.wordCount !== "number" ||
+          typeof item.openedAt !== "number"
+        ) {
+          return null;
+        }
+        const sectionCount =
+          typeof item.sectionCount === "number" ? item.sectionCount : 1;
+        return {
+          id: typeof item.id === "string" ? item.id : item.path,
+          path: item.path,
+          name: item.name,
+          kind: item.kind,
+          sizeBytes: item.sizeBytes,
+          sourceModifiedMs:
+            typeof item.sourceModifiedMs === "number"
+              ? item.sourceModifiedMs
+              : null,
+          wordCount: item.wordCount,
+          pageCount: typeof item.pageCount === "number" ? item.pageCount : 1,
+          sectionCount,
+          extractionEngine:
+            typeof item.extractionEngine === "string"
+              ? item.extractionEngine
+              : "unknown",
+          thumbnailDataUrl:
+            typeof item.thumbnailDataUrl === "string"
+              ? item.thumbnailDataUrl
+              : null,
+          openedAt: item.openedAt,
+        };
+      })
+      .filter((item): item is ReaderLibraryItem => item !== null)
+      .slice(0, 48);
+  } catch {
+    return [];
+  }
+}
+
+function saveReaderLibrary(items: ReaderLibraryItem[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    readerLibraryStorageKey,
+    JSON.stringify(items.slice(0, 48)),
+  );
+}
+
+function readerItemFromDocument(document: ReaderDocument): ReaderLibraryItem {
+  return {
+    id: document.id,
+    path: document.path,
+    name: document.name,
+    kind: document.kind,
+    sizeBytes: document.size_bytes,
+    sourceModifiedMs: document.source_modified_ms,
+    wordCount: document.word_count,
+    pageCount: document.page_count,
+    sectionCount: document.sections.length,
+    extractionEngine: document.extraction_engine,
+    thumbnailDataUrl: document.thumbnail_data_url,
+    openedAt: Date.now(),
+  };
+}
+
+function readerItemFromStoredDocument(
+  document: ReaderStoredDocument,
+): ReaderLibraryItem {
+  return {
+    id: document.id,
+    path: document.path,
+    name: document.name,
+    kind: document.kind,
+    sizeBytes: document.size_bytes,
+    sourceModifiedMs: document.source_modified_ms,
+    wordCount: document.word_count,
+    pageCount: document.page_count,
+    sectionCount: document.section_count,
+    extractionEngine: document.extraction_engine,
+    thumbnailDataUrl: document.thumbnail_data_url,
+    openedAt: document.updated_at_ms,
+  };
+}
+
+function upsertReaderLibraryItem(
+  items: ReaderLibraryItem[],
+  item: ReaderLibraryItem,
+): ReaderLibraryItem[] {
+  return [
+    item,
+    ...items.filter(
+      (existing) => existing.id !== item.id && existing.path !== item.path,
+    ),
+  ].slice(0, 48);
+}
+
+async function readReaderDocument(path: string): Promise<ReaderDocument> {
+  return invoke<ReaderDocument>("read_reader_document", { sourcePath: path });
+}
+
+async function listReaderDocuments(): Promise<ReaderLibraryItem[]> {
+  const documents = await invoke<ReaderStoredDocument[]>(
+    "list_reader_documents",
+  );
+  return documents.map(readerItemFromStoredDocument);
+}
+
+async function removeStoredReaderDocument(id: string): Promise<void> {
+  await invoke("remove_reader_document", { id });
+}
+
+async function speakReaderTextWithPreset(
+  text: string,
+  presetId: string | null,
+): Promise<void> {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+
+  const fallback = "Reader playback failed.";
+  if (presetId) {
+    const result = await commands.ttsSpeakWithPreset(
+      trimmed,
+      null,
+      presetId,
+      "reader_document",
+      false,
+    );
+    if (result.status === "error") {
+      throw new Error(readerErrorMessage(result.error, fallback));
+    }
+    return;
+  }
+
+  const result = await commands.ttsSpeak(
+    trimmed,
+    null,
+    null,
+    "reader_document",
+    false,
+  );
+  if (result.status === "error") {
+    throw new Error(readerErrorMessage(result.error, fallback));
+  }
 }
 
 function useSelectedSpeechAnalysisAsrModel() {
@@ -242,9 +564,16 @@ export const FileTranscriptionPanel: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isTranscriptSpeaking, setIsTranscriptSpeaking] = useState(false);
   const [view, setView] = useState<FileTranscriptionView>("file");
+  const viewRef = useRef<FileTranscriptionView>(view);
+  const [readerQuery, setReaderQuery] = useState("");
   const selectedAsrModel = useSelectedSpeechAnalysisAsrModel();
   const isRunningRef = useRef(false);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   const runTranscription = useCallback(
     async (filePath: string) => {
@@ -365,6 +694,20 @@ export const FileTranscriptionPanel: React.FC = () => {
           if (isRunningRef.current) return;
           const first = payload.paths?.[0];
           if (!first) return;
+          if (isReaderDocumentPath(first)) {
+            setView("documents");
+            window.setTimeout(() => {
+              window.dispatchEvent(
+                new CustomEvent<string>("reader-document-drop", {
+                  detail: first,
+                }),
+              );
+            }, 0);
+            return;
+          }
+          if (viewRef.current === "documents") {
+            setView("file");
+          }
           void runTranscription(first);
         }
       });
@@ -388,21 +731,52 @@ export const FileTranscriptionPanel: React.FC = () => {
     setTimeout(() => setCopyFeedback(false), 1800);
   }, [copyResult]);
 
+  const handleReadTranscript = useCallback(async () => {
+    if (!transcription.trim()) return;
+    if (isTranscriptSpeaking) {
+      const result = await commands.ttsStop();
+      if (result.status === "error") setError(result.error);
+      setIsTranscriptSpeaking(false);
+      return;
+    }
+    setError("");
+    setIsTranscriptSpeaking(true);
+    try {
+      await speakReaderTextWithPreset(transcription, null);
+    } catch (err) {
+      setError(
+        readerErrorMessage(
+          err,
+          t("dictate.reader.errors.playbackFailed", {
+            defaultValue: "Reader playback failed.",
+          }),
+        ),
+      );
+    } finally {
+      setIsTranscriptSpeaking(false);
+    }
+  }, [isTranscriptSpeaking, t, transcription]);
+
   return (
     <div className="space-y-7" aria-busy={isRunning}>
       <SettingsGroup
         noCard
         title={t("dictate.fileTranscription.title", {
-          defaultValue: "File Transcription",
+          defaultValue: "Reader",
         })}
         description={t("dictate.fileTranscription.description", {
           defaultValue:
-            "Transcribe one audio or video file, or watch folders and save transcripts automatically.",
+            "Transcribe recordings, read documents aloud, and keep watched folders local.",
         })}
         showTitle={false}
         descriptionOnlyGap="controls"
       >
-        <WatchedFoldersToolbar view={view} onViewChange={setView} />
+        <WatchedFoldersToolbar
+          view={view}
+          onViewChange={setView}
+          searchQuery={readerQuery}
+          onSearchQueryChange={setReaderQuery}
+        />
       </SettingsGroup>
 
       {view === "file" ? (
@@ -538,32 +912,57 @@ export const FileTranscriptionPanel: React.FC = () => {
                   VTT
                 </button>
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleCopy}
-                disabled={!transcription.trim() || isRunning}
-                className="gap-1.5 px-3.5 text-xs"
-              >
-                {copyFeedback ? (
-                  <>
-                    <Check size={12} aria-hidden="true" />
-                    {t("dictate.fileTranscription.copied", {
-                      defaultValue: "Copied",
-                    })}
-                  </>
-                ) : (
-                  <>
-                    <ClipboardCopy size={12} aria-hidden="true" />
-                    {t("dictate.fileTranscription.copy", {
-                      defaultValue: "Copy",
-                    })}
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReadTranscript}
+                  disabled={!transcription.trim() || isRunning}
+                  className="gap-1.5 px-3.5 text-xs"
+                >
+                  {isTranscriptSpeaking ? (
+                    <>
+                      <Pause size={12} aria-hidden="true" />
+                      {t("dictate.reader.stop", { defaultValue: "Stop" })}
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 size={12} aria-hidden="true" />
+                      {t("dictate.reader.readTranscript", {
+                        defaultValue: "Read",
+                      })}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleCopy}
+                  disabled={!transcription.trim() || isRunning}
+                  className="gap-1.5 px-3.5 text-xs"
+                >
+                  {copyFeedback ? (
+                    <>
+                      <Check size={12} aria-hidden="true" />
+                      {t("dictate.fileTranscription.copied", {
+                        defaultValue: "Copied",
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardCopy size={12} aria-hidden="true" />
+                      {t("dictate.fileTranscription.copy", {
+                        defaultValue: "Copy",
+                      })}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </>
+      ) : view === "documents" ? (
+        <ReaderDocumentsPanel query={readerQuery} />
       ) : (
         <WatchedFoldersGroup selectedAsrModel={selectedAsrModel} />
       )}
@@ -1072,11 +1471,18 @@ const addWatchFolder = async (): Promise<WatchFolderConfig | null> => {
 const WatchedFoldersToolbar: React.FC<{
   view: FileTranscriptionView;
   onViewChange: (view: FileTranscriptionView) => void;
-}> = ({ view, onViewChange }) => {
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+}> = ({ view, onViewChange, searchQuery, onSearchQueryChange }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
-  const handleAddFolder = useCallback(async () => {
+  const handlePrimaryAction = useCallback(async () => {
+    if (view === "documents") {
+      window.dispatchEvent(new Event("reader-open-document-picker"));
+      return;
+    }
+
     setBusy(true);
     try {
       const folder = await addWatchFolder();
@@ -1084,7 +1490,7 @@ const WatchedFoldersToolbar: React.FC<{
     } finally {
       setBusy(false);
     }
-  }, [onViewChange]);
+  }, [onViewChange, view]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -1092,23 +1498,31 @@ const WatchedFoldersToolbar: React.FC<{
         type="button"
         size="sm"
         variant="primary-soft"
-        onClick={handleAddFolder}
+        onClick={handlePrimaryAction}
         disabled={busy}
       >
-        {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
+        {view === "documents"
+          ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
+          : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
       </Button>
       <SegmentedControl<FileTranscriptionView>
         value={view}
         onChange={onViewChange}
         layoutId="file-transcription-view-toggle"
         ariaLabel={t("dictate.fileTranscription.view.ariaLabel", {
-          defaultValue: "File transcription view",
+          defaultValue: "Reader view",
         })}
         items={[
           {
             value: "file",
             label: t("dictate.fileTranscription.view.file", {
-              defaultValue: "File",
+              defaultValue: "Transcribe",
+            }),
+          },
+          {
+            value: "documents",
+            label: t("dictate.fileTranscription.view.documents", {
+              defaultValue: "Documents",
             }),
           },
           {
@@ -1119,17 +1533,570 @@ const WatchedFoldersToolbar: React.FC<{
           },
         ]}
       />
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
+        {view === "documents" ? (
+          <ReaderSearchControl
+            query={searchQuery}
+            onQueryChange={onSearchQueryChange}
+          />
+        ) : null}
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => void openModelHub("analysis", { scope: "analysis" })}
+          onClick={() => {
+            if (view === "documents") {
+              void openModelHub("tts");
+              return;
+            }
+            void openModelHub("analysis", { scope: "analysis" });
+          }}
         >
           <Layers className="h-3.5 w-3.5" />
           {t("listen.createVoices.models", { defaultValue: "Models" })}
         </Button>
       </div>
+    </div>
+  );
+};
+
+const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
+  const { t } = useTranslation();
+  const { tts_active_preset_id: activeTtsPresetId } = useSettingsSlice([
+    "tts_active_preset_id",
+  ] as const);
+  const [library, setLibrary] = useState<ReaderLibraryItem[]>(() =>
+    loadReaderLibrary(),
+  );
+  const [activeDocument, setActiveDocument] = useState<ReaderDocument | null>(
+    null,
+  );
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [skipHeadersFooters, setSkipHeadersFooters] = useState(true);
+  const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(
+    null,
+  );
+
+  const persistLibrary = useCallback((items: ReaderLibraryItem[]) => {
+    setLibrary(items);
+    saveReaderLibrary(items);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    listReaderDocuments()
+      .then((items) => {
+        if (!cancelled && items.length > 0) {
+          persistLibrary(items);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load Reader document library:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [persistLibrary]);
+
+  const refreshPresets = useCallback(async () => {
+    try {
+      const nextPresets = await listTtsVoicePresets();
+      const normalizedActivePresetId =
+        typeof activeTtsPresetId === "string" && activeTtsPresetId.trim()
+          ? activeTtsPresetId
+          : null;
+      setPresets(nextPresets);
+      setSelectedPresetId((current) => {
+        if (current && nextPresets.some((preset) => preset.id === current)) {
+          return current;
+        }
+        if (
+          normalizedActivePresetId &&
+          nextPresets.some((preset) => preset.id === normalizedActivePresetId)
+        ) {
+          return normalizedActivePresetId;
+        }
+        return nextPresets[0]?.id ?? null;
+      });
+    } catch (err) {
+      console.warn("Failed to load Reader voice presets:", err);
+      setPresets([]);
+      setSelectedPresetId(null);
+    }
+  }, [activeTtsPresetId]);
+
+  useEffect(() => {
+    void refreshPresets();
+  }, [refreshPresets]);
+
+  const loadDocument = useCallback(
+    async (path: string) => {
+      setIsLoading(true);
+      setError("");
+      try {
+        const document = await readReaderDocument(path);
+        setActiveDocument(document);
+        setActiveSectionIndex(0);
+        persistLibrary(
+          upsertReaderLibraryItem(library, readerItemFromDocument(document)),
+        );
+      } catch (err) {
+        setError(
+          readerErrorMessage(
+            err,
+            t("dictate.reader.errors.openFailed", {
+              defaultValue: "Failed to open document.",
+            }),
+          ),
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [library, persistLibrary, t],
+  );
+
+  const pickDocument = useCallback(async () => {
+    const filePath = await open({
+      multiple: false,
+      filters: [
+        {
+          name: t("dictate.reader.documentDialogLabel", {
+            defaultValue: "Documents",
+          }),
+          extensions: READER_DOCUMENT_EXTENSIONS,
+        },
+      ],
+    });
+    if (!filePath || Array.isArray(filePath)) return;
+    await loadDocument(filePath);
+  }, [loadDocument, t]);
+
+  useEffect(() => {
+    const handleDrop = (event: Event) => {
+      const path = (event as CustomEvent<string>).detail;
+      if (path) void loadDocument(path);
+    };
+    const handlePicker = () => {
+      void pickDocument();
+    };
+    window.addEventListener("reader-document-drop", handleDrop);
+    window.addEventListener("reader-open-document-picker", handlePicker);
+    return () => {
+      window.removeEventListener("reader-document-drop", handleDrop);
+      window.removeEventListener("reader-open-document-picker", handlePicker);
+    };
+  }, [loadDocument, pickDocument]);
+
+  const filteredLibrary = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return library;
+    return library.filter((item) =>
+      `${item.name} ${kindLabel(item.kind)} ${item.path}`
+        .toLowerCase()
+        .includes(normalized),
+    );
+  }, [library, query]);
+
+  const currentSection =
+    activeDocument?.sections[activeSectionIndex] ??
+    activeDocument?.sections[0] ??
+    null;
+  const selectedPreset =
+    selectedPresetId === null
+      ? null
+      : (presets.find((preset) => preset.id === selectedPresetId) ?? null);
+
+  const readingUnits = useMemo(
+    () =>
+      activeDocument
+        ? buildReadingUnits(activeDocument, { skipHeadersFooters })
+        : [],
+    [activeDocument, skipHeadersFooters],
+  );
+
+  const speakUnit = useCallback(
+    (text: string) => speakReaderTextWithPreset(text, selectedPresetId),
+    [selectedPresetId],
+  );
+  const stopReaderAudio = useCallback(async () => {
+    await commands.ttsStop();
+  }, []);
+  const handlePlaybackError = useCallback(
+    (err: unknown) => {
+      setError(
+        readerErrorMessage(
+          err,
+          t("dictate.reader.errors.playbackFailed", {
+            defaultValue: "Reader playback failed.",
+          }),
+        ),
+      );
+    },
+    [t],
+  );
+
+  const player = useReaderPlayback({
+    units: readingUnits,
+    speak: speakUnit,
+    stopAudio: stopReaderAudio,
+    onError: handlePlaybackError,
+  });
+
+  const currentReadingUnit = readingUnits[player.index] ?? null;
+  const totalReaderPages =
+    activeDocument?.page_count ?? readingUnitPageNumbers(readingUnits).length;
+  const playbackPageLabel =
+    currentReadingUnit && currentReadingUnit.pageIndex !== null
+      ? t("dictate.reader.player.pageLabel", {
+          defaultValue: "Page {{current}} of {{total}}",
+          current: currentReadingUnit.pageIndex + 1,
+          total: totalReaderPages,
+        })
+      : null;
+
+  const copyDocumentText = useCallback(async () => {
+    const text = currentSection?.text ?? activeDocument?.text ?? "";
+    if (!text.trim()) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback(true);
+      window.setTimeout(() => setCopyFeedback(false), 1600);
+    } catch {
+      setError(
+        t("dictate.reader.errors.copyFailed", {
+          defaultValue: "Failed to copy document text.",
+        }),
+      );
+    }
+  }, [activeDocument?.text, currentSection?.text, t]);
+
+  const removeLibraryItem = useCallback(
+    async (item: ReaderLibraryItem) => {
+      try {
+        await removeStoredReaderDocument(item.id);
+      } catch (err) {
+        console.warn("Failed to remove Reader document from app cache:", err);
+      }
+      const next = library.filter(
+        (existing) => existing.id !== item.id && existing.path !== item.path,
+      );
+      persistLibrary(next);
+      setConfirmingRemoveId(null);
+      if (
+        activeDocument?.id === item.id ||
+        activeDocument?.path === item.path
+      ) {
+        setActiveDocument(null);
+        setActiveSectionIndex(0);
+      }
+    },
+    [activeDocument?.id, activeDocument?.path, library, persistLibrary],
+  );
+
+  return (
+    <div className="space-y-5">
+      <section
+        className="min-w-0 space-y-3"
+        aria-label={t("dictate.reader.libraryAriaLabel", {
+          defaultValue: "Reader library",
+        })}
+      >
+        <div className="max-h-[560px] overflow-y-auto pr-1">
+          {filteredLibrary.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
+              {library.length === 0
+                ? t("dictate.reader.empty", {
+                    defaultValue: "No documents yet.",
+                  })
+                : t("dictate.reader.noMatches", {
+                    defaultValue: "No matching documents.",
+                  })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              {filteredLibrary.map((item) => {
+                const selected =
+                  activeDocument?.id === item.id ||
+                  activeDocument?.path === item.path;
+                return (
+                  <div
+                    key={item.id}
+                    className={[
+                      "group relative flex flex-col overflow-hidden rounded-xl border bg-[var(--surface-muted,var(--bg))] transition-colors",
+                      selected
+                        ? "border-[var(--accent)] ring-1 ring-[var(--accent)]"
+                        : "border-[var(--border)] hover:border-[var(--accent)]",
+                    ].join(" ")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => void loadDocument(item.path)}
+                      title={item.name}
+                      className="relative block aspect-[3/4] w-full overflow-hidden bg-[var(--card)]"
+                    >
+                      {item.thumbnailDataUrl ? (
+                        <img
+                          src={item.thumbnailDataUrl}
+                          alt=""
+                          className="h-full w-full object-cover object-top"
+                          draggable={false}
+                        />
+                      ) : (
+                        <span
+                          className="flex h-full w-full items-center justify-center text-lg font-bold text-[var(--accent)]"
+                          aria-hidden="true"
+                        >
+                          {kindLabel(item.kind)}
+                        </span>
+                      )}
+                      <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                        {t("dictate.reader.libraryCardBadge", {
+                          defaultValue: "{{kind}} · {{size}}",
+                          kind: kindLabel(item.kind),
+                          size: formatBytes(item.sizeBytes),
+                        })}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1.5 px-2 py-2">
+                      <FileText
+                        size={14}
+                        className="shrink-0 text-[var(--accent)]"
+                        aria-hidden="true"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void loadDocument(item.path)}
+                        title={item.name}
+                        className={[
+                          "min-w-0 flex-1 truncate text-left text-xs font-medium",
+                          selected
+                            ? "text-[var(--accent)]"
+                            : "text-[var(--text)]",
+                        ].join(" ")}
+                      >
+                        {item.name}
+                      </button>
+                      {confirmingRemoveId === item.id ? (
+                        <span className="flex shrink-0 items-center gap-0.5">
+                          <ActionIconButton
+                            type="button"
+                            tone="confirm"
+                            title={t("dictate.reader.confirmRemoveDocument", {
+                              defaultValue: "Confirm remove document",
+                            })}
+                            aria-label={t(
+                              "dictate.reader.confirmRemoveDocument",
+                              {
+                                defaultValue: "Confirm remove document",
+                              },
+                            )}
+                            onClick={() => void removeLibraryItem(item)}
+                          >
+                            <Trash2 size={13} aria-hidden="true" />
+                          </ActionIconButton>
+                          <ActionIconButton
+                            type="button"
+                            title={t("dictate.reader.cancelRemoveDocument", {
+                              defaultValue: "Cancel remove document",
+                            })}
+                            aria-label={t(
+                              "dictate.reader.cancelRemoveDocument",
+                              {
+                                defaultValue: "Cancel remove document",
+                              },
+                            )}
+                            onClick={() => setConfirmingRemoveId(null)}
+                          >
+                            <X size={13} aria-hidden="true" />
+                          </ActionIconButton>
+                        </span>
+                      ) : (
+                        <ActionIconButton
+                          type="button"
+                          tone="danger"
+                          className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                          title={t("dictate.reader.removeDocument", {
+                            defaultValue: "Remove document",
+                          })}
+                          aria-label={t("dictate.reader.removeDocument", {
+                            defaultValue: "Remove document",
+                          })}
+                          onClick={() => setConfirmingRemoveId(item.id)}
+                        >
+                          <Trash2 size={13} aria-hidden="true" />
+                        </ActionIconButton>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section
+        className="min-w-0 space-y-4"
+        aria-label={t("dictate.reader.previewAriaLabel", {
+          defaultValue: "Reader preview",
+        })}
+      >
+        {activeDocument && currentSection ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  {t("dictate.reader.sectionLabel", {
+                    defaultValue: "Section {{current}} of {{total}}",
+                    current: activeSectionIndex + 1,
+                    total: activeDocument.sections.length,
+                  })}
+                </div>
+                <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
+                  {currentSection.title}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(150px,0.42fr)_minmax(0,1fr)]">
+              <div className="max-h-[360px] space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-1">
+                {activeDocument.sections.map((section) => {
+                  const selected = section.index === activeSectionIndex;
+                  return (
+                    <button
+                      key={section.index}
+                      type="button"
+                      onClick={() => setActiveSectionIndex(section.index)}
+                      className={[
+                        "block w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors",
+                        selected
+                          ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                          : "text-[var(--muted)] hover:bg-[var(--input)] hover:text-[var(--text)]",
+                      ].join(" ")}
+                    >
+                      <span className="block truncate">{section.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="min-h-[360px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-[var(--text)]">
+                  {currentSection.text}
+                </pre>
+              </div>
+            </div>
+
+            <ReaderPlaybackBar
+              status={player.status}
+              index={player.index}
+              total={player.total}
+              pageLabel={playbackPageLabel}
+              currentText={currentReadingUnit?.text ?? ""}
+              voiceLabel={selectedPreset?.label ?? null}
+              onToggle={() => {
+                setError("");
+                player.toggle();
+              }}
+              onStop={player.stop}
+              onPrev={player.prev}
+              onNext={player.next}
+              onSeek={player.seek}
+              skipHeadersFooters={skipHeadersFooters}
+              onToggleSkip={setSkipHeadersFooters}
+              presets={presets}
+              selectedPresetId={selectedPresetId}
+              onSelectPreset={setSelectedPresetId}
+            />
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={copyDocumentText}
+                className="gap-1.5 text-xs"
+              >
+                {copyFeedback ? (
+                  <Check size={13} aria-hidden="true" />
+                ) : (
+                  <ClipboardCopy size={13} aria-hidden="true" />
+                )}
+                {copyFeedback
+                  ? t("dictate.reader.copied", { defaultValue: "Copied" })
+                  : t("dictate.reader.copySection", {
+                      defaultValue: "Copy section",
+                    })}
+              </Button>
+            </div>
+
+            <ReaderTransformTools
+              documentText={activeDocument.text}
+              onListen={(text) => {
+                setError("");
+                player.stop();
+                void speakReaderTextWithPreset(text, selectedPresetId).catch(
+                  handlePlaybackError,
+                );
+              }}
+            />
+          </>
+        ) : isLoading ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center">
+            <Loader2
+              size={24}
+              className="animate-spin text-[var(--accent)]"
+              aria-hidden="true"
+            />
+            <div className="mt-3 text-sm font-semibold text-[var(--text)]">
+              {t("dictate.reader.loading", {
+                defaultValue: "Opening document",
+              })}
+            </div>
+          </div>
+        ) : library.length === 0 ? (
+          <button
+            type="button"
+            onClick={pickDocument}
+            className="flex min-h-[360px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center transition-colors hover:border-[var(--accent)]"
+          >
+            <BookOpen
+              size={28}
+              className="text-[var(--muted)]"
+              aria-hidden="true"
+            />
+            <div className="mt-3 text-sm font-semibold text-[var(--text)]">
+              {t("dictate.reader.emptyPreviewTitle", {
+                defaultValue: "Add a document to start reading",
+              })}
+            </div>
+            <div className="mt-1 text-xs text-[var(--muted)]">
+              {t("dictate.reader.emptyPreviewHint", {
+                defaultValue: "PDF, DOCX, EPUB, TXT, or Markdown",
+              })}
+            </div>
+          </button>
+        ) : null}
+      </section>
+
+      {error ? (
+        <div
+          className="flex items-start gap-2.5 rounded-xl bg-[color-mix(in_srgb,var(--danger),transparent_94%)] px-4 py-3 text-xs"
+          role="alert"
+        >
+          <AlertCircle
+            size={14}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-[var(--danger)]"
+          />
+          <div className="min-w-0 break-words text-[var(--text)]">{error}</div>
+        </div>
+      ) : null}
     </div>
   );
 };

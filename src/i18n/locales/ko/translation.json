@@ -195,7 +195,7 @@
       "permissions": "권한",
       "setup": "모델",
       "refine": "구체화",
-      "modes": "Modes",
+      "modes": "모드",
       "learn": "첫 번째 받아쓰기",
       "progress": "온보딩 진행률"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "선택적 앱 조정",
+      "title": "앱에서 받아쓰기 모드 만들기",
+      "description": "Vox Jot은 이 Mac에 이미 있는 앱을 위한 시작 모드를 설정할 수 있습니다. 각 모드는 나중에 설정에서 편집하거나 삭제할 수 있습니다.",
+      "scanning": "설치된 앱을 스캔하는 중...",
+      "detected": "시작 모드 {{count}}개 발견",
+      "loading": "일반적인 글쓰기 워크플로에 맞는 앱을 찾는 중입니다.",
+      "refreshApps": "설치된 앱 새로 고침",
+      "emptyTitle": "일치하는 시작 앱이 없습니다",
+      "emptyDescription": "지금 계속하고 나중에 설정에서 사용자 지정 받아쓰기 모드를 만들 수 있습니다.",
+      "cardTitle": "시작 모드",
+      "cardDescription": "모드는 현재 앞에 있는 앱에 맞춰 저장된 출력 옵션을 적용합니다.",
+      "skipCta": "건너뛰기",
+      "continueCta": "계속",
+      "createCta": "선택한 모드 만들기",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "받아쓰기 모드를 만들 수 없습니다. 다시 시도하거나 지금은 건너뛰세요."
       }
     },
     "welcome": {
@@ -571,7 +571,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "파일 전사가 받아쓰기 → 파일 전사로 이동되었습니다. 오디오 또는 비디오 파일을 드래그하여 텍스트로 변환하세요."
+        "movedHint": "리더가 받아쓰기 → 리더로 이동했습니다. 오디오, 비디오 또는 문서 파일을 끌어오세요."
       }
     },
     "sound": {
@@ -798,7 +798,9 @@
           "title": "API 키",
           "description": "선택한 공급자의 API 키입니다.",
           "placeholder": "sk-...",
-          "savedPlaceholder": "시스템 키체인에 저장되었습니다. 바꾸려면 새 값을 입력하세요."
+          "savedPlaceholder": "시스템 키체인에 저장되었습니다. 바꾸려면 새 값을 입력하세요.",
+          "getKeyLink": "{{provider}} API 키 받기",
+          "accountNote": "브라우저에서 {{provider}}을(를) 엽니다. 키를 생성하려면 무료 계정을 만들어야 할 수 있습니다."
         },
         "model": {
           "title": "모델",
@@ -1196,7 +1198,7 @@
       "title": "사전",
       "description": "Vox Jot가 스크립트를 작성하는 방식을 결정하는 단어, 철자 및 학습된 수정 사항을 관리하세요.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "파일 전사",
+        "sectionTitle": "리더 전사",
         "label": "사전 및 학습된 교정 적용",
         "description": "실시간 받아쓰기와 마찬가지로 파일 기록에 개인 사전과 교정 저장소를 사용하세요. 원시 음성-텍스트 출력을 유지하려면 끄십시오."
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "파일 전사",
+      "title": "리더",
       "dropHint": "여기에 오디오 또는 비디오 파일을 드래그 앤 드롭하세요.",
       "orLabel": "또는",
       "pickFile": "파일 선택",
@@ -2217,7 +2219,7 @@
       "exportSrt": ".srt 저장",
       "exportVtt": ".vtt 저장",
       "exportSrtUnavailable": "이 엔진은 타임스탬프를 제공하지 않습니다. SRT/VTT 내보내기를 위해 Whisper 또는 Parakeet로 전환하세요.",
-      "description": "하나의 오디오 또는 비디오 파일을 기록하거나 폴더를 보고 자동으로 기록을 저장합니다."
+      "description": "녹음을 전사하고 문서를 소리 내어 읽으며 감시 폴더를 로컬에 유지합니다."
     },
     "watchFolders": {
       "title": "감시 폴더",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "감시 중인 폴더 없음",
         "missing": "폴더 누락됨",
         "paused": "일시 중지됨"
+      }
+    },
+    "reader": {
+      "addDocument": "문서 추가",
+      "documentDialogLabel": "문서",
+      "documentTitle": "문서",
+      "documentStatus": "로컬 문서 리더",
+      "documentMeta": "{{kind}} · {{words}}단어 · {{minutes}}분",
+      "voice": "음성",
+      "currentVoice": "현재 음성",
+      "search": "문서 검색",
+      "libraryItemMeta": "{{size}} · {{words}}단어",
+      "libraryAriaLabel": "리더 라이브러리",
+      "previewAriaLabel": "리더 미리보기",
+      "empty": "아직 문서가 없습니다.",
+      "noMatches": "일치하는 문서가 없습니다.",
+      "removeDocument": "문서 제거",
+      "confirmRemoveDocument": "문서 제거 확인",
+      "cancelRemoveDocument": "문서 제거 취소",
+      "sectionLabel": "섹션 {{current}}/{{total}}",
+      "readSection": "섹션 읽기",
+      "readAll": "전체 읽기",
+      "readTranscript": "읽기",
+      "stop": "중지",
+      "speaking": "{{voice}} 음성으로 읽는 중",
+      "ready": "준비됨",
+      "copied": "복사됨",
+      "copySection": "섹션 복사",
+      "loading": "문서를 여는 중",
+      "emptyPreview": "문서 선택",
+      "errors": {
+        "openFailed": "문서를 열지 못했습니다.",
+        "playbackFailed": "리더 재생에 실패했습니다.",
+        "copyFailed": "문서 텍스트를 복사하지 못했습니다."
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "로컬 우선",
       "cloudRouteHeading": "클라우드 지원",
       "advancedEvaluationTitle": "모델 평가 구체화(고급)",
-      "fileTranscriptionTitle": "파일 전사",
-      "fileTranscriptionDetail": "텍스트로 변환할 오디오 또는 비디오를 추가하세요.",
+      "fileTranscriptionTitle": "리더",
+      "fileTranscriptionDetail": "오디오, 비디오 또는 문서를 놓기",
       "managementTitle": "이 보기에서 모델을 관리하세요",
       "managementSubtitle": "설정에는 공급자 라우팅만 전달됩니다. 전용 카탈로그에서 개별 모델을 찾아보고, 다운로드하고, 교환하세요.",
       "cleanupLabel": "정리",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "홈",
         "corrections": "사전",
-        "fileTranscription": "파일 전사"
+        "fileTranscription": "리더"
       },
       "refine": {
         "writeProfiles": "프로필 작성",

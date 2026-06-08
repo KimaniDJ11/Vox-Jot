@@ -730,25 +730,53 @@ impl TtsManager {
         None
     }
 
+    fn managed_runtime_model_required_files(
+        definition: &ManagedRuntimeModelDefinition,
+    ) -> &'static [&'static str] {
+        match definition.model_id {
+            "supertonic-3" => &[
+                "config.json",
+                "onnx/duration_predictor.onnx",
+                "onnx/text_encoder.onnx",
+                "onnx/tts.json",
+                "onnx/unicode_indexer.json",
+                "onnx/vector_estimator.onnx",
+                "onnx/vocoder.onnx",
+                "voice_styles/M1.json",
+                "voice_styles/F1.json",
+            ],
+            _ => &[],
+        }
+    }
+
+    fn managed_runtime_model_root_ready(
+        definition: &ManagedRuntimeModelDefinition,
+        root: &Path,
+    ) -> bool {
+        if !root.exists() {
+            return false;
+        }
+
+        let required_files = Self::managed_runtime_model_required_files(definition);
+        if required_files.is_empty() {
+            return root
+                .read_dir()
+                .map(|mut entries| entries.next().is_some())
+                .unwrap_or(false);
+        }
+
+        required_files.iter().all(|relative| root.join(relative).exists())
+    }
+
     fn managed_runtime_model_installed(&self, definition: &ManagedRuntimeModelDefinition) -> bool {
         let install_dir = self.managed_runtime_model_install_dir(definition);
         let resolved = resolve_extracted_root(&install_dir).unwrap_or(install_dir);
-        if resolved.exists()
-            && resolved
-                .read_dir()
-                .map(|mut entries| entries.next().is_some())
-                .unwrap_or(false)
-        {
+        if Self::managed_runtime_model_root_ready(definition, &resolved) {
             return true;
         }
 
         self.managed_runtime_model_source_dir(definition)
-            .and_then(|source_dir| {
-                source_dir
-                    .read_dir()
-                    .ok()
-                    .map(|mut entries| entries.next().is_some())
-            })
+            .map(|source_dir| Self::managed_runtime_model_root_ready(definition, &source_dir))
             .unwrap_or(false)
     }
 
@@ -3162,9 +3190,7 @@ impl TtsManager {
         model_id: &str,
         profile_id: Option<&str>,
     ) -> Result<(), String> {
-        if provider_is_mlx_audio(provider_id)
-            && self.sidecar_backend() == Some(SidecarBackend::MlxAudio)
-        {
+        if provider_is_mlx_audio(provider_id) {
             return Ok(());
         }
 
@@ -3237,9 +3263,7 @@ impl TtsManager {
         provider_id: &str,
         model_id: Option<&str>,
     ) -> Result<Vec<VoiceInfo>, String> {
-        if provider_is_mlx_audio(provider_id)
-            && self.sidecar_backend() == Some(SidecarBackend::MlxAudio)
-        {
+        if provider_is_mlx_audio(provider_id) {
             return Ok(Vec::new());
         }
 

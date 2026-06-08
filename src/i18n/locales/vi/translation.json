@@ -195,7 +195,7 @@
       "permissions": "Quyền",
       "setup": "người mẫu",
       "refine": "Tinh chỉnh",
-      "modes": "Modes",
+      "modes": "Chế độ",
       "learn": "Đọc chính tả đầu tiên",
       "progress": "Tiến trình thiết lập ban đầu"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "Tinh chỉnh ứng dụng tùy chọn",
+      "title": "Tạo Chế độ đọc chính tả từ ứng dụng của bạn",
+      "description": "Vox Jot có thể thiết lập các chế độ khởi đầu cho những ứng dụng đã có trên máy Mac này. Bạn có thể chỉnh sửa hoặc xóa từng chế độ sau trong Cài đặt.",
+      "scanning": "Đang quét ứng dụng đã cài đặt...",
+      "detected": "Tìm thấy {{count}} chế độ khởi đầu",
+      "loading": "Đang tìm các ứng dụng phù hợp với quy trình viết phổ biến.",
+      "refreshApps": "Làm mới ứng dụng đã cài đặt",
+      "emptyTitle": "Không tìm thấy ứng dụng khởi đầu phù hợp",
+      "emptyDescription": "Bạn có thể tiếp tục ngay và tạo Chế độ đọc chính tả tùy chỉnh sau trong Cài đặt.",
+      "cardTitle": "Chế độ khởi đầu",
+      "cardDescription": "Chế độ khớp với ứng dụng phía trước và áp dụng các tùy chọn đầu ra đã lưu.",
+      "skipCta": "Bỏ qua",
+      "continueCta": "Tiếp tục",
+      "createCta": "Tạo các chế độ đã chọn",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "Không thể tạo Chế độ đọc chính tả. Hãy thử lại hoặc tạm thời bỏ qua."
       }
     },
     "welcome": {
@@ -599,7 +599,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "Phiên âm tệp được chuyển sang Đọc chính tả → Phiên âm tệp. Kéo tệp âm thanh hoặc video vào để chép lại."
+        "movedHint": "Trình đọc đã chuyển đến Đọc chính tả → Trình đọc. Kéo tệp âm thanh, video hoặc tài liệu vào."
       }
     },
     "sound": {
@@ -798,7 +798,9 @@
           "title": "Khóa API",
           "description": "Khóa API cho nhà cung cấp đã chọn.",
           "placeholder": "sk-...",
-          "savedPlaceholder": "Đã lưu trong chuỗi khóa hệ thống. Nhập giá trị mới để thay thế."
+          "savedPlaceholder": "Đã lưu trong chuỗi khóa hệ thống. Nhập giá trị mới để thay thế.",
+          "getKeyLink": "Lấy khóa API {{provider}} của bạn",
+          "accountNote": "Mở {{provider}} trong trình duyệt của bạn. Bạn có thể cần tạo tài khoản miễn phí để tạo khóa."
         },
         "model": {
           "title": "người mẫu",
@@ -1196,7 +1198,7 @@
       "title": "từ điển",
       "description": "Quản lý các từ, cách viết và các sửa lỗi đã học để định hình cách Vox Jot phiên âm cho bạn.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "Phiên âm tập tin",
+        "sectionTitle": "Phiên âm trong trình đọc",
         "label": "Áp dụng từ điển và sửa lỗi đã học",
         "description": "Sử dụng từ điển cá nhân của bạn và kho chỉnh sửa trên bản chép lại tệp, giống như đọc chính tả trực tiếp. Tắt để giữ nguyên đầu ra giọng nói thành văn bản."
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "Phiên âm tập tin",
+      "title": "Trình đọc",
       "dropHint": "Kéo và thả tệp âm thanh hoặc video vào đây",
       "orLabel": "hoặc",
       "pickFile": "Chọn tệp",
@@ -2217,7 +2219,7 @@
       "exportSrt": "Lưu .srt",
       "exportVtt": "Lưu .vtt",
       "exportSrtUnavailable": "Công cụ này không cung cấp dấu thời gian. Chuyển sang Whisper hoặc Parakeet để xuất SRT/VTT.",
-      "description": "Phiên âm một tệp âm thanh hoặc video hoặc xem các thư mục và lưu bản ghi tự động."
+      "description": "Phiên âm bản ghi, đọc to tài liệu và giữ các thư mục được theo dõi ở cục bộ."
     },
     "watchFolders": {
       "title": "Thư mục đã xem",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "Không có thư mục đang theo dõi",
         "missing": "Thiếu thư mục",
         "paused": "Đã tạm dừng"
+      }
+    },
+    "reader": {
+      "addDocument": "Thêm tài liệu",
+      "documentDialogLabel": "Tài liệu",
+      "documentTitle": "Tài liệu",
+      "documentStatus": "Trình đọc tài liệu cục bộ",
+      "documentMeta": "{{kind}} · {{words}} từ · {{minutes}} phút",
+      "voice": "Giọng đọc",
+      "currentVoice": "Giọng hiện tại",
+      "search": "Tìm tài liệu",
+      "libraryItemMeta": "{{size}} · {{words}} từ",
+      "libraryAriaLabel": "Thư viện trình đọc",
+      "previewAriaLabel": "Bản xem trước trình đọc",
+      "empty": "Chưa có tài liệu.",
+      "noMatches": "Không có tài liệu phù hợp.",
+      "removeDocument": "Gỡ tài liệu",
+      "confirmRemoveDocument": "Xác nhận gỡ tài liệu",
+      "cancelRemoveDocument": "Hủy gỡ tài liệu",
+      "sectionLabel": "Phần {{current}} trên {{total}}",
+      "readSection": "Đọc phần này",
+      "readAll": "Đọc tất cả",
+      "readTranscript": "Đọc",
+      "stop": "Dừng",
+      "speaking": "Đang đọc bằng {{voice}}",
+      "ready": "Sẵn sàng",
+      "copied": "Đã sao chép",
+      "copySection": "Sao chép phần",
+      "loading": "Đang mở tài liệu",
+      "emptyPreview": "Chọn một tài liệu",
+      "errors": {
+        "openFailed": "Không mở được tài liệu.",
+        "playbackFailed": "Phát trình đọc không thành công.",
+        "copyFailed": "Không sao chép được văn bản tài liệu."
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "Ưu tiên địa phương",
       "cloudRouteHeading": "Hỗ trợ đám mây",
       "advancedEvaluationTitle": "Tinh chỉnh đánh giá mô hình (nâng cao)",
-      "fileTranscriptionTitle": "Phiên âm tập tin",
-      "fileTranscriptionDetail": "Thả âm thanh hoặc video để chép lời",
+      "fileTranscriptionTitle": "Trình đọc",
+      "fileTranscriptionDetail": "Thả âm thanh, video hoặc tài liệu",
       "managementTitle": "Quản lý mô hình từ các chế độ xem này",
       "managementSubtitle": "Cài đặt chỉ mang theo định tuyến của nhà cung cấp. Duyệt, tải xuống và trao đổi các mô hình riêng lẻ trong danh mục chuyên dụng.",
       "cleanupLabel": "Dọn dẹp",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "Trang chủ",
         "corrections": "từ điển",
-        "fileTranscription": "Phiên âm tập tin"
+        "fileTranscription": "Trình đọc"
       },
       "refine": {
         "writeProfiles": "Viết hồ sơ",

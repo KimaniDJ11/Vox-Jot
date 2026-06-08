@@ -1568,6 +1568,7 @@ const BRANDS: Record<string, BrandConfig> = {
   tencent: { bg: "#2563EB", fg: "#FFFFFF", letter: "T", mark: TencentMark },
   groq: { bg: "#F55036", fg: "#FFFFFF", letter: "G", mark: GroqMark },
   cerebras: { bg: "#0F172A", fg: "#FFFFFF", letter: "C", mark: CerebrasMark },
+  modelscope: { bg: "#5B4FE0", fg: "#FFFFFF", letter: "MS" },
   falcon: { bg: "#6D28D9", fg: "#FFFFFF", letter: "F", mark: FalconMark },
   ibm: { bg: "#0F62FE", fg: "#FFFFFF", letter: "IBM", mark: IbmMark },
   openrouter: {
@@ -1834,6 +1835,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   anthropic: "anthropic",
   groq: "groq",
   cerebras: "cerebras",
+  modelscope: "modelscope",
   lmstudio: "lmstudio",
   custom: "custom",
   huggingface: "huggingface",
@@ -2200,6 +2202,7 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   firered: "FireRedASR",
   supertonic: "Supertonic",
   ollama: "Ollama",
+  modelscope: "ModelScope",
 };
 
 export function providerDisplayName(providerId: string): string {

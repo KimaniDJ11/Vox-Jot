@@ -195,7 +195,7 @@
       "permissions": "Uprawnienia",
       "setup": "Modelka",
       "refine": "Udoskonalaj",
-      "modes": "Modes",
+      "modes": "Tryby",
       "learn": "Pierwsze dyktando",
       "progress": "Postęp konfiguracji"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "Opcjonalne dostrojenie aplikacji",
+      "title": "Utwórz tryby dyktowania z aplikacji",
+      "description": "Vox Jot może skonfigurować tryby startowe dla aplikacji już zainstalowanych na tym Macu. Każdy tryb można później edytować lub usunąć w Ustawieniach.",
+      "scanning": "Skanowanie zainstalowanych aplikacji...",
+      "detected": "Znaleziono {{count}} trybów startowych",
+      "loading": "Wyszukiwanie aplikacji pasujących do typowych procesów pisania.",
+      "refreshApps": "Odśwież zainstalowane aplikacje",
+      "emptyTitle": "Nie znaleziono pasujących aplikacji startowych",
+      "emptyDescription": "Możesz teraz kontynuować i później utworzyć własne tryby dyktowania w Ustawieniach.",
+      "cardTitle": "Tryby startowe",
+      "cardDescription": "Tryby dopasowują się do aktywnej aplikacji i stosują zapisane opcje wyjścia.",
+      "skipCta": "Pomiń",
+      "continueCta": "Kontynuuj",
+      "createCta": "Utwórz wybrane tryby",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "Nie udało się utworzyć trybów dyktowania. Spróbuj ponownie albo pomiń na razie."
       }
     },
     "welcome": {
@@ -599,7 +599,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "Transkrypcja pliku została przeniesiona do Dyktuj → Transkrypcja pliku. Przeciągnij plik audio lub wideo, aby go transkrybować."
+        "movedHint": "Czytnik przeniesiono do Dyktowanie → Czytnik. Przeciągnij plik audio, wideo lub dokument."
       }
     },
     "sound": {
@@ -798,7 +798,9 @@
           "title": "Klucz API",
           "description": "Klucz API dla wybranego dostawcy.",
           "placeholder": "sk-...",
-          "savedPlaceholder": "Zapisano w pęku kluczy systemu. Wprowadź nową wartość, aby ją zastąpić."
+          "savedPlaceholder": "Zapisano w pęku kluczy systemu. Wprowadź nową wartość, aby ją zastąpić.",
+          "getKeyLink": "Uzyskaj klucz API {{provider}}",
+          "accountNote": "Otwiera {{provider}} w przeglądarce. Aby wygenerować klucz, może być konieczne utworzenie bezpłatnego konta."
         },
         "model": {
           "title": "Modelka",
@@ -1196,7 +1198,7 @@
       "title": "Słownik",
       "description": "Zarządzaj słowami, pisownią i wyuczonymi poprawkami, które kształtują sposób, w jaki Vox Jot wykonuje dla Ciebie transkrypcję.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "Transkrypcja pliku",
+        "sectionTitle": "Transkrypcja czytnika",
         "label": "Zastosuj słownik i wyuczone poprawki",
         "description": "Korzystaj ze swojego osobistego słownika i magazynu poprawek w transkrypcjach plików, tak samo jak w przypadku dyktowania na żywo. Wyłącz, aby zachować surową konwersję mowy na tekst."
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "Transkrypcja pliku",
+      "title": "Czytnik",
       "dropHint": "Przeciągnij i upuść tutaj plik audio lub wideo",
       "orLabel": "lub",
       "pickFile": "Wybierz plik",
@@ -2217,7 +2219,7 @@
       "exportSrt": "Zapisz.srt",
       "exportVtt": "Zapisz.vtt",
       "exportSrtUnavailable": "Ten silnik nie udostępnia znaczników czasu. Przełącz na Whisper lub Parakeet w celu eksportu SRT/VTT.",
-      "description": "Dokonuj transkrypcji jednego pliku audio lub wideo albo oglądaj foldery i automatycznie zapisuj transkrypcje."
+      "description": "Transkrybuj nagrania, czytaj dokumenty na głos i trzymaj obserwowane foldery lokalnie."
     },
     "watchFolders": {
       "title": "Obserwowane foldery",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "Brak obserwowanych folderów",
         "missing": "Brak folderu",
         "paused": "Wstrzymano"
+      }
+    },
+    "reader": {
+      "addDocument": "Dodaj dokument",
+      "documentDialogLabel": "Dokumenty",
+      "documentTitle": "Dokumenty",
+      "documentStatus": "Lokalny czytnik dokumentów",
+      "documentMeta": "{{kind}} · {{words}} słów · {{minutes}} min",
+      "voice": "Głos",
+      "currentVoice": "Bieżący głos",
+      "search": "Szukaj dokumentów",
+      "libraryItemMeta": "{{size}} · {{words}} słów",
+      "libraryAriaLabel": "Biblioteka czytnika",
+      "previewAriaLabel": "Podgląd czytnika",
+      "empty": "Nie ma jeszcze dokumentów.",
+      "noMatches": "Brak pasujących dokumentów.",
+      "removeDocument": "Usuń dokument",
+      "confirmRemoveDocument": "Potwierdź usunięcie dokumentu",
+      "cancelRemoveDocument": "Anuluj usunięcie dokumentu",
+      "sectionLabel": "Sekcja {{current}} z {{total}}",
+      "readSection": "Czytaj sekcję",
+      "readAll": "Czytaj całość",
+      "readTranscript": "Czytaj",
+      "stop": "Zatrzymaj",
+      "speaking": "Czytanie głosem {{voice}}",
+      "ready": "Gotowe",
+      "copied": "Skopiowano",
+      "copySection": "Kopiuj sekcję",
+      "loading": "Otwieranie dokumentu",
+      "emptyPreview": "Wybierz dokument",
+      "errors": {
+        "openFailed": "Nie udało się otworzyć dokumentu.",
+        "playbackFailed": "Odtwarzanie czytnika nie powiodło się.",
+        "copyFailed": "Nie udało się skopiować tekstu dokumentu."
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "Najpierw lokalnie",
       "cloudRouteHeading": "Asysta w chmurze",
       "advancedEvaluationTitle": "Udoskonalenie oceny modelu (zaawansowane)",
-      "fileTranscriptionTitle": "Transkrypcja pliku",
-      "fileTranscriptionDetail": "Wrzuć dźwięk lub wideo, aby dokonać transkrypcji",
+      "fileTranscriptionTitle": "Czytnik",
+      "fileTranscriptionDetail": "Upuść audio, wideo lub dokumenty",
       "managementTitle": "Zarządzaj modelami z tych widoków",
       "managementSubtitle": "Ustawienia obsługują tylko routing dostawcy. Przeglądaj, pobieraj i wymieniaj poszczególne modele w dedykowanych katalogach.",
       "cleanupLabel": "Oczyszczanie",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "Start",
         "corrections": "Słownik",
-        "fileTranscription": "Transkrypcja pliku"
+        "fileTranscription": "Czytnik"
       },
       "refine": {
         "writeProfiles": "Napisz profile",

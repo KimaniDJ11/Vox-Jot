@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCcw } from "lucide-react";
+import { ExternalLink, RefreshCcw } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { commands, type PostProcessResult } from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
@@ -19,6 +20,7 @@ import { ProviderSelect } from "../PostProcessingSettingsApi/ProviderSelect";
 import { BaseUrlField } from "../PostProcessingSettingsApi/BaseUrlField";
 import { ApiKeyField } from "../PostProcessingSettingsApi/ApiKeyField";
 import { ModelSelect } from "../PostProcessingSettingsApi/ModelSelect";
+import { PROVIDER_API_KEY_URLS } from "../PostProcessingSettingsApi/providerKeyUrls";
 import {
   usePostProcessProviderState,
   type PostProcessProviderState,
@@ -55,6 +57,10 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
   providerState: state,
 }) => {
   const { t } = useTranslation();
+
+  const apiKeyHelpUrl = state.selectedProvider?.id
+    ? PROVIDER_API_KEY_URLS[state.selectedProvider.id]
+    : undefined;
 
   return (
     <>
@@ -145,6 +151,35 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                     })}
               </span>
             </div>
+            {apiKeyHelpUrl ? (
+              <div className="mt-2 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void openUrl(apiKeyHelpUrl).catch((openError) => {
+                      console.error(
+                        "Failed to open provider key page:",
+                        openError,
+                      );
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--accent)] hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" aria-hidden />
+                  {t("settings.postProcessing.api.apiKey.getKeyLink", {
+                    defaultValue: "Get your {{provider}} API key",
+                    provider: state.selectedProvider?.label ?? "",
+                  })}
+                </button>
+                <p className="text-xs leading-5 text-[var(--muted)]">
+                  {t("settings.postProcessing.api.apiKey.accountNote", {
+                    defaultValue:
+                      "Opens {{provider}} in your browser. You may need to create a free account to generate a key.",
+                    provider: state.selectedProvider?.label ?? "",
+                  })}
+                </p>
+              </div>
+            ) : null}
           </SettingContainer>
 
           <SettingContainer
@@ -434,7 +469,9 @@ const PostProcessingSettingsPromptsComponent: React.FC<
                   onClick={() => setConfirmingDeletePromptId(selectedPromptId)}
                   variant="secondary"
                   size="md"
-                  disabled={disabled || !selectedPromptId || prompts.length <= 1}
+                  disabled={
+                    disabled || !selectedPromptId || prompts.length <= 1
+                  }
                 >
                   {t("settings.postProcessing.prompts.deletePrompt")}
                 </Button>

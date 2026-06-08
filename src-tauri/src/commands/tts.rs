@@ -145,6 +145,38 @@ pub async fn tts_speak(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn tts_speak_with_preset(
+    app: AppHandle,
+    text: String,
+    locale: Option<String>,
+    preset_id: String,
+    trigger: Option<String>,
+    remember_last_output: Option<bool>,
+) -> Result<(), String> {
+    let normalized_preset_id = preset_id.trim().to_string();
+    if normalized_preset_id.is_empty() {
+        return Err("A voice preset is required for Reader playback.".to_string());
+    }
+
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_command_thread(
+        manager,
+        SpeakRequest {
+            text,
+            locale,
+            preferred_voice_id: None,
+            preset_id: Some(normalized_preset_id),
+            inline_preset: None,
+            trigger,
+            remember_last_output: remember_last_output.unwrap_or(false),
+        },
+        "tts-command-speak-preset",
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn tts_stop(app: AppHandle) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
     manager.stop();
@@ -155,7 +187,12 @@ pub fn tts_stop(app: AppHandle) -> Result<(), String> {
 #[specta::specta]
 pub async fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_command_on_stack("tts-command-list-voices", move || {
+    run_tts_async_command_on_stack("tts-command-list-voices", move || async move {
+        let settings = get_settings(&app);
+        let provider_id = manager.selected_provider_id(&settings);
+        manager
+            .ensure_managed_speech_runtime_available(&provider_id)
+            .await?;
         manager.get_available_voices()
     })
     .await
@@ -169,7 +206,10 @@ pub async fn get_tts_voices_for_selection(
     model_id: Option<String>,
 ) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_command_on_stack("tts-command-selection-voices", move || {
+    run_tts_async_command_on_stack("tts-command-selection-voices", move || async move {
+        manager
+            .ensure_managed_speech_runtime_available(&provider_id)
+            .await?;
         manager.get_available_voices_for_selection(&provider_id, model_id.as_deref())
     })
     .await
@@ -179,7 +219,12 @@ pub async fn get_tts_voices_for_selection(
 #[specta::specta]
 pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_command_on_stack("tts-command-refresh-voices", move || {
+    run_tts_async_command_on_stack("tts-command-refresh-voices", move || async move {
+        let settings = get_settings(&app);
+        let provider_id = manager.selected_provider_id(&settings);
+        manager
+            .ensure_managed_speech_runtime_available(&provider_id)
+            .await?;
         manager.invalidate_voice_cache();
         manager.get_available_voices()
     })
@@ -238,25 +283,6 @@ pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Resu
         manager.prepare_sidecar_provider(&provider_id, None).await
     })
     .await
-}
-
-async fn run_tts_command_on_stack<T, F>(thread_name: &'static str, task: F) -> Result<T, String>
-where
-    T: Send + 'static,
-    F: FnOnce() -> Result<T, String> + Send + 'static,
-{
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    thread::Builder::new()
-        .name(thread_name.to_string())
-        .stack_size(TTS_COMMAND_STACK_BYTES)
-        .spawn(move || {
-            let result = task();
-            let _ = tx.send(result);
-        })
-        .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
-
-    rx.await
-        .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
 }
 
 async fn run_tts_async_command_on_stack<T, F, Fut>(

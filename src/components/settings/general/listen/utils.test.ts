@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import type {
+  CatalogModelDescriptor,
+  ProviderDescriptor,
+} from "@/lib/modelPlatform";
 import {
   DEFAULT_TTS_PREVIEW_TEXT,
   TTS_MODEL_SIZE_HINTS,
   huggingFaceRepoIdFromSourceUrl,
+  renderableTtsProviders,
   ttsPreviewSampleForLocale,
   ttsStorageSizeLabel,
   verifiedTtsHuggingFaceRepoId,
@@ -54,6 +58,37 @@ const model = (
   delivery_support: {
     expressiveness_mode: "unsupported",
     advanced_controls: [],
+  },
+  ...patch,
+});
+
+const provider = (
+  patch: Partial<ProviderDescriptor>,
+): ProviderDescriptor => ({
+  id: "test-provider",
+  domain: "tts",
+  source_kind: "runtime",
+  label: "Test Provider",
+  description: "",
+  source_label: "Test",
+  runtime: {
+    id: "test-provider",
+    label: "Test Provider",
+    engine_family: "test-provider",
+    auto_routed: true,
+  },
+  available: true,
+  local_only: true,
+  license_label: null,
+  capabilities: {
+    downloadable: true,
+    loadable: true,
+    local_only: true,
+    supports_translation: false,
+    supports_streaming: false,
+    supports_voice_cloning: false,
+    supports_instruction_prompt: false,
+    supports_inline_tags: false,
   },
   ...patch,
 });
@@ -115,6 +150,45 @@ describe("huggingFaceRepoIdFromSourceUrl", () => {
         "https://huggingface.co/rhasspy/piper-voices/tree/main",
       ),
     ).toBe("rhasspy/piper-voices");
+  });
+});
+
+describe("renderableTtsProviders", () => {
+  it("keeps a provider renderable when its installed model is available but the provider flag is stale", () => {
+    const providers = [
+      provider({
+        id: "supertonic",
+        label: "Supertonic",
+        available: false,
+      }),
+    ];
+    const models = [
+      model({
+        id: "supertonic-3",
+        provider_id: "supertonic",
+        label: "Supertonic 3",
+        installed: true,
+        runnable: true,
+      }),
+    ];
+
+    expect(renderableTtsProviders(providers, models)).toEqual(providers);
+  });
+
+  it("still hides unavailable providers that only have missing models", () => {
+    const providers = [provider({ id: "missing-provider", available: false })];
+    const models = [
+      model({
+        id: "missing-model",
+        provider_id: "missing-provider",
+        installed: false,
+        runnable: false,
+        selected: false,
+        active: false,
+      }),
+    ];
+
+    expect(renderableTtsProviders(providers, models)).toEqual([]);
   });
 });
 

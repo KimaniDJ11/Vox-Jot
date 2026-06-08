@@ -21,7 +21,7 @@ export const CorrectionSettings: React.FC = () => {
         title={t(
           "settings.corrections.fileTranscriptionDictionary.sectionTitle",
           {
-            defaultValue: "File transcription",
+            defaultValue: "Reader transcription",
           },
         )}
       >

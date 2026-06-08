@@ -195,7 +195,7 @@
       "permissions": "权限",
       "setup": "型号",
       "refine": "精炼",
-      "modes": "Modes",
+      "modes": "模式",
       "learn": "第一次听写",
       "progress": "入门进度"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "可选的应用调校",
+      "title": "从你的应用创建听写模式",
+      "description": "Vox Jot 可以为这台 Mac 上已有的应用设置入门模式。每个模式之后都可以在设置中编辑或删除。",
+      "scanning": "正在扫描已安装的应用...",
+      "detected": "找到 {{count}} 个入门模式",
+      "loading": "正在查找符合常见写作流程的应用。",
+      "refreshApps": "刷新已安装的应用",
+      "emptyTitle": "没有找到匹配的入门应用",
+      "emptyDescription": "你可以现在继续，稍后再从设置中创建自定义听写模式。",
+      "cardTitle": "入门模式",
+      "cardDescription": "模式会匹配当前前台应用并应用已保存的输出选项。",
+      "skipCta": "跳过",
+      "continueCta": "继续",
+      "createCta": "创建所选模式",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "无法创建听写模式。请重试，或暂时跳过。"
       }
     },
     "welcome": {
@@ -599,7 +599,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "文件转录移至听写→文件转录。拖入音频或视频文件进行转录。"
+        "movedHint": "阅读器已移至听写 → 阅读器。拖入音频、视频或文档文件。"
       }
     },
     "sound": {
@@ -798,7 +798,9 @@
           "title": "API 钥匙",
           "description": "所选提供商的 API 密钥。",
           "placeholder": "sk-...",
-          "savedPlaceholder": "已存储在系统钥匙串中。输入新值以替换。"
+          "savedPlaceholder": "已存储在系统钥匙串中。输入新值以替换。",
+          "getKeyLink": "获取您的 {{provider}} API 密钥",
+          "accountNote": "在浏览器中打开 {{provider}}。您可能需要创建免费账户才能生成密钥。"
         },
         "model": {
           "title": "型号",
@@ -1196,7 +1198,7 @@
       "title": "词典",
       "description": "管理单词、拼写和学习的更正，从而影响 Vox Jot 的转录方式。",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "文件转录",
+        "sectionTitle": "阅读器转写",
         "label": "应用字典和习得的更正",
         "description": "使用您的个人词典和修正存储在文件记录中，与实时听写相同。关闭以保留原始语音到文本的输出。"
       },
@@ -1661,7 +1663,11 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
+      "starterPrompts": [
+        "总结所选文本",
+        "重写一下更清楚",
+        "拉出行动项目"
+      ]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -2194,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "文件转录",
+      "title": "阅读器",
       "dropHint": "将音频或视频文件拖放到此处",
       "orLabel": "或",
       "pickFile": "选择文件",
@@ -2213,7 +2219,7 @@
       "exportSrt": "保存.srt",
       "exportVtt": "保存.vtt",
       "exportSrtUnavailable": "该引擎不提供时间戳。对于 SRT/VTT 导出，切换到 Whisper 或 Parakeet。",
-      "description": "转录一个音频或视频文件，或监视文件夹并自动保存转录内容。"
+      "description": "转写录音、朗读文档，并让监视文件夹保持本地处理。"
     },
     "watchFolders": {
       "title": "观看的文件夹",
@@ -2238,6 +2244,40 @@
         "emptyDetail": "没有已监视文件夹",
         "missing": "文件夹缺失",
         "paused": "已暂停"
+      }
+    },
+    "reader": {
+      "addDocument": "添加文档",
+      "documentDialogLabel": "文档",
+      "documentTitle": "文档",
+      "documentStatus": "本地文档阅读器",
+      "documentMeta": "{{kind}} · {{words}} 个词 · {{minutes}} 分钟",
+      "voice": "语音",
+      "currentVoice": "当前语音",
+      "search": "搜索文档",
+      "libraryItemMeta": "{{size}} · {{words}} 个词",
+      "libraryAriaLabel": "阅读器资料库",
+      "previewAriaLabel": "阅读器预览",
+      "empty": "还没有文档。",
+      "noMatches": "没有匹配的文档。",
+      "removeDocument": "移除文档",
+      "confirmRemoveDocument": "确认移除文档",
+      "cancelRemoveDocument": "取消移除文档",
+      "sectionLabel": "第 {{current}} 节，共 {{total}} 节",
+      "readSection": "朗读此节",
+      "readAll": "朗读全部",
+      "readTranscript": "朗读",
+      "stop": "停止",
+      "speaking": "正在使用 {{voice}} 朗读",
+      "ready": "就绪",
+      "copied": "已复制",
+      "copySection": "复制此节",
+      "loading": "正在打开文档",
+      "emptyPreview": "选择一个文档",
+      "errors": {
+        "openFailed": "无法打开文档。",
+        "playbackFailed": "阅读器播放失败。",
+        "copyFailed": "无法复制文档文本。"
       }
     }
   },
@@ -2881,8 +2921,8 @@
       "localRouteHeading": "本地优先",
       "cloudRouteHeading": "云辅助",
       "advancedEvaluationTitle": "细化模型评估（高级）",
-      "fileTranscriptionTitle": "文件转录",
-      "fileTranscriptionDetail": "放入音频或视频进行转录",
+      "fileTranscriptionTitle": "阅读器",
+      "fileTranscriptionDetail": "拖入音频、视频或文档",
       "managementTitle": "从这些视图管理模型",
       "managementSubtitle": "设置仅携带提供商路由。浏览、下载和交换专用目录中的各个模型。",
       "cleanupLabel": "清理",
@@ -2912,7 +2952,7 @@
       "dictate": {
         "history": "首页",
         "corrections": "词典",
-        "fileTranscription": "文件转录"
+        "fileTranscription": "阅读器"
       },
       "refine": {
         "writeProfiles": "写个人资料",

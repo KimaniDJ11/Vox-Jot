@@ -215,6 +215,27 @@ export function dedupeCatalogModels(
   return Array.from(deduped.values());
 }
 
+export function ttsProviderHasRenderableModel(
+  provider: ProviderDescriptor,
+  models: CatalogModelDescriptor[],
+): boolean {
+  return models.some(
+    (model) =>
+      model.provider_id === provider.id &&
+      (model.installed || model.runnable || model.selected || model.active),
+  );
+}
+
+export function renderableTtsProviders(
+  providers: ProviderDescriptor[],
+  models: CatalogModelDescriptor[],
+): ProviderDescriptor[] {
+  return providers.filter(
+    (provider) =>
+      provider.available || ttsProviderHasRenderableModel(provider, models),
+  );
+}
+
 export function resolveVoiceModelSelection(
   models: CatalogModelDescriptor[],
   providerId: string,

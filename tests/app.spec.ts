@@ -140,6 +140,7 @@ const baseSettings = {
   max_rewrite_strength: 1,
   model_unload_timeout: "never",
   mute_while_recording: false,
+  onboarding_completed: true,
   overlay_position: "bottom",
   recording_overlay_style: "compact",
   paste_delay_ms: 0,
@@ -517,6 +518,10 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
                 : folder,
             );
             return null;
+          case "list_reader_documents":
+            return [];
+          case "remove_reader_document":
+            return null;
           case "get_file_icon":
             return null;
           case "get_speech_analysis_catalog":
@@ -635,6 +640,9 @@ test.describe("Vox Jot app", () => {
     await bootApp(page, {
       hasAnyModels: false,
       models: [availableModel],
+      settings: {
+        onboarding_completed: false,
+      },
     });
 
     await expect(
@@ -659,6 +667,7 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
 
     await page.getByRole("button", { name: /Set up dictation/i }).click();
+    await page.getByRole("button", { name: /^Continue$/i }).click();
     await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(
@@ -674,9 +683,13 @@ test.describe("Vox Jot app", () => {
     await bootApp(page, {
       hasAnyModels: false,
       models: [availableModel, largeAvailableModel, moonshineAvailableModel],
+      settings: {
+        onboarding_completed: false,
+      },
     });
 
     await page.getByRole("button", { name: /Set up dictation/i }).click();
+    await page.getByRole("button", { name: /^Continue$/i }).click();
     await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(page.getByText("Parakeet V3")).toBeVisible();
@@ -882,16 +895,22 @@ test.describe("Vox Jot app", () => {
     });
 
     await page.getByRole("tab", { name: "Refine" }).click();
-    await expect(page.getByText("Write Profiles").first()).toBeVisible();
-    await page.getByText("Write Profiles").first().click();
+    await expect(page.getByText("Dictation Modes").first()).toBeVisible();
+    await page.getByText("Dictation Modes").first().click();
 
+    await expect(page.getByRole("button", { name: "New mode" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: /^Write Profiles$/i }).first(),
+      page.getByRole("heading", { name: "Slack casual" }),
     ).toBeVisible();
-    await expect(page.getByText("Slack")).toBeVisible();
-    await expect(page.getByText("Mail")).toBeVisible();
-    await expect(page.getByText("Tone · Casual")).toBeVisible();
-    await expect(page.getByText("Tone · Professional")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Mail professional" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Casual, conversational wording for quick chat messages."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Polished professional wording for email and documents."),
+    ).toBeVisible();
   });
 
   test("renders prompting for non-Apple providers", async ({ page }) => {
@@ -966,16 +985,14 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
   });
 
-  test("frames the watched-folder empty state like file transcription", async ({
+  test("frames the watched-folder empty state like Reader", async ({
     page,
   }) => {
     await bootApp(page, {
       watchFolders: [],
     });
 
-    await page
-      .getByRole("button", { name: "File Transcription", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Reader", exact: true }).click();
     await page.getByRole("button", { name: "Folders", exact: true }).click();
 
     const panel = page.getByTestId("watch-folders-panel");
@@ -991,7 +1008,7 @@ test.describe("Vox Jot app", () => {
     await expect(panel.getByText("No watched folders yet.")).toBeVisible();
     await expect(
       panel.getByText(
-        "Add a folder to transcribe audio files automatically when you drop them in.",
+        "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT.",
       ),
     ).toBeVisible();
     await expect(
@@ -999,6 +1016,67 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
 
     await expect(emptySurface).toHaveCSS("border-style", "dashed");
+  });
+
+  test("uses inline confirmation before removing a Reader document", async ({
+    page,
+  }) => {
+    await bootApp(page);
+    await page.evaluate(() => {
+      window.localStorage.setItem(
+        "voxjot:reader-document-library:v1",
+        JSON.stringify([
+          {
+            id: "reader-test-document",
+            path: "/Users/test/Documents/research.pdf",
+            name: "research.pdf",
+            kind: "pdf",
+            sizeBytes: 128000,
+            sourceModifiedMs: Date.now(),
+            wordCount: 480,
+            pageCount: 2,
+            sectionCount: 3,
+            extractionEngine: "test-python",
+            thumbnailDataUrl: null,
+            openedAt: Date.now(),
+          },
+        ]),
+      );
+    });
+
+    await page.getByRole("button", { name: "Reader", exact: true }).click();
+    await page.getByRole("button", { name: "Documents", exact: true }).click();
+
+    await expect(
+      page.getByRole("button", { name: /research\.pdf/ }),
+    ).toBeVisible();
+    const removeButton = page.getByRole("button", {
+      name: "Remove document",
+      exact: true,
+    });
+    await removeButton.click();
+
+    await expect(
+      page.getByRole("button", { name: /research\.pdf/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: "Confirm remove document",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Cancel remove document", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: /research\.pdf/ }),
+    ).toBeVisible();
+
+    await removeButton.click();
+    await page
+      .getByRole("button", { name: "Confirm remove document", exact: true })
+      .click();
+    await expect(page.getByText("No documents yet.")).toBeVisible();
   });
 
   test("uses inline confirmation before removing a watched folder from the trash icon", async ({
@@ -1016,9 +1094,7 @@ test.describe("Vox Jot app", () => {
       ],
     });
 
-    await page
-      .getByRole("button", { name: "File Transcription", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Reader", exact: true }).click();
     await page.getByRole("button", { name: "Folders", exact: true }).click();
 
     const folderRow = page.locator("li", { hasText: "Interviews" });
@@ -1047,12 +1123,15 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
     await expect
       .poll(() =>
-        page.evaluate(() =>
-          (
-            (window as Window & {
-              __voxJotCommandCalls?: Array<{ cmd: string }>;
-            }).__voxJotCommandCalls ?? []
-          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        page.evaluate(
+          () =>
+            (
+              (
+                window as Window & {
+                  __voxJotCommandCalls?: Array<{ cmd: string }>;
+                }
+              ).__voxJotCommandCalls ?? []
+            ).filter((call) => call.cmd === "remove_watch_folder").length,
         ),
       )
       .toBe(0);
@@ -1072,12 +1151,15 @@ test.describe("Vox Jot app", () => {
     await expect(folderRow).toBeVisible();
     await expect
       .poll(() =>
-        page.evaluate(() =>
-          (
-            (window as Window & {
-              __voxJotCommandCalls?: Array<{ cmd: string }>;
-            }).__voxJotCommandCalls ?? []
-          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        page.evaluate(
+          () =>
+            (
+              (
+                window as Window & {
+                  __voxJotCommandCalls?: Array<{ cmd: string }>;
+                }
+              ).__voxJotCommandCalls ?? []
+            ).filter((call) => call.cmd === "remove_watch_folder").length,
         ),
       )
       .toBe(0);
@@ -1098,12 +1180,15 @@ test.describe("Vox Jot app", () => {
 
     await expect
       .poll(() =>
-        page.evaluate(() =>
-          (
-            (window as Window & {
-              __voxJotCommandCalls?: Array<{ cmd: string }>;
-            }).__voxJotCommandCalls ?? []
-          ).filter((call) => call.cmd === "remove_watch_folder").length,
+        page.evaluate(
+          () =>
+            (
+              (
+                window as Window & {
+                  __voxJotCommandCalls?: Array<{ cmd: string }>;
+                }
+              ).__voxJotCommandCalls ?? []
+            ).filter((call) => call.cmd === "remove_watch_folder").length,
         ),
       )
       .toBe(1);
@@ -1134,9 +1219,9 @@ test.describe("Vox Jot app", () => {
       .getByRole("button", { name: "Search dictionary", exact: true })
       .click();
     await expect(page.getByPlaceholder("Search dictionary")).toBeVisible();
-    await expect(
-      page.getByRole("textbox", { name: "Corrected" }),
-    ).toHaveValue("Vox Jot");
+    await expect(page.getByRole("textbox", { name: "Corrected" })).toHaveValue(
+      "Vox Jot",
+    );
   });
 
   test("shows unified history preferring post-processed text", async ({
@@ -1210,11 +1295,7 @@ test.describe("Vox Jot app", () => {
     await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(
-      page
-        .getByText(
-          /Apple Intelligence is blocked on this device/i,
-        )
-        .first(),
+      page.getByText(/Apple Intelligence is blocked on this device/i).first(),
     ).toBeVisible();
   });
 });

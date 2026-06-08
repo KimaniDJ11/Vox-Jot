@@ -760,7 +760,7 @@ const SpeechAnalysisEnginesSection: React.FC<
         }),
         description: t("modelHub.analysis.asr.description", {
           defaultValue:
-            "Optional file-transcription ASR engines. These are for long audio and model experiments, not the live dictation hot path.",
+            "Optional Reader transcription ASR engines. These are for long audio and model experiments, not the live dictation hot path.",
         }),
         models: asrModels,
         selectedModelId: catalog?.selection.asr_model_id ?? "",
@@ -1238,7 +1238,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                           detail: t("modelHub.analysis.badges.activeDetail", {
                             defaultValue:
                               group === "asr"
-                                ? "Currently selected for file transcription ASR."
+                                ? "Currently selected for Reader transcription ASR."
                                 : "Currently selected for speaker isolation.",
                           }),
                         }

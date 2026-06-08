@@ -10,6 +10,38 @@ import {
 import { commands } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
 
+const APPLE_INTELLIGENCE_PROVIDER_ID = "apple_intelligence";
+
+function isLocalBaseUrl(baseUrl: string | null | undefined): boolean {
+  const lower = baseUrl?.trim().toLowerCase();
+  if (!lower) return false;
+
+  return (
+    lower.startsWith("http://localhost") ||
+    lower.startsWith("https://localhost") ||
+    lower.startsWith("http://127.0.0.1") ||
+    lower.startsWith("https://127.0.0.1") ||
+    lower.startsWith("http://[::1]") ||
+    lower.startsWith("https://[::1]")
+  );
+}
+
+export function postProcessProviderNeedsCredentials(
+  providerId: string,
+  providers:
+    | Array<{
+        id: string;
+        base_url: string;
+      }>
+    | null
+    | undefined,
+): boolean {
+  const provider = providers?.find((candidate) => candidate.id === providerId);
+  if (!provider) return false;
+  if (provider.id === APPLE_INTELLIGENCE_PROVIDER_ID) return false;
+  return !isLocalBaseUrl(provider.base_url);
+}
+
 export type DictationReadinessGateId =
   | "microphone"
   | "accessibility"
@@ -100,9 +132,14 @@ export function useDictationReadiness(): DictationReadiness {
     const postProcessingEnabled = settings?.post_process_enabled ?? false;
     const cleanupLevel = settings?.post_process_cleanup_level ?? "light";
     const postProvider = settings?.post_process_provider_id ?? "";
-    const postKeyReady = postProvider
-      ? (settings?.post_process_api_key_status?.[postProvider] ?? true)
-      : true;
+    const postNeedsCredentials = postProcessProviderNeedsCredentials(
+      postProvider,
+      settings?.post_process_providers,
+    );
+    const postKeyReady =
+      !postProvider ||
+      !postNeedsCredentials ||
+      (settings?.post_process_api_key_status?.[postProvider] ?? false);
     const screenContextEnabled = settings?.screen_context_enabled ?? true;
 
     const gates: DictationReadinessGate[] = [

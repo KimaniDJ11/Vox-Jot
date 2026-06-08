@@ -973,6 +973,14 @@ async ttsSpeak(text: string, locale: string | null, preferredVoiceId: string | n
     else return { status: "error", error: e  as any };
 }
 },
+async ttsSpeakWithPreset(text: string, locale: string | null, presetId: string, trigger: string | null, rememberLastOutput: boolean | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("tts_speak_with_preset", { text, locale, presetId, trigger, rememberLastOutput }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async ttsStop() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("tts_stop") };
@@ -1538,6 +1546,44 @@ async setWatchFolderEnabled(id: string, enabled: boolean) : Promise<Result<null,
 async updateWatchFolderFormat(id: string, outputFormat: WatchFolderOutputFormat) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_watch_folder_format", { id, outputFormat }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listReaderDocuments() : Promise<Result<ReaderStoredDocument[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_reader_documents") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async readReaderDocument(sourcePath: string) : Promise<Result<ReaderDocument, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_reader_document", { sourcePath }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async removeReaderDocument(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_reader_document", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Run an AI transform (summarize / clean up / notes / action items) over the
+ * document text using the user's configured post-processing provider — the
+ * same provider/model/key resolution as dictation post-processing, so it
+ * reuses Ollama, Apple Intelligence, OpenAI, ModelScope, etc.
+ */
+async readerTransformText(text: string, task: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reader_transform_text", { text, task }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2746,6 +2792,13 @@ export type PostProcessRouteDebug = { route: string; word_count: number; has_cor
 export type PrepareStableAudio3Request = { mode: StorySoundMode }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; license_label: string | null; capabilities: CapabilityFlags }
+export type ReaderDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; extraction_engine: string; thumbnail_data_url: string | null; text: string; pages: ReaderDocumentPage[]; sections: ReaderDocumentSection[] }
+export type ReaderDocumentBbox = { x0: number; y0: number; x1: number; y1: number }
+export type ReaderDocumentBlock = { index: number; text: string; kind: string; bbox: ReaderDocumentBbox | null }
+export type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text"
+export type ReaderDocumentPage = { index: number; width: number | null; height: number | null; blocks: ReaderDocumentBlock[] }
+export type ReaderDocumentSection = { index: number; title: string; text: string }
+export type ReaderStoredDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; section_count: number; extraction_engine: string; thumbnail_data_url: string | null; imported_at_ms: number; updated_at_ms: number }
 export type RecordingOverlayStyle =
 /**
  * Pill-shaped overlay with a small waveform — the historical

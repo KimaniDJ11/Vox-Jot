@@ -21,6 +21,8 @@ const VIBEVOICE_DIR: &str = "vibevoice";
 const LFM2_TOOL_DIR: &str = "lfm2-tool";
 const OCR_MODELS_DIR: &str = "ocr";
 const OCR_RUNTIME_DIR: &str = "ocr-runtime";
+const READER_DIR: &str = "reader";
+const READER_RUNTIME_DIR: &str = "reader-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 const CREATIVE_AUDIO_MODELS_DIR: &str = "creative-audio";
 const CREATIVE_AUDIO_RUNTIME_DIR: &str = "runtime";
@@ -156,6 +158,16 @@ pub fn ocr_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 /// Platform-specific archives install to `<this>/<platform_id>/`.
 pub fn ocr_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(OCR_RUNTIME_DIR))
+}
+
+/// Root for Reader library metadata, extracted document cache, and thumbnails.
+pub fn reader_data_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(portable::app_data_dir(app)?.join(READER_DIR))
+}
+
+/// Root for Reader Python extraction dependencies managed by the app.
+pub fn reader_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(READER_RUNTIME_DIR))
 }
 
 /// Root for file-ASR and speaker-isolation assets managed by the app.

@@ -8,6 +8,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -16,6 +17,7 @@ import {
   Cloud,
   Cpu,
   Download,
+  ExternalLink,
   Gauge,
   HardDrive,
   KeyRound,
@@ -52,6 +54,7 @@ import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
+import { PROVIDER_API_KEY_URLS } from "@/components/settings/PostProcessingSettingsApi/providerKeyUrls";
 import {
   getLlmEvaluationResult,
   LLM_EVALUATION_RESULTS,
@@ -1712,6 +1715,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       {benchmarkPanel}
       <RefineApiKeyDialog
         open={Boolean(apiKeyDialog)}
+        providerId={apiKeyDialog?.providerId ?? ""}
         providerLabel={apiKeyDialog?.providerLabel ?? ""}
         modelTitle={apiKeyDialog?.modelTitle ?? ""}
         value={apiKeyDraft}
@@ -1727,6 +1731,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
 const RefineApiKeyDialog: React.FC<{
   open: boolean;
+  providerId: string;
   providerLabel: string;
   modelTitle: string;
   value: string;
@@ -1737,6 +1742,7 @@ const RefineApiKeyDialog: React.FC<{
   onConfirm: () => void;
 }> = ({
   open,
+  providerId,
   providerLabel,
   modelTitle,
   value,
@@ -1849,6 +1855,38 @@ const RefineApiKeyDialog: React.FC<{
               "The key is stored in the system credential store and is not shown again after saving.",
           })}
         </p>
+
+        {PROVIDER_API_KEY_URLS[providerId] ? (
+          <div className="mt-2 space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                void openUrl(PROVIDER_API_KEY_URLS[providerId]).catch(
+                  (openError) => {
+                    console.error(
+                      "Failed to open provider key page:",
+                      openError,
+                    );
+                  },
+                );
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--accent)] hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" aria-hidden />
+              {t("settings.postProcessing.api.apiKey.getKeyLink", {
+                defaultValue: "Get your {{provider}} API key",
+                provider: providerLabel,
+              })}
+            </button>
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              {t("settings.postProcessing.api.apiKey.accountNote", {
+                defaultValue:
+                  "Opens {{provider}} in your browser. You may need to create a free account to generate a key.",
+                provider: providerLabel,
+              })}
+            </p>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_65%)] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">

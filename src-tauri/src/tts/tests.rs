@@ -11,7 +11,8 @@ use crate::translation::TranslationOrigin;
 
 use super::catalog::{
     mlx_audio_definition_available, mlx_audio_model_supports_inline_tags,
-    mlx_audio_tts_model_definition, tts_model_id_for_hf_repo, MANAGED_RUNTIME_MODEL_DEFINITIONS,
+    mlx_audio_tts_model_definition, provider_is_mlx_audio, provider_uses_managed_speech_runtime,
+    tts_model_id_for_hf_repo, MANAGED_RUNTIME_MODEL_DEFINITIONS, MLX_AUDIO_TTS_MODEL_DEFINITIONS,
     PACK_DEFINITIONS, QWEN3_PACK_DEFINITIONS,
 };
 use super::chunking::chunk_text;
@@ -228,6 +229,53 @@ fn managed_catalog_has_public_hf_fallbacks_for_private_release_models() {
 
     assert_eq!(openvoice.hf_repo_id, Some("IrieDinamik/OpenVoice"));
     assert_eq!(kokoro.hf_repo_id, Some("IrieDinamik/kokoro"));
+}
+
+#[test]
+fn managed_catalog_providers_route_to_managed_speech_runtime() {
+    for definition in MANAGED_RUNTIME_MODEL_DEFINITIONS {
+        assert!(
+            provider_uses_managed_speech_runtime(definition.provider_id),
+            "{} ({}) must route through the managed Speech runtime",
+            definition.label,
+            definition.provider_id
+        );
+        assert!(
+            !provider_is_mlx_audio(definition.provider_id),
+            "{} ({}) must not be classified as mlx-audio",
+            definition.label,
+            definition.provider_id
+        );
+        assert!(
+            definition.hf_repo_id.is_some(),
+            "{} must have a Hugging Face fallback for model assets",
+            definition.label
+        );
+    }
+}
+
+#[test]
+fn mlx_catalog_providers_route_to_mlx_audio_runtime() {
+    for definition in MLX_AUDIO_TTS_MODEL_DEFINITIONS {
+        assert!(
+            provider_is_mlx_audio(definition.provider_id),
+            "{} ({}) must route through the mlx-audio runtime",
+            definition.label,
+            definition.provider_id
+        );
+        assert!(
+            !provider_uses_managed_speech_runtime(definition.provider_id),
+            "{} ({}) must not be classified as a managed Speech runtime provider",
+            definition.label,
+            definition.provider_id
+        );
+        assert_eq!(definition.engine_family, "mlx_audio");
+        assert!(
+            definition.hf_model_id.contains('/'),
+            "{} must use a Hugging Face repo id",
+            definition.label
+        );
+    }
 }
 
 #[test]

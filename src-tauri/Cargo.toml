@@ -77,6 +77,8 @@ natural = "0.5.0"
 regex = "1"
 chrono = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
+pdf-extract = "0.10.0"
+quick-xml = "0.39.2"
 tar = "0.4.46"
 flate2 = "1.0"
 bzip2 = "0.5"

@@ -19,6 +19,7 @@ set -euo pipefail
 #   2. First "Developer ID Application" identity in the default keychain
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENTITLEMENTS_PATH="${REPO_ROOT}/src-tauri/Entitlements.plist"
 
 if [[ "$#" -lt 1 ]]; then
   echo "Usage: $0 <archive.tar.gz> [<archive.tar.gz> ...]" >&2
@@ -75,6 +76,7 @@ sign_archive() {
         --options runtime \
         --timestamp \
         --sign "${SIGNING_IDENTITY}" \
+        --entitlements "${ENTITLEMENTS_PATH}" \
         "${file_path}"
       /usr/bin/codesign --verify --strict "${file_path}"
       signed=$((signed + 1))

@@ -195,7 +195,7 @@
       "permissions": "権限",
       "setup": "モデル",
       "refine": "絞り込む",
-      "modes": "Modes",
+      "modes": "モード",
       "learn": "初めてのディクテーション",
       "progress": "オンボーディングの進行状況"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "任意のアプリ調整",
+      "title": "アプリからディクテーションモードを作成",
+      "description": "Vox Jot は、この Mac にすでにあるアプリ向けの初期モードを設定できます。各モードは後で設定から編集または削除できます。",
+      "scanning": "インストール済みアプリをスキャン中...",
+      "detected": "{{count}} 個の初期モードが見つかりました",
+      "loading": "一般的な文章作成ワークフローに合うアプリを探しています。",
+      "refreshApps": "インストール済みアプリを更新",
+      "emptyTitle": "一致する初期アプリが見つかりません",
+      "emptyDescription": "今すぐ続行し、カスタムのディクテーションモードは後で設定から作成できます。",
+      "cardTitle": "初期モード",
+      "cardDescription": "モードは前面のアプリに合わせて、保存済みの出力設定を適用します。",
+      "skipCta": "スキップ",
+      "continueCta": "続ける",
+      "createCta": "選択したモードを作成",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "ディクテーションモードを作成できませんでした。もう一度試すか、今はスキップしてください。"
       }
     },
     "welcome": {
@@ -599,7 +599,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "ファイルの文字起こしは、[ディクテーション] → [ファイルの文字起こし] に移動しました。音声またはビデオ ファイルをドラッグして文字に起こします。"
+        "movedHint": "リーダーは「ディクテーション → リーダー」に移動しました。音声、動画、またはドキュメントをドラッグしてください。"
       }
     },
     "sound": {
@@ -798,7 +798,9 @@
           "title": "API キー",
           "description": "選択したプロバイダーの API キー。",
           "placeholder": "スク...",
-          "savedPlaceholder": "システムキーチェーンに保存済みです。置き換えるには新しい値を入力してください。"
+          "savedPlaceholder": "システムキーチェーンに保存済みです。置き換えるには新しい値を入力してください。",
+          "getKeyLink": "{{provider}} の API キーを取得",
+          "accountNote": "ブラウザで {{provider}} を開きます。キーを生成するには無料アカウントの作成が必要な場合があります。"
         },
         "model": {
           "title": "モデル",
@@ -1196,7 +1198,7 @@
       "title": "辞書",
       "description": "Vox Jot による文字起こし方法を形成する単語、スペル、学習した修正を管理します。",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "ファイルの転写",
+        "sectionTitle": "リーダー文字起こし",
         "label": "辞書と学習した修正を適用する",
         "description": "ライブディクテーションと同様に、ファイルトランスクリプトに個人辞書と修正ストアを使用します。未加工の音声テキスト変換出力を維持するには、オフにします。"
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "ファイルの転写",
+      "title": "リーダー",
       "dropHint": "ここにオーディオまたはビデオ ファイルをドラッグ アンド ドロップします",
       "orLabel": "または",
       "pickFile": "ファイルの選択",
@@ -2217,7 +2219,7 @@
       "exportSrt": ".srt を保存",
       "exportVtt": ".vtt を保存",
       "exportSrtUnavailable": "このエンジンはタイムスタンプを提供しません。 SRT/VTT エクスポートの場合は、Whisper または Parakeet に切り替えます。",
-      "description": "1 つのオーディオ ファイルまたはビデオ ファイルを文字起こしするか、フォルダーを視聴してトランスクリプトを自動的に保存します。"
+      "description": "録音を文字起こしし、ドキュメントを読み上げ、監視フォルダーをローカルに保ちます。"
     },
     "watchFolders": {
       "title": "監視フォルダー",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "監視フォルダはありません",
         "missing": "フォルダが見つかりません",
         "paused": "一時停止中"
+      }
+    },
+    "reader": {
+      "addDocument": "書類を追加",
+      "documentDialogLabel": "書類",
+      "documentTitle": "書類",
+      "documentStatus": "ローカル書類リーダー",
+      "documentMeta": "{{kind}} · {{words}} 語 · {{minutes}} 分",
+      "voice": "音声",
+      "currentVoice": "現在の音声",
+      "search": "書類を検索",
+      "libraryItemMeta": "{{size}} · {{words}} 語",
+      "libraryAriaLabel": "リーダーライブラリ",
+      "previewAriaLabel": "リーダープレビュー",
+      "empty": "まだ書類がありません。",
+      "noMatches": "一致する書類がありません。",
+      "removeDocument": "書類を削除",
+      "confirmRemoveDocument": "書類の削除を確認",
+      "cancelRemoveDocument": "書類の削除をキャンセル",
+      "sectionLabel": "セクション {{current}} / {{total}}",
+      "readSection": "セクションを読み上げ",
+      "readAll": "すべて読み上げ",
+      "readTranscript": "読み上げ",
+      "stop": "停止",
+      "speaking": "{{voice}} で読み上げ中",
+      "ready": "準備完了",
+      "copied": "コピーしました",
+      "copySection": "セクションをコピー",
+      "loading": "書類を開いています",
+      "emptyPreview": "書類を選択",
+      "errors": {
+        "openFailed": "書類を開けませんでした。",
+        "playbackFailed": "リーダーの再生に失敗しました。",
+        "copyFailed": "書類のテキストをコピーできませんでした。"
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "地元第一主義",
       "cloudRouteHeading": "クラウドアシスト",
       "advancedEvaluationTitle": "モデル評価を調整する (上級)",
-      "fileTranscriptionTitle": "ファイルの転写",
-      "fileTranscriptionDetail": "音声またはビデオをドロップして文字起こしします",
+      "fileTranscriptionTitle": "リーダー",
+      "fileTranscriptionDetail": "音声、動画、ドキュメントをドロップ",
       "managementTitle": "これらのビューからモデルを管理します",
       "managementSubtitle": "設定ではプロバイダー ルーティングのみが行われます。専用カタログ内の個々のモデルを参照、ダウンロード、交換します。",
       "cleanupLabel": "クリーンアップ",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "ホーム",
         "corrections": "辞書",
-        "fileTranscription": "ファイルの転写"
+        "fileTranscription": "リーダー"
       },
       "refine": {
         "writeProfiles": "プロファイルの書き込み",

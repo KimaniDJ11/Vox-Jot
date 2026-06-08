@@ -1308,6 +1308,18 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
             supports_structured_output: true,
         },
         PostProcessProvider {
+            id: "modelscope".to_string(),
+            label: "ModelScope".to_string(),
+            base_url: "https://api-inference.modelscope.cn/v1".to_string(),
+            allow_base_url_edit: false,
+            models_endpoint: Some("/models".to_string()),
+            // ModelScope serves many models (Qwen, DeepSeek, etc.) via an
+            // OpenAI-compatible gateway, but JSON-schema response formatting is
+            // not honored by every model. Start conservative; flip to true once
+            // verified against the models we recommend.
+            supports_structured_output: false,
+        },
+        PostProcessProvider {
             id: "lmstudio".to_string(),
             label: "LM Studio".to_string(),
             base_url: "http://localhost:1234/v1".to_string(),

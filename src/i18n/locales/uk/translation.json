@@ -195,7 +195,7 @@
       "permissions": "Дозволи",
       "setup": "Модель",
       "refine": "Уточніть",
-      "modes": "Modes",
+      "modes": "Режими",
       "learn": "Перший диктант",
       "progress": "Перебіг налаштування"
     },
@@ -248,22 +248,22 @@
       }
     },
     "modes": {
-      "eyebrow": "Optional app tuning",
-      "title": "Create Dictation Modes from your apps",
-      "description": "Vox Jot can set up starter modes for apps already on this Mac. Each mode can be edited or deleted later in Settings.",
-      "scanning": "Scanning installed apps...",
-      "detected": "{{count}} starter modes found",
-      "loading": "Looking for apps that match common writing workflows.",
-      "refreshApps": "Refresh installed apps",
-      "emptyTitle": "No starter app matches found",
-      "emptyDescription": "You can continue now and create custom Dictation Modes later from Settings.",
-      "cardTitle": "Starter modes",
-      "cardDescription": "Modes match the app in front and apply saved output choices.",
-      "skipCta": "Skip",
-      "continueCta": "Continue",
-      "createCta": "Create selected modes",
+      "eyebrow": "Додаткове налаштування програм",
+      "title": "Створити режими диктування з ваших програм",
+      "description": "Vox Jot може налаштувати стартові режими для програм, які вже є на цьому Mac. Кожен режим можна пізніше змінити або видалити в Налаштуваннях.",
+      "scanning": "Сканування встановлених програм...",
+      "detected": "Знайдено стартових режимів: {{count}}",
+      "loading": "Пошук програм, що відповідають поширеним сценаріям письма.",
+      "refreshApps": "Оновити встановлені програми",
+      "emptyTitle": "Відповідних стартових програм не знайдено",
+      "emptyDescription": "Можете продовжити зараз і створити власні режими диктування пізніше в Налаштуваннях.",
+      "cardTitle": "Стартові режими",
+      "cardDescription": "Режими відповідають активній програмі та застосовують збережені параметри виводу.",
+      "skipCta": "Пропустити",
+      "continueCta": "Продовжити",
+      "createCta": "Створити вибрані режими",
       "errors": {
-        "saveFailed": "Could not create Dictation Modes. Try again or skip for now."
+        "saveFailed": "Не вдалося створити режими диктування. Спробуйте ще раз або поки пропустіть."
       }
     },
     "welcome": {
@@ -571,7 +571,7 @@
         }
       },
       "fileTranscription": {
-        "movedHint": "Транскрипцію файлу переміщено до Диктувати → Транскрипція файлу. Перетягніть аудіо- чи відеофайл, щоб транскрибувати його."
+        "movedHint": "Читач перенесено до Диктування → Читач. Перетягніть аудіо, відео або документ."
       }
     },
     "models": {
@@ -798,7 +798,9 @@
           "title": "Ключ API",
           "description": "Ключ API для вибраного провайдера.",
           "placeholder": "ск-...",
-          "savedPlaceholder": "Збережено в системному сховищі ключів. Введіть нове значення, щоб замінити його."
+          "savedPlaceholder": "Збережено в системному сховищі ключів. Введіть нове значення, щоб замінити його.",
+          "getKeyLink": "Отримайте ключ API {{provider}}",
+          "accountNote": "Відкриває {{provider}} у вашому браузері. Щоб згенерувати ключ, можливо, потрібно створити безкоштовний обліковий запис."
         },
         "model": {
           "title": "Модель",
@@ -1196,7 +1198,7 @@
       "title": "Словник",
       "description": "Керуйте словами, варіантами написання та вивченими виправленнями, які впливають на транскрибування Vox Jot.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "Транскрипція файлів",
+        "sectionTitle": "Транскрипція читача",
         "label": "Застосувати словник і вивчені виправлення",
         "description": "Використовуйте свій особистий словник і сховище виправлень у розшифровках файлів, як і живий диктант. Вимкніть, щоб зберегти необроблений вихід мовлення в текст."
       },
@@ -2198,7 +2200,7 @@
   },
   "dictate": {
     "fileTranscription": {
-      "title": "Транскрипція файлів",
+      "title": "Читач",
       "dropHint": "Перетягніть сюди аудіо- чи відеофайл",
       "orLabel": "або",
       "pickFile": "Виберіть файл",
@@ -2217,7 +2219,7 @@
       "exportSrt": "Зберегти .srt",
       "exportVtt": "Збережіть .vtt",
       "exportSrtUnavailable": "Ця система не надає позначок часу. Перейдіть на Whisper або Parakeet для експорту SRT/VTT.",
-      "description": "Транскрибуйте один аудіо- чи відеофайл або переглядайте папки та автоматично зберігайте стенограми."
+      "description": "Транскрибуйте записи, озвучуйте документи й зберігайте відстежувані папки локально."
     },
     "watchFolders": {
       "title": "Переглянуті папки",
@@ -2242,6 +2244,40 @@
         "emptyDetail": "Немає відстежуваних папок",
         "missing": "Папка відсутня",
         "paused": "Призупинено"
+      }
+    },
+    "reader": {
+      "addDocument": "Додати документ",
+      "documentDialogLabel": "Документи",
+      "documentTitle": "Документи",
+      "documentStatus": "Локальний читач документів",
+      "documentMeta": "{{kind}} · {{words}} слів · {{minutes}} хв",
+      "voice": "Голос",
+      "currentVoice": "Поточний голос",
+      "search": "Шукати документи",
+      "libraryItemMeta": "{{size}} · {{words}} слів",
+      "libraryAriaLabel": "Бібліотека читача",
+      "previewAriaLabel": "Попередній перегляд читача",
+      "empty": "Документів ще немає.",
+      "noMatches": "Немає відповідних документів.",
+      "removeDocument": "Вилучити документ",
+      "confirmRemoveDocument": "Підтвердити вилучення документа",
+      "cancelRemoveDocument": "Скасувати вилучення документа",
+      "sectionLabel": "Розділ {{current}} з {{total}}",
+      "readSection": "Читати розділ",
+      "readAll": "Читати все",
+      "readTranscript": "Читати",
+      "stop": "Зупинити",
+      "speaking": "Читання голосом {{voice}}",
+      "ready": "Готово",
+      "copied": "Скопійовано",
+      "copySection": "Копіювати розділ",
+      "loading": "Відкриття документа",
+      "emptyPreview": "Виберіть документ",
+      "errors": {
+        "openFailed": "Не вдалося відкрити документ.",
+        "playbackFailed": "Не вдалося відтворити читання.",
+        "copyFailed": "Не вдалося скопіювати текст документа."
       }
     }
   },
@@ -2885,8 +2921,8 @@
       "localRouteHeading": "Місцеві перш за все",
       "cloudRouteHeading": "Хмарна допомога",
       "advancedEvaluationTitle": "Уточнення оцінки моделі (розширений)",
-      "fileTranscriptionTitle": "Транскрипція файлів",
-      "fileTranscriptionDetail": "Додайте аудіо або відео, щоб транскрибувати",
+      "fileTranscriptionTitle": "Читач",
+      "fileTranscriptionDetail": "Перетягніть аудіо, відео або документи",
       "managementTitle": "Керуйте моделями з цих переглядів",
       "managementSubtitle": "Параметри містять лише маршрутизацію провайдера. Переглядайте, завантажуйте та обмінюйте окремі моделі у спеціальних каталогах.",
       "cleanupLabel": "Очищення",
@@ -2916,7 +2952,7 @@
       "dictate": {
         "history": "Головна",
         "corrections": "Словник",
-        "fileTranscription": "Транскрипція файлів"
+        "fileTranscription": "Читач"
       },
       "refine": {
         "writeProfiles": "Напишіть профілі",

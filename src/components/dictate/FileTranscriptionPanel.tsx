@@ -61,6 +61,10 @@ import {
   buildSectionReadingUnits,
   type ReadingUnit,
 } from "./reader/readerReadingUnits";
+import {
+  cleanReaderText,
+  deriveSectionTitle,
+} from "./reader/readerTextCleanup";
 import { useReaderPlayback } from "./reader/useReaderPlayback";
 
 type FileTranscriptionView = "file" | "documents" | "folders";
@@ -366,8 +370,7 @@ function saveReaderDocumentState(
     };
     const entries = Object.entries(states)
       .sort(
-        ([, left], [, right]) =>
-          (right.updatedAt ?? 0) - (left.updatedAt ?? 0),
+        ([, left], [, right]) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0),
       )
       .slice(0, 96);
     window.localStorage.setItem(
@@ -2001,7 +2004,9 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
         if ("selectedPresetId" in documentState) {
           setSelectedPresetId(documentState.selectedPresetId ?? null);
         }
-        setPlaybackRate(normalizeReaderPlaybackRate(documentState.playbackRate));
+        setPlaybackRate(
+          normalizeReaderPlaybackRate(documentState.playbackRate),
+        );
         setAudioExportFeedback("");
         persistLibrary(
           upsertReaderLibraryItem(library, readerItemFromDocument(document)),
@@ -2064,10 +2069,29 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     );
   }, [library, query]);
 
+  // Tidy the extracted text (reflow hard-wrapped lines, strip OCR "x" markers)
+  // and derive real titles, so both the display and the narration are clean.
+  const cleanedSections = useMemo(
+    () =>
+      (activeDocument?.sections ?? []).map((section) => {
+        const text = cleanReaderText(section.text);
+        return {
+          index: section.index,
+          title: deriveSectionTitle(
+            text,
+            t("dictate.reader.sectionFallbackTitle", {
+              defaultValue: "Section {{n}}",
+              n: section.index + 1,
+            }),
+          ),
+          text,
+        };
+      }),
+    [activeDocument, t],
+  );
+
   const currentSection =
-    activeDocument?.sections[activeSectionIndex] ??
-    activeDocument?.sections[0] ??
-    null;
+    cleanedSections[activeSectionIndex] ?? cleanedSections[0] ?? null;
   const selectedPreset =
     selectedPresetId === null
       ? null
@@ -2075,15 +2099,13 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
   const readingUnits = useMemo(
     () =>
-      activeDocument
-        ? buildSectionReadingUnits(activeDocument.sections, {
-            voiceForSection: (sectionIndex) =>
-              sectionVoices[sectionIndex] ?? selectedPresetId,
-            isSectionEnabled: (sectionIndex) =>
-              sectionDisabled[sectionIndex] !== true,
-          })
-        : [],
-    [activeDocument, sectionVoices, sectionDisabled, selectedPresetId],
+      buildSectionReadingUnits(cleanedSections, {
+        voiceForSection: (sectionIndex) =>
+          sectionVoices[sectionIndex] ?? selectedPresetId,
+        isSectionEnabled: (sectionIndex) =>
+          sectionDisabled[sectionIndex] !== true,
+      }),
+    [cleanedSections, sectionVoices, sectionDisabled, selectedPresetId],
   );
 
   const speakUnit = useCallback(
@@ -2479,7 +2501,7 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
                   <div className="grid gap-4 lg:grid-cols-[minmax(150px,0.42fr)_minmax(0,1fr)]">
                     <div className="max-h-[360px] space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-1">
-                      {activeDocument.sections.map((section) => {
+                      {cleanedSections.map((section) => {
                         const selected = section.index === activeSectionIndex;
                         const enabled = sectionDisabled[section.index] !== true;
                         return (
@@ -2568,10 +2590,14 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                       })}
                     </div>
 
-                    <div className="min-h-[360px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
-                      <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-[var(--text)]">
-                        {currentSection.text}
-                      </pre>
+                    <div className="max-h-[360px] min-h-[360px] space-y-3 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm leading-7 text-[var(--text)]">
+                      {currentSection.text
+                        .split(/\n{2,}/)
+                        .map((paragraph, index) => (
+                          <p key={index} className="break-words">
+                            {paragraph}
+                          </p>
+                        ))}
                     </div>
                   </div>
 

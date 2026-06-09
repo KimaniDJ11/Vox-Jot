@@ -135,6 +135,21 @@ describe("resolveModelProviderId", () => {
         expected: "vox_jot",
       },
       {
+        title: "RNNoise",
+        runtimeProviderId: "rnnoise",
+        expected: "rnnoise",
+      },
+      {
+        title: "Spectral Subtraction",
+        runtimeProviderId: "spectral",
+        expected: "spectral",
+      },
+      {
+        title: "DeepFilterNet",
+        runtimeProviderId: "deepfilternet",
+        expected: "deepfilternet",
+      },
+      {
         title: "Polyvoice ONNX Diarization",
         runtimeProviderId: "generic",
         expected: "polyvoice",
@@ -633,6 +648,10 @@ describe("resolveModelProviderId", () => {
       "boson",
       "k2fsa",
       "mediatek",
+      // Audio cleanup
+      "rnnoise",
+      "spectral",
+      "deepfilternet",
       // Misc
       "nvidia",
       "sherpa",

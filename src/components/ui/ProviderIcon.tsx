@@ -701,6 +701,62 @@ function HuggingFaceMark({ size }: { size: number; color: string }) {
   );
 }
 
+function RnnoiseMark({ size }: { size: number; color: string }) {
+  // Clean voice waveform for the learned speech denoiser.
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M3 12h2.4M18.6 12H21"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.6 8.5v7M9.6 5v14M12.6 8.5v7M15.6 10.5v3"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SpectralMark({ size }: { size: number; color: string }) {
+  // Frequency-bin spectrum bars for spectral subtraction.
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 16V11M9 16V6M13 16V9M17 16V12.5"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 19h16"
+        stroke="#C7D2FE"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DeepFilterNetMark({ size }: { size: number; color: string }) {
+  // Neural filter funnel with a sparkle for the full-band denoiser.
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M4 5.5h16l-6 6.6V19l-4 1.6v-9L4 5.5Z" fill="#FFFFFF" />
+      <path
+        d="m17.6 3.2.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8.8-1.9Z"
+        fill="#BFDBFE"
+      />
+    </svg>
+  );
+}
+
 function VoxJotMark({ size, color }: { size: number; color: string }) {
   const s = size * 0.7;
   return (
@@ -1502,6 +1558,14 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: VoxJotMark,
   },
   openai: { bg: "#000000", fg: "#FFFFFF", letter: "O", mark: OpenAIMark },
+  rnnoise: { bg: "#0E9F6E", fg: "#FFFFFF", letter: "R", mark: RnnoiseMark },
+  spectral: { bg: "#6366F1", fg: "#FFFFFF", letter: "S", mark: SpectralMark },
+  deepfilternet: {
+    bg: "#1D4ED8",
+    fg: "#FFFFFF",
+    letter: "DF",
+    mark: DeepFilterNetMark,
+  },
   nvidia: { bg: "#76B900", fg: "#FFFFFF", letter: "N", mark: NvidiaMark },
   apple: { bg: "#F5F5F7", fg: "#111827", letter: "", mark: AppleMark },
   mistral: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "M", mark: MistralMark },
@@ -1745,6 +1809,9 @@ const PROVIDER_BRAND: Record<string, string> = {
   vox_jot: "vox_jot",
   current_dictation: "vox_jot",
   stt_whisper: "openai",
+  rnnoise: "rnnoise",
+  spectral: "spectral",
+  deepfilternet: "deepfilternet",
   stt_parakeet: "nvidia",
   stt_moonshine: "useful_sensors",
   stt_moonshine_streaming: "useful_sensors",
@@ -2139,6 +2206,9 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   vox_jot: "Vox Jot",
   current_dictation: "Vox Jot",
   stt_whisper: "OpenAI Whisper",
+  rnnoise: "RNNoise",
+  spectral: "Spectral Subtraction",
+  deepfilternet: "DeepFilterNet",
   stt_parakeet: "NVIDIA Parakeet",
   stt_moonshine: "Useful Sensors Moonshine",
   stt_moonshine_streaming: "Useful Sensors Moonshine",

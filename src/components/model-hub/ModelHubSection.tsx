@@ -14,6 +14,7 @@ import { EngineLibrarySection } from "@/components/settings/general/ListenSectio
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";
 import CreativeAudioEnginesSection from "@/components/model-hub/CreativeAudioEnginesSection";
+import AudioCleanupEnginesSection from "@/components/model-hub/AudioCleanupEnginesSection";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { press } from "@/motion/springs";
 import {
@@ -38,7 +39,12 @@ function isModelHubTabId(value: string | null): value is ModelHubTabId {
 }
 
 function isModelHubScope(value: string | null): value is ModelHubScope {
-  return value === "all" || value === "analysis" || value === "creative_audio";
+  return (
+    value === "all" ||
+    value === "analysis" ||
+    value === "creative_audio" ||
+    value === "audio_cleanup"
+  );
 }
 
 function readInitialScope(): ModelHubScope {
@@ -92,17 +98,16 @@ const ModelHubSection: React.FC = () => {
       creative_audio: {
         ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.creative_audio,
       },
+      audio_cleanup: {
+        ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.audio_cleanup,
+      },
       ocr: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.ocr },
       analysis: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.analysis },
     }));
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
-  const visibleTab =
-    scope === "analysis"
-      ? "analysis"
-      : scope === "creative_audio"
-        ? "creative_audio"
-        : activeTab;
+  const visibleTab = scope === "all" ? activeTab : scope;
   const controlScope = getControlScope(visibleTab);
+  const showCategoryHeader = scope === "all" || scope === "analysis";
 
   const setControlValue = useCallback(
     <K extends ModelHubControlValueKey>(
@@ -254,6 +259,8 @@ const ModelHubSection: React.FC = () => {
       );
     } else if (tabId === "creative_audio") {
       content = <CreativeAudioEnginesSection {...commonSectionProps} />;
+    } else if (tabId === "audio_cleanup") {
+      content = <AudioCleanupEnginesSection {...commonSectionProps} />;
     } else if (tabId === "ocr") {
       content = <OcrEnginesSection {...commonSectionProps} />;
     }
@@ -264,13 +271,21 @@ const ModelHubSection: React.FC = () => {
         id={`model-hub-panel-${tabId}`}
         role="tabpanel"
         aria-labelledby={
-          scope === "creative_audio" ? undefined : `model-hub-tab-${tabId}`
+          scope === "all" || scope === "analysis"
+            ? `model-hub-tab-${tabId}`
+            : undefined
         }
         aria-label={
-          scope === "creative_audio" && tabId === "creative_audio"
-            ? t("modelHub.tabs.creativeAudio", {
-                defaultValue: "Creative Audio",
-              })
+          scope !== "all" && scope !== "analysis" && tabId === scope
+            ? t(
+                ALL_TABS.find((tab) => tab.id === tabId)?.labelKey ??
+                  "modelHub.tabs.stt",
+                {
+                  defaultValue:
+                    ALL_TABS.find((tab) => tab.id === tabId)?.defaultLabel ??
+                    "Model Hub",
+                },
+              )
             : undefined
         }
         hidden={!isActive}
@@ -288,7 +303,7 @@ const ModelHubSection: React.FC = () => {
         : modelHubToolbar}
 
       <div className="flex min-h-0 flex-col">
-        {scope !== "creative_audio" ? (
+        {showCategoryHeader ? (
           <div
             data-model-hub-sticky-header=""
             className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"

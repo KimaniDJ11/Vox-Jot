@@ -42,7 +42,7 @@ interface ModelListControlsProps {
   className?: string;
 }
 
-const SelectControl: React.FC<SelectControlProps> = ({
+export const SelectControl: React.FC<SelectControlProps> = ({
   value,
   options,
   onChange,

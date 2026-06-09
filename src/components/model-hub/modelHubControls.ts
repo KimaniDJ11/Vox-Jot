@@ -13,6 +13,7 @@ export type ModelHubControlScope =
   | "llm"
   | "tts"
   | "creative_audio"
+  | "audio_cleanup"
   | "ocr"
   | "analysis";
 
@@ -43,6 +44,7 @@ export const DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES: ScopedModelHubControlValue
     llm: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
     tts: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
     creative_audio: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
+    audio_cleanup: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
     ocr: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
     analysis: { ...DEFAULT_MODEL_HUB_FILTER_VALUES },
   };

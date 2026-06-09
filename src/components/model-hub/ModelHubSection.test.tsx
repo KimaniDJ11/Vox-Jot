@@ -147,6 +147,14 @@ vi.mock("@/components/model-hub/CreativeAudioEnginesSection", async () => {
   };
 });
 
+vi.mock("@/components/model-hub/AudioCleanupEnginesSection", async () => {
+  const ReactModule = await vi.importActual<typeof import("react")>("react");
+  return {
+    default: (props: never) =>
+      renderHubSection(ReactModule, "audio_cleanup", props),
+  };
+});
+
 vi.mock("@/components/model-hub/OcrEnginesSection", async () => {
   const ReactModule = await vi.importActual<typeof import("react")>("react");
   return {
@@ -277,6 +285,72 @@ describe("ModelHubSection", () => {
     expect(
       view.container.querySelector('[data-testid="stt-provider"]')?.textContent,
     ).toBe("all");
+
+    await view.cleanup();
+  });
+
+  it("includes Audio Cleanup as its own category with scoped filters", async () => {
+    const view = await render();
+
+    const sttSort = view.container.querySelector(
+      '[aria-label="stt sort"]',
+    ) as HTMLSelectElement;
+    await act(async () => {
+      sttSort.value = "alphabetical";
+      sttSort.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    const audioCleanupTab = Array.from(
+      view.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Audio Cleanup");
+    expect(audioCleanupTab).not.toBeUndefined();
+
+    await act(async () => {
+      audioCleanupTab?.click();
+    });
+
+    expect(
+      view.container.querySelector('[data-testid="audio_cleanup-sort"]')
+        ?.textContent,
+    ).toBe("alphabetical");
+
+    const audioCleanupProvider = view.container.querySelector(
+      '[aria-label="audio_cleanup provider"]',
+    ) as HTMLSelectElement;
+    await act(async () => {
+      audioCleanupProvider.value = "neural";
+      audioCleanupProvider.dispatchEvent(
+        new Event("change", { bubbles: true }),
+      );
+    });
+
+    const sttTab = Array.from(view.container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Speech (STT)",
+    );
+    await act(async () => {
+      sttTab?.click();
+    });
+
+    expect(
+      view.container.querySelector('[data-testid="stt-provider"]')?.textContent,
+    ).toBe("all");
+
+    await view.cleanup();
+  });
+
+  it("opens scoped Audio Cleanup without the full category tab bar", async () => {
+    window.localStorage.setItem(MODEL_HUB_SCOPE_STORAGE_KEY, "audio_cleanup");
+    window.localStorage.setItem(MODEL_HUB_TAB_STORAGE_KEY, "audio_cleanup");
+
+    const view = await render();
+
+    expect(view.container.querySelector('[role="tablist"]')).toBeNull();
+    expect(
+      view.container.querySelector('[data-testid="audio_cleanup-sort"]')
+        ?.textContent,
+    ).toBe("best_match");
+    expect(view.container.textContent).not.toContain("Speech (STT)");
+    expect(view.container.textContent).not.toContain("Refine (LLM)");
 
     await view.cleanup();
   });

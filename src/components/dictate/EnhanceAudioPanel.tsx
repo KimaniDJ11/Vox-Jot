@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -13,14 +7,24 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
   AudioWaveform,
   FolderOpen,
+  Layers,
   Loader2,
   RotateCcw,
   Sparkles,
   Upload,
 } from "lucide-react";
 
-import { ActionIconButton, SegmentedControl } from "@/components/ui";
+import { ActionIconButton, Dropdown } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
+import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import { openModelHub } from "@/components/model-hub/modelHubTabs";
+import {
+  getEnhanceModelMeta,
+  loadEnhanceModel,
+  subscribeEnhanceModel,
+  type EnhanceModelId,
+} from "@/lib/enhanceModels";
 
 const AUDIO_VIDEO_EXTENSIONS = [
   "wav",
@@ -39,8 +43,6 @@ const AUDIO_VIDEO_EXTENSIONS = [
   "mkv",
   "3gp",
 ];
-
-type EnhanceModel = "rnnoise" | "spectral" | "deepfilternet";
 
 type EnhanceAudioFileResult = {
   output_path: string;
@@ -68,40 +70,79 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+async function getDenoiseRuntimeInstalled(): Promise<boolean> {
+  try {
+    const status = await invoke<{ installed: boolean }>(
+      "denoise_runtime_status",
+    );
+    return status.installed;
+  } catch {
+    return false;
+  }
+}
+
 export const EnhanceAudioPanel: React.FC = () => {
   const { t } = useTranslation();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [model, setModel] = useState<EnhanceModel>("rnnoise");
+  const [model, setModel] = useState<EnhanceModelId>(() => loadEnhanceModel());
   const [strength, setStrength] = useState(0.75);
   const [outputSampleRate, setOutputSampleRate] = useState<number>(48_000);
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EnhanceAudioFileResult | null>(null);
-  // DeepFilterNet runs through a Python sidecar installed on demand.
   const [runtimeInstalled, setRuntimeInstalled] = useState<boolean | null>(
     null,
   );
-  const [isPreparingRuntime, setIsPreparingRuntime] = useState(false);
-  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   const isRunningRef = useRef(false);
   isRunningRef.current = isRunning;
 
+  const modelMeta = getEnhanceModelMeta(model);
+  const modelName = t(modelMeta.nameKey, {
+    defaultValue: modelMeta.nameDefault,
+  });
+  const strengthPercent = Math.round(strength * 100);
+
+  useEffect(() => subscribeEnhanceModel(setModel), []);
+
+  const checkRuntime = useCallback(async () => {
+    setRuntimeInstalled(await getDenoiseRuntimeInstalled());
+  }, []);
+
+  useEffect(() => {
+    if (model !== "deepfilternet") return;
+    setRuntimeInstalled(null);
+    void checkRuntime();
+    const onFocus = () => void checkRuntime();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [checkRuntime, model]);
+
+  const openEnhancementModels = useCallback(() => {
+    void openModelHub("audio_cleanup", { scope: "audio_cleanup" });
+  }, []);
+
   const runEnhance = useCallback(
     async (path: string) => {
       if (isRunningRef.current) return;
+
       if (model === "deepfilternet" && runtimeInstalled !== true) {
-        setSelectedPath(path);
-        setResult(null);
-        setError(
-          t("dictate.enhanceAudio.runtime.required", {
-            defaultValue:
-              "Set up DeepFilterNet before enhancing with this engine.",
-          }),
-        );
-        return;
+        const installed = await getDenoiseRuntimeInstalled();
+        setRuntimeInstalled(installed);
+        if (!installed) {
+          setSelectedPath(path);
+          setResult(null);
+          setError(
+            t("dictate.enhanceAudio.runtime.required", {
+              defaultValue:
+                "Set up DeepFilterNet in Noise removal models before enhancing with this engine.",
+            }),
+          );
+          return;
+        }
       }
+
       setSelectedPath(path);
       setError(null);
       setResult(null);
@@ -218,168 +259,96 @@ export const EnhanceAudioPanel: React.FC = () => {
     setError(null);
   }, []);
 
-  // Check whether the DeepFilterNet runtime is installed the first time the
-  // engine is selected.
-  useEffect(() => {
-    if (model !== "deepfilternet" || runtimeInstalled !== null) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const status = await invoke<{ installed: boolean }>(
-          "denoise_runtime_status",
-        );
-        if (!cancelled) setRuntimeInstalled(status.installed);
-      } catch {
-        if (!cancelled) setRuntimeInstalled(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [model, runtimeInstalled]);
-
-  const prepareRuntime = useCallback(async () => {
-    if (isPreparingRuntime) return;
-    setIsPreparingRuntime(true);
-    setRuntimeError(null);
-    try {
-      await invoke("prepare_denoise_runtime");
-      setRuntimeInstalled(true);
-    } catch (err) {
-      setRuntimeError(
-        typeof err === "string"
-          ? err
-          : t("dictate.enhanceAudio.runtime.failed", {
-              defaultValue: "Failed to set up the DeepFilterNet runtime.",
-            }),
-      );
-      setRuntimeInstalled(false);
-    } finally {
-      setIsPreparingRuntime(false);
-    }
-  }, [isPreparingRuntime, t]);
-
   const isDeepFilterNetSelected = model === "deepfilternet";
   const isCheckingRuntime =
     isDeepFilterNetSelected && runtimeInstalled === null;
   const needsRuntimeSetup =
     isDeepFilterNetSelected && runtimeInstalled === false;
 
-  const engineHint = useMemo(() => {
-    if (model === "deepfilternet") {
-      return t("dictate.enhanceAudio.engine.deepfilternetHint", {
-        defaultValue:
-          "DeepFilterNet — state-of-the-art neural denoiser, full-band 48 kHz. First use downloads a one-time runtime.",
-      });
-    }
-    if (model === "spectral") {
-      return t("dictate.enhanceAudio.engine.spectralHint", {
-        defaultValue:
-          "Spectral subtraction — adjustable strength, best for steady hiss, hum, and fan noise.",
-      });
-    }
-    return t("dictate.enhanceAudio.engine.rnnoiseHint", {
-      defaultValue:
-        "RNNoise — a voice-tuned neural denoiser. Great default for speech.",
-    });
-  }, [model, t]);
-
-  const strengthPercent = Math.round(strength * 100);
-
   return (
     <div className="space-y-6" aria-busy={isRunning}>
       <p className="text-sm text-[var(--muted)]">
         {t("dictate.enhanceAudio.subtitle", {
           defaultValue:
-            "Remove background noise from any audio or video and keep a full-band, high-quality file.",
+            "Remove background noise from audio or video files while preserving full-band quality.",
         })}
       </p>
 
-      <div className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]">
-        {/* Engine + output controls */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
-            <div className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
-              {t("dictate.enhanceAudio.engine.label", {
-                defaultValue: "Engine",
-              })}
-            </div>
-            <SegmentedControl<EnhanceModel>
-              value={model}
-              onChange={setModel}
-              ariaLabel={t("dictate.enhanceAudio.engine.label", {
-                defaultValue: "Engine",
-              })}
-              items={[
-                {
-                  value: "rnnoise",
-                  label: t("dictate.enhanceAudio.engine.rnnoise", {
-                    defaultValue: "RNNoise",
-                  }),
-                },
-                {
-                  value: "spectral",
-                  label: t("dictate.enhanceAudio.engine.spectral", {
-                    defaultValue: "Spectral",
-                  }),
-                },
-                {
-                  value: "deepfilternet",
-                  label: t("dictate.enhanceAudio.engine.deepfilternet", {
-                    defaultValue: "DeepFilterNet",
-                  }),
-                },
-              ]}
-            />
-          </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="primary-soft"
+          onClick={pickFile}
+          disabled={isRunning}
+        >
+          {t("dictate.enhanceAudio.addFile", { defaultValue: "Add file" })}
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={openEnhancementModels}
+          >
+            <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("dictate.enhanceAudio.models", {
+              defaultValue: "Noise removal models",
+            })}
+          </Button>
+        </div>
+      </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="enhance-output-rate"
-              className="block text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]"
-            >
+      <div className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <span className="text-sm font-medium text-[var(--text)]">
               {t("dictate.enhanceAudio.quality.label", {
                 defaultValue: "Output quality",
               })}
-            </label>
-            {model === "deepfilternet" ? (
-              <div className="flex h-9 items-center rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-medium text-[var(--muted)]">
-                {t("dictate.enhanceAudio.quality.fullBand", {
-                  defaultValue: "48 kHz · Full band",
-                })}
-              </div>
-            ) : (
-              <select
-                id="enhance-output-rate"
-                value={String(outputSampleRate)}
-                onChange={(event) =>
-                  setOutputSampleRate(Number(event.target.value))
-                }
-                className="h-9 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
-              >
-                {OUTPUT_SAMPLE_RATES.map((rate) => (
-                  <option key={rate} value={rate}>
-                    {rate === 48_000
-                      ? t("dictate.enhanceAudio.quality.fullBand", {
+            </span>
+            <Dropdown
+              options={
+                model === "deepfilternet"
+                  ? [
+                      {
+                        value: "48000",
+                        label: t("dictate.enhanceAudio.quality.fullBand", {
                           defaultValue: "48 kHz · Full band",
-                        })
-                      : rate === 44_100
-                        ? t("dictate.enhanceAudio.quality.cd", {
-                            defaultValue: "44.1 kHz · CD",
-                          })
-                        : t("dictate.enhanceAudio.quality.voice", {
-                            defaultValue: "16 kHz · Voice",
-                          })}
-                  </option>
-                ))}
-              </select>
-            )}
+                        }),
+                      },
+                    ]
+                  : OUTPUT_SAMPLE_RATES.map((rate) => ({
+                      value: String(rate),
+                      label:
+                        rate === 48_000
+                          ? t("dictate.enhanceAudio.quality.fullBand", {
+                              defaultValue: "48 kHz · Full band",
+                            })
+                          : rate === 44_100
+                            ? t("dictate.enhanceAudio.quality.cd", {
+                                defaultValue: "44.1 kHz · CD",
+                              })
+                            : t("dictate.enhanceAudio.quality.voice", {
+                                defaultValue: "16 kHz · Voice",
+                              }),
+                    }))
+              }
+              selectedValue={
+                model === "deepfilternet" ? "48000" : String(outputSampleRate)
+              }
+              onSelect={(value) => setOutputSampleRate(Number(value))}
+              disabled={model === "deepfilternet" || isRunning}
+              ariaLabel={t("dictate.enhanceAudio.quality.label", {
+                defaultValue: "Output quality",
+              })}
+            />
+          </div>
+          <div className="inline-flex min-w-0 items-center gap-2 self-end text-sm font-semibold text-[var(--text)] sm:self-start">
+            <ProviderIcon providerId={modelMeta.providerId} size="sm" />
+            <span className="truncate">{modelName}</span>
           </div>
         </div>
-
-        <p className="text-[12px] leading-5 text-[var(--muted)]">
-          {engineHint}
-        </p>
 
         {model === "spectral" ? (
           <div className="space-y-1">
@@ -413,7 +382,6 @@ export const EnhanceAudioPanel: React.FC = () => {
           </div>
         ) : null}
 
-        {/* One-time DeepFilterNet runtime setup */}
         {isCheckingRuntime ? (
           <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-4 py-10 text-center">
             <Loader2
@@ -426,12 +394,6 @@ export const EnhanceAudioPanel: React.FC = () => {
                 defaultValue: "Checking DeepFilterNet setup…",
               })}
             </div>
-            <p className="max-w-sm text-[12px] leading-5 text-[var(--muted)]">
-              {t("dictate.enhanceAudio.runtime.checkingDescription", {
-                defaultValue:
-                  "This engine needs the app-managed neural denoiser runtime before it can process files.",
-              })}
-            </p>
           </div>
         ) : needsRuntimeSetup ? (
           <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-4 py-10 text-center">
@@ -448,37 +410,21 @@ export const EnhanceAudioPanel: React.FC = () => {
             <p className="max-w-sm text-[12px] leading-5 text-[var(--muted)]">
               {t("dictate.enhanceAudio.runtime.description", {
                 defaultValue:
-                  "A one-time download installs the neural denoiser (PyTorch + model). It can take a few minutes and needs an internet connection.",
+                  "A one-time download installs the neural noise removal engine (PyTorch + model). Set it up in Noise removal models, then drop a file here.",
               })}
             </p>
-            <button
+            <Button
               type="button"
-              onClick={prepareRuntime}
-              disabled={isPreparingRuntime}
-              className="mt-1 inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--on-accent)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              size="sm"
+              variant="primary"
+              onClick={openEnhancementModels}
+              className="mt-1"
             >
-              {isPreparingRuntime ? (
-                <>
-                  <Loader2
-                    size={15}
-                    className="animate-spin"
-                    aria-hidden="true"
-                  />
-                  {t("dictate.enhanceAudio.runtime.installing", {
-                    defaultValue: "Setting up… (one-time)",
-                  })}
-                </>
-              ) : (
-                t("dictate.enhanceAudio.runtime.install", {
-                  defaultValue: "Set up DeepFilterNet",
-                })
-              )}
-            </button>
-            {runtimeError ? (
-              <p className="max-w-sm text-[12px] leading-5 text-[var(--danger)]">
-                {runtimeError}
-              </p>
-            ) : null}
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("dictate.enhanceAudio.runtime.openHub", {
+                defaultValue: "Open Noise removal models",
+              })}
+            </Button>
           </div>
         ) : (
           <button
@@ -545,7 +491,6 @@ export const EnhanceAudioPanel: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Result */}
         {result ? (
           <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-4">
             <div className="flex items-center justify-between gap-2">

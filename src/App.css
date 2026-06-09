@@ -117,12 +117,10 @@
   --feature-callout-shadow:
     inset 0 1px 0 var(--edge-highlight),
     0 4px 18px color-mix(in srgb, var(--text) 16%, transparent);
-  --modal-shadow: 0 24px 64px
-    color-mix(in srgb, var(--text) 38%, transparent);
+  --modal-shadow: 0 24px 64px color-mix(in srgb, var(--text) 38%, transparent);
   --modal-shadow-strong: 0 24px 64px
     color-mix(in srgb, var(--text) 45%, transparent);
-  --popover-shadow: 0 18px 48px
-    color-mix(in srgb, var(--text) 40%, transparent);
+  --popover-shadow: 0 18px 48px color-mix(in srgb, var(--text) 40%, transparent);
   --floating-panel-shadow: 0 18px 50px
     color-mix(in srgb, var(--text) 28%, transparent);
   --context-menu-shadow: 0 16px 40px
@@ -137,11 +135,7 @@
   );
   --app-monogram-tint-5: color-mix(in srgb, var(--info) 18%, transparent);
   --app-monogram-tint-6: color-mix(in srgb, var(--accent-2) 18%, transparent);
-  --rank-bronze: color-mix(
-    in srgb,
-    var(--accent-gold) 78%,
-    var(--danger)
-  );
+  --rank-bronze: color-mix(in srgb, var(--accent-gold) 78%, var(--danger));
 
   --shadow-sm: 0 1px 3px rgba(44, 36, 24, 0.06);
   --shadow-md: 0 4px 16px rgba(44, 36, 24, 0.08);
@@ -2022,7 +2016,8 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .story-audio-docked-player,
-  .history-transcript-docked-player {
+  .history-transcript-docked-player,
+  .reader-docked-player {
     position: fixed;
     bottom: max(1rem, env(safe-area-inset-bottom));
     left: calc(240px + max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem));
@@ -2030,7 +2025,8 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .shell.shell--sidebar-collapsed .story-audio-docked-player,
-  .shell.shell--sidebar-collapsed .history-transcript-docked-player {
+  .shell.shell--sidebar-collapsed .history-transcript-docked-player,
+  .shell.shell--sidebar-collapsed .reader-docked-player {
     left: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
     right: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
   }
@@ -2054,44 +2050,12 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .story-audio-waveform-hud:hover,
-  .story-audio-waveform-hud:focus-within,
-  .story-audio-waveform-hud[data-expanded="true"] {
+  .story-audio-waveform-hud:focus-within {
     border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
     box-shadow:
       inset 0 1px 0 var(--edge-highlight),
       inset 0 -1px 0 var(--edge-shadow),
       0 24px 70px -20px rgba(0, 0, 0, 0.38);
-  }
-
-  .story-audio-waveform-hud__details {
-    max-height: 0;
-    overflow: hidden;
-    border-top: 1px solid transparent;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(0.35rem);
-    transition:
-      max-height 180ms ease,
-      padding-top 180ms ease,
-      padding-bottom 180ms ease,
-      border-color 180ms ease,
-      opacity 140ms ease,
-      transform 180ms ease;
-  }
-
-  .story-audio-waveform-hud:hover .story-audio-waveform-hud__details,
-  .story-audio-waveform-hud:focus-within .story-audio-waveform-hud__details,
-  .story-audio-waveform-hud[data-expanded="true"]
-    .story-audio-waveform-hud__details {
-    max-height: 8rem;
-    border-top-color: color-mix(in srgb, var(--border) 78%, transparent);
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
   }
 
   .story-audio-waveform-hud__floating-title {

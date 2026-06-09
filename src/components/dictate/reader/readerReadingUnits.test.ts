@@ -104,6 +104,11 @@ describe("buildSectionReadingUnits", () => {
       "voice-character",
       "voice-narrator",
     ]);
+    expect(units.map((unit) => unit.id)).toEqual([
+      "section-0-chunk-0",
+      "section-1-chunk-0",
+      "section-2-chunk-0",
+    ]);
   });
 
   it("omits disabled sections from the playback queue", () => {

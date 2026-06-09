@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Loader2, Pause, Play } from "lucide-react";
 
 export const DOCKED_AUDIO_HUD_TICK_COUNT = 64;
@@ -35,7 +35,6 @@ interface DockedAudioHudProps {
   timelineLabel: string;
   floatingTitle?: React.ReactNode;
   floatingControls?: React.ReactNode;
-  details?: React.ReactNode;
   className?: string;
   onTogglePlay: () => void;
   onScrub: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -63,7 +62,6 @@ export const DockedAudioHud: React.FC<DockedAudioHudProps> = ({
   timelineLabel,
   floatingTitle,
   floatingControls,
-  details,
   className = "",
   onTogglePlay,
   onScrub,
@@ -72,25 +70,9 @@ export const DockedAudioHud: React.FC<DockedAudioHudProps> = ({
   onAudioPause,
   onAudioEnded,
 }) => {
-  const [isHudInteracting, setIsHudInteracting] = useState(false);
-
   return (
     <div
       className={`story-audio-waveform-hud z-20 overflow-visible rounded-[1.75rem] ${className}`}
-      data-expanded={isHudInteracting ? "true" : "false"}
-      onMouseEnter={() => setIsHudInteracting(true)}
-      onMouseLeave={() => setIsHudInteracting(false)}
-      onFocusCapture={() => setIsHudInteracting(true)}
-      onBlurCapture={(event) => {
-        const nextFocusedElement =
-          event.relatedTarget instanceof Node ? event.relatedTarget : null;
-        if (
-          !nextFocusedElement ||
-          !event.currentTarget.contains(nextFocusedElement)
-        ) {
-          setIsHudInteracting(false);
-        }
-      }}
     >
       <audio
         ref={audioRef}
@@ -191,14 +173,6 @@ export const DockedAudioHud: React.FC<DockedAudioHudProps> = ({
           {durationLabel}
         </span>
       </div>
-
-      {details ? (
-        <div className="story-audio-waveform-hud__details">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4">
-            {details}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 };

@@ -15,6 +15,7 @@ use zip::ZipArchive;
 
 const MAX_SECTION_CHARS: usize = 1_800;
 const READER_DOCUMENTS_DIR: &str = "documents";
+const READER_AUDIO_CACHE_DIR: &str = "audio-cache";
 const READER_LIBRARY_FILE: &str = "library.json";
 const READER_RUNTIME_VERSION: &str =
     "reader-runtime-v1|PyMuPDF==1.24.14|python-docx==1.1.2|ebooklib==0.18";
@@ -918,6 +919,15 @@ fn remove_reader_document_from_store(reader_data_dir: &Path, id: &str) -> Result
             )
         })?;
     }
+    let audio_cache_path = reader_audio_cache_path(reader_data_dir, id);
+    if audio_cache_path.is_dir() {
+        fs::remove_dir_all(&audio_cache_path).map_err(|err| {
+            format!(
+                "Failed to remove Reader audio cache '{}': {err}",
+                audio_cache_path.display()
+            )
+        })?;
+    }
     Ok(())
 }
 
@@ -925,6 +935,10 @@ fn reader_cache_path(reader_data_dir: &Path, id: &str) -> PathBuf {
     reader_data_dir
         .join(READER_DOCUMENTS_DIR)
         .join(format!("{id}.json"))
+}
+
+fn reader_audio_cache_path(reader_data_dir: &Path, id: &str) -> PathBuf {
+    reader_data_dir.join(READER_AUDIO_CACHE_DIR).join(id)
 }
 
 fn reader_document_id(path: &Path) -> String {

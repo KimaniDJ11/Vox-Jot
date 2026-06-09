@@ -46,6 +46,8 @@ export type ReaderVoicePickerProps = {
   onCreatePresetFromVoice: (voice: CreateVoiceHubVoiceRow) => Promise<string>;
   /** Show the "Default voice" option (used by per-section pickers). */
   allowDefault?: boolean;
+  defaultLabel?: string;
+  defaultPresetId?: string | null;
   disabled?: boolean;
   className?: string;
 };
@@ -66,6 +68,8 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
   onSelectDefault,
   onCreatePresetFromVoice,
   allowDefault = true,
+  defaultLabel,
+  defaultPresetId,
   disabled = false,
   className = "",
 }) => {
@@ -89,12 +93,44 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
     [presets, value],
   );
 
-  const defaultVoiceLabel = t("dictate.reader.sections.defaultVoice", {
-    defaultValue: "Default voice",
-  });
+  const dotPreset = useMemo(
+    () =>
+      selectedPreset ??
+      (defaultPresetId
+        ? presets.find((preset) => preset.id === defaultPresetId) ?? null
+        : null),
+    [presets, selectedPreset, defaultPresetId],
+  );
+
+  const defaultVoiceLabel =
+    defaultLabel ??
+    t("dictate.reader.sections.defaultVoice", {
+      defaultValue: "Default voice",
+    });
   const currentLabel = selectedPreset
     ? presetLabel(selectedPreset)
     : defaultVoiceLabel;
+
+  const voiceName = useMemo(
+    () => (dotPreset ? presetLabel(dotPreset) : ""),
+    [dotPreset],
+  );
+
+  const defaultLabelParts = useMemo(() => {
+    if (!defaultVoiceLabel || !voiceName) {
+      return { prefix: defaultVoiceLabel, voice: "" };
+    }
+    const idx = defaultVoiceLabel.lastIndexOf(voiceName);
+    if (idx !== -1) {
+      return {
+        prefix: defaultVoiceLabel.slice(0, idx).trimEnd(),
+        voice: defaultVoiceLabel.slice(idx),
+      };
+    }
+    return { prefix: defaultVoiceLabel, voice: "" };
+  }, [defaultVoiceLabel, voiceName]);
+
+  const hasSplitDefaultLabel = value === null && defaultLabelParts.voice !== "";
 
   const updatePosition = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -247,10 +283,22 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
           className,
         ].join(" ")}
       >
-        {selectedPreset ? (
-          <Dot gradient={voiceAvatarGradient(presetSeed(selectedPreset))} />
-        ) : null}
-        <span className="min-w-0 flex-1 truncate">{currentLabel}</span>
+        {hasSplitDefaultLabel ? (
+          <span className="min-w-0 flex-1 truncate flex items-center gap-1.5">
+            <span className="shrink-0">{defaultLabelParts.prefix}</span>
+            {dotPreset ? (
+              <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+            ) : null}
+            <span className="truncate">{defaultLabelParts.voice}</span>
+          </span>
+        ) : (
+          <>
+            {dotPreset ? (
+              <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+            ) : null}
+            <span className="min-w-0 flex-1 truncate">{currentLabel}</span>
+          </>
+        )}
         <ChevronsUpDown
           size={12}
           className="shrink-0 text-[var(--muted)]"
@@ -316,9 +364,24 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                     onClick={() => choose(onSelectDefault)}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--accent-soft)]"
                   >
-                    <span className="min-w-0 flex-1 truncate">
-                      {defaultVoiceLabel}
-                    </span>
+                    {hasSplitDefaultLabel ? (
+                      <span className="min-w-0 flex-1 truncate flex items-center gap-1.5">
+                        <span className="shrink-0">{defaultLabelParts.prefix}</span>
+                        {dotPreset ? (
+                          <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+                        ) : null}
+                        <span className="truncate">{defaultLabelParts.voice}</span>
+                      </span>
+                    ) : (
+                      <>
+                        {dotPreset ? (
+                          <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+                        ) : null}
+                        <span className="min-w-0 flex-1 truncate">
+                          {defaultVoiceLabel}
+                        </span>
+                      </>
+                    )}
                     {value === null ? (
                       <Check
                         size={13}
@@ -379,7 +442,9 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                     <Dot gradient={voice.avatarGradient} />
                     <span className="min-w-0 flex-1 truncate">
                       {voice.voiceId
-                        ? `${voice.modelLabel} · ${voice.voiceLabel}`
+                        ? voice.modelLabel === "System Voices"
+                          ? voice.voiceLabel
+                          : `${voice.modelLabel} · ${voice.voiceLabel}`
                         : voice.modelLabel}
                     </span>
                     {voice.countryFlag ? (

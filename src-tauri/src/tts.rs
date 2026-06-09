@@ -765,7 +765,9 @@ impl TtsManager {
                 .unwrap_or(false);
         }
 
-        required_files.iter().all(|relative| root.join(relative).exists())
+        required_files
+            .iter()
+            .all(|relative| root.join(relative).exists())
     }
 
     fn managed_runtime_model_installed(&self, definition: &ManagedRuntimeModelDefinition) -> bool {
@@ -1384,6 +1386,51 @@ impl TtsManager {
         {
             flag.store(true, Ordering::Relaxed);
         }
+    }
+
+    pub fn play_cached_audio_file(&self, path: PathBuf) -> Result<(), String> {
+        if let Some(audio_manager) = self
+            .app_handle
+            .try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
+        {
+            if audio_manager.is_recording() {
+                return Err("Stop recording before playing speech output.".to_string());
+            }
+        }
+
+        if !path.is_file() {
+            return Err(format!(
+                "Reader audio cache is missing '{}'.",
+                path.display()
+            ));
+        }
+
+        self.stop();
+
+        let settings = get_settings(&self.app_handle);
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        {
+            let mut guard = self
+                .current_stop_flag
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            *guard = Some(stop_flag.clone());
+        }
+
+        let result = crate::audio_playback::play_audio_file_with_stop(
+            &path,
+            settings.selected_output_device.clone(),
+            settings.tts_volume.clamp(0.0, 1.0),
+            &stop_flag,
+        )
+        .map_err(|err| format!("Reader cached audio playback failed: {err}"));
+
+        self.current_stop_flag
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+
+        result
     }
 
     pub fn set_last_output(&self, text: String, locale: Option<String>) {

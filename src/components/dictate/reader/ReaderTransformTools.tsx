@@ -31,11 +31,14 @@ const TRANSFORM_TASKS: Array<{
 export type ReaderTransformToolsProps = {
   documentText: string;
   onListen: (text: string) => void;
+  /** Drop the inline border/heading when rendered inside a popup dialog. */
+  embedded?: boolean;
 };
 
 export const ReaderTransformTools: React.FC<ReaderTransformToolsProps> = ({
   documentText,
   onListen,
+  embedded = false,
 }) => {
   const { t } = useTranslation();
   const [runningTask, setRunningTask] = useState<TransformTask | null>(null);
@@ -99,11 +102,19 @@ export const ReaderTransformTools: React.FC<ReaderTransformToolsProps> = ({
   };
 
   return (
-    <div className="space-y-3 border-t border-[var(--border)] pt-4">
+    <div
+      className={
+        embedded
+          ? "space-y-3"
+          : "space-y-3 border-t border-[var(--border)] pt-4"
+      }
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-          {t("dictate.reader.transform.title", { defaultValue: "Transform" })}
-        </span>
+        {embedded ? null : (
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            {t("dictate.reader.transform.title", { defaultValue: "Transform" })}
+          </span>
+        )}
         {TRANSFORM_TASKS.map(({ id, defaultLabel, Icon }) => (
           <Button
             key={id}

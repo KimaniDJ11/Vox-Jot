@@ -609,7 +609,9 @@ export const StoryStudioSection: React.FC = () => {
       try {
         const created = await createTtsVoicePreset({
           label: voice.voiceId
-            ? `${voice.modelLabel} - ${voice.voiceLabel}`
+            ? voice.modelLabel === "System Voices"
+              ? voice.voiceLabel
+              : `${voice.modelLabel} - ${voice.voiceLabel}`
             : voice.modelLabel,
           provider_id: voice.providerId,
           model_id: voice.modelId,

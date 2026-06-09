@@ -997,6 +997,30 @@ async exportReaderAudio(units: ReaderAudioExportUnit[], outputPath: string, play
     else return { status: "error", error: e  as any };
 }
 },
+async getReaderAudioCacheStatus(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null) : Promise<Result<ReaderAudioCacheStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_reader_audio_cache_status", { documentId, units, playbackRate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async prepareReaderAudioCache(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null) : Promise<Result<ReaderAudioCachePrepareResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_reader_audio_cache", { documentId, units, playbackRate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async playReaderAudioUnit(documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null) : Promise<Result<ReaderAudioCachePlayResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("play_reader_audio_unit", { documentId, unit, playbackRate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async ttsStop() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("tts_stop") };
@@ -2873,6 +2897,10 @@ export type PostProcessRouteDebug = { route: string; word_count: number; has_cor
 export type PrepareStableAudio3Request = { mode: StorySoundMode }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; license_label: string | null; capabilities: CapabilityFlags }
+export type ReaderAudioCachePlayResult = { cache_hit: boolean }
+export type ReaderAudioCachePrepareResult = { total_count: number; reused_count: number; generated_count: number; cache_bytes: number }
+export type ReaderAudioCacheStatus = { total_count: number; ready_count: number; missing_count: number; cache_bytes: number }
+export type ReaderAudioCacheUnit = { id: string; text: string; preset_id: string | null }
 export type ReaderAudioExportResult = { output_path: string; unit_count: number; duration_ms: number }
 export type ReaderAudioExportUnit = { text: string; preset_id: string | null }
 export type ReaderDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; extraction_engine: string; thumbnail_data_url: string | null; text: string; pages: ReaderDocumentPage[]; sections: ReaderDocumentSection[] }

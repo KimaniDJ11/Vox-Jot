@@ -1,7 +1,8 @@
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{
     build_tts_preset_from_legacy, get_settings, sanitize_tts_voice_tuning_for_target,
-    write_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
+    write_settings, AppSettings, TtsStyleControlValue, TtsVoicePreset, TtsVoicePresetInput,
+    TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -14,7 +15,9 @@ use hound::{WavSpec, WavWriter};
 use log::warn;
 use rodio::Source;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use specta::Type;
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -27,6 +30,8 @@ use uuid::Uuid;
 const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
 const READER_EXPORT_SAMPLE_RATE: u32 = 24_000;
 const READER_EXPORT_UNIT_GAP_SECONDS: f32 = 0.12;
+const READER_AUDIO_CACHE_DIR: &str = "audio-cache";
+const READER_AUDIO_CACHE_VERSION: &str = "reader-audio-cache-v1";
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
@@ -100,10 +105,66 @@ pub struct ReaderAudioExportUnit {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioCacheUnit {
+    pub id: String,
+    pub text: String,
+    pub preset_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ReaderAudioExportResult {
     pub output_path: String,
     pub unit_count: usize,
     pub duration_ms: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioCacheStatus {
+    pub total_count: usize,
+    pub ready_count: usize,
+    pub missing_count: usize,
+    pub cache_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioCachePrepareResult {
+    pub total_count: usize,
+    pub reused_count: usize,
+    pub generated_count: usize,
+    pub cache_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderAudioCachePlayResult {
+    pub cache_hit: bool,
+}
+
+#[derive(Serialize)]
+struct ReaderAudioCacheKey<'a> {
+    version: &'static str,
+    document_id: &'a str,
+    unit_id: &'a str,
+    text: &'a str,
+    provider_id: &'a str,
+    model_id: &'a str,
+    voice_id: &'a Option<String>,
+    voice_profile_id: &'a Option<String>,
+    locale_snapshot: &'a Option<String>,
+    playback_rate: Option<f32>,
+    tuning: ReaderAudioCacheTuningKey<'a>,
+}
+
+#[derive(Serialize)]
+struct ReaderAudioCacheTuningKey<'a> {
+    tempo_rate: f32,
+    expressiveness: f32,
+    exaggeration: f32,
+    randomness: f32,
+    guidance: f32,
+    stability: f32,
+    repetition_penalty: f32,
+    style_instructions: &'a Option<String>,
+    advanced_overrides: BTreeMap<&'a str, &'a TtsStyleControlValue>,
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -277,6 +338,62 @@ pub async fn export_reader_audio(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn get_reader_audio_cache_status(
+    app: AppHandle,
+    document_id: String,
+    units: Vec<ReaderAudioCacheUnit>,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioCacheStatus, String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    let settings = get_settings(&app);
+    reader_audio_cache_status(&app, &settings, &document_id, &units, normalized_rate)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_reader_audio_cache(
+    app: AppHandle,
+    document_id: String,
+    units: Vec<ReaderAudioCacheUnit>,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioCachePrepareResult, String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    run_tts_async_command_on_stack("tts-command-reader-cache-prepare", move || async move {
+        prepare_reader_audio_cache_inner(app, manager, document_id, units, normalized_rate).await
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn play_reader_audio_unit(
+    app: AppHandle,
+    document_id: String,
+    unit: ReaderAudioCacheUnit,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioCachePlayResult, String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    run_tts_async_command_on_stack("tts-command-reader-cache-play", move || async move {
+        let settings = get_settings(&app);
+        let (cache_path, cache_hit) = ensure_reader_audio_cache_unit(
+            &app,
+            Arc::clone(&manager),
+            &settings,
+            &document_id,
+            &unit,
+            normalized_rate,
+        )
+        .await?;
+        manager.play_cached_audio_file(cache_path)?;
+        Ok(ReaderAudioCachePlayResult { cache_hit })
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn tts_stop(app: AppHandle) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
     manager.stop();
@@ -424,6 +541,247 @@ async fn speak_on_command_thread(
         move || async move { manager.speak(request).await },
     )
     .await
+}
+
+fn validate_reader_document_id(document_id: &str) -> Result<&str, String> {
+    let trimmed = document_id.trim();
+    if !trimmed.is_empty()
+        && trimmed.len() <= 32
+        && trimmed.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        Ok(trimmed)
+    } else {
+        Err("Invalid Reader document id.".to_string())
+    }
+}
+
+fn reader_audio_cache_document_dir(app: &AppHandle, document_id: &str) -> Result<PathBuf, String> {
+    let document_id = validate_reader_document_id(document_id)?;
+    let reader_data_dir = crate::storage_paths::reader_data_dir(app)
+        .map_err(|err| format!("Failed to resolve Reader audio cache directory: {err}"))?;
+    Ok(reader_data_dir
+        .join(READER_AUDIO_CACHE_DIR)
+        .join(document_id))
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        use std::fmt::Write;
+        let _ = write!(&mut out, "{byte:02x}");
+    }
+    out
+}
+
+fn reader_audio_tuning_cache_key(tuning: &TtsVoiceTuningSettings) -> ReaderAudioCacheTuningKey<'_> {
+    ReaderAudioCacheTuningKey {
+        tempo_rate: tuning.tempo_rate,
+        expressiveness: tuning.expressiveness,
+        exaggeration: tuning.exaggeration,
+        randomness: tuning.randomness,
+        guidance: tuning.guidance,
+        stability: tuning.stability,
+        repetition_penalty: tuning.repetition_penalty,
+        style_instructions: &tuning.style_instructions,
+        advanced_overrides: tuning
+            .advanced_overrides
+            .iter()
+            .map(|(key, value)| (key.as_str(), value))
+            .collect(),
+    }
+}
+
+fn reader_audio_cache_path(
+    app: &AppHandle,
+    settings: &AppSettings,
+    document_id: &str,
+    unit: &ReaderAudioCacheUnit,
+    playback_rate: Option<f32>,
+) -> Result<(PathBuf, TtsVoicePreset), String> {
+    let document_dir = reader_audio_cache_document_dir(app, document_id)?;
+    let preset = reader_preset_for_request(settings, unit.preset_id.as_deref(), playback_rate)?;
+    let key = ReaderAudioCacheKey {
+        version: READER_AUDIO_CACHE_VERSION,
+        document_id: validate_reader_document_id(document_id)?,
+        unit_id: unit.id.trim(),
+        text: unit.text.trim(),
+        provider_id: &preset.provider_id,
+        model_id: &preset.model_id,
+        voice_id: &preset.voice_id,
+        voice_profile_id: &preset.voice_profile_id,
+        locale_snapshot: &preset.locale_snapshot,
+        playback_rate,
+        tuning: reader_audio_tuning_cache_key(&preset.tuning),
+    };
+    let key_bytes = serde_json::to_vec(&key)
+        .map_err(|err| format!("Failed to encode Reader audio cache key: {err}"))?;
+    let digest = Sha256::digest(&key_bytes);
+    Ok((
+        document_dir.join(format!("{}.wav", hex_digest(&digest))),
+        preset,
+    ))
+}
+
+fn reader_audio_cache_bytes(app: &AppHandle, document_id: &str) -> Result<u64, String> {
+    let dir = reader_audio_cache_document_dir(app, document_id)?;
+    if !dir.is_dir() {
+        return Ok(0);
+    }
+    let mut total = 0u64;
+    for entry in fs::read_dir(&dir).map_err(|err| {
+        format!(
+            "Failed to read Reader audio cache '{}': {err}",
+            dir.display()
+        )
+    })? {
+        let entry =
+            entry.map_err(|err| format!("Failed to read Reader audio cache entry: {err}"))?;
+        let path = entry.path();
+        if path.is_file() {
+            total =
+                total.saturating_add(entry.metadata().map(|metadata| metadata.len()).unwrap_or(0));
+        }
+    }
+    Ok(total)
+}
+
+fn reader_audio_cache_status(
+    app: &AppHandle,
+    settings: &AppSettings,
+    document_id: &str,
+    units: &[ReaderAudioCacheUnit],
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioCacheStatus, String> {
+    let mut total_count = 0usize;
+    let mut ready_count = 0usize;
+    for unit in units {
+        if unit.text.trim().is_empty() {
+            continue;
+        }
+        total_count += 1;
+        let (path, _) = reader_audio_cache_path(app, settings, document_id, unit, playback_rate)?;
+        if path.is_file() {
+            ready_count += 1;
+        }
+    }
+    let cache_bytes = reader_audio_cache_bytes(app, document_id)?;
+    Ok(ReaderAudioCacheStatus {
+        total_count,
+        ready_count,
+        missing_count: total_count.saturating_sub(ready_count),
+        cache_bytes,
+    })
+}
+
+async fn prepare_reader_audio_cache_inner(
+    app: AppHandle,
+    manager: Arc<TtsManager>,
+    document_id: String,
+    units: Vec<ReaderAudioCacheUnit>,
+    playback_rate: Option<f32>,
+) -> Result<ReaderAudioCachePrepareResult, String> {
+    let settings = get_settings(&app);
+    let mut total_count = 0usize;
+    let mut reused_count = 0usize;
+    let mut generated_count = 0usize;
+
+    for unit in &units {
+        if unit.text.trim().is_empty() {
+            continue;
+        }
+        total_count += 1;
+        let (_, cache_hit) = ensure_reader_audio_cache_unit(
+            &app,
+            Arc::clone(&manager),
+            &settings,
+            &document_id,
+            unit,
+            playback_rate,
+        )
+        .await?;
+        if cache_hit {
+            reused_count += 1;
+        } else {
+            generated_count += 1;
+        }
+    }
+
+    Ok(ReaderAudioCachePrepareResult {
+        total_count,
+        reused_count,
+        generated_count,
+        cache_bytes: reader_audio_cache_bytes(&app, &document_id)?,
+    })
+}
+
+async fn ensure_reader_audio_cache_unit(
+    app: &AppHandle,
+    manager: Arc<TtsManager>,
+    settings: &AppSettings,
+    document_id: &str,
+    unit: &ReaderAudioCacheUnit,
+    playback_rate: Option<f32>,
+) -> Result<(PathBuf, bool), String> {
+    let text = unit.text.trim().to_string();
+    if text.is_empty() {
+        return Err("There is no readable text for this Reader part.".to_string());
+    }
+
+    let (cache_path, preset) =
+        reader_audio_cache_path(app, settings, document_id, unit, playback_rate)?;
+    if cache_path.is_file() {
+        return Ok((cache_path, true));
+    }
+
+    let cache_dir = cache_path
+        .parent()
+        .ok_or_else(|| "Failed to resolve Reader audio cache folder.".to_string())?;
+    fs::create_dir_all(cache_dir).map_err(|err| {
+        format!(
+            "Failed to create Reader audio cache '{}': {err}",
+            cache_dir.display()
+        )
+    })?;
+
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let temp_paths = manager
+        .synthesize_to_temp_files(
+            SpeakRequest {
+                text,
+                locale: None,
+                preferred_voice_id: None,
+                preset_id: None,
+                inline_preset: Some(preset),
+                trigger: Some("reader_audio_cache".to_string()),
+                remember_last_output: false,
+            },
+            stop_flag,
+        )
+        .await?;
+
+    let mut unit_samples = Vec::new();
+    for temp_path in temp_paths {
+        let decoded = decode_rendered_audio_file_mono(&temp_path, READER_EXPORT_SAMPLE_RATE)?;
+        unit_samples.extend(decoded);
+        let _ = fs::remove_file(temp_path);
+    }
+    if unit_samples.is_empty() {
+        return Err("Reader audio generation produced no audio.".to_string());
+    }
+
+    let temp_cache_path = cache_path.with_extension("tmp");
+    if temp_cache_path.exists() {
+        let _ = fs::remove_file(&temp_cache_path);
+    }
+    write_reader_export_wav(&unit_samples, READER_EXPORT_SAMPLE_RATE, &temp_cache_path)?;
+    fs::rename(&temp_cache_path, &cache_path).map_err(|err| {
+        format!(
+            "Failed to store Reader audio cache '{}': {err}",
+            cache_path.display()
+        )
+    })?;
+
+    Ok((cache_path, false))
 }
 
 async fn export_reader_audio_inner(

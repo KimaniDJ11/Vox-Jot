@@ -25,14 +25,19 @@ import {
   Folder,
   FolderPlus,
   Layers,
+  List,
   Loader2,
   Pause,
+  SlidersHorizontal,
   Trash2,
   Upload,
   Volume2,
+  Wand2,
   X,
 } from "lucide-react";
 import type {
+  ReaderAudioCacheStatus,
+  ReaderAudioCacheUnit,
   SpeechAnalysisModelDescriptor,
   TimedSegment,
   WatchFolderConfig,
@@ -48,9 +53,14 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
+import {
+  SelectControl,
+  type ModelListControlOption,
+} from "@/components/model-hub/ModelListControls";
 import { voiceAvatarGradient } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import { useSettingsSlice } from "@/hooks/useSettings";
 import { useTtsVoiceCatalog } from "@/hooks/useTtsVoiceCatalog";
+import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import { ReaderPlaybackBar } from "./reader/ReaderPlaybackBar";
 import { ReaderVoicePicker } from "./reader/ReaderVoicePicker";
 import { ReaderSearchControl } from "./reader/ReaderSearchControl";
@@ -66,6 +76,14 @@ import {
 import { useReaderPlayback } from "./reader/useReaderPlayback";
 
 type FileTranscriptionView = "file" | "documents" | "folders";
+type ReaderSplitView = "library" | "viewer";
+type ReaderLibrarySort =
+  | "recent"
+  | "oldest"
+  | "name_asc"
+  | "name_desc"
+  | "largest"
+  | "smallest";
 type FileProcessingMode = "transcribe" | "clean_transcribe";
 type FileTranscriptionPanelKind = "media" | "reader";
 
@@ -99,6 +117,8 @@ const READER_DOCUMENT_EXTENSIONS = [
 
 const readerLibraryStorageKey = "voxjot:reader-document-library:v1";
 const readerDocumentStateStorageKey = "voxjot:reader-document-state:v1";
+const readerLastDocumentVoiceStorageKey =
+  "voxjot:reader-last-document-voice:v1";
 const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
 
 type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text";
@@ -323,6 +343,41 @@ function saveReaderLibrary(items: ReaderLibraryItem[]) {
   );
 }
 
+function loadReaderLastDocumentVoice(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(
+      readerLastDocumentVoiceStorageKey,
+    );
+    return value && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveReaderLastDocumentVoice(presetId: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (presetId && presetId.trim()) {
+      window.localStorage.setItem(readerLastDocumentVoiceStorageKey, presetId);
+    } else {
+      window.localStorage.removeItem(readerLastDocumentVoiceStorageKey);
+    }
+  } catch {
+    // Ignore local preference failures; document state still persists.
+  }
+}
+
+function readerPresetLabel(preset: TtsVoicePreset | null): string {
+  return (
+    preset?.label?.trim() ||
+    preset?.voice_label_snapshot?.trim() ||
+    preset?.model_id ||
+    preset?.id ||
+    ""
+  );
+}
+
 function clampIndex(value: number | null | undefined, maxExclusive: number) {
   if (!Number.isFinite(value) || maxExclusive <= 0) return 0;
   return Math.max(0, Math.min(Math.trunc(value ?? 0), maxExclusive - 1));
@@ -426,6 +481,28 @@ function upsertReaderLibraryItem(
       (existing) => existing.id !== item.id && existing.path !== item.path,
     ),
   ].slice(0, 48);
+}
+
+function sortReaderLibrary(
+  items: ReaderLibraryItem[],
+  sort: ReaderLibrarySort,
+): ReaderLibraryItem[] {
+  const sorted = [...items];
+  switch (sort) {
+    case "name_asc":
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case "name_desc":
+      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    case "oldest":
+      return sorted.sort((a, b) => a.openedAt - b.openedAt);
+    case "largest":
+      return sorted.sort((a, b) => b.sizeBytes - a.sizeBytes);
+    case "smallest":
+      return sorted.sort((a, b) => a.sizeBytes - b.sizeBytes);
+    case "recent":
+    default:
+      return sorted.sort((a, b) => b.openedAt - a.openedAt);
+  }
 }
 
 async function readReaderDocument(path: string): Promise<ReaderDocument> {
@@ -674,6 +751,12 @@ const FileTranscriptionPanelShell: React.FC<{
   const viewRef = useRef<FileTranscriptionView>(view);
   const availableViewsRef = useRef<FileTranscriptionView[]>(availableViews);
   const [readerQuery, setReaderQuery] = useState("");
+  const [readerSort, setReaderSort] = useState<ReaderLibrarySort>("recent");
+  const [readerSplitView, setReaderSplitView] =
+    useState<ReaderSplitView>("library");
+  const [readerSectionsOpen, setReaderSectionsOpen] = useState(false);
+  const [readerTransformOpen, setReaderTransformOpen] = useState(false);
+  const [readerHasDocument, setReaderHasDocument] = useState(false);
   const selectedAsrModel = useSelectedSpeechAnalysisAsrModel();
   const isRunningRef = useRef(false);
 
@@ -937,6 +1020,15 @@ const FileTranscriptionPanelShell: React.FC<{
           availableViews={availableViews}
           searchQuery={readerQuery}
           onSearchQueryChange={setReaderQuery}
+          readerSort={readerSort}
+          onReaderSortChange={setReaderSort}
+          readerSplitView={readerSplitView}
+          onReaderSplitViewChange={setReaderSplitView}
+          readerSectionsOpen={readerSectionsOpen}
+          onReaderSectionsOpenChange={setReaderSectionsOpen}
+          readerTransformOpen={readerTransformOpen}
+          onReaderTransformOpenChange={setReaderTransformOpen}
+          readerHasDocument={readerHasDocument}
         />
       </SettingsGroup>
 
@@ -1204,7 +1296,17 @@ const FileTranscriptionPanelShell: React.FC<{
           </div>
         </>
       ) : view === "documents" ? (
-        <ReaderDocumentsPanel query={readerQuery} />
+        <ReaderDocumentsPanel
+          query={readerQuery}
+          sort={readerSort}
+          splitView={readerSplitView}
+          onSplitViewChange={setReaderSplitView}
+          sectionsOpen={readerSectionsOpen}
+          onSectionsOpenChange={setReaderSectionsOpen}
+          transformOpen={readerTransformOpen}
+          onTransformOpenChange={setReaderTransformOpen}
+          onHasDocumentChange={setReaderHasDocument}
+        />
       ) : (
         <WatchedFoldersGroup selectedAsrModel={selectedAsrModel} />
       )}
@@ -1733,6 +1835,15 @@ const WatchedFoldersToolbar: React.FC<{
   availableViews: FileTranscriptionView[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  readerSort: ReaderLibrarySort;
+  onReaderSortChange: (sort: ReaderLibrarySort) => void;
+  readerSplitView: ReaderSplitView;
+  onReaderSplitViewChange: (view: ReaderSplitView) => void;
+  readerSectionsOpen: boolean;
+  onReaderSectionsOpenChange: (open: boolean) => void;
+  readerTransformOpen: boolean;
+  onReaderTransformOpenChange: (open: boolean) => void;
+  readerHasDocument: boolean;
 }> = ({
   kind,
   view,
@@ -1740,6 +1851,15 @@ const WatchedFoldersToolbar: React.FC<{
   availableViews,
   searchQuery,
   onSearchQueryChange,
+  readerSort,
+  onReaderSortChange,
+  readerSplitView,
+  onReaderSplitViewChange,
+  readerSectionsOpen,
+  onReaderSectionsOpenChange,
+  readerTransformOpen,
+  onReaderTransformOpenChange,
+  readerHasDocument,
 }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -1767,6 +1887,47 @@ const WatchedFoldersToolbar: React.FC<{
       ].filter((item) => availableViews.includes(item.value)),
     [availableViews, t],
   );
+
+  const readerSortOptions = useMemo<ModelListControlOption[]>(
+    () => [
+      {
+        value: "recent",
+        label: t("dictate.reader.sort.recent", {
+          defaultValue: "Recently added",
+        }),
+      },
+      {
+        value: "oldest",
+        label: t("dictate.reader.sort.oldest", {
+          defaultValue: "Oldest added",
+        }),
+      },
+      {
+        value: "name_asc",
+        label: t("dictate.reader.sort.nameAsc", {
+          defaultValue: "Name (A-Z)",
+        }),
+      },
+      {
+        value: "name_desc",
+        label: t("dictate.reader.sort.nameDesc", {
+          defaultValue: "Name (Z-A)",
+        }),
+      },
+      {
+        value: "largest",
+        label: t("dictate.reader.sort.largest", { defaultValue: "Largest" }),
+      },
+      {
+        value: "smallest",
+        label: t("dictate.reader.sort.smallest", { defaultValue: "Smallest" }),
+      },
+    ],
+    [t],
+  );
+  const selectedReaderSortLabel =
+    readerSortOptions.find((option) => option.value === readerSort)?.label ??
+    "";
 
   const handlePrimaryAction = useCallback(async () => {
     if (view === "documents") {
@@ -1796,6 +1957,30 @@ const WatchedFoldersToolbar: React.FC<{
           ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
           : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
       </Button>
+      {kind === "reader" ? (
+        <SegmentedControl<ReaderSplitView>
+          value={readerSplitView}
+          onChange={onReaderSplitViewChange}
+          layoutId="reader-split-view-toggle"
+          ariaLabel={t("dictate.reader.splitView.ariaLabel", {
+            defaultValue: "Reader view",
+          })}
+          items={[
+            {
+              value: "library",
+              label: t("dictate.reader.splitView.document", {
+                defaultValue: "Document",
+              }),
+            },
+            {
+              value: "viewer",
+              label: t("dictate.reader.splitView.viewer", {
+                defaultValue: "Viewer",
+              }),
+            },
+          ]}
+        />
+      ) : null}
       {segmentedItems.length > 1 ? (
         <SegmentedControl<FileTranscriptionView>
           value={view}
@@ -1814,33 +1999,113 @@ const WatchedFoldersToolbar: React.FC<{
         />
       ) : null}
       <div className="ml-auto flex items-center gap-2">
-        {view === "documents" ? (
-          <ReaderSearchControl
-            query={searchQuery}
-            onQueryChange={onSearchQueryChange}
-          />
-        ) : null}
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            if (view === "documents") {
-              void openModelHub("tts");
-              return;
-            }
-            void openModelHub("analysis", { scope: "analysis" });
-          }}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          {t("listen.createVoices.models", { defaultValue: "Models" })}
-        </Button>
+        {kind === "reader" && readerSplitView === "viewer" ? (
+          readerHasDocument ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                aria-pressed={readerTransformOpen}
+                onClick={() => {
+                  onReaderSectionsOpenChange(false);
+                  onReaderTransformOpenChange(!readerTransformOpen);
+                }}
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                {t("dictate.reader.transform.title", {
+                  defaultValue: "Transform",
+                })}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                aria-pressed={readerSectionsOpen}
+                onClick={() => {
+                  onReaderTransformOpenChange(false);
+                  onReaderSectionsOpenChange(!readerSectionsOpen);
+                }}
+              >
+                <List className="h-3.5 w-3.5" />
+                {t("dictate.reader.sections.title", {
+                  defaultValue: "Sections",
+                })}
+              </Button>
+            </>
+          ) : null
+        ) : (
+          <>
+            {view === "documents" ? (
+              <ReaderSearchControl
+                query={searchQuery}
+                onQueryChange={onSearchQueryChange}
+              />
+            ) : null}
+            {view === "documents" ? (
+              <SelectControl
+                value={readerSort}
+                options={readerSortOptions}
+                onChange={(value) =>
+                  onReaderSortChange(value as ReaderLibrarySort)
+                }
+                ariaLabel={t("dictate.reader.sort.ariaLabel", {
+                  defaultValue: "Filter documents",
+                })}
+                title={t("dictate.reader.sort.title", {
+                  defaultValue: "Filter",
+                })}
+                selectedLabel={selectedReaderSortLabel}
+                active={readerSort !== "recent"}
+              >
+                <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
+              </SelectControl>
+            ) : null}
+            {kind !== "reader" ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (view === "documents") {
+                    void openModelHub("tts");
+                    return;
+                  }
+                  void openModelHub("analysis", { scope: "analysis" });
+                }}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                {t("listen.createVoices.models", { defaultValue: "Models" })}
+              </Button>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
 };
 
-const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
+const ReaderDocumentsPanel: React.FC<{
+  query: string;
+  sort: ReaderLibrarySort;
+  splitView: ReaderSplitView;
+  onSplitViewChange: (view: ReaderSplitView) => void;
+  sectionsOpen: boolean;
+  onSectionsOpenChange: (open: boolean) => void;
+  transformOpen: boolean;
+  onTransformOpenChange: (open: boolean) => void;
+  onHasDocumentChange: (hasDocument: boolean) => void;
+}> = ({
+  query,
+  sort,
+  splitView,
+  onSplitViewChange,
+  sectionsOpen,
+  onSectionsOpenChange,
+  transformOpen,
+  onTransformOpenChange,
+  onHasDocumentChange,
+}) => {
   const { t } = useTranslation();
   const { tts_active_preset_id: activeTtsPresetId } = useSettingsSlice([
     "tts_active_preset_id",
@@ -1857,7 +2122,6 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
   const [isExportingAudio, setIsExportingAudio] = useState(false);
   const [error, setError] = useState("");
   const [copyFeedback, setCopyFeedback] = useState(false);
-  const [audioExportFeedback, setAudioExportFeedback] = useState("");
   // Per-section voice profiles: sectionIndex -> preset id (null = default voice),
   // and sectionIndex -> true when the user turned that section off.
   const [sectionVoices, setSectionVoices] = useState<
@@ -1867,10 +2131,47 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     Record<number, boolean>
   >({});
   const { presets, presetVoices, createPresetFromVoice } = useTtsVoiceCatalog();
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() =>
+    loadReaderLastDocumentVoice(),
+  );
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [audioCacheStatus, setAudioCacheStatus] =
+    useState<ReaderAudioCacheStatus | null>(null);
+  const [isPreparingReaderAudio, setIsPreparingReaderAudio] = useState(false);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(
     null,
+  );
+  const activeReaderDocumentIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeReaderDocumentIdRef.current = activeDocument?.id ?? null;
+  }, [activeDocument?.id]);
+
+  const resolveDocumentVoicePresetId = useCallback(
+    (preferredPresetId: string | null | undefined) => {
+      const validPresetId = (
+        presetId: string | null | undefined,
+      ): presetId is string =>
+        typeof presetId === "string" &&
+        presetId.trim().length > 0 &&
+        presets.some((preset) => preset.id === presetId);
+
+      if (validPresetId(preferredPresetId)) return preferredPresetId;
+
+      const savedReaderPresetId = loadReaderLastDocumentVoice();
+      if (validPresetId(savedReaderPresetId)) return savedReaderPresetId;
+
+      const normalizedActivePresetId =
+        typeof activeTtsPresetId === "string" && activeTtsPresetId.trim()
+          ? activeTtsPresetId
+          : null;
+      if (validPresetId(normalizedActivePresetId)) {
+        return normalizedActivePresetId;
+      }
+
+      return presets[0]?.id ?? null;
+    },
+    [activeTtsPresetId, presets],
   );
 
   const persistLibrary = useCallback((items: ReaderLibraryItem[]) => {
@@ -1894,25 +2195,11 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     };
   }, [persistLibrary]);
 
-  // Initialize the reader's default voice from the active preset / first preset.
+  // Initialize the reader's document voice from the last Reader voice, then the
+  // active Listen preset / first preset.
   useEffect(() => {
-    const normalizedActivePresetId =
-      typeof activeTtsPresetId === "string" && activeTtsPresetId.trim()
-        ? activeTtsPresetId
-        : null;
-    setSelectedPresetId((current) => {
-      if (current && presets.some((preset) => preset.id === current)) {
-        return current;
-      }
-      if (
-        normalizedActivePresetId &&
-        presets.some((preset) => preset.id === normalizedActivePresetId)
-      ) {
-        return normalizedActivePresetId;
-      }
-      return presets[0]?.id ?? null;
-    });
-  }, [presets, activeTtsPresetId]);
+    setSelectedPresetId((current) => resolveDocumentVoicePresetId(current));
+  }, [resolveDocumentVoicePresetId]);
 
   useEffect(() => {
     if (presets.length === 0) return;
@@ -1938,6 +2225,7 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
   const loadDocument = useCallback(
     async (path: string) => {
+      onSplitViewChange("viewer");
       setIsLoading(true);
       setError("");
       try {
@@ -1957,13 +2245,17 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
         );
         setSectionVoices(documentState.sectionVoices ?? {});
         setSectionDisabled(documentState.sectionDisabled ?? {});
-        if ("selectedPresetId" in documentState) {
-          setSelectedPresetId(documentState.selectedPresetId ?? null);
-        }
+        setSelectedPresetId(
+          resolveDocumentVoicePresetId(
+            "selectedPresetId" in documentState
+              ? documentState.selectedPresetId
+              : undefined,
+          ),
+        );
         setPlaybackRate(
           normalizeReaderPlaybackRate(documentState.playbackRate),
         );
-        setAudioExportFeedback("");
+        setAudioCacheStatus(null);
         persistLibrary(
           upsertReaderLibraryItem(library, readerItemFromDocument(document)),
         );
@@ -1980,7 +2272,13 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
         setIsLoading(false);
       }
     },
-    [library, persistLibrary, t],
+    [
+      library,
+      onSplitViewChange,
+      persistLibrary,
+      resolveDocumentVoicePresetId,
+      t,
+    ],
   );
 
   const pickDocument = useCallback(async () => {
@@ -2017,13 +2315,15 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
   const filteredLibrary = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return library;
-    return library.filter((item) =>
-      `${item.name} ${kindLabel(item.kind)} ${item.path}`
-        .toLowerCase()
-        .includes(normalized),
-    );
-  }, [library, query]);
+    const matched = normalized
+      ? library.filter((item) =>
+          `${item.name} ${kindLabel(item.kind)} ${item.path}`
+            .toLowerCase()
+            .includes(normalized),
+        )
+      : library;
+    return sortReaderLibrary(matched, sort);
+  }, [library, query, sort]);
 
   // Tidy the extracted text (reflow hard-wrapped lines, strip OCR "x" markers)
   // and derive real titles, so both the display and the narration are clean.
@@ -2058,11 +2358,171 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
       }),
     [cleanedSections, sectionVoices, sectionDisabled, selectedPresetId],
   );
+  const readerAudioUnits = useMemo<ReaderAudioCacheUnit[]>(
+    () =>
+      readingUnits.map((unit) => ({
+        id: unit.id,
+        text: unit.text,
+        preset_id: unit.presetId,
+      })),
+    [readingUnits],
+  );
+  const documentVoicePreset =
+    presets.find((preset) => preset.id === selectedPresetId) ?? null;
+  const documentVoiceLabel =
+    readerPresetLabel(documentVoicePreset) ||
+    t("dictate.reader.player.appVoice", {
+      defaultValue: "App voice",
+    });
+  const sectionDefaultVoiceLabel = t(
+    "dictate.reader.sections.useDocumentVoice",
+    {
+      defaultValue: "Use document voice: {{voice}}",
+      voice: documentVoiceLabel,
+    },
+  );
+  const selectedSectionCount = cleanedSections.filter(
+    (section) => sectionDisabled[section.index] !== true,
+  ).length;
+  const totalSectionCount = cleanedSections.length;
+
+  const refreshReaderAudioCacheStatus = useCallback(async () => {
+    const documentId = activeDocument?.id ?? null;
+    if (!documentId) {
+      setAudioCacheStatus(null);
+      return null;
+    }
+    try {
+      const result = await commands.getReaderAudioCacheStatus(
+        documentId,
+        readerAudioUnits,
+        playbackRate,
+      );
+      if (result.status === "error") {
+        console.warn("Failed to read Reader audio cache status:", result.error);
+        return null;
+      }
+      if (activeReaderDocumentIdRef.current === documentId) {
+        setAudioCacheStatus(result.data);
+      }
+      return result.data;
+    } catch (err) {
+      console.warn("Failed to read Reader audio cache status:", err);
+      return null;
+    }
+  }, [activeDocument?.id, playbackRate, readerAudioUnits]);
+
+  useEffect(() => {
+    void refreshReaderAudioCacheStatus();
+  }, [refreshReaderAudioCacheStatus]);
+
+  const selectDocumentVoice = useCallback((presetId: string | null) => {
+    setSelectedPresetId(presetId);
+    saveReaderLastDocumentVoice(presetId);
+  }, []);
+
+  const readAllSections = useCallback(() => {
+    setSectionDisabled({});
+  }, []);
+
+  const skipAllSections = useCallback(() => {
+    setSectionDisabled(
+      Object.fromEntries(
+        cleanedSections.map((section) => [section.index, true]),
+      ),
+    );
+  }, [cleanedSections]);
+
+  const resetSectionVoices = useCallback(() => {
+    setSectionVoices({});
+  }, []);
+
+  const selectPlaybackRate = useCallback((rate: number) => {
+    setPlaybackRate(rate);
+  }, []);
+
+  const prepareReaderAudio = useCallback(async () => {
+    if (
+      !activeDocument ||
+      readerAudioUnits.length === 0 ||
+      isPreparingReaderAudio
+    ) {
+      return;
+    }
+    void commands.ttsStop();
+    setIsPreparingReaderAudio(true);
+    setError("");
+    try {
+      const result = await commands.prepareReaderAudioCache(
+        activeDocument.id,
+        readerAudioUnits,
+        playbackRate,
+      );
+      if (result.status === "error") {
+        throw new Error(
+          readerErrorMessage(
+            result.error,
+            t("dictate.reader.errors.audioPrepareFailed", {
+              defaultValue: "Failed to prepare Reader audio.",
+            }),
+          ),
+        );
+      }
+      await refreshReaderAudioCacheStatus();
+    } catch (err) {
+      setError(
+        readerErrorMessage(
+          err,
+          t("dictate.reader.errors.audioPrepareFailed", {
+            defaultValue: "Failed to prepare Reader audio.",
+          }),
+        ),
+      );
+    } finally {
+      setIsPreparingReaderAudio(false);
+    }
+  }, [
+    activeDocument,
+    isPreparingReaderAudio,
+    playbackRate,
+    readerAudioUnits,
+    refreshReaderAudioCacheStatus,
+    t,
+  ]);
 
   const speakUnit = useCallback(
-    (unit: ReadingUnit) =>
-      speakReaderTextWithPreset(unit.text, unit.presetId, playbackRate),
-    [playbackRate],
+    async (unit: ReadingUnit) => {
+      if (!activeDocument) {
+        return speakReaderTextWithPreset(
+          unit.text,
+          unit.presetId,
+          playbackRate,
+        );
+      }
+      const result = await commands.playReaderAudioUnit(
+        activeDocument.id,
+        {
+          id: unit.id,
+          text: unit.text,
+          preset_id: unit.presetId,
+        },
+        playbackRate,
+      );
+      if (result.status === "error") {
+        throw new Error(
+          readerErrorMessage(
+            result.error,
+            t("dictate.reader.errors.playbackFailed", {
+              defaultValue: "Reader playback failed.",
+            }),
+          ),
+        );
+      }
+      if (!result.data.cache_hit) {
+        void refreshReaderAudioCacheStatus();
+      }
+    },
+    [activeDocument, playbackRate, refreshReaderAudioCacheStatus, t],
   );
   const stopReaderAudio = useCallback(async () => {
     await commands.ttsStop();
@@ -2168,7 +2628,6 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     if (!target) return;
 
     setIsExportingAudio(true);
-    setAudioExportFeedback("");
     setError("");
     try {
       const result = await commands.exportReaderAudio(
@@ -2189,12 +2648,6 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
           ),
         );
       }
-      setAudioExportFeedback(
-        t("dictate.reader.audioExportComplete", {
-          defaultValue: "Exported {{count}} parts to WAV.",
-          count: result.data.unit_count,
-        }),
-      );
     } catch (err) {
       setError(
         readerErrorMessage(
@@ -2230,451 +2683,601 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
         setReaderRestoreIndex(0);
         setSectionVoices({});
         setSectionDisabled({});
-        setAudioExportFeedback("");
+        setAudioCacheStatus(null);
       }
     },
     [activeDocument?.id, activeDocument?.path, library, persistLibrary],
   );
 
-  const closeReader = useCallback(() => {
-    player.stop();
-    setActiveDocument(null);
-    setActiveSectionIndex(0);
-    setReaderRestoreIndex(0);
-    setSectionVoices({});
-    setSectionDisabled({});
-    setAudioExportFeedback("");
-  }, [player.stop]);
+  // The viewer is a split-view pane, not a modal: going back keeps the
+  // document loaded (and playback running) so the toggle is non-destructive.
+  const backToLibrary = useCallback(() => {
+    onSplitViewChange("library");
+  }, [onSplitViewChange]);
+
+  // Report whether the viewer has a document loaded so the toolbar only shows
+  // the Sections button when it's meaningful.
+  const hasViewerDocument = !!(activeDocument && currentSection);
+  useEffect(() => {
+    onHasDocumentChange(hasViewerDocument);
+  }, [hasViewerDocument, onHasDocumentChange]);
+
+  // The viewer popups only belong to the viewer with a document open.
+  useEffect(() => {
+    if (splitView !== "viewer" || !hasViewerDocument) {
+      onSectionsOpenChange(false);
+      onTransformOpenChange(false);
+    }
+  }, [
+    splitView,
+    hasViewerDocument,
+    onSectionsOpenChange,
+    onTransformOpenChange,
+  ]);
 
   useEffect(() => {
-    if (!activeDocument) return;
+    if (splitView !== "viewer" || !activeDocument) return;
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeReader();
+      if (event.key !== "Escape") return;
+      if (sectionsOpen) {
+        onSectionsOpenChange(false);
+      } else if (transformOpen) {
+        onTransformOpenChange(false);
+      } else {
+        backToLibrary();
+      }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [activeDocument, closeReader]);
+  }, [
+    activeDocument,
+    backToLibrary,
+    splitView,
+    sectionsOpen,
+    onSectionsOpenChange,
+    transformOpen,
+    onTransformOpenChange,
+  ]);
 
   return (
     <div className="space-y-5">
-      <section
-        className="min-w-0 space-y-3"
-        aria-label={t("dictate.reader.libraryAriaLabel", {
-          defaultValue: "Reader library",
-        })}
-      >
-        <div className="max-h-[560px] overflow-y-auto pr-1">
-          {filteredLibrary.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
-              {library.length === 0
-                ? t("dictate.reader.empty", {
-                    defaultValue: "No documents yet.",
-                  })
-                : t("dictate.reader.noMatches", {
-                    defaultValue: "No matching documents.",
-                  })}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-              {filteredLibrary.map((item) => {
-                const selected =
-                  activeDocument?.id === item.id ||
-                  activeDocument?.path === item.path;
-                return (
-                  <div
-                    key={item.id}
-                    className={[
-                      "group relative flex flex-col overflow-hidden rounded-xl border bg-[var(--surface-muted,var(--bg))] transition-colors",
-                      selected
-                        ? "border-[var(--accent)] ring-1 ring-[var(--accent)]"
-                        : "border-[var(--border)] hover:border-[var(--accent)]",
-                    ].join(" ")}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => void loadDocument(item.path)}
-                      title={item.name}
-                      className="relative block aspect-[3/4] w-full overflow-hidden bg-[var(--card)]"
+      {splitView === "library" ? (
+        <section
+          className="min-w-0 space-y-3"
+          aria-label={t("dictate.reader.libraryAriaLabel", {
+            defaultValue: "Reader library",
+          })}
+        >
+          <div className="max-h-[560px] overflow-y-auto pr-1">
+            {filteredLibrary.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
+                {library.length === 0
+                  ? t("dictate.reader.empty", {
+                      defaultValue: "No documents yet.",
+                    })
+                  : t("dictate.reader.noMatches", {
+                      defaultValue: "No matching documents.",
+                    })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                {filteredLibrary.map((item) => {
+                  const selected =
+                    activeDocument?.id === item.id ||
+                    activeDocument?.path === item.path;
+                  return (
+                    <div
+                      key={item.id}
+                      className={[
+                        "group relative flex min-w-0 flex-col gap-2",
+                        selected
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--text)]",
+                      ].join(" ")}
                     >
-                      {item.thumbnailDataUrl ? (
-                        <img
-                          src={item.thumbnailDataUrl}
-                          alt=""
-                          className="h-full w-full object-cover object-top"
-                          draggable={false}
-                        />
-                      ) : (
-                        <span
-                          className="flex h-full w-full items-center justify-center text-lg font-bold text-[var(--accent)]"
-                          aria-hidden="true"
-                        >
-                          {kindLabel(item.kind)}
-                        </span>
-                      )}
-                      <span className="absolute bottom-2 left-2 rounded-md bg-[var(--media-badge-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--media-badge-text)] backdrop-blur-sm">
-                        {t("dictate.reader.libraryCardBadge", {
-                          defaultValue: "{{kind}} · {{size}}",
-                          kind: kindLabel(item.kind),
-                          size: formatBytes(item.sizeBytes),
-                        })}
-                      </span>
-                    </button>
-                    <div className="flex items-center gap-1.5 px-2 py-2">
-                      <FileText
-                        size={14}
-                        className="shrink-0 text-[var(--accent)]"
-                        aria-hidden="true"
-                      />
                       <button
                         type="button"
                         onClick={() => void loadDocument(item.path)}
                         title={item.name}
                         className={[
-                          "min-w-0 flex-1 truncate text-left text-xs font-medium",
+                          "relative block aspect-[3/4] w-full overflow-hidden rounded-xl border bg-[var(--card)] transition-[border-color,box-shadow]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
                           selected
-                            ? "text-[var(--accent)]"
-                            : "text-[var(--text)]",
+                            ? "border-[var(--accent)] ring-1 ring-[var(--accent)]"
+                            : "border-[var(--border)] group-hover:border-[var(--accent)]",
                         ].join(" ")}
                       >
-                        {item.name}
+                        {item.thumbnailDataUrl ? (
+                          <img
+                            src={item.thumbnailDataUrl}
+                            alt=""
+                            className="h-full w-full object-cover object-top"
+                            draggable={false}
+                          />
+                        ) : (
+                          <span
+                            className="flex h-full w-full items-center justify-center text-lg font-bold text-[var(--accent)]"
+                            aria-hidden="true"
+                          >
+                            {kindLabel(item.kind)}
+                          </span>
+                        )}
+                        <span className="absolute bottom-2 left-2 rounded-md bg-[var(--media-badge-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--media-badge-text)] backdrop-blur-sm">
+                          {t("dictate.reader.libraryCardBadge", {
+                            defaultValue: "{{kind}} · {{size}}",
+                            kind: kindLabel(item.kind),
+                            size: formatBytes(item.sizeBytes),
+                          })}
+                        </span>
                       </button>
-                      {confirmingRemoveId === item.id ? (
-                        <span className="flex shrink-0 items-center gap-0.5">
+                      <div className="flex min-h-9 items-center gap-1.5 px-1">
+                        <FileText
+                          size={14}
+                          className="shrink-0 text-[var(--accent)]"
+                          aria-hidden="true"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void loadDocument(item.path)}
+                          title={item.name}
+                          className={[
+                            "min-w-0 flex-1 truncate text-left text-xs font-medium",
+                            selected
+                              ? "text-[var(--accent)]"
+                              : "text-[var(--text)]",
+                          ].join(" ")}
+                        >
+                          {item.name}
+                        </button>
+                        {confirmingRemoveId === item.id ? (
+                          <span className="flex shrink-0 items-center gap-0.5">
+                            <ActionIconButton
+                              type="button"
+                              tone="confirm"
+                              title={t("dictate.reader.confirmRemoveDocument", {
+                                defaultValue: "Confirm remove document",
+                              })}
+                              aria-label={t(
+                                "dictate.reader.confirmRemoveDocument",
+                                {
+                                  defaultValue: "Confirm remove document",
+                                },
+                              )}
+                              onClick={() => void removeLibraryItem(item)}
+                            >
+                              <Trash2 size={13} aria-hidden="true" />
+                            </ActionIconButton>
+                            <ActionIconButton
+                              type="button"
+                              title={t("dictate.reader.cancelRemoveDocument", {
+                                defaultValue: "Cancel remove document",
+                              })}
+                              aria-label={t(
+                                "dictate.reader.cancelRemoveDocument",
+                                {
+                                  defaultValue: "Cancel remove document",
+                                },
+                              )}
+                              onClick={() => setConfirmingRemoveId(null)}
+                            >
+                              <X size={13} aria-hidden="true" />
+                            </ActionIconButton>
+                          </span>
+                        ) : (
                           <ActionIconButton
                             type="button"
-                            tone="confirm"
-                            title={t("dictate.reader.confirmRemoveDocument", {
-                              defaultValue: "Confirm remove document",
+                            tone="danger"
+                            className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                            title={t("dictate.reader.removeDocument", {
+                              defaultValue: "Remove document",
                             })}
-                            aria-label={t(
-                              "dictate.reader.confirmRemoveDocument",
-                              {
-                                defaultValue: "Confirm remove document",
-                              },
-                            )}
-                            onClick={() => void removeLibraryItem(item)}
+                            aria-label={t("dictate.reader.removeDocument", {
+                              defaultValue: "Remove document",
+                            })}
+                            onClick={() => setConfirmingRemoveId(item.id)}
                           >
                             <Trash2 size={13} aria-hidden="true" />
                           </ActionIconButton>
-                          <ActionIconButton
-                            type="button"
-                            title={t("dictate.reader.cancelRemoveDocument", {
-                              defaultValue: "Cancel remove document",
-                            })}
-                            aria-label={t(
-                              "dictate.reader.cancelRemoveDocument",
-                              {
-                                defaultValue: "Cancel remove document",
-                              },
-                            )}
-                            onClick={() => setConfirmingRemoveId(null)}
-                          >
-                            <X size={13} aria-hidden="true" />
-                          </ActionIconButton>
-                        </span>
-                      ) : (
-                        <ActionIconButton
-                          type="button"
-                          tone="danger"
-                          className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                          title={t("dictate.reader.removeDocument", {
-                            defaultValue: "Remove document",
-                          })}
-                          aria-label={t("dictate.reader.removeDocument", {
-                            defaultValue: "Remove document",
-                          })}
-                          onClick={() => setConfirmingRemoveId(item.id)}
-                        >
-                          <Trash2 size={13} aria-hidden="true" />
-                        </ActionIconButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section
-        className="min-w-0 space-y-4"
-        aria-label={t("dictate.reader.previewAriaLabel", {
-          defaultValue: "Reader preview",
-        })}
-      >
-        {activeDocument && currentSection ? (
-          createPortal(
-            <div
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
-              role="presentation"
-              onClick={closeReader}
-            >
-              <div
-                className="absolute inset-0 bg-[var(--scrim-bg-strong)] backdrop-blur-sm"
-                aria-hidden="true"
-              />
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={activeDocument.name}
-                className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[var(--modal-shadow-strong)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3">
-                  <div className="min-w-0 truncate text-sm font-semibold text-[var(--text)]">
-                    {activeDocument.name}
-                  </div>
-                  <ActionIconButton
-                    type="button"
-                    onClick={closeReader}
-                    aria-label={t("common.close", { defaultValue: "Close" })}
-                    title={t("common.close", { defaultValue: "Close" })}
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </ActionIconButton>
-                </div>
-                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                        {t("dictate.reader.sectionLabel", {
-                          defaultValue: "Section {{current}} of {{total}}",
-                          current: activeSectionIndex + 1,
-                          total: activeDocument.sections.length,
-                        })}
-                      </div>
-                      <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
-                        {currentSection.title}
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="grid gap-4 lg:grid-cols-[minmax(150px,0.42fr)_minmax(0,1fr)]">
-                    <div className="max-h-[360px] space-y-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-muted,var(--bg))] p-1">
-                      {cleanedSections.map((section) => {
-                        const selected = section.index === activeSectionIndex;
-                        const enabled = sectionDisabled[section.index] !== true;
-                        return (
-                          <div
-                            key={section.index}
-                            className={[
-                              "rounded-lg px-2 py-1.5 transition-colors",
-                              selected
-                                ? "bg-[var(--accent-soft)]"
-                                : "hover:bg-[var(--input)]",
-                            ].join(" ")}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSectionDisabled((prev) => ({
-                                    ...prev,
-                                    [section.index]:
-                                      prev[section.index] !== true,
-                                  }))
-                                }
-                                aria-pressed={enabled}
-                                title={
-                                  enabled
-                                    ? t("dictate.reader.sections.read", {
-                                        defaultValue: "Read this section",
-                                      })
-                                    : t("dictate.reader.sections.skip", {
-                                        defaultValue: "Skip this section",
-                                      })
-                                }
-                                className={[
-                                  "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                                  enabled
-                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)]"
-                                    : "border-[var(--border)] text-transparent",
-                                ].join(" ")}
-                              >
-                                <Check size={10} aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setActiveSectionIndex(section.index)
-                                }
-                                className={[
-                                  "min-w-0 flex-1 truncate text-left text-xs",
-                                  selected
-                                    ? "font-semibold text-[var(--accent)]"
-                                    : enabled
-                                      ? "text-[var(--text)]"
-                                      : "text-[var(--muted)] line-through",
-                                ].join(" ")}
-                              >
-                                {section.title}
-                              </button>
-                            </div>
-                            <div className="mt-1">
-                              <ReaderVoicePicker
-                                value={sectionVoices[section.index] ?? null}
-                                presets={presets}
-                                presetVoices={presetVoices}
-                                onSelectPreset={(presetId) =>
-                                  setSectionVoices((prev) => ({
-                                    ...prev,
-                                    [section.index]: presetId,
-                                  }))
-                                }
-                                onSelectDefault={() =>
-                                  setSectionVoices((prev) => ({
-                                    ...prev,
-                                    [section.index]: null,
-                                  }))
-                                }
-                                onCreatePresetFromVoice={createPresetFromVoice}
-                                disabled={!enabled}
-                              />
-                            </div>
-                          </div>
-                        );
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section
+          className="min-w-0 space-y-4 pb-48"
+          aria-label={t("dictate.reader.previewAriaLabel", {
+            defaultValue: "Reader preview",
+          })}
+        >
+          {activeDocument && currentSection ? (
+            <>
+              <div className="space-y-4 px-1">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                      {t("dictate.reader.sectionLabel", {
+                        defaultValue: "Section {{current}} of {{total}}",
+                        current: activeSectionIndex + 1,
+                        total: activeDocument.sections.length,
                       })}
                     </div>
-
-                    <div className="max-h-[360px] min-h-[360px] space-y-3 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm leading-7 text-[var(--text)]">
-                      {currentSection.text
-                        .split(/\n{2,}/)
-                        .map((paragraph, index) => (
-                          <p key={index} className="break-words">
-                            {paragraph}
-                          </p>
-                        ))}
+                    <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
+                      {currentSection.title}
                     </div>
                   </div>
+                </div>
 
-                  <ReaderPlaybackBar
-                    status={player.status}
-                    index={player.index}
-                    total={player.total}
-                    playbackRate={playbackRate}
-                    pageLabel={playbackPageLabel}
-                    currentText={currentReadingUnit?.text ?? ""}
-                    onToggle={() => {
-                      setError("");
-                      player.toggle();
-                    }}
-                    onStop={player.stop}
-                    onPrev={player.prev}
-                    onNext={player.next}
-                    onSeek={player.seek}
-                    onPlaybackRateChange={setPlaybackRate}
-                    presets={presets}
-                    presetVoices={presetVoices}
-                    selectedPresetId={selectedPresetId}
-                    onSelectPreset={setSelectedPresetId}
-                    onCreatePresetFromVoice={createPresetFromVoice}
-                  />
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {audioExportFeedback ? (
-                      <span className="text-xs text-[var(--muted)]">
-                        {audioExportFeedback}
-                      </span>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={exportReaderAudio}
-                      disabled={isExportingAudio || readingUnits.length === 0}
-                      className="gap-1.5 text-xs"
-                    >
-                      {isExportingAudio ? (
-                        <Loader2
-                          size={13}
-                          className="animate-spin"
+                {sectionsOpen
+                  ? createPortal(
+                      <div
+                        className="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6"
+                        role="presentation"
+                        onClick={() => onSectionsOpenChange(false)}
+                      >
+                        <div
+                          className="absolute inset-0 bg-[var(--scrim-bg-strong)] backdrop-blur-sm"
                           aria-hidden="true"
                         />
-                      ) : (
-                        <Download size={13} aria-hidden="true" />
-                      )}
-                      {isExportingAudio
-                        ? t("dictate.reader.exportingAudio", {
-                            defaultValue: "Exporting",
-                          })
-                        : t("dictate.reader.exportAudio", {
-                            defaultValue: "Export WAV",
+                        <div
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label={t("dictate.reader.sections.title", {
+                            defaultValue: "Sections",
                           })}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={copyDocumentText}
-                      className="gap-1.5 text-xs"
-                    >
-                      {copyFeedback ? (
-                        <Check size={13} aria-hidden="true" />
-                      ) : (
-                        <ClipboardCopy size={13} aria-hidden="true" />
-                      )}
-                      {copyFeedback
-                        ? t("dictate.reader.copied", { defaultValue: "Copied" })
-                        : t("dictate.reader.copySection", {
-                            defaultValue: "Copy section",
-                          })}
-                    </Button>
-                  </div>
+                          className="relative mt-[6vh] flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[var(--modal-shadow-strong)]"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-[var(--text)]">
+                                {t("dictate.reader.sections.title", {
+                                  defaultValue: "Sections",
+                                })}
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-[var(--muted)]">
+                                {t("dictate.reader.sections.selectedCount", {
+                                  defaultValue:
+                                    "{{selected}} of {{total}} selected",
+                                  selected: selectedSectionCount,
+                                  total: totalSectionCount,
+                                })}
+                              </div>
+                            </div>
+                            <ActionIconButton
+                              type="button"
+                              onClick={() => onSectionsOpenChange(false)}
+                              aria-label={t("common.close", {
+                                defaultValue: "Close",
+                              })}
+                              title={t("common.close", {
+                                defaultValue: "Close",
+                              })}
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </ActionIconButton>
+                          </div>
+                          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                            <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5 border-b border-[var(--border)] pb-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={
+                                  totalSectionCount === 0 ||
+                                  selectedSectionCount === totalSectionCount
+                                }
+                                onClick={readAllSections}
+                                className="gap-1 text-[11px]"
+                              >
+                                <Check size={12} aria-hidden="true" />
+                                {t("dictate.reader.sections.readAll", {
+                                  defaultValue: "Read all",
+                                })}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={
+                                  totalSectionCount === 0 ||
+                                  selectedSectionCount === 0
+                                }
+                                onClick={skipAllSections}
+                                className="gap-1 text-[11px]"
+                              >
+                                <X size={12} aria-hidden="true" />
+                                {t("dictate.reader.sections.skipAll", {
+                                  defaultValue: "Skip all",
+                                })}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={
+                                  Object.keys(sectionVoices).length === 0
+                                }
+                                onClick={resetSectionVoices}
+                                className="text-[11px]"
+                              >
+                                {t("dictate.reader.sections.resetVoices", {
+                                  defaultValue: "Reset voices",
+                                })}
+                              </Button>
+                            </div>
+                            <div className="space-y-1">
+                              {cleanedSections.map((section) => {
+                                const selected =
+                                  section.index === activeSectionIndex;
+                                const enabled =
+                                  sectionDisabled[section.index] !== true;
+                                return (
+                                  <div
+                                    key={section.index}
+                                    className={[
+                                      "rounded-lg px-2 py-1.5 transition-colors",
+                                      selected
+                                        ? "bg-[var(--accent-soft)]"
+                                        : "hover:bg-[var(--input)]",
+                                    ].join(" ")}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSectionDisabled((prev) => ({
+                                            ...prev,
+                                            [section.index]:
+                                              prev[section.index] !== true,
+                                          }));
+                                        }}
+                                        aria-pressed={enabled}
+                                        title={
+                                          enabled
+                                            ? t(
+                                                "dictate.reader.sections.read",
+                                                {
+                                                  defaultValue:
+                                                    "Read this section",
+                                                },
+                                              )
+                                            : t(
+                                                "dictate.reader.sections.skip",
+                                                {
+                                                  defaultValue:
+                                                    "Skip this section",
+                                                },
+                                              )
+                                        }
+                                        className={[
+                                          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                                          enabled
+                                            ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)]"
+                                            : "border-[var(--border)] text-transparent",
+                                        ].join(" ")}
+                                      >
+                                        <Check size={14} aria-hidden="true" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveSectionIndex(section.index)
+                                        }
+                                        className={[
+                                          "min-w-0 flex-1 truncate text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                                          selected
+                                            ? "font-semibold text-[var(--accent)]"
+                                            : enabled
+                                              ? "text-[var(--text)]"
+                                              : "text-[var(--muted)] line-through",
+                                        ].join(" ")}
+                                      >
+                                        {section.title}
+                                      </button>
+                                    </div>
+                                    <div className="mt-1">
+                                      <ReaderVoicePicker
+                                        value={
+                                          sectionVoices[section.index] ?? null
+                                        }
+                                        presets={presets}
+                                        presetVoices={presetVoices}
+                                        defaultLabel={sectionDefaultVoiceLabel}
+                                        defaultPresetId={selectedPresetId}
+                                        onSelectPreset={(presetId) => {
+                                          setSectionVoices((prev) => ({
+                                            ...prev,
+                                            [section.index]: presetId,
+                                          }));
+                                        }}
+                                        onSelectDefault={() => {
+                                          setSectionVoices((prev) => ({
+                                            ...prev,
+                                            [section.index]: null,
+                                          }));
+                                        }}
+                                        onCreatePresetFromVoice={
+                                          createPresetFromVoice
+                                        }
+                                        disabled={!enabled}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>,
+                      document.body,
+                    )
+                  : null}
 
-                  <ReaderTransformTools
-                    documentText={activeDocument.text}
-                    onListen={(text) => {
-                      setError("");
-                      player.stop();
-                      void speakReaderTextWithPreset(
-                        text,
-                        selectedPresetId,
-                        playbackRate,
-                      ).catch(handlePlaybackError);
-                    }}
-                  />
+                {transformOpen
+                  ? createPortal(
+                      <div
+                        className="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6"
+                        role="presentation"
+                        onClick={() => onTransformOpenChange(false)}
+                      >
+                        <div
+                          className="absolute inset-0 bg-[var(--scrim-bg-strong)] backdrop-blur-sm"
+                          aria-hidden="true"
+                        />
+                        <div
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label={t("dictate.reader.transform.title", {
+                            defaultValue: "Transform",
+                          })}
+                          className="relative mt-[6vh] flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[var(--modal-shadow-strong)]"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+                            <div className="text-sm font-semibold text-[var(--text)]">
+                              {t("dictate.reader.transform.title", {
+                                defaultValue: "Transform",
+                              })}
+                            </div>
+                            <ActionIconButton
+                              type="button"
+                              onClick={() => onTransformOpenChange(false)}
+                              aria-label={t("common.close", {
+                                defaultValue: "Close",
+                              })}
+                              title={t("common.close", {
+                                defaultValue: "Close",
+                              })}
+                            >
+                              <X size={16} aria-hidden="true" />
+                            </ActionIconButton>
+                          </div>
+                          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                            <ReaderTransformTools
+                              embedded
+                              documentText={activeDocument.text}
+                              onListen={(text) => {
+                                setError("");
+                                player.stop();
+                                void speakReaderTextWithPreset(
+                                  text,
+                                  selectedPresetId,
+                                  playbackRate,
+                                ).catch(handlePlaybackError);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>,
+                      document.body,
+                    )
+                  : null}
+
+                <div className="space-y-3 text-[15px] leading-8 text-[var(--text)]">
+                  {currentSection.text
+                    .split(/\n{2,}/)
+                    .map((paragraph, index) => (
+                      <p key={index} className="break-words">
+                        {paragraph}
+                      </p>
+                    ))}
                 </div>
               </div>
-            </div>,
-            document.body,
-          )
-        ) : isLoading ? (
-          <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center">
-            <Loader2
-              size={24}
-              className="animate-spin text-[var(--accent)]"
-              aria-hidden="true"
-            />
-            <div className="mt-3 text-sm font-semibold text-[var(--text)]">
-              {t("dictate.reader.loading", {
-                defaultValue: "Opening document",
-              })}
+              <ReaderPlaybackBar
+                status={player.status}
+                index={player.index}
+                total={player.total}
+                playbackRate={playbackRate}
+                pageLabel={playbackPageLabel}
+                onToggle={() => {
+                  setError("");
+                  player.toggle();
+                }}
+                onStop={player.stop}
+                onPrev={player.prev}
+                onNext={player.next}
+                onSeek={player.seek}
+                onPlaybackRateChange={selectPlaybackRate}
+                presets={presets}
+                presetVoices={presetVoices}
+                selectedPresetId={selectedPresetId}
+                onSelectPreset={selectDocumentVoice}
+                onCreatePresetFromVoice={createPresetFromVoice}
+                audioCacheStatus={audioCacheStatus}
+                isPreparingAudio={isPreparingReaderAudio}
+                onPrepareAudio={prepareReaderAudio}
+                onExportAudio={exportReaderAudio}
+                isExportingAudio={isExportingAudio}
+                exportDisabled={readingUnits.length === 0}
+                onCopySection={copyDocumentText}
+                copyFeedback={copyFeedback}
+              />
+            </>
+          ) : isLoading ? (
+            <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center">
+              <Loader2
+                size={24}
+                className="animate-spin text-[var(--accent)]"
+                aria-hidden="true"
+              />
+              <div className="mt-3 text-sm font-semibold text-[var(--text)]">
+                {t("dictate.reader.loading", {
+                  defaultValue: "Opening document",
+                })}
+              </div>
             </div>
-          </div>
-        ) : library.length === 0 ? (
-          <button
-            type="button"
-            onClick={pickDocument}
-            className="flex min-h-[360px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center transition-colors hover:border-[var(--accent)]"
-          >
-            <BookOpen
-              size={28}
-              className="text-[var(--muted)]"
-              aria-hidden="true"
-            />
-            <div className="mt-3 text-sm font-semibold text-[var(--text)]">
-              {t("dictate.reader.emptyPreviewTitle", {
-                defaultValue: "Add a document to start reading",
-              })}
-            </div>
-            <div className="mt-1 text-xs text-[var(--muted)]">
-              {t("dictate.reader.emptyPreviewHint", {
-                defaultValue: "PDF, DOCX, EPUB, TXT, or Markdown",
-              })}
-            </div>
-          </button>
-        ) : null}
-      </section>
+          ) : library.length === 0 ? (
+            <button
+              type="button"
+              onClick={pickDocument}
+              className="flex min-h-[360px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center transition-colors hover:border-[var(--accent)]"
+            >
+              <BookOpen
+                size={28}
+                className="text-[var(--muted)]"
+                aria-hidden="true"
+              />
+              <div className="mt-3 text-sm font-semibold text-[var(--text)]">
+                {t("dictate.reader.emptyPreviewTitle", {
+                  defaultValue: "Add a document to start reading",
+                })}
+              </div>
+              <div className="mt-1 text-xs text-[var(--muted)]">
+                {t("dictate.reader.emptyPreviewHint", {
+                  defaultValue: "PDF, DOCX, EPUB, TXT, or Markdown",
+                })}
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSplitViewChange("library")}
+              className="flex min-h-[360px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center transition-colors hover:border-[var(--accent)]"
+            >
+              <BookOpen
+                size={28}
+                className="text-[var(--muted)]"
+                aria-hidden="true"
+              />
+              <div className="mt-3 text-sm font-semibold text-[var(--text)]">
+                {t("dictate.reader.viewerEmptyTitle", {
+                  defaultValue: "No document open",
+                })}
+              </div>
+              <div className="mt-1 text-xs text-[var(--muted)]">
+                {t("dictate.reader.viewerEmptyHint", {
+                  defaultValue: "Choose a document from your library",
+                })}
+              </div>
+            </button>
+          )}
+        </section>
+      )}
 
       {error ? (
         <div

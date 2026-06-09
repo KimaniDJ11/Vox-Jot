@@ -39,13 +39,14 @@ export function buildSectionReadingUnits(
   options: BuildSectionReadingUnitsOptions,
 ): ReadingUnit[] {
   const units: ReadingUnit[] = [];
-  let counter = 0;
   for (const section of sections) {
     if (!options.isSectionEnabled(section.index)) continue;
     const presetId = options.voiceForSection(section.index);
-    for (const chunk of chunkText(section.text ?? "")) {
+    const chunks = chunkText(section.text ?? "");
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
+      const chunk = chunks[chunkIndex];
       units.push({
-        id: `unit-${counter++}`,
+        id: `section-${section.index}-chunk-${chunkIndex}`,
         text: chunk,
         pageIndex: null,
         sectionIndex: section.index,

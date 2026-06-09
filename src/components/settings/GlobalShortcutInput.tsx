@@ -306,7 +306,7 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
         ) : (
           <button
             type="button"
-            className={`rounded-md border border-mid-gray/80 bg-mid-gray/10 px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+            className={`rounded-md border border-[var(--border-strong)] bg-[var(--input)] px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
               disabled
                 ? "cursor-not-allowed opacity-60"
                 : "cursor-pointer hover:border-logo-primary hover:bg-logo-primary/10"

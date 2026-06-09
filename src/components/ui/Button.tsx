@@ -37,13 +37,13 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
+      "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--primary-control-highlight)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
       "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_85%)]",
     secondary:
       "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] hover:bg-[var(--input)]",
     danger:
-      "border-[var(--danger)] bg-[var(--danger)] text-[var(--inverse-text)] hover:border-[color-mix(in_srgb,var(--danger),black_12%)] hover:bg-[color-mix(in_srgb,var(--danger),black_12%)]",
+      "border-[var(--danger)] bg-[var(--danger)] text-[var(--danger-foreground)] hover:border-[color-mix(in_srgb,var(--danger),var(--text)_12%)] hover:bg-[color-mix(in_srgb,var(--danger),var(--text)_12%)]",
     "danger-ghost": isIconButtonSize
       ? "border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
       : "border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",

@@ -552,7 +552,7 @@ const KeyboardGlyph: React.FC<{
   label: string;
 }> = ({ tone = "neutral", label }) => (
   <span
-    className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-md border px-1.5 font-mono text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_-1px_0_var(--edge-shadow)] ${
+    className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-md border px-1.5 font-mono-token text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_-1px_0_var(--edge-shadow)] ${
       tone === "accent"
         ? "border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-soft)] text-[var(--accent)]"
         : "border-[var(--border)] bg-[var(--card)] text-[var(--text)]"
@@ -2072,7 +2072,7 @@ const DiagnosticsHero: React.FC = () => {
       ]}
       visual={
         <PreviewSlate className="w-full">
-          <div className="space-y-2 font-mono text-[10.5px] leading-5 text-[var(--muted)]">
+          <div className="space-y-2 font-mono-token text-[10.5px] leading-5 text-[var(--muted)]">
             <p>
               <span className="text-[var(--accent)]">{"$ "}</span>
               {t("appSections.diagnostics.terminalCommand")}
@@ -2142,7 +2142,7 @@ const DiagnosticsRouteDebugger: React.FC = () => {
         ) : null}
       </div>
       {result ? (
-        <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-4 font-mono text-xs leading-5 text-[var(--text)]">
+        <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-4 font-mono-token text-xs leading-5 text-[var(--text)]">
           {result}
         </pre>
       ) : null}
@@ -2240,7 +2240,7 @@ export const AutomationAgentsSettingsSection: React.FC = () => {
         ]}
         visual={
           <PreviewSlate className="w-full">
-            <div className="space-y-2 font-mono text-[11px] text-[var(--muted)]">
+            <div className="space-y-2 font-mono-token text-[11px] text-[var(--muted)]">
               {routeSnippets.map((route) => (
                 <p key={route}>{route}</p>
               ))}
@@ -2310,7 +2310,7 @@ export const AboutSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_18%,var(--card))_0%,color-mix(in_srgb,var(--accent-gold)_8%,var(--card))_55%,var(--panel-bg)_100%)] px-6 py-8 text-center shadow-[inset_0_1px_0_var(--edge-highlight),0_4px_18px_rgba(0,0,0,0.16)]">
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_18%,var(--card))_0%,color-mix(in_srgb,var(--accent-gold)_8%,var(--card))_55%,var(--panel-bg)_100%)] px-6 py-8 text-center shadow-[var(--feature-callout-shadow)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.06]"
           style={{
@@ -2328,7 +2328,7 @@ export const AboutSection: React.FC = () => {
             </div>
           </div>
           <VoxJotTextLogo className="mx-auto mt-4 h-10 w-auto max-w-[220px]" />
-          <p className="mt-1 font-mono text-sm text-[var(--muted)]">
+          <p className="mt-1 font-mono-token text-sm text-[var(--muted)]">
             {t("appSections.about.version", { version })}
           </p>
           <p className="mx-auto mt-4 max-w-prose text-[13px] leading-6 text-[var(--muted)]">

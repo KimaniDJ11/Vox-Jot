@@ -203,7 +203,7 @@ const VoiceRow: React.FC<{
             aria-label={previewing ? stopPreviewLabel : previewLabel}
             title={previewing ? stopPreviewLabel : previewLabel}
             className={[
-              "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+              "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[var(--avatar-overlay-bg)] text-[var(--avatar-overlay-text)] shadow-[inset_0_0_0_1px_var(--avatar-overlay-ring),var(--avatar-overlay-shadow)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
               previewing
                 ? "opacity-100"
                 : "opacity-0 group-hover/voice-row:opacity-100 group-focus-within/voice-row:opacity-100",
@@ -261,7 +261,7 @@ const VoiceRow: React.FC<{
               </span>
             ) : null}
             {selected ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white shadow-[var(--shadow-sm)]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-foreground)] shadow-[var(--shadow-sm)]">
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 <span>{selectedVoiceLabel}</span>
               </span>
@@ -361,7 +361,7 @@ const MyVoiceRow: React.FC<{
           aria-label={previewing ? stopPreviewLabel : previewLabel}
           title={previewing ? stopPreviewLabel : previewLabel}
           className={[
-            "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+            "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[var(--avatar-overlay-bg)] text-[var(--avatar-overlay-text)] shadow-[inset_0_0_0_1px_var(--avatar-overlay-ring),var(--avatar-overlay-shadow)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
             previewing
               ? "opacity-100"
               : "opacity-0 group-hover/my-voice-row:opacity-100 group-focus-within/my-voice-row:opacity-100",
@@ -410,7 +410,7 @@ const MyVoiceRow: React.FC<{
             </span>
           ) : null}
           {selected ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white shadow-[var(--shadow-sm)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-foreground)] shadow-[var(--shadow-sm)]">
               <Check className="h-3.5 w-3.5" aria-hidden />
               <span>{selectedLabel}</span>
             </span>
@@ -877,14 +877,14 @@ export const CreateVoiceModelHubPicker: React.FC<
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label={dialogLabel}
-            className="relative flex h-[min(88vh,920px)] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative flex h-[min(88vh,920px)] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}

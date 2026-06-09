@@ -798,7 +798,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
                   }}
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                     isActive
-                      ? "border-[var(--accent)] bg-logo-primary text-[var(--inverse-text)]"
+                      ? "border-[var(--accent)] bg-logo-primary text-[var(--logo-primary-foreground)]"
                       : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]"
                   }`}
                   title={t(option.descriptionKey, {

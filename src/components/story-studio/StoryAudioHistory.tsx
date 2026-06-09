@@ -132,7 +132,7 @@ const compactAudioSelectClassName =
   "h-9 max-w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--bg)] py-1.5 pe-8 ps-3 text-[12px] font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50";
 
 const storyChipClassName =
-  "inline-flex max-w-full min-w-0 items-center rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs font-semibold leading-4 text-[var(--muted)]";
+  "inline-flex max-w-full min-w-0 items-center rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold leading-4 text-[var(--muted)]";
 
 const storyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
@@ -1003,7 +1003,7 @@ const StoryAudioPlayerView: React.FC<{
           }}
         />
         {hasScript ? (
-          <pre className="whitespace-pre-wrap break-words font-[var(--font-body)] text-[17px] font-medium leading-8 text-[var(--text)]">
+          <pre className="whitespace-pre-wrap break-words font-body-token text-[17px] font-medium leading-8 text-[var(--text)]">
             {renderStoryScriptText(item.script_text)}
           </pre>
         ) : (

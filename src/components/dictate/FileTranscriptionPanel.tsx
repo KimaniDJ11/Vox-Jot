@@ -66,7 +66,7 @@ import {
 import { useReaderPlayback } from "./reader/useReaderPlayback";
 
 type FileTranscriptionView = "file" | "documents" | "folders";
-type FileProcessingMode = "transcribe" | "clean" | "clean_transcribe";
+type FileProcessingMode = "transcribe" | "clean_transcribe";
 type FileTranscriptionPanelKind = "media" | "reader";
 
 const AUDIO_VIDEO_EXTENSIONS = [
@@ -519,7 +519,7 @@ const SelectedAsrModelInline: React.FC<{
       title={label}
     >
       <span
-        className="h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+        className="h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_var(--avatar-ring)]"
         style={{
           background: voiceAvatarGradient(`file-transcription::${model.id}`),
         }}
@@ -554,23 +554,17 @@ const FileTranscriptionStatusHeader: React.FC<{
   const hasCleanedAudio = cleanedPath.trim().length > 0;
   const status = (() => {
     if (isRunning) {
-      const cleaningOnly = processingMode === "clean";
       const cleanAndTranscribe = processingMode === "clean_transcribe";
       return {
-        label: cleaningOnly
-          ? t("dictate.fileTranscription.status.cleaning", {
+        label: cleanAndTranscribe
+          ? t("dictate.fileTranscription.status.cleaningAndTranscribing", {
               count: 1,
-              defaultValue: "Cleaning {{count}} file",
+              defaultValue: "Cleaning and transcribing {{count}} file",
             })
-          : cleanAndTranscribe
-            ? t("dictate.fileTranscription.status.cleaningAndTranscribing", {
-                count: 1,
-                defaultValue: "Cleaning and transcribing {{count}} file",
-              })
-            : t("dictate.fileTranscription.status.transcribing", {
-                count: 1,
-                defaultValue: "Transcribing {{count}} file",
-              }),
+          : t("dictate.fileTranscription.status.transcribing", {
+              count: 1,
+              defaultValue: "Transcribing {{count}} file",
+            }),
         detail: t("dictate.fileTranscription.status.remaining", {
           count: 0,
           defaultValue: "{{count}} remaining",
@@ -653,9 +647,7 @@ const FileTranscriptionStatusHeader: React.FC<{
             </span>
           ) : null}
         </div>
-        <SelectedAsrModelInline
-          model={processingMode === "clean" ? null : selectedAsrModel}
-        />
+        <SelectedAsrModelInline model={selectedAsrModel} />
       </div>
       <div className="border-t border-[var(--border)]" aria-hidden="true" />
     </div>
@@ -708,10 +700,7 @@ const FileTranscriptionPanelShell: React.FC<{
       setSegments([]);
       try {
         let transcriptionPath = filePath;
-        if (
-          processingMode === "clean" ||
-          processingMode === "clean_transcribe"
-        ) {
+        if (processingMode === "clean_transcribe") {
           const cleanResult = await commands.cleanAudioFile(filePath, null);
           if (cleanResult.status === "error") {
             setError(
@@ -724,9 +713,6 @@ const FileTranscriptionPanelShell: React.FC<{
           }
           transcriptionPath = cleanResult.data.output_path;
           setCleanedPath(cleanResult.data.output_path);
-          if (processingMode === "clean") {
-            return;
-          }
         }
 
         const result = await commands.transcribeFile(transcriptionPath);
@@ -980,26 +966,21 @@ const FileTranscriptionPanelShell: React.FC<{
                   })}
                 </div>
                 <div className="mt-1 text-xs text-[var(--muted)]">
-                  {processingMode === "clean"
-                    ? t("dictate.fileTranscription.actionDescriptions.clean", {
-                        defaultValue:
-                          "Save a cleaned 16 kHz WAV beside the source file.",
-                      })
-                    : processingMode === "clean_transcribe"
-                      ? t(
-                          "dictate.fileTranscription.actionDescriptions.cleanTranscribe",
-                          {
-                            defaultValue:
-                              "Clean the recording first, then transcribe the cleaned audio.",
-                          },
-                        )
-                      : t(
-                          "dictate.fileTranscription.actionDescriptions.transcribe",
-                          {
-                            defaultValue:
-                              "Transcribe the original imported audio or video.",
-                          },
-                        )}
+                  {processingMode === "clean_transcribe"
+                    ? t(
+                        "dictate.fileTranscription.actionDescriptions.cleanTranscribe",
+                        {
+                          defaultValue:
+                            "Clean the recording first, then transcribe the cleaned audio.",
+                        },
+                      )
+                    : t(
+                        "dictate.fileTranscription.actionDescriptions.transcribe",
+                        {
+                          defaultValue:
+                            "Transcribe the original imported audio or video.",
+                        },
+                      )}
                 </div>
               </div>
               <SegmentedControl<FileProcessingMode>
@@ -1014,12 +995,6 @@ const FileTranscriptionPanelShell: React.FC<{
                     value: "transcribe",
                     label: t("dictate.fileTranscription.actions.transcribe", {
                       defaultValue: "Transcribe",
-                    }),
-                  },
-                  {
-                    value: "clean",
-                    label: t("dictate.fileTranscription.actions.clean", {
-                      defaultValue: "Clean Audio",
                     }),
                   },
                   {
@@ -1039,7 +1014,7 @@ const FileTranscriptionPanelShell: React.FC<{
               className={[
                 "mt-4 flex flex-col items-center justify-center gap-1.5 rounded-xl py-8 text-center transition-all duration-200",
                 isDragOver
-                  ? "bg-[var(--accent-soft,transparent)] shadow-[inset_0_0_0_2px_var(--accent)]"
+                  ? "bg-[var(--accent-soft)] shadow-[inset_0_0_0_2px_var(--accent)]"
                   : "bg-[var(--surface-muted,var(--bg))]",
               ].join(" ")}
             >
@@ -1053,22 +1028,14 @@ const FileTranscriptionPanelShell: React.FC<{
               ) : (
                 <>
                   <div className="text-sm text-[var(--muted)]">
-                    {processingMode === "clean"
-                      ? t("dictate.fileTranscription.dropHintClean", {
+                    {processingMode === "clean_transcribe"
+                      ? t("dictate.fileTranscription.dropHintCleanTranscribe", {
                           defaultValue:
-                            "Drop audio or video to clean background noise",
+                            "Drop audio or video to clean and transcribe",
                         })
-                      : processingMode === "clean_transcribe"
-                        ? t(
-                            "dictate.fileTranscription.dropHintCleanTranscribe",
-                            {
-                              defaultValue:
-                                "Drop audio or video to clean and transcribe",
-                            },
-                          )
-                        : t("dictate.fileTranscription.dropHint", {
-                            defaultValue: "Drop audio or video to transcribe",
-                          })}
+                      : t("dictate.fileTranscription.dropHint", {
+                          defaultValue: "Drop audio or video to transcribe",
+                        })}
                   </div>
                   <div className="text-[11px] text-[var(--muted)]">
                     {t("dictate.fileTranscription.orLabel", {
@@ -2344,7 +2311,7 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                           {kindLabel(item.kind)}
                         </span>
                       )}
-                      <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                      <span className="absolute bottom-2 left-2 rounded-md bg-[var(--media-badge-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--media-badge-text)] backdrop-blur-sm">
                         {t("dictate.reader.libraryCardBadge", {
                           defaultValue: "{{kind}} · {{size}}",
                           kind: kindLabel(item.kind),
@@ -2444,14 +2411,14 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
               onClick={closeReader}
             >
               <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-[var(--scrim-bg-strong)] backdrop-blur-sm"
                 aria-hidden="true"
               />
               <div
                 role="dialog"
                 aria-modal="true"
                 aria-label={activeDocument.name}
-                className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
+                className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[var(--modal-shadow-strong)]"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3">
@@ -2521,7 +2488,7 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                                 className={[
                                   "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                                   enabled
-                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent,#fff)]"
+                                    ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)]"
                                     : "border-[var(--border)] text-transparent",
                                 ].join(" ")}
                               >

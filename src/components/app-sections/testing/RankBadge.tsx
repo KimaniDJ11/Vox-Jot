@@ -13,7 +13,7 @@ function rankClassName(rank?: number): string {
     return "border-[color-mix(in_srgb,var(--text)_42%,var(--border))] bg-[color-mix(in_srgb,var(--text)_8%,transparent)] text-[color-mix(in_srgb,var(--text)_60%,var(--bg))]";
   }
   if (rank === 3) {
-    return "border-[color-mix(in_srgb,#cd7f32_54%,var(--border))] bg-[color-mix(in_srgb,#cd7f32_12%,transparent)] text-[color-mix(in_srgb,#cd7f32_80%,var(--bg))]";
+    return "border-[color-mix(in_srgb,var(--rank-bronze)_54%,var(--border))] bg-[color-mix(in_srgb,var(--rank-bronze)_12%,transparent)] text-[color-mix(in_srgb,var(--rank-bronze)_80%,var(--bg))]";
   }
   return "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--muted)]";
 }

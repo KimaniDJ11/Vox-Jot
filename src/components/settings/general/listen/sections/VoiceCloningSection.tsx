@@ -1009,7 +1009,7 @@ export const VoiceCloningSection: React.FC<{
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
@@ -1018,7 +1018,7 @@ export const VoiceCloningSection: React.FC<{
             aria-label={t("listen.createVoices.models", {
               defaultValue: "Models",
             })}
-            className="relative max-h-[min(88vh,920px)] w-full max-w-[980px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative max-h-[min(88vh,920px)] w-full max-w-[980px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -1171,14 +1171,14 @@ export const VoiceCloningSection: React.FC<{
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="voice-clone-profile-details-title"
-            className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -1336,7 +1336,7 @@ export const VoiceCloningSection: React.FC<{
               whiteWorkflowCardClassName,
               "flex min-h-[190px] flex-col gap-4 border-dashed transition-[border-color,background-color,box-shadow] duration-150",
               isRecording
-                ? "border-[var(--danger,red)] bg-[color-mix(in_srgb,var(--danger,red)_6%,transparent)]"
+                ? "border-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_6%,transparent)]"
                 : isReferenceAudioDragOver
                   ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
                   : referenceAudioPathDraft
@@ -1393,7 +1393,7 @@ export const VoiceCloningSection: React.FC<{
                   {[0, 1, 2, 3, 4].map((i) => (
                     <span
                       key={i}
-                      className="w-[4px] rounded-full bg-[var(--danger,red)]"
+                      className="w-[4px] rounded-full bg-[var(--danger)]"
                       style={{
                         animation: `voice-clone-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
                       }}
@@ -1430,7 +1430,7 @@ export const VoiceCloningSection: React.FC<{
               <div className="max-w-xl w-full space-y-3">
                 {isRecording ? (
                   <>
-                    <p className="text-sm font-semibold text-[var(--danger,red)]">
+                    <p className="text-sm font-semibold text-[var(--danger)]">
                       {t("listen.voiceCloning.recordingActive", {
                         defaultValue:
                           "Recording… tap Stop when you are done speaking",
@@ -1453,7 +1453,7 @@ export const VoiceCloningSection: React.FC<{
                         })}
                       </p>
                     </div>
-                    <p className="font-mono text-xs text-[var(--text)]">
+                    <p className="font-mono-token text-xs text-[var(--text)]">
                       {basename(referenceAudioPathDraft)}
                     </p>
                   </div>
@@ -1639,7 +1639,7 @@ export const VoiceCloningSection: React.FC<{
                       <div className="flex min-w-0 flex-1 items-start gap-2.5">
                         <span
                           aria-hidden="true"
-                          className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+                          className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_var(--avatar-ring)]"
                           style={{
                             background: voiceAvatarGradient(profile.id),
                           }}

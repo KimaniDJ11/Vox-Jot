@@ -481,7 +481,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
         )}
 
         {!isCreating && !selectedPrompt && (
-          <div className="p-3 bg-mid-gray/5 rounded-md border border-mid-gray/20">
+          <div className="p-3 bg-[var(--surface-muted)] rounded-md border border-[var(--border)]">
             <p className="text-sm text-[var(--muted)]">
               {hasPrompts
                 ? t("settings.postProcessing.prompts.selectToEdit")
@@ -903,7 +903,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
         {error && <Alert variant="error">{error}</Alert>}
 
         {result && (
-          <div className="space-y-3 rounded-md border border-mid-gray/20 bg-[var(--panel-bg)] p-3">
+          <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--panel-bg)] p-3">
             {result.dictionary_hits.length > 0 && (
               <div className="text-xs text-[var(--muted)]">
                 {t("settings.postProcessing.preview.dictionaryHits", {

@@ -114,7 +114,7 @@ const StateRow: React.FC<{ label: string; active: boolean }> = ({
       <span
         className={`flex h-8 w-10 items-center justify-center rounded-md border text-[var(--text)] ${
           active
-            ? "translate-y-0.5 border-[var(--accent)] bg-[var(--accent-soft)] shadow-[inset_0_2px_3px_rgba(0,0,0,0.16)]"
+            ? "translate-y-0.5 border-[var(--accent)] bg-[var(--accent-soft)] shadow-[var(--pressed-control-shadow)]"
             : "border-[var(--border)] bg-[var(--panel-bg)]"
         }`}
       >

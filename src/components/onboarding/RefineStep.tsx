@@ -184,7 +184,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         </p>
         <div className="mt-4">
           <div
-            className="h-2 w-full overflow-hidden rounded-full bg-[var(--ob-track,rgba(125,125,125,0.25))]"
+            className="h-2 w-full overflow-hidden rounded-full bg-[var(--ob-track)]"
             role="progressbar"
             aria-label={t("onboarding.refine.pulling.progressLabel", {
               defaultValue: "Refine model download progress",

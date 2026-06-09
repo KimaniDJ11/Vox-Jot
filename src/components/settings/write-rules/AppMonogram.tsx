@@ -40,12 +40,12 @@ const SIZE_PX: Record<NonNullable<AppMonogramProps["size"]>, number> = {
  * stable across renders.
  */
 const TINTS = [
-  "rgba(99,102,241,0.18)", // indigo
-  "rgba(16,185,129,0.18)", // emerald
-  "rgba(244,114,182,0.18)", // pink
-  "rgba(245,158,11,0.18)", // amber
-  "rgba(56,189,248,0.18)", // sky
-  "rgba(167,139,250,0.18)", // violet
+  "var(--app-monogram-tint-1)",
+  "var(--app-monogram-tint-2)",
+  "var(--app-monogram-tint-3)",
+  "var(--app-monogram-tint-4)",
+  "var(--app-monogram-tint-5)",
+  "var(--app-monogram-tint-6)",
 ];
 function pickTint(seed: string): string {
   let hash = 0;

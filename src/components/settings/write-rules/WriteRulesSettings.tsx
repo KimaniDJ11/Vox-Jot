@@ -393,7 +393,7 @@ export const WriteRulesSettings: React.FC = () => {
           "Apply a writing voice or custom cleanup prompt per mode.",
       }),
       icon: <Palette className="h-4.5 w-4.5" strokeWidth={2} />,
-      accentColor: "var(--accent-gold, #d89a5c)",
+      accentColor: "var(--accent-gold)",
     },
     {
       label: t("refine.writeRules.featureCards.output.label", {
@@ -407,7 +407,7 @@ export const WriteRulesSettings: React.FC = () => {
           "Override the STT model, paste method, or auto-submit per mode.",
       }),
       icon: <Zap className="h-4.5 w-4.5" strokeWidth={2} />,
-      accentColor: "var(--success, #22c55e)",
+      accentColor: "var(--success)",
     },
   ];
 
@@ -424,7 +424,7 @@ export const WriteRulesSettings: React.FC = () => {
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
@@ -432,7 +432,7 @@ export const WriteRulesSettings: React.FC = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="write-profile-dialog-title"
-            className="relative flex max-h-[min(88vh,920px)] w-full max-w-[840px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative flex max-h-[min(88vh,920px)] w-full max-w-[840px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -479,7 +479,7 @@ export const WriteRulesSettings: React.FC = () => {
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
@@ -487,7 +487,7 @@ export const WriteRulesSettings: React.FC = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="write-mode-preview-title"
-            className="relative flex max-h-[min(88vh,760px)] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative flex max-h-[min(88vh,760px)] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}

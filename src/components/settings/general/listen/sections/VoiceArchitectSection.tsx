@@ -764,14 +764,14 @@ export const VoiceArchitectSection: React.FC<{
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="save-tuned-voice-title"
-            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -890,14 +890,14 @@ export const VoiceArchitectSection: React.FC<{
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="clone-profile-dialog-title"
-            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -997,7 +997,7 @@ export const VoiceArchitectSection: React.FC<{
                     >
                       <span
                         aria-hidden="true"
-                        className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+                        className="h-9 w-9 shrink-0 rounded-full shadow-[inset_0_0_0_1px_var(--avatar-ring)]"
                         style={{
                           background: voiceAvatarGradient(profile.id),
                         }}

@@ -217,7 +217,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
               }
               aria-hidden="true"
             />
-            <span className="font-mono text-[var(--text)]">{url}</span>
+            <span className="font-mono-token text-[var(--text)]">{url}</span>
             <Button
               variant="secondary"
               onClick={() => void copyUrl()}
@@ -236,7 +236,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
                 defaultValue: "Token",
               })}
             </span>
-            <span className="max-w-[18rem] truncate font-mono text-[var(--text)]">
+            <span className="max-w-[18rem] truncate font-mono-token text-[var(--text)]">
               {token}
             </span>
             <Button
@@ -257,7 +257,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
             </Button>
           </div>
 
-          <div className="font-mono text-[var(--muted)]">
+          <div className="font-mono-token text-[var(--muted)]">
             {displayedAuthHeader}
           </div>
 
@@ -268,7 +268,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
                   defaultValue: "MCP",
                 })}
               </span>
-              <span className="min-w-0 truncate font-mono text-[var(--text)]">
+              <span className="min-w-0 truncate font-mono-token text-[var(--text)]">
                 {mcpUrl}
               </span>
               <Button
@@ -282,7 +282,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
                 })}
               </Button>
             </div>
-            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--input)] p-2 font-mono text-[11px] leading-5 text-[var(--muted)]">
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--input)] p-2 font-mono-token text-[11px] leading-5 text-[var(--muted)]">
               {mcpConfig}
             </pre>
           </div>

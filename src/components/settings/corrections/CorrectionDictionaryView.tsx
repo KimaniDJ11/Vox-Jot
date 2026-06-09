@@ -792,7 +792,7 @@ export const CorrectionDictionaryView: React.FC<
               }
             }}
             placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-full border border-mid-gray/80 bg-mid-gray/10 py-1 pl-8 pr-8 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
+            className="h-9 w-full rounded-full border border-[var(--border-strong)] bg-[var(--input)] py-1 pl-8 pr-8 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
           />
           {searchQuery ? (
             <button
@@ -889,7 +889,7 @@ export const CorrectionDictionaryView: React.FC<
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden="true"
           />
           <motion.div
@@ -897,7 +897,7 @@ export const CorrectionDictionaryView: React.FC<
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-correction-title"
-            className="relative w-full max-w-[420px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative w-full max-w-[420px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[var(--modal-shadow)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
@@ -1476,7 +1476,7 @@ export const CorrectionDictionaryView: React.FC<
                                 defaultValue: "Search apps",
                               },
                             )}
-                            className="h-9 w-full rounded-full border border-mid-gray/80 bg-mid-gray/10 px-3 py-1 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
+                            className="h-9 w-full rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-3 py-1 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
                           />
 
                           {disabledAppSuggestions.length > 0 ? (
@@ -1678,7 +1678,7 @@ const OriginalChip: React.FC<{
             setEditing(false);
           }
         }}
-        className="min-w-[3rem] rounded-full border border-[var(--accent)]/60 bg-mid-gray/10 px-2 py-0.5 font-mono text-xs focus:border-[var(--accent)] focus:outline-none"
+        className="min-w-[3rem] rounded-full border border-[color-mix(in_srgb,var(--accent)_60%,var(--border))] bg-[var(--input)] px-2 py-0.5 font-mono-token text-xs focus:border-[var(--accent)] focus:outline-none"
         style={{ width: `${Math.max(value.length, 3) + 2}ch` }}
       />
     );
@@ -1687,7 +1687,7 @@ const OriginalChip: React.FC<{
   return (
     <Badge
       variant="secondary"
-      className="group min-w-0 gap-1 border border-[var(--border)] bg-[var(--input)] px-2 py-1 font-mono text-[var(--text)] hover:border-[var(--border-strong)]"
+      className="group min-w-0 gap-1 border border-[var(--border)] bg-[var(--input)] px-2 py-1 font-mono-token text-[var(--text)] hover:border-[var(--border-strong)]"
     >
       <button
         type="button"

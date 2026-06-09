@@ -270,7 +270,7 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                 maxHeight: position.maxHeight,
                 zIndex: 200,
               }}
-              className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[0_18px_48px_rgba(0,0,0,0.4)]"
+              className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg,var(--bg))] shadow-[var(--popover-shadow)]"
             >
               <div className="relative border-b border-[var(--border)] p-2">
                 <Search

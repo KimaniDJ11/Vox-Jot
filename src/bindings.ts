@@ -1501,6 +1501,43 @@ async cleanAudioFile(path: string, outputPath: string | null) : Promise<Result<C
     else return { status: "error", error: e  as any };
 }
 },
+async enhanceAudioFile(path: string, outputPath: string | null, options: EnhanceAudioOptions | null) : Promise<Result<EnhanceAudioFileResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("enhance_audio_file", { path, outputPath, options }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async revealEnhancedAudio(path: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reveal_enhanced_audio", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async denoiseRuntimeStatus() : Promise<Result<DenoiseRuntimeStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("denoise_runtime_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Install (or repair) the DeepFilterNet runtime. Heavy and network-bound on the
+ * first run (downloads PyTorch + the model), so the UI calls this explicitly
+ * with a spinner before enabling the engine.
+ */
+async prepareDenoiseRuntime() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_denoise_runtime") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async transcribeFile(path: string) : Promise<Result<TranscriptionFileResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("transcribe_file", { path }) };
@@ -2686,6 +2723,11 @@ export type CreativeAudioModelCatalog = { install_root: string; models: Creative
 export type CreativeAudioModelDescriptor = { id: string; label: string; provider: string; provider_id: string; description: string; source_kind: CreativeAudioModelSourceKind; source_url: string; license_label: string; runtime_label: string; size_hint_label: string; installed: boolean; runnable: boolean; selected: boolean; active: boolean; downloadable: boolean; recommended: boolean; status_label: string; availability: CreativeAudioAvailability; experimental: boolean; unavailable_reason: string | null; modes: StorySoundMode[] }
 export type CreativeAudioModelSourceKind = "official_source"
 export type CustomSounds = { start: boolean; stop: boolean }
+export type DenoiseRuntimeStatus = {
+/**
+ * Whether the DeepFilterNet runtime is installed and ready.
+ */
+installed: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
  */
@@ -2722,6 +2764,20 @@ export type DictionaryEntry = { spoken: string; written: string; priority?: numb
 export type DictionaryImportSummary = { imported: number; skipped: number }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
+export type EnhanceAudioFileResult = { output_path: string; sample_rate: number; duration_ms: number; model: string }
+export type EnhanceAudioOptions = {
+/**
+ * Engine id: "rnnoise" (default), "spectral", or "deepfilternet".
+ */
+model: string | null;
+/**
+ * Output sample rate in Hz (default 48000). Ignored by DeepFilterNet.
+ */
+outputSampleRate: number | null;
+/**
+ * Spectral-only strength in [0, 1] (default 0.75).
+ */
+strength: number | null }
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
 export type GenerateStorySoundRequest = { render_id: string; project_id?: string | null; title: string; prompt: string; model_id: string; mode: StorySoundMode; duration_seconds: number; seed: number | null }
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }

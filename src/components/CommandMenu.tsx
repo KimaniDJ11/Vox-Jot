@@ -330,7 +330,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
           role="presentation"
         >
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
             aria-hidden
           />
           <motion.div
@@ -352,7 +352,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
               label={t("commandMenu.label")}
               value={value}
               onValueChange={setValue}
-              className="card-linear--elevated overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--surface-elevated,var(--card))]/90 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-xl"
+              className="card-linear--elevated overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--surface-elevated,var(--card))]/90 shadow-[var(--modal-shadow)] backdrop-blur-xl"
             >
               <div className="flex items-center gap-2 border-b border-[var(--ring-hairline)] px-4">
                 <svg

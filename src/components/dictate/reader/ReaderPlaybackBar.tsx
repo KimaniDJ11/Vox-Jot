@@ -53,7 +53,17 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   const { t } = useTranslation();
   const hasUnits = total > 0;
   const isPlaying = status === "playing";
-  const progressPercent = hasUnits ? ((index + 1) / total) * 100 : 0;
+  const maxIndex = Math.max(total - 1, 0);
+  const clampedIndex = Math.min(Math.max(index, 0), maxIndex);
+  // Fill must track the native thumb position (value / max), so the accent fill
+  // ends exactly under the thumb. Uses the same card-pill track styling as the
+  // app's shared Slider via the global `--slider-bg` CSS variable.
+  const fillPercent = maxIndex > 0 ? (clampedIndex / maxIndex) * 100 : 0;
+  const trackStyle = {
+    "--slider-bg": hasUnits
+      ? `linear-gradient(to right, color-mix(in srgb, var(--accent), var(--card) 52%) ${fillPercent}%, var(--card) ${fillPercent}%)`
+      : "var(--card)",
+  } as React.CSSProperties;
 
   const playLabel = isPlaying
     ? t("dictate.reader.player.pause", { defaultValue: "Pause" })
@@ -84,7 +94,7 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
           disabled={!hasUnits}
           aria-label={playLabel}
           title={playLabel}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--on-accent,#fff)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isPlaying ? (
             <Pause size={18} aria-hidden="true" />
@@ -117,21 +127,17 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
           <input
             type="range"
             min={0}
-            max={Math.max(total - 1, 0)}
-            value={Math.min(index, Math.max(total - 1, 0))}
+            max={maxIndex}
+            value={clampedIndex}
             onChange={(event) => onSeek(Number(event.target.value))}
             disabled={!hasUnits}
             aria-label={t("dictate.reader.player.scrub", {
               defaultValue: "Reading position",
             })}
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[var(--border)] accent-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              background: hasUnits
-                ? `linear-gradient(to right, var(--accent) ${progressPercent}%, var(--border) ${progressPercent}%)`
-                : undefined,
-            }}
+            className="block h-11 w-full cursor-pointer appearance-none bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            style={trackStyle}
           />
-          <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--muted)]">
+          <div className="flex items-center justify-between gap-2 px-0.5 text-[11px] text-[var(--muted)]">
             <span className="truncate">
               {hasUnits
                 ? t("dictate.reader.player.position", {

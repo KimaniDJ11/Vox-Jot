@@ -270,7 +270,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {overridesHeading}
               {overrideCount > 0 ? (
-                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold text-white">
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-foreground)]">
                   {overrideCount}
                 </span>
               ) : null}

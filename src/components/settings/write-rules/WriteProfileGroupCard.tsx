@@ -360,8 +360,8 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
               {cardDisplayTitle}
             </h3>
             {activeRule ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent-foreground)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-foreground)]" />
                 {activeNowLabel}
               </span>
             ) : null}

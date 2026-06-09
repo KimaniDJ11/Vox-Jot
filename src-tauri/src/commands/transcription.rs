@@ -1,4 +1,7 @@
-use crate::audio_toolkit::{enhance_audio_samples, AudioEnhancementConfig, AudioEnhancementModel};
+use crate::audio_toolkit::{
+    enhance_audio_samples, AudioEnhancementConfig, AudioEnhancementModel,
+    DEFAULT_ENHANCEMENT_STRENGTH, FULL_BAND_SAMPLE_RATE,
+};
 use crate::correction_tracker::store::CorrectionStore;
 use crate::helpers::subtitles::{to_srt, to_vtt, TimedSegment};
 use crate::managers::transcription::TranscriptionManager;
@@ -212,6 +215,17 @@ pub(crate) fn decode_with_ffmpeg_blocking(
     ffmpeg_exe: &Path,
     input_path: &str,
 ) -> Result<Vec<f32>, String> {
+    decode_with_ffmpeg_blocking_at(ffmpeg_exe, input_path, 16_000)
+}
+
+/// Decode any audio/video file to mono f32 PCM at `target_rate` Hz via ffmpeg.
+/// The 16 kHz path feeds speech-to-text; the full-band path feeds Enhance Audio.
+pub(crate) fn decode_with_ffmpeg_blocking_at(
+    ffmpeg_exe: &Path,
+    input_path: &str,
+    target_rate: u32,
+) -> Result<Vec<f32>, String> {
+    let target_rate_arg = target_rate.to_string();
     let output = std::process::Command::new(ffmpeg_exe)
         .args([
             "-nostdin",
@@ -227,7 +241,7 @@ pub(crate) fn decode_with_ffmpeg_blocking(
             "-ac",
             "1",
             "-ar",
-            "16000",
+            &target_rate_arg,
             "-",
         ])
         .output()
@@ -265,10 +279,10 @@ pub(crate) fn decode_with_ffmpeg_blocking(
     Ok(samples)
 }
 
-pub(crate) fn write_wav_16k(path: &Path, samples: &[f32]) -> Result<(), String> {
+pub(crate) fn write_wav(path: &Path, samples: &[f32], sample_rate: u32) -> Result<(), String> {
     let spec = hound::WavSpec {
         channels: 1,
-        sample_rate: 16_000,
+        sample_rate,
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
     };
@@ -284,6 +298,10 @@ pub(crate) fn write_wav_16k(path: &Path, samples: &[f32]) -> Result<(), String> 
         .finalize()
         .map_err(|e| format!("Failed to finalize WAV '{}': {}", path.display(), e))?;
     Ok(())
+}
+
+pub(crate) fn write_wav_16k(path: &Path, samples: &[f32]) -> Result<(), String> {
+    write_wav(path, samples, 16_000)
 }
 
 fn write_temp_wav_16k(samples: &[f32]) -> Result<PathBuf, String> {
@@ -369,12 +387,12 @@ pub async fn clean_audio_file(
             return Err("Audio file did not contain usable samples.".to_string());
         }
 
+        // This path feeds speech-to-text, so it stays at 16 kHz.
         let cleaned = enhance_audio_samples(
             &samples,
             sample_rate,
-            AudioEnhancementConfig {
-                model: AudioEnhancementModel::Rnnoise,
-            },
+            16_000,
+            AudioEnhancementConfig::rnnoise(),
         )?;
         if cleaned.is_empty() {
             return Err("Noise reduction produced no audio.".to_string());
@@ -389,6 +407,229 @@ pub async fn clean_audio_file(
     })
     .await
     .map_err(|err| format!("Task join error: {}", err))?
+}
+
+// ── Enhance Audio: full-band, user-facing noise reduction ─────────────────────
+// Unlike clean_audio_file (16 kHz, feeds STT), this produces a high-quality file
+// the user keeps: full-band output (default 48 kHz), any input audio/video, and a
+// selectable engine (RNNoise or spectral subtraction with adjustable strength).
+
+fn default_enhanced_output_path(input_path: &str) -> PathBuf {
+    let source = Path::new(input_path);
+    let parent = source.parent().unwrap_or_else(|| Path::new("."));
+    let stem = source
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("audio");
+
+    for index in 0..1000 {
+        let file_name = if index == 0 {
+            format!("{stem}-enhanced.wav")
+        } else {
+            format!("{stem}-enhanced-{}.wav", index + 1)
+        };
+        let candidate = parent.join(file_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    parent.join(format!("{}-enhanced-{}.wav", stem, uuid::Uuid::new_v4()))
+}
+
+fn decode_audio_file_at(path: &str, target_rate: u32) -> Result<(Vec<f32>, u32), String> {
+    if path.to_ascii_lowercase().ends_with(".wav") {
+        // WAV: keep the native rate; the enhancer resamples internally.
+        read_wav_as_mono_f32(path)
+    } else {
+        let ffmpeg_exe = resolve_ffmpeg_exe();
+        decode_with_ffmpeg_blocking_at(&ffmpeg_exe, path, target_rate).map(|s| (s, target_rate))
+    }
+}
+
+#[derive(Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EnhanceAudioOptions {
+    /// Engine id: "rnnoise" (default), "spectral", or "deepfilternet".
+    pub model: Option<String>,
+    /// Output sample rate in Hz (default 48000). Ignored by DeepFilterNet.
+    pub output_sample_rate: Option<u32>,
+    /// Spectral-only strength in [0, 1] (default 0.75).
+    pub strength: Option<f32>,
+}
+
+#[derive(Serialize, Type)]
+pub struct EnhanceAudioFileResult {
+    pub output_path: String,
+    pub sample_rate: u32,
+    pub duration_ms: u64,
+    pub model: String,
+}
+
+fn requested_model_is_deepfilternet(model: Option<&str>) -> bool {
+    matches!(
+        model
+            .map(|value| value.trim().to_ascii_lowercase())
+            .as_deref(),
+        Some("deepfilternet" | "deepfilter" | "deep-filter" | "df")
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn enhance_audio_file(
+    app: AppHandle,
+    path: String,
+    output_path: Option<String>,
+    options: Option<EnhanceAudioOptions>,
+) -> Result<EnhanceAudioFileResult, String> {
+    tokio::task::spawn_blocking(move || -> Result<EnhanceAudioFileResult, String> {
+        let source_path = PathBuf::from(&path);
+        if !source_path.is_file() {
+            return Err(format!("Audio file not found: {}", source_path.display()));
+        }
+
+        let options = options.unwrap_or(EnhanceAudioOptions {
+            model: None,
+            output_sample_rate: None,
+            strength: None,
+        });
+        let use_deepfilternet = requested_model_is_deepfilternet(options.model.as_deref());
+        let strength = options
+            .strength
+            .unwrap_or(DEFAULT_ENHANCEMENT_STRENGTH)
+            .clamp(0.0, 1.0);
+
+        let output_path = output_path
+            .map(PathBuf::from)
+            .unwrap_or_else(|| default_enhanced_output_path(&path));
+        if output_path == source_path {
+            return Err("Choose a different output path for the enhanced audio.".to_string());
+        }
+        if let Some(parent) = output_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent).map_err(|err| {
+                    format!(
+                        "Failed to create output folder '{}': {}",
+                        parent.display(),
+                        err
+                    )
+                })?;
+            }
+        }
+
+        if use_deepfilternet {
+            // DeepFilterNet (Python sidecar) is full-band 48 kHz only. Decode the
+            // source to a temp WAV; the sidecar resamples to 48 kHz, denoises, and
+            // writes a 48 kHz WAV that we read back and persist.
+            let (samples, sample_rate) = decode_audio_file_at(&path, FULL_BAND_SAMPLE_RATE)?;
+            if samples.is_empty() {
+                return Err("Audio file did not contain usable samples.".to_string());
+            }
+            let temp_in =
+                std::env::temp_dir().join(format!("vox-jot-df-in-{}.wav", uuid::Uuid::new_v4()));
+            let temp_out =
+                std::env::temp_dir().join(format!("vox-jot-df-out-{}.wav", uuid::Uuid::new_v4()));
+            write_wav(&temp_in, &samples, sample_rate)?;
+
+            let run = crate::commands::denoise::run_deepfilternet(&app, &temp_in, &temp_out);
+            let _ = fs::remove_file(&temp_in);
+            if let Err(err) = run {
+                let _ = fs::remove_file(&temp_out);
+                return Err(err);
+            }
+
+            let (enhanced, out_rate) = read_wav_as_mono_f32(&temp_out.to_string_lossy())?;
+            let _ = fs::remove_file(&temp_out);
+            if enhanced.is_empty() {
+                return Err("DeepFilterNet produced no audio.".to_string());
+            }
+            write_wav(&output_path, &enhanced, out_rate)?;
+
+            return Ok(EnhanceAudioFileResult {
+                output_path: output_path.to_string_lossy().to_string(),
+                sample_rate: out_rate,
+                duration_ms: ((enhanced.len() as f64 / out_rate as f64) * 1000.0).round() as u64,
+                model: "deepfilternet".to_string(),
+            });
+        }
+
+        // Native engines: RNNoise or spectral subtraction.
+        let model = options
+            .model
+            .as_deref()
+            .and_then(AudioEnhancementModel::parse)
+            .unwrap_or(AudioEnhancementModel::Rnnoise);
+        let output_sample_rate = options
+            .output_sample_rate
+            .filter(|rate| (8_000..=192_000).contains(rate))
+            .unwrap_or(FULL_BAND_SAMPLE_RATE);
+
+        // Decode at the target rate (or higher for WAV) so denoising is full-band.
+        let (samples, sample_rate) = decode_audio_file_at(&path, output_sample_rate)?;
+        if samples.is_empty() {
+            return Err("Audio file did not contain usable samples.".to_string());
+        }
+
+        let enhanced = enhance_audio_samples(
+            &samples,
+            sample_rate,
+            output_sample_rate,
+            AudioEnhancementConfig { model, strength },
+        )?;
+        if enhanced.is_empty() {
+            return Err("Noise reduction produced no audio.".to_string());
+        }
+
+        write_wav(&output_path, &enhanced, output_sample_rate)?;
+
+        Ok(EnhanceAudioFileResult {
+            output_path: output_path.to_string_lossy().to_string(),
+            sample_rate: output_sample_rate,
+            duration_ms: ((enhanced.len() as f64 / output_sample_rate as f64) * 1000.0).round()
+                as u64,
+            model: model.as_str().to_string(),
+        })
+    })
+    .await
+    .map_err(|err| format!("Task join error: {}", err))?
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn reveal_enhanced_audio(path: String) -> Result<(), String> {
+    let target = Path::new(&path);
+    if !target.exists() {
+        return Err(format!("File not found: {}", target.display()));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg("-R")
+            .arg(target)
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("Failed to reveal enhanced audio in Finder: {err}"))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg("/select,")
+            .arg(target)
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("Failed to reveal enhanced audio in Explorer: {err}"))
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let parent = target.parent().unwrap_or(target);
+        Command::new("xdg-open")
+            .arg(parent)
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("Failed to open the enhanced audio folder: {err}"))
+    }
 }
 
 #[derive(Debug, Deserialize)]

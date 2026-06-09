@@ -821,8 +821,8 @@ function appendDecoratedTokens(line: HTMLDivElement, text: string) {
     }
     span.dataset.offset = String(index);
     span.className = isSoundToken
-      ? "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[color-mix(in_srgb,var(--success),transparent_45%)] bg-[var(--success-soft)] px-1.5 py-0.5 font-sans text-[12px] font-semibold text-[var(--text)] active:cursor-grabbing"
-      : "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 font-sans text-[12px] font-semibold text-[var(--accent)] active:cursor-grabbing";
+      ? "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[color-mix(in_srgb,var(--success),transparent_45%)] bg-[var(--success-soft)] px-1.5 py-0.5 font-body-token text-[12px] font-semibold text-[var(--text)] active:cursor-grabbing"
+      : "mx-0.5 inline-flex touch-none cursor-grab select-none items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 font-body-token text-[12px] font-semibold text-[var(--accent)] active:cursor-grabbing";
     line.append(span);
     cursor = index + token.length;
   }

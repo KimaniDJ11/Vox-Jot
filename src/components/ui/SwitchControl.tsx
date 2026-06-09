@@ -63,14 +63,14 @@ export const SwitchControl: React.FC<SwitchControlProps> = ({
       transition={press}
     >
       <span
-        className={`${trackClasses} ${trackStateClasses} ${disabled ? "opacity-60" : ""} shadow-[inset_0_1px_1px_rgba(0,0,0,0.18)]`}
+        className={`${trackClasses} ${trackStateClasses} ${disabled ? "opacity-60" : ""} shadow-[inset_0_1px_1px_var(--edge-shadow)]`}
       >
         <motion.span
           aria-hidden
           initial={false}
           animate={{ x: checked ? thumbTravel : 0 }}
           transition={press}
-          className={`absolute left-[3px] top-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.35),0_0_0_0.5px_rgba(0,0,0,0.08)] ${thumbSizeClasses}`}
+          className={`absolute left-[3px] top-1/2 -translate-y-1/2 rounded-full bg-[var(--switch-thumb-bg)] shadow-[var(--switch-thumb-shadow)] ${thumbSizeClasses}`}
         />
       </span>
     </motion.button>

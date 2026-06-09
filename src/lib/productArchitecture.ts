@@ -17,6 +17,7 @@ export const PRODUCT_MODULES: ProductModuleDescriptor[] = [
       "corrections",
       "file-transcription",
       "reader",
+      "enhance-audio",
       "general",
       "shortcuts",
       "recording-devices",

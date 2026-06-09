@@ -540,7 +540,7 @@ export const FeatureHealthCheckPanel: React.FC = () => {
                         <span className="text-[12px] font-semibold text-[var(--text)]">
                           {check.label}
                         </span>
-                        <span className="font-mono text-[11px] text-[var(--muted)]">
+                        <span className="font-mono-token text-[11px] text-[var(--muted)]">
                           {t("settings.diagnostics.featureHealth.elapsedMs", {
                             ms: check.elapsedMs,
                           })}
@@ -550,7 +550,7 @@ export const FeatureHealthCheckPanel: React.FC = () => {
                         {check.detail}
                       </p>
                       {check.error ? (
-                        <p className="mt-1 break-words font-mono text-[11px] leading-4 text-[var(--danger)]">
+                        <p className="mt-1 break-words font-mono-token text-[11px] leading-4 text-[var(--danger)]">
                           {check.error}
                         </p>
                       ) : null}

@@ -61,7 +61,7 @@ export const SectionHero: React.FC<SectionHeroProps> = ({
 }) => {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-[var(--ring-hairline)] ring-1 ${toneToRing[tone]} ${toneToCssBg[tone]} shadow-[inset_0_1px_0_var(--edge-highlight),0_2px_8px_rgba(0,0,0,0.10)]`}
+      className={`relative overflow-hidden rounded-2xl border border-[var(--ring-hairline)] ring-1 ${toneToRing[tone]} ${toneToCssBg[tone]} shadow-[var(--section-hero-shadow)]`}
     >
       <div className="grid gap-5 px-5 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6">
         <div className="min-w-0">

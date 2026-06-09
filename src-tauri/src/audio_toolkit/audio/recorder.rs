@@ -154,7 +154,11 @@ impl AudioRecorder {
                 // init channel instead of silently killing the worker thread
                 // (which would leave recording "active" with no audio captured).
                 let enhancer = match enhancement_config {
-                    Some(config) => Some(AudioEnhancer::new(sample_rate, config)?),
+                    Some(config) => Some(AudioEnhancer::new(
+                        sample_rate,
+                        constants::WHISPER_SAMPLE_RATE,
+                        config,
+                    )?),
                     None => None,
                 };
                 let frame_resampler = FrameResampler::new(

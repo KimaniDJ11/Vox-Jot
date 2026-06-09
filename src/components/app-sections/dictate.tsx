@@ -15,6 +15,7 @@ import {
   FileTranscriptionPanel,
   ReaderPanel,
 } from "@/components/dictate/FileTranscriptionPanel";
+import { EnhanceAudioPanel } from "@/components/dictate/EnhanceAudioPanel";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
@@ -415,7 +416,7 @@ const HomeStatsCards: React.FC = () => {
         time: insights.mostActiveTime,
       }),
       icon: <CalendarDays className="h-4.5 w-4.5" strokeWidth={2} />,
-      accentColor: "var(--success, #22c55e)",
+      accentColor: "var(--success)",
       title: t("titleBar.todayWords", { count: stats?.today_words ?? 0 }),
     },
     {
@@ -454,7 +455,7 @@ const HomeStatsCards: React.FC = () => {
         })
       ),
       icon: <AppWindow className="h-4.5 w-4.5" strokeWidth={2} />,
-      accentColor: "var(--accent-gold, #d89a5c)",
+      accentColor: "var(--accent-gold)",
       title: t("titleBar.appsUsed", {
         count: stats?.unique_app_count ?? 0,
         defaultValue:
@@ -521,7 +522,7 @@ const FirstDictationReminder: React.FC<{ shortcut: string }> = ({
               defaultValue: "Shortcut",
             })}
           </div>
-          <kbd className="block rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-3 py-2 font-mono text-sm font-bold text-[var(--text)]">
+          <kbd className="block rounded-md border border-[var(--border-strong)] bg-[var(--card)] px-3 py-2 font-mono-token text-sm font-bold text-[var(--text)]">
             {shortcut}
           </kbd>
         </div>
@@ -550,6 +551,12 @@ export const FileTranscriptionSection: React.FC = () => (
 export const ReaderSection: React.FC = () => (
   <div className="space-y-6">
     <ReaderPanel />
+  </div>
+);
+
+export const EnhanceAudioSection: React.FC = () => (
+  <div className="space-y-6">
+    <EnhanceAudioPanel />
   </div>
 );
 

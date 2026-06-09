@@ -531,8 +531,13 @@ export const VoiceTuningCard: React.FC<{
               type="button"
               onClick={() => void onPreview()}
               disabled={!ttsEnabled || previewDisabled}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-[0_12px_28px_color-mix(in_srgb,var(--accent),transparent_72%)] transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:scale-100"
-              style={{ background: previewButtonGradient ?? "var(--accent)" }}
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-[0_12px_28px_color-mix(in_srgb,var(--accent),transparent_72%)] transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--card)] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:scale-100"
+              style={{
+                background: previewButtonGradient ?? "var(--accent)",
+                color: previewButtonGradient
+                  ? "var(--avatar-overlay-text)"
+                  : "var(--accent-foreground)",
+              }}
               aria-label={
                 previewing
                   ? t("listen.tuning.stopPreview", {

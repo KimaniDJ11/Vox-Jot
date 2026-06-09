@@ -21,7 +21,9 @@ export const SelectionDot: React.FC<{ selected: boolean }> = ({ selected }) => (
     }`}
     aria-hidden
   >
-    {selected ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+    {selected ? (
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-foreground)]" />
+    ) : null}
   </span>
 );
 

@@ -23,6 +23,7 @@ const OCR_MODELS_DIR: &str = "ocr";
 const OCR_RUNTIME_DIR: &str = "ocr-runtime";
 const READER_DIR: &str = "reader";
 const READER_RUNTIME_DIR: &str = "reader-runtime";
+const DENOISE_RUNTIME_DIR: &str = "denoise-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 const CREATIVE_AUDIO_MODELS_DIR: &str = "creative-audio";
 const CREATIVE_AUDIO_RUNTIME_DIR: &str = "runtime";
@@ -168,6 +169,11 @@ pub fn reader_data_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 /// Root for Reader Python extraction dependencies managed by the app.
 pub fn reader_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(READER_RUNTIME_DIR))
+}
+
+/// Root for the neural denoiser (DeepFilterNet) Python runtime managed by the app.
+pub fn denoise_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(DENOISE_RUNTIME_DIR))
 }
 
 /// Root for file-ASR and speaker-isolation assets managed by the app.

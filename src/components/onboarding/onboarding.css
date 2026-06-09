@@ -9,7 +9,121 @@
   --ob-text-muted: var(--muted);
   --ob-border: color-mix(in srgb, var(--accent) 15%, transparent);
   --ob-success: var(--success);
+  --ob-track: color-mix(in srgb, var(--muted) 25%, transparent);
   --ob-radius: 14px;
+  --ob-page-wash: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-teal) 8%, transparent),
+    transparent 36%
+  );
+  --ob-tooltip-shadow: 0 10px 28px
+    color-mix(in srgb, var(--text) 28%, transparent);
+  --ob-story-progress-scrim: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--overlay-bg) 48%, transparent),
+    transparent
+  );
+  --ob-story-over-image-text: var(--overlay-text);
+  --ob-story-over-image-muted: color-mix(
+    in srgb,
+    var(--overlay-text) 88%,
+    transparent
+  );
+  --ob-story-progress-line-bg: color-mix(
+    in srgb,
+    var(--overlay-text) 16%,
+    transparent
+  );
+  --ob-story-progress-fill-bg: color-mix(
+    in srgb,
+    var(--overlay-text) 70%,
+    transparent
+  );
+  --ob-story-button-border: color-mix(
+    in srgb,
+    var(--overlay-text) 42%,
+    transparent
+  );
+  --ob-story-button-bg: color-mix(
+    in srgb,
+    var(--card) 78%,
+    var(--accent-teal-soft)
+  );
+  --ob-story-button-text: var(--text);
+  --ob-story-button-highlight: color-mix(
+    in srgb,
+    var(--overlay-text) 72%,
+    transparent
+  );
+  --ob-story-button-shadow:
+    inset 0 1px 0 var(--ob-story-button-highlight),
+    0 10px 28px color-mix(in srgb, var(--text) 16%, transparent);
+  --ob-story-hero-bg: color-mix(in srgb, var(--accent-teal) 48%, var(--bg));
+  --ob-story-top-vignette: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--overlay-bg) 30%, transparent),
+    transparent 34%
+  );
+  --ob-story-bottom-vignette: linear-gradient(
+    180deg,
+    transparent 54%,
+    var(--card) 98%
+  );
+  --ob-story-center-vignette: radial-gradient(
+    circle at center 48%,
+    color-mix(in srgb, var(--overlay-text) 4%, transparent),
+    color-mix(in srgb, var(--overlay-bg) 36%, transparent) 76%
+  );
+  --ob-story-progress-bg: color-mix(
+    in srgb,
+    var(--overlay-bg) 42%,
+    transparent
+  );
+  --ob-story-progress-border: color-mix(
+    in srgb,
+    var(--overlay-text) 18%,
+    transparent
+  );
+  --ob-story-dot-bg: color-mix(
+    in srgb,
+    var(--overlay-text) 38%,
+    transparent
+  );
+  --ob-story-dot-active-bg: var(--overlay-text);
+  --ob-story-dot-done-bg: color-mix(
+    in srgb,
+    var(--success) 95%,
+    transparent
+  );
+  --ob-story-focus-ring: var(--overlay-text);
+  --ob-story-icon-border: color-mix(
+    in srgb,
+    var(--overlay-text) 58%,
+    transparent
+  );
+  --ob-story-icon-highlight: color-mix(
+    in srgb,
+    var(--overlay-text) 34%,
+    transparent
+  );
+  --ob-story-icon-foreground: var(--overlay-text);
+  --ob-story-icon-shadow:
+    inset 0 1px 0
+      color-mix(in srgb, var(--overlay-text) 56%, transparent),
+    0 20px 44px color-mix(in srgb, var(--text) 24%, transparent);
+  --ob-story-privacy-shadow: 0 8px 28px
+    color-mix(in srgb, var(--text) 6%, transparent);
+  --ob-story-cta-shadow:
+    inset 0 1px 0
+      color-mix(in srgb, var(--overlay-text) 22%, transparent),
+    0 14px 34px color-mix(in srgb, var(--accent-teal) 22%, transparent);
+  --ob-story-complete-bg: color-mix(
+    in srgb,
+    var(--card) 76%,
+    transparent
+  );
+  --ob-story-complete-shadow: 0 24px 64px
+    color-mix(in srgb, var(--text) 20%, transparent);
 }
 
 /* ── Root container ──────────────────────────────────────── */
@@ -27,8 +141,7 @@
 }
 
 .ob-root-story {
-  background:
-    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 36%), var(--bg);
+  background: var(--ob-page-wash), var(--bg);
 }
 
 /* ── Progress bar ────────────────────────────────────────── */
@@ -379,7 +492,7 @@
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--ob-tooltip-shadow);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -628,7 +741,7 @@
   border: 1px solid var(--ob-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--card) 74%, transparent 26%);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
   color: var(--ob-text);
@@ -1245,32 +1358,28 @@
   inset-inline: 0;
   z-index: 20;
   border-bottom: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(4, 20, 24, 0.48),
-    rgba(4, 20, 24, 0)
-  );
+  background: var(--ob-story-progress-scrim);
 }
 
 .ob-root-story .ob-progress-step,
 .ob-root-story .ob-progress-chevron {
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--ob-story-over-image-muted);
 }
 
 .ob-root-story .ob-step-active {
-  color: #ffffff;
+  color: var(--ob-story-over-image-text);
 }
 
 .ob-root-story .ob-step-done {
-  color: rgba(232, 249, 247, 0.92);
+  color: var(--ob-story-over-image-muted);
 }
 
 .ob-root-story .ob-progress-line {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--ob-story-progress-line-bg);
 }
 
 .ob-root-story .ob-progress-fill {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--ob-story-progress-fill-bg);
 }
 
 .ob-story-shell {
@@ -1292,13 +1401,11 @@
   min-height: 32px;
   margin: 0;
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--ob-story-button-border);
   border-radius: 999px;
-  background: rgba(236, 245, 244, 0.72);
-  color: #143238;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 28px rgba(0, 0, 0, 0.16);
+  background: var(--ob-story-button-bg);
+  color: var(--ob-story-button-text);
+  box-shadow: var(--ob-story-button-shadow);
   backdrop-filter: blur(16px);
 }
 
@@ -1315,7 +1422,7 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
-  background: #11333a;
+  background: var(--ob-story-hero-bg);
 }
 
 .ob-story-hero-bg,
@@ -1343,13 +1450,8 @@
 
 .ob-story-hero-vignette {
   background:
-    linear-gradient(180deg, rgba(4, 18, 22, 0.3), rgba(4, 18, 22, 0) 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0) 54%, var(--card) 98%),
-    radial-gradient(
-      circle at center 48%,
-      rgba(255, 255, 255, 0.04),
-      rgba(6, 21, 25, 0.36) 76%
-    );
+    var(--ob-story-top-vignette), var(--ob-story-bottom-vignette),
+    var(--ob-story-center-vignette);
 }
 
 .ob-story-nav {
@@ -1369,10 +1471,10 @@
   align-items: center;
   gap: 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(6, 28, 32, 0.42);
+  border: 1px solid var(--ob-story-progress-border);
+  background: var(--ob-story-progress-bg);
   padding: 6px 12px;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--ob-story-over-image-muted);
   font-size: 12px;
   font-weight: 700;
   backdrop-filter: blur(16px);
@@ -1388,37 +1490,35 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.38);
+  background: var(--ob-story-dot-bg);
 }
 
 .ob-story-dot-active {
   width: 18px;
-  background: #ffffff;
+  background: var(--ob-story-dot-active-bg);
 }
 
 .ob-story-dot-done {
-  background: rgba(106, 212, 170, 0.95);
+  background: var(--ob-story-dot-done-bg);
 }
 
 .ob-story-skip {
   min-width: 58px;
   min-height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--ob-story-button-border);
   border-radius: 999px;
-  background: rgba(236, 245, 244, 0.78);
+  background: var(--ob-story-button-bg);
   padding: 8px 16px;
-  color: #143238;
+  color: var(--ob-story-button-text);
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 28px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--ob-story-button-shadow);
   backdrop-filter: blur(16px);
 }
 
 .ob-story-skip:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--ob-story-focus-ring);
   outline-offset: 3px;
 }
 
@@ -1440,14 +1540,12 @@
   align-items: center;
   justify-content: center;
   border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--ob-story-icon-border);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent),
+    linear-gradient(180deg, var(--ob-story-icon-highlight), transparent),
     linear-gradient(135deg, var(--accent-2), var(--accent-teal));
-  color: #ffffff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    0 20px 44px rgba(18, 42, 47, 0.24);
+  color: var(--ob-story-icon-foreground);
+  box-shadow: var(--ob-story-icon-shadow);
 }
 
 .ob-story-copy {
@@ -1525,7 +1623,7 @@
   border-radius: 18px;
   background: color-mix(in srgb, var(--card) 88%, var(--accent-teal-soft));
   padding: 16px 18px;
-  box-shadow: 0 8px 28px rgba(44, 36, 24, 0.06);
+  box-shadow: var(--ob-story-privacy-shadow);
 }
 
 .ob-story-privacy-icon {
@@ -1559,9 +1657,7 @@
   min-height: 64px;
   border-radius: 999px;
   background: var(--accent-teal);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 14px 34px rgba(47, 125, 114, 0.22);
+  box-shadow: var(--ob-story-cta-shadow);
   font-size: 18px;
   font-weight: 800;
 }
@@ -1598,10 +1694,10 @@
   align-items: center;
   justify-content: center;
   border-radius: 32px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--ob-story-complete-bg);
   color: var(--success);
   transform: translate(-50%, -50%);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--ob-story-complete-shadow);
   backdrop-filter: blur(16px);
 }
 
@@ -1617,8 +1713,7 @@
   width: 100%;
   min-height: 0;
   padding: 88px 32px 28px;
-  background:
-    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 34%), var(--bg);
+  background: var(--ob-page-wash), var(--bg);
   overflow: hidden;
 }
 

@@ -1059,7 +1059,7 @@ const SoundTagPopover = React.forwardRef<
   return createPortal(
     <div
       ref={ref}
-      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[var(--context-menu-shadow)]"
       style={{
         top: position.top,
         left: position.left,
@@ -1222,7 +1222,7 @@ const ExpressionPopover: React.FC<{
 
   return createPortal(
     <div
-      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[var(--context-menu-shadow)]"
       style={{
         top: position.top,
         left: position.left,

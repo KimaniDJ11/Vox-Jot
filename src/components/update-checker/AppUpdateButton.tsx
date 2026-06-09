@@ -218,7 +218,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className={`app-no-drag app-update-button h-8 min-h-8 w-8 border-transparent bg-[#0a84ff] text-white shadow-[0_4px_14px_rgba(10,132,255,0.28)] hover:bg-[#0071e3] hover:text-white ${titleBarOverlayButtonFocusClass} ${className}`}
+          className={`app-no-drag app-update-button h-8 min-h-8 w-8 border-transparent bg-[var(--update-accent)] text-[var(--update-accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--update-accent),transparent_72%)] hover:bg-[var(--update-accent-hover)] hover:text-[var(--update-accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
           onClick={() => {
             setModalOpen(true);
             if (phase === "idle" || phase === "error") {
@@ -240,7 +240,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
 
       {modalOpen
         ? createPortal(
-            <div className="fixed inset-0 z-[80] flex items-start justify-end bg-black/10 p-4 pt-12 backdrop-blur-[2px]">
+            <div className="fixed inset-0 z-[80] flex items-start justify-end bg-[var(--scrim-bg-subtle)] p-4 pt-12 backdrop-blur-[2px]">
               <div
                 ref={dialogRef}
                 role="dialog"
@@ -248,7 +248,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
                 aria-labelledby="app-update-title"
                 data-update-dialog-focus
                 tabIndex={0}
-                className="app-no-drag w-full max-w-[360px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-4 text-[var(--text)] shadow-[0_18px_50px_rgba(0,0,0,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                className="app-no-drag w-full max-w-[360px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-4 text-[var(--text)] shadow-[var(--floating-panel-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                 onKeyDown={(event) =>
                   handleDialogKeyDown(
                     event,
@@ -262,7 +262,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--update-accent)] text-[var(--update-accent-foreground)]">
                       {phase === "error" ? (
                         <RotateCcw className="h-4 w-4" aria-hidden />
                       ) : phase === "restarting" ? (
@@ -305,7 +305,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
                   <div className="mt-4">
                     <div className="h-2 overflow-hidden rounded-full bg-[var(--input)]">
                       <div
-                        className="h-full rounded-full bg-[#0a84ff] transition-[width] duration-200"
+                        className="h-full rounded-full bg-[var(--update-accent)] transition-[width] duration-200"
                         style={{
                           width:
                             percent === undefined

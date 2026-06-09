@@ -27,7 +27,7 @@ export const PathDisplay: React.FC<PathDisplayProps> = ({
         aria-readonly="true"
         aria-label={pathLabel}
         tabIndex={0}
-        className="flex-1 min-w-0 px-3 py-2 bg-[var(--input)] border border-[var(--border)] rounded-full text-xs font-mono text-[var(--text)] break-all select-text cursor-text"
+        className="flex-1 min-w-0 px-3 py-2 bg-[var(--input)] border border-[var(--border)] rounded-full text-xs font-mono-token text-[var(--text)] break-all select-text cursor-text"
       >
         {path}
       </div>

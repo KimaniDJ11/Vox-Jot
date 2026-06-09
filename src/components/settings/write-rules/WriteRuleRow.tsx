@@ -150,8 +150,8 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
     >
       <div className="flex h-6 items-center justify-center">
         {isActive ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent-foreground)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-foreground)]" />
             {t("refine.writeRules.row.activeNow")}
           </span>
         ) : null}

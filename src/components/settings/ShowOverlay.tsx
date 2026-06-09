@@ -177,7 +177,7 @@ const OverlayPositionPreview: React.FC<{
           </div>
         ) : (
           <div
-            className={`absolute left-1/2 h-4 w-16 -translate-x-1/2 rounded-full border border-white/10 bg-[var(--overlay-bg)] shadow-[0_8px_18px_rgba(0,0,0,0.22)] ${overlayPositionClass}`}
+            className={`absolute left-1/2 h-4 w-16 -translate-x-1/2 rounded-full border border-[var(--overlay-border)] bg-[var(--overlay-bg)] shadow-[0_8px_18px_color-mix(in_srgb,var(--overlay-bg),transparent_78%)] ${overlayPositionClass}`}
           >
             <div className="flex h-full items-center justify-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-gold)]" />
@@ -234,13 +234,13 @@ const OverlayStylePreview: React.FC<{
 };
 
 const CompactOverlayMock: React.FC = () => (
-  <div className="flex h-7 w-20 items-center justify-center rounded-[10px] border border-white/10 bg-[var(--overlay-bg)] px-2 shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
+  <div className="flex h-7 w-20 items-center justify-center rounded-[10px] border border-[var(--overlay-border)] bg-[var(--overlay-bg)] px-2 shadow-[0_10px_24px_color-mix(in_srgb,var(--overlay-bg),transparent_72%)]">
     <LevelBars className="h-4 w-14" />
   </div>
 );
 
 const DetailedOverlayMock: React.FC = () => (
-  <div className="grid h-11 w-56 grid-cols-[34px_1fr_32px] items-center gap-1 rounded-[14px] border border-white/10 bg-[var(--overlay-bg)] p-1 shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
+  <div className="grid h-11 w-56 grid-cols-[34px_1fr_32px] items-center gap-1 rounded-[14px] border border-[var(--overlay-border)] bg-[var(--overlay-bg)] p-1 shadow-[0_10px_24px_color-mix(in_srgb,var(--overlay-bg),transparent_72%)]">
     <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--accent-gold-soft)]">
       <span className="h-3.5 w-2.5 rounded-full bg-[var(--accent-2)]" />
     </div>

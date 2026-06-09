@@ -474,7 +474,7 @@ interface HistoryEntryProps {
 const sectionLabelClassName =
   "text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted)]";
 const sectionCardClassName =
-  "rounded-xl border border-mid-gray/20 bg-[var(--panel-bg)] px-3 py-3";
+  "rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3";
 
 const historyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
@@ -551,7 +551,7 @@ const HistoryBadgePopoverPortal: React.FC<{
     <div
       ref={popRef}
       role="tooltip"
-      className="pointer-events-auto z-[10000] max-h-[min(70vh,24rem)] w-max max-w-[min(90vw,28rem)] overflow-y-auto rounded-xl border border-mid-gray/20 bg-[var(--card)] p-3 shadow-xl"
+      className="pointer-events-auto z-[10000] max-h-[min(70vh,24rem)] w-max max-w-[min(90vw,28rem)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--popover-shadow)]"
       style={{ position: "fixed", top: pos.top, left: pos.left }}
       onMouseEnter={onPointerEnterPanel}
       onMouseLeave={onPointerLeavePanel}
@@ -835,14 +835,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         >
           <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
             <span
-              className="min-w-0 max-w-[45%] break-words font-mono"
+              className="min-w-0 max-w-[45%] break-words font-mono-token"
               title={pastedText}
             >
               {pastedText}
             </span>
             <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
             <span
-              className="min-w-0 flex-1 break-words font-mono"
+              className="min-w-0 flex-1 break-words font-mono-token"
               title={observedText}
             >
               {observedText}
@@ -853,7 +853,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         <>
           <p className={`${sectionLabelClassName} mb-0`}>{fieldStatusLabel}</p>
           {observedText ? (
-            <p className="cursor-text select-text break-words font-mono text-sm leading-6 text-[var(--text)]">
+            <p className="cursor-text select-text break-words font-mono-token text-sm leading-6 text-[var(--text)]">
               {observedText}
             </p>
           ) : null}
@@ -863,7 +863,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   );
 
   const metaParts: React.ReactNode[] = [
-    <span key="time" className="font-medium text-black">
+    <span key="time" className="font-medium">
       {formattedTime}
     </span>,
   ];

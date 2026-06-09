@@ -70,7 +70,7 @@ const GatedHuggingFaceAccessDialog: React.FC<
       onClick={handleBackdropCancel}
     >
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
         aria-hidden
       />
       <div
@@ -79,7 +79,7 @@ const GatedHuggingFaceAccessDialog: React.FC<
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         ref={dialogRef}
-        className="relative max-h-[calc(100vh-2rem)] w-full max-w-[680px] overflow-y-auto rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-[680px] overflow-y-auto rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[var(--modal-shadow)]"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) =>
           handleDialogKeyDown(event, dialogRef.current, onCancel, {

@@ -1773,7 +1773,7 @@ const RefineApiKeyDialog: React.FC<{
       onClick={handleCancel}
     >
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[var(--scrim-bg)] backdrop-blur-[2px]"
         aria-hidden
       />
       <div
@@ -1782,7 +1782,7 @@ const RefineApiKeyDialog: React.FC<{
         aria-modal="true"
         aria-labelledby="refine-api-key-dialog-title"
         aria-describedby="refine-api-key-dialog-description"
-        className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+        className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[var(--modal-shadow)]"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) =>
           handleDialogKeyDown(event, dialogRef.current, onCancel, {

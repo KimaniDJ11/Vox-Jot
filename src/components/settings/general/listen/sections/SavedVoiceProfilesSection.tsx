@@ -143,7 +143,7 @@ export const SavedVoiceProfilesSection: React.FC<{
                   aria-label={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
                   title={isPreviewing ? stopLabel : previewLabel}
                   className={[
-                    "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                    "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[var(--avatar-overlay-bg)] text-[var(--avatar-overlay-text)] shadow-[inset_0_0_0_1px_var(--avatar-overlay-ring),var(--avatar-overlay-shadow)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
                     isPreviewing
                       ? "opacity-100"
                       : "opacity-0 group-hover/profile-card:opacity-100 group-focus-within/profile-card:opacity-100",
@@ -174,7 +174,7 @@ export const SavedVoiceProfilesSection: React.FC<{
                   {isActive ? (
                     <Badge
                       variant="primary"
-                      className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
+                      className="gap-1 text-[var(--accent-foreground)] shadow-[var(--shadow-sm)]"
                     >
                       <ActiveBadgeIcon />
                       {activeLabel}

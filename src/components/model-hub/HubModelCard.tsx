@@ -310,7 +310,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {fillHeight ? <div className="flex-1" /> : null}
 
       {/* Divider */}
-      <div className="border-t border-mid-gray/20" />
+      <div className="border-t border-[var(--border)]" />
 
       {/* FOOTER — meta + trailing action, or unified download state. */}
       {downloadState ? (

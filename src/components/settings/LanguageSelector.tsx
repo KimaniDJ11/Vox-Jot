@@ -201,7 +201,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
           {isOpen && !isUpdating("selected_language") && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-hidden rounded border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
               {/* Search input */}
-              <div className="p-2 border-b border-mid-gray/80">
+              <div className="p-2 border-b border-[var(--border-strong)]">
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -209,7 +209,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   onChange={handleSearchChange}
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t("settings.general.language.searchPlaceholder")}
-                  className="w-full px-2 py-1 text-sm bg-mid-gray/10 border border-mid-gray/40 rounded focus:outline-none focus:ring-1 focus:ring-logo-primary focus:border-logo-primary"
+                  className="w-full px-2 py-1 text-sm bg-[var(--input)] border border-[var(--border)] rounded focus:outline-none focus:ring-1 focus:ring-logo-primary focus:border-logo-primary"
                   role="searchbox"
                   aria-controls={listboxId}
                   aria-activedescendant={
@@ -272,7 +272,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
       </div>
       {isUpdating("selected_language") && (
         <div
-          className="absolute inset-0 bg-mid-gray/10 rounded flex items-center justify-center"
+          className="absolute inset-0 bg-[var(--input)] rounded flex items-center justify-center"
           role="status"
           aria-live="polite"
         >

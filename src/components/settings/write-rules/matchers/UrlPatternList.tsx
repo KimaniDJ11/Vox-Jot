@@ -159,7 +159,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
               type="button"
               onClick={() => addPattern(example)}
               disabled={disabled || patterns.includes(example)}
-              className="rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+              className="rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono-token text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
             >
               {example}
             </button>

@@ -15,6 +15,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import i18n from "@/i18n";
 import {
   AppWindow,
+  AudioWaveform,
   BookOpen,
   Bot,
   Cpu,
@@ -203,6 +204,11 @@ const ReaderSection = lazy(() =>
     default: module.ReaderSection,
   })),
 );
+const EnhanceAudioSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.EnhanceAudioSection,
+  })),
+);
 const ListenVoiceDesignSection = lazy(() =>
   import("@/components/app-sections/listen").then((module) => ({
     default: module.ListenVoiceDesignSection,
@@ -334,7 +340,7 @@ const PrimaryModeSwitcher: React.FC<{
     <div className="app-mode-switcher app-no-drag">
       <LayoutGroup id="primary-mode-switcher">
         <div
-          className="relative flex items-stretch overflow-hidden rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] shadow-[inset_0_1px_0_var(--edge-highlight),0_1px_2px_rgba(0,0,0,0.12)]"
+          className="relative flex items-stretch overflow-hidden rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] shadow-[var(--segmented-control-shadow)]"
           role="tablist"
           aria-label={t("appModes.switcherLabel", {
             defaultValue: "Primary mode",
@@ -384,7 +390,7 @@ const PrimaryModeSwitcher: React.FC<{
                       damping: 32,
                       mass: 0.9,
                     }}
-                    className="absolute inset-0 rounded-[10px] bg-[var(--accent)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    className="absolute inset-0 rounded-[10px] bg-[var(--accent)] shadow-[var(--accent-inset-highlight)]"
                     aria-hidden
                   />
                 )}
@@ -561,6 +567,15 @@ function App() {
           "green",
           undefined,
           "Reader",
+        ),
+        makeSection(
+          "enhance-audio",
+          "appSections.nav.dictate.enhanceAudio",
+          AudioWaveform,
+          <EnhanceAudioSection />,
+          "violet",
+          undefined,
+          "Enhance Audio",
         ),
       ],
       refine: [
@@ -1233,7 +1248,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}${modelHubVisible ? " shell--dimmed" : ""}`}
+      className={`shell relative select-none cursor-default overflow-hidden font-body-token text-[var(--text)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}${modelHubVisible ? " shell--dimmed" : ""}`}
     >
       <Toaster
         theme="system"
@@ -1421,7 +1436,7 @@ function App() {
 
       {pendingPreview && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg)] p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="post-process-preview-title"

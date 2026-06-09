@@ -26,14 +26,14 @@ export interface CreateVoiceHubVoiceRow {
 }
 
 const VOICE_AVATAR_GRADIENTS = [
-  ["#F9D976", "#8AC6A1", "#7EA7FF"],
-  ["#FF8F70", "#FFD86B", "#FF6BAA"],
-  ["#84FAB0", "#8FD3F4", "#F8D7FF"],
-  ["#A1C4FD", "#C2E9FB", "#FFD6E7"],
-  ["#F5576C", "#F093FB", "#4FACFE"],
-  ["#FFE29F", "#FFA99F", "#7DD3FC"],
-  ["#B8C6DB", "#F5F7FA", "#8EC5FC"],
-  ["#F6D365", "#FDA085", "#FBC2EB"],
+  ["var(--accent-gold)", "var(--success)", "var(--info)"],
+  ["var(--voice)", "var(--accent-gold)", "var(--accent-2)"],
+  ["var(--success)", "var(--accent-teal)", "var(--voice)"],
+  ["var(--info)", "var(--accent-2)", "var(--voice)"],
+  ["var(--danger)", "var(--accent-2)", "var(--info)"],
+  ["var(--accent-gold)", "var(--voice)", "var(--accent-teal)"],
+  ["var(--muted)", "var(--surface-elevated)", "var(--info)"],
+  ["var(--warning)", "var(--voice)", "var(--accent-2)"],
 ] as const;
 
 const REGION_NAMES: Record<string, string> = {

@@ -102,13 +102,13 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           <button
             onClick={handleInstall}
             disabled={isInstalling}
-            className="w-full bg-logo-primary text-[var(--inverse-text)] font-semibold py-3 px-6 rounded-xl
+            className="w-full bg-logo-primary text-[var(--logo-primary-foreground)] font-semibold py-3 px-6 rounded-xl
                        hover:bg-logo-primary/90 disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors"
           >
             {isInstalling ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                <span className="animate-spin w-4 h-4 border-2 border-[var(--logo-primary-foreground)] border-t-transparent rounded-full" />
                 {installProgress || t("onboarding.ollama.installing")}
               </span>
             ) : (
@@ -147,7 +147,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         <button
           onClick={handleStartServe}
           disabled={isChecking}
-          className="w-full bg-logo-primary text-[var(--inverse-text)] font-semibold py-3 px-6 rounded-xl
+          className="w-full bg-logo-primary text-[var(--logo-primary-foreground)] font-semibold py-3 px-6 rounded-xl
                      hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
         >
           {t("onboarding.ollama.startOllama")}
@@ -202,7 +202,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                 ${
                   isSelected
                     ? "border-logo-primary bg-logo-primary/10"
-                    : "border-mid-gray/20 bg-background hover:bg-mid-gray/10"
+                    : "border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--input)]"
                 }`}
             >
               <div className="flex flex-col">
@@ -220,7 +220,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 {isPulling ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-20 bg-mid-gray/20 rounded-full h-1.5">
+                    <div className="w-20 bg-[var(--input)] rounded-full h-1.5">
                       <div
                         className="bg-logo-primary h-1.5 rounded-full transition-all"
                         style={{ width: `${progress}%` }}
@@ -236,7 +236,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors
                       ${
                         isSelected
-                          ? "bg-logo-primary text-[var(--inverse-text)]"
+                          ? "bg-logo-primary text-[var(--logo-primary-foreground)]"
                           : "bg-logo-primary/20 text-[var(--accent)] hover:bg-logo-primary/30"
                       }`}
                   >
@@ -248,7 +248,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                   <button
                     onClick={() => handlePullModel(model.id)}
                     className="px-3 py-1.5 rounded-full text-sm font-medium bg-background
-                               border border-mid-gray/30 text-[var(--text)] hover:bg-logo-primary/10
+                               border border-[var(--border)] text-[var(--text)] hover:bg-logo-primary/10
                                transition-colors"
                   >
                     {t("onboarding.ollama.download")}

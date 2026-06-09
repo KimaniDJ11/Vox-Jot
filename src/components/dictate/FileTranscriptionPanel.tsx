@@ -50,11 +50,9 @@ import { subtleCardClassName } from "@/components/ui/subtleCard";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { voiceAvatarGradient } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import { useSettingsSlice } from "@/hooks/useSettings";
-import {
-  listTtsVoicePresets,
-  type TtsVoicePreset,
-} from "@/lib/ttsVoicePresets";
+import { useTtsVoiceCatalog } from "@/hooks/useTtsVoiceCatalog";
 import { ReaderPlaybackBar } from "./reader/ReaderPlaybackBar";
+import { ReaderVoicePicker } from "./reader/ReaderVoicePicker";
 import { ReaderSearchControl } from "./reader/ReaderSearchControl";
 import { ReaderTransformTools } from "./reader/ReaderTransformTools";
 import {
@@ -1901,7 +1899,7 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
   const [sectionDisabled, setSectionDisabled] = useState<
     Record<number, boolean>
   >({});
-  const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
+  const { presets, presetVoices, createPresetFromVoice } = useTtsVoiceCatalog();
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(
@@ -1929,42 +1927,33 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
     };
   }, [persistLibrary]);
 
-  const refreshPresets = useCallback(async () => {
-    try {
-      const nextPresets = await listTtsVoicePresets();
-      const normalizedActivePresetId =
-        typeof activeTtsPresetId === "string" && activeTtsPresetId.trim()
-          ? activeTtsPresetId
-          : null;
-      setPresets(nextPresets);
-      setSelectedPresetId((current) => {
-        if (current && nextPresets.some((preset) => preset.id === current)) {
-          return current;
-        }
-        if (
-          normalizedActivePresetId &&
-          nextPresets.some((preset) => preset.id === normalizedActivePresetId)
-        ) {
-          return normalizedActivePresetId;
-        }
-        return nextPresets[0]?.id ?? null;
-      });
-    } catch (err) {
-      console.warn("Failed to load Reader voice presets:", err);
-      setPresets([]);
-      setSelectedPresetId(null);
-    }
-  }, [activeTtsPresetId]);
-
+  // Initialize the reader's default voice from the active preset / first preset.
   useEffect(() => {
-    void refreshPresets();
-  }, [refreshPresets]);
+    const normalizedActivePresetId =
+      typeof activeTtsPresetId === "string" && activeTtsPresetId.trim()
+        ? activeTtsPresetId
+        : null;
+    setSelectedPresetId((current) => {
+      if (current && presets.some((preset) => preset.id === current)) {
+        return current;
+      }
+      if (
+        normalizedActivePresetId &&
+        presets.some((preset) => preset.id === normalizedActivePresetId)
+      ) {
+        return normalizedActivePresetId;
+      }
+      return presets[0]?.id ?? null;
+    });
+  }, [presets, activeTtsPresetId]);
 
   useEffect(() => {
     if (presets.length === 0) return;
     const validPresetIds = new Set(presets.map((preset) => preset.id));
     setSelectedPresetId((current) =>
-      current && !validPresetIds.has(current) ? presets[0]?.id ?? null : current,
+      current && !validPresetIds.has(current)
+        ? (presets[0]?.id ?? null)
+        : current,
     );
     setSectionVoices((current) => {
       let changed = false;
@@ -2092,11 +2081,6 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
 
   const currentSection =
     cleanedSections[activeSectionIndex] ?? cleanedSections[0] ?? null;
-  const selectedPreset =
-    selectedPresetId === null
-      ? null
-      : (presets.find((preset) => preset.id === selectedPresetId) ?? null);
-
   const readingUnits = useMemo(
     () =>
       buildSectionReadingUnits(cleanedSections, {
@@ -2560,31 +2544,27 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                                 {section.title}
                               </button>
                             </div>
-                            <select
-                              value={sectionVoices[section.index] ?? ""}
-                              onChange={(event) =>
-                                setSectionVoices((prev) => ({
-                                  ...prev,
-                                  [section.index]: event.target.value || null,
-                                }))
-                              }
-                              disabled={!enabled}
-                              title={t("dictate.reader.sections.voice", {
-                                defaultValue: "Voice for this section",
-                              })}
-                              className="mt-1 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--input)] px-2 text-[11px] text-[var(--text)] outline-none focus:ring-1 focus:ring-[var(--accent-glow)] disabled:opacity-50"
-                            >
-                              <option value="">
-                                {t("dictate.reader.sections.defaultVoice", {
-                                  defaultValue: "Default voice",
-                                })}
-                              </option>
-                              {presets.map((preset) => (
-                                <option key={preset.id} value={preset.id}>
-                                  {preset.label}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="mt-1">
+                              <ReaderVoicePicker
+                                value={sectionVoices[section.index] ?? null}
+                                presets={presets}
+                                presetVoices={presetVoices}
+                                onSelectPreset={(presetId) =>
+                                  setSectionVoices((prev) => ({
+                                    ...prev,
+                                    [section.index]: presetId,
+                                  }))
+                                }
+                                onSelectDefault={() =>
+                                  setSectionVoices((prev) => ({
+                                    ...prev,
+                                    [section.index]: null,
+                                  }))
+                                }
+                                onCreatePresetFromVoice={createPresetFromVoice}
+                                disabled={!enabled}
+                              />
+                            </div>
                           </div>
                         );
                       })}
@@ -2608,7 +2588,6 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                     playbackRate={playbackRate}
                     pageLabel={playbackPageLabel}
                     currentText={currentReadingUnit?.text ?? ""}
-                    voiceLabel={selectedPreset?.label ?? null}
                     onToggle={() => {
                       setError("");
                       player.toggle();
@@ -2619,8 +2598,10 @@ const ReaderDocumentsPanel: React.FC<{ query: string }> = ({ query }) => {
                     onSeek={player.seek}
                     onPlaybackRateChange={setPlaybackRate}
                     presets={presets}
+                    presetVoices={presetVoices}
                     selectedPresetId={selectedPresetId}
                     onSelectPreset={setSelectedPresetId}
+                    onCreatePresetFromVoice={createPresetFromVoice}
                   />
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {audioExportFeedback ? (

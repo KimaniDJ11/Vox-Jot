@@ -4,17 +4,10 @@ import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
 
 import { ActionIconButton } from "@/components/ui";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
+import type { CreateVoiceHubVoiceRow } from "@/components/settings/general/listen/createVoiceVoiceHub";
 
 import type { ReaderPlaybackStatus } from "./useReaderPlayback";
-
-function voicePresetOptionLabel(preset: TtsVoicePreset): string {
-  const label = preset.label.trim() || preset.voice_label_snapshot?.trim();
-  const model = preset.model_id.trim();
-  if (!model || label?.toLowerCase().includes(model.toLowerCase())) {
-    return label || model || preset.id;
-  }
-  return `${label || preset.id} - ${model}`;
-}
+import { ReaderVoicePicker } from "./ReaderVoicePicker";
 
 export type ReaderPlaybackBarProps = {
   status: ReaderPlaybackStatus;
@@ -23,7 +16,6 @@ export type ReaderPlaybackBarProps = {
   playbackRate: number;
   pageLabel: string | null;
   currentText: string;
-  voiceLabel: string | null;
   onToggle: () => void;
   onStop: () => void;
   onPrev: () => void;
@@ -31,8 +23,10 @@ export type ReaderPlaybackBarProps = {
   onSeek: (index: number) => void;
   onPlaybackRateChange: (rate: number) => void;
   presets: TtsVoicePreset[];
+  presetVoices: CreateVoiceHubVoiceRow[];
   selectedPresetId: string | null;
   onSelectPreset: (presetId: string | null) => void;
+  onCreatePresetFromVoice: (voice: CreateVoiceHubVoiceRow) => Promise<string>;
 };
 
 const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -44,7 +38,6 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   playbackRate,
   pageLabel,
   currentText,
-  voiceLabel,
   onToggle,
   onStop,
   onPrev,
@@ -52,8 +45,10 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   onSeek,
   onPlaybackRateChange,
   presets,
+  presetVoices,
   selectedPresetId,
   onSelectPreset,
+  onCreatePresetFromVoice,
 }) => {
   const { t } = useTranslation();
   const hasUnits = total > 0;
@@ -161,34 +156,16 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
             defaultValue: "Default voice",
           })}
         </span>
-        <label className="sr-only" htmlFor="reader-playback-voice">
-          {t("dictate.reader.voice", { defaultValue: "Voice" })}
-        </label>
-        <select
-          id="reader-playback-voice"
-          value={selectedPresetId ?? ""}
-          onChange={(event) => onSelectPreset(event.target.value || null)}
-          title={
-            voiceLabel ??
-            t("dictate.reader.currentVoice", {
-              defaultValue: "Current voice",
-            })
-          }
-          className="h-8 max-w-[200px] rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
-        >
-          {presets.length === 0 ? (
-            <option value="">
-              {t("dictate.reader.currentVoice", {
-                defaultValue: "Current voice",
-              })}
-            </option>
-          ) : null}
-          {presets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {voicePresetOptionLabel(preset)}
-            </option>
-          ))}
-        </select>
+        <div className="w-[210px]">
+          <ReaderVoicePicker
+            value={selectedPresetId}
+            presets={presets}
+            presetVoices={presetVoices}
+            onSelectPreset={(presetId) => onSelectPreset(presetId)}
+            onSelectDefault={() => onSelectPreset(null)}
+            onCreatePresetFromVoice={onCreatePresetFromVoice}
+          />
+        </div>
 
         <span className="text-[11px] font-medium text-[var(--muted)]">
           {t("dictate.reader.player.speed", { defaultValue: "Speed" })}

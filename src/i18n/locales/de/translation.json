@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Dokument konnte nicht geöffnet werden.",
         "playbackFailed": "Reader-Wiedergabe fehlgeschlagen.",
-        "copyFailed": "Dokumenttext konnte nicht kopiert werden."
+        "copyFailed": "Dokumenttext konnte nicht kopiert werden.",
+        "audioPrepareFailed": "Leser-Audio konnte nicht vorbereitet werden.",
+        "audioExportFailed": "Leser-Audio konnte nicht exportiert werden."
+      },
+      "title": "Leser",
+      "description": "Importiere Dokumente, lass sie vorlesen und verwalte eine lokale Lesebibliothek.",
+      "viewAriaLabel": "Leseransicht",
+      "sectionFallbackTitle": "Abschnitt {{n}}",
+      "audioExportDialogLabel": "WAV-Audio",
+      "emptyPreviewTitle": "Dokument hinzufugen, um mit dem Lesen zu beginnen",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT oder Markdown",
+      "viewerEmptyTitle": "Kein Dokument geoffnet",
+      "viewerEmptyHint": "Wahle ein Dokument aus deiner Bibliothek",
+      "exportAudio": "WAV exportieren",
+      "exportingAudio": "Wird exportiert",
+      "libraryCardBadge": "{{kind}} · Groesse {{size}}",
+      "sort": {
+        "recent": "Zuletzt hinzugefugt",
+        "oldest": "Alteste zuerst",
+        "nameAsc": "Dateiname (A-Z)",
+        "nameDesc": "Dateiname (Z-A)",
+        "largest": "Groesste",
+        "smallest": "Kleinste",
+        "ariaLabel": "Dokumente filtern",
+        "title": "Filtern"
+      },
+      "splitView": {
+        "ariaLabel": "Leseransicht",
+        "document": "Dokument",
+        "viewer": "Ansicht"
+      },
+      "player": {
+        "appVoice": "App-Stimme",
+        "sectionPosition": "Abschnitt {{current}} von {{total}}",
+        "scrub": "Leseposition",
+        "speed": "Tempo",
+        "pause": "Pausieren",
+        "resume": "Fortsetzen",
+        "play": "Wiedergeben",
+        "position": "Teil {{current}} von {{total}}",
+        "nothingToRead": "Nichts zu lesen",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Vorbereitung",
+        "readyAudio": "Bereit",
+        "prepareAudio": "Audio vorbereiten",
+        "previous": "Zuruck",
+        "next": "Weiter",
+        "stop": "Anhalten"
+      },
+      "sections": {
+        "title": "Abschnitte",
+        "selectedCount": "{{selected}} von {{total}} ausgewahlt",
+        "readAll": "Alle lesen",
+        "skipAll": "Alle uberspringen",
+        "resetVoices": "Stimmen zurucksetzen",
+        "read": "Diesen Abschnitt lesen",
+        "skip": "Diesen Abschnitt uberspringen",
+        "useDocumentVoice": "Dokumentstimme verwenden: {{voice}}",
+        "defaultVoice": "Standardstimme",
+        "createVoicePresetFailed": "Diese Stimme konnte nicht gespeichert werden. Versuche es erneut.",
+        "searchVoices": "Stimmen suchen",
+        "myVoices": "Meine Stimmen",
+        "presetVoices": "Voreingestellte Stimmen",
+        "noVoices": "Keine Stimmen gefunden."
+      },
+      "transform": {
+        "title": "Umwandeln",
+        "failed": "Die KI-Umwandlung ist fehlgeschlagen.",
+        "copyFailed": "Das Ergebnis konnte nicht kopiert werden.",
+        "listen": "Anhoren",
+        "copy": "Kopieren",
+        "clear": "Ergebnis loschen"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Entferne Hintergrundrauschen aus Audio- oder Videodateien und behalte die volle Bandbreitenqualität.",
+      "addFile": "Datei hinzufügen",
+      "models": "Modelle zur Rauschentfernung",
+      "changeEngine": "Modell zur Rauschentfernung ändern",
+      "changeEngineNamed": "Aktives Modell zur Rauschentfernung: {{name}}. Ändere es in den Modellen zur Rauschentfernung.",
+      "fileDialogLabel": "Audio / Video",
+      "working": "{{name}} wird verbessert…",
+      "dropRelease": "Loslassen zum Verbessern",
+      "dropHint": "Audio oder Video hier ablegen, um Hintergrundrauschen zu entfernen",
+      "orLabel": "oder",
+      "pickFile": "Datei auswählen",
+      "engine": {
+        "label": "Verarbeitung",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - ein auf Sprache abgestimmter neuronaler Entrauscher und eine gute Standardwahl für Sprache.",
+        "spectral": "Spectral",
+        "spectralHint": "Spektrale Subtraktion - regelbare Stärke, am besten für konstantes Rauschen, Brummen und Lüftergeräusche.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - moderner neuronaler Entrauscher mit voller Bandbreite bei 48 kHz. Beim ersten Einsatz wird einmalig eine Laufzeitumgebung geladen."
+      },
+      "quality": {
+        "label": "Ausgabequalität",
+        "fullBand": "48 kHz · volle Bandbreite",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · Stimme"
+      },
+      "strength": {
+        "label": "Stärke der Rauschreduzierung"
+      },
+      "runtime": {
+        "required": "Richte DeepFilterNet in den Modellen zur Rauschentfernung ein, bevor du mit dieser Engine verbesserst.",
+        "checking": "DeepFilterNet-Einrichtung wird geprüft…",
+        "title": "DeepFilterNet einrichten",
+        "description": "Ein einmaliger Download installiert die neuronale Engine zur Rauschentfernung (PyTorch + Modell). Richte sie in den Modellen zur Rauschentfernung ein und lege dann hier eine Datei ab.",
+        "openHub": "Modelle zur Rauschentfernung öffnen"
+      },
+      "errors": {
+        "failed": "Audio konnte nicht verbessert werden.",
+        "notMedia": "Lege eine Audio- oder Videodatei zum Verbessern ab."
+      },
+      "result": {
+        "ready": "Verbessertes Audio ist bereit",
+        "khz": "{{khz}} kHz",
+        "reveal": "Im Finder anzeigen",
+        "another": "Weitere Datei verbessern"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Stimmen (TTS)",
       "ocr": "Bildschirm OCR",
       "ariaLabel": "Modellkategorien",
-      "creativeAudio": "Kreatives Audio"
+      "creativeAudio": "Kreatives Audio",
+      "audioCleanup": "Audiobereinigung"
     },
     "download": {
       "failed": "Download fehlgeschlagen",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Keine kreativen Audiomodelle passen zur Suche.",
         "description": "Löschen Sie das Suchfeld oder den Modusfilter, um alle verfügbaren kreativen Audiomodelle anzuzeigen."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Wähle die Engine, die in Audio verbessern Hintergrundrauschen entfernt. Deine Auswahl wird gespeichert; lege einfach eine Datei zum Bereinigen ab.",
+      "installFailed": "DeepFilterNet-Laufzeitumgebung konnte nicht eingerichtet werden.",
+      "activeDetail": "Wird von Audio verbessern zur Rauschentfernung verwendet.",
+      "checking": "DeepFilterNet-Einrichtung wird geprüft…",
+      "installing": "DeepFilterNet wird eingerichtet… (einmalig)",
+      "downloadSize": "PyTorch + Modell",
+      "setUp": "DeepFilterNet einrichten",
+      "sublineBuiltin": "Integriert · kein Download",
+      "sublineSidecar": "Neuronale Engine · einmalige Einrichtung",
+      "chips": {
+        "local": "Auf dem Gerät",
+        "realtime": "Echtzeit",
+        "neural": "Neuronale Verarbeitung",
+        "offline": "Ganze Datei",
+        "adjustable": "Regelbar",
+        "fullBand": "Volle Bandbreite 48 kHz",
+        "sota": "Stand der Technik"
+      },
+      "badges": {
+        "builtin": "Integriert",
+        "builtinDetail": "Wird mit Vox Jot geliefert, kein Download erforderlich."
+      },
+      "meta": {
+        "bundled": "Mit Vox Jot gebündelt",
+        "sidecar": "Lokale Python-Laufzeit · Download beim ersten Einsatz"
+      },
+      "empty": {
+        "title": "Keine Bereinigungs-Engines passen zur Suche.",
+        "description": "Leere das Suchfeld, um alle Engines anzuzeigen."
       }
     }
   },

@@ -356,7 +356,78 @@
       "errors": {
         "openFailed": "Failed to open document.",
         "playbackFailed": "Reader playback failed.",
-        "copyFailed": "Failed to copy document text."
+        "copyFailed": "Failed to copy document text.",
+        "audioPrepareFailed": "Failed to prepare Reader audio.",
+        "audioExportFailed": "Failed to export Reader audio."
+      },
+      "title": "Reader",
+      "description": "Import documents, read them aloud, and keep a local reading library.",
+      "viewAriaLabel": "Reader view",
+      "sectionFallbackTitle": "Section {{n}}",
+      "audioExportDialogLabel": "WAV audio",
+      "emptyPreviewTitle": "Add a document to start reading",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT, or Markdown",
+      "viewerEmptyTitle": "No document open",
+      "viewerEmptyHint": "Choose a document from your library",
+      "exportAudio": "Export WAV",
+      "exportingAudio": "Exporting",
+      "libraryCardBadge": "{{kind}} · {{size}}",
+      "sort": {
+        "recent": "Recently added",
+        "oldest": "Oldest added",
+        "nameAsc": "Name (A-Z)",
+        "nameDesc": "Name (Z-A)",
+        "largest": "Largest",
+        "smallest": "Smallest",
+        "ariaLabel": "Filter documents",
+        "title": "Filter"
+      },
+      "splitView": {
+        "ariaLabel": "Reader view",
+        "document": "Document",
+        "viewer": "Viewer"
+      },
+      "player": {
+        "appVoice": "App voice",
+        "sectionPosition": "Section {{current}} of {{total}}",
+        "scrub": "Reading position",
+        "speed": "Speed",
+        "pause": "Pause",
+        "resume": "Resume",
+        "play": "Play",
+        "position": "Part {{current}} of {{total}}",
+        "nothingToRead": "Nothing to read",
+        "speedOption": "{{rate}}x",
+        "preparingAudio": "Preparing",
+        "readyAudio": "Ready",
+        "prepareAudio": "Prepare audio",
+        "previous": "Previous",
+        "next": "Next",
+        "stop": "Stop"
+      },
+      "sections": {
+        "title": "Sections",
+        "selectedCount": "{{selected}} of {{total}} selected",
+        "readAll": "Read all",
+        "skipAll": "Skip all",
+        "resetVoices": "Reset voices",
+        "read": "Read this section",
+        "skip": "Skip this section",
+        "useDocumentVoice": "Use document voice: {{voice}}",
+        "defaultVoice": "Default voice",
+        "createVoicePresetFailed": "Could not save that voice. Try again.",
+        "searchVoices": "Search voices",
+        "myVoices": "My Voices",
+        "presetVoices": "Preset voices",
+        "noVoices": "No voices found."
+      },
+      "transform": {
+        "title": "Transform",
+        "failed": "The AI transform failed.",
+        "copyFailed": "Failed to copy the result.",
+        "listen": "Listen",
+        "copy": "Copy",
+        "clear": "Clear result"
       }
     },
     "watchFolders": {
@@ -382,6 +453,54 @@
         "emptyDetail": "No watched folders",
         "missing": "Folder missing",
         "paused": "Paused"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Remove background noise from audio or video files while preserving full-band quality.",
+      "addFile": "Add file",
+      "models": "Noise removal models",
+      "changeEngine": "Change noise removal model",
+      "changeEngineNamed": "Active noise removal model: {{name}}. Change in Noise removal models.",
+      "fileDialogLabel": "Audio / Video",
+      "working": "Enhancing {{name}}…",
+      "dropRelease": "Release to enhance",
+      "dropHint": "Drop audio or video to remove background noise",
+      "orLabel": "or",
+      "pickFile": "Pick a file",
+      "engine": {
+        "label": "Engine",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise — a voice-tuned neural denoiser. Great default for speech.",
+        "spectral": "Spectral",
+        "spectralHint": "Spectral subtraction — adjustable strength, best for steady hiss, hum, and fan noise.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet — state-of-the-art neural denoiser, full-band 48 kHz. First use downloads a one-time runtime."
+      },
+      "quality": {
+        "label": "Output quality",
+        "fullBand": "48 kHz · Full band",
+        "cd": "44.1 kHz · CD",
+        "voice": "16 kHz · Voice"
+      },
+      "strength": {
+        "label": "Noise reduction strength"
+      },
+      "runtime": {
+        "required": "Set up DeepFilterNet in Noise removal models before enhancing with this engine.",
+        "checking": "Checking DeepFilterNet setup…",
+        "title": "Set up DeepFilterNet",
+        "description": "A one-time download installs the neural noise removal engine (PyTorch + model). Set it up in Noise removal models, then drop a file here.",
+        "openHub": "Open Noise removal models"
+      },
+      "errors": {
+        "failed": "Failed to enhance the audio.",
+        "notMedia": "Drop an audio or video file to enhance."
+      },
+      "result": {
+        "ready": "Enhanced audio ready",
+        "khz": "{{khz}} kHz",
+        "reveal": "Show in Finder",
+        "another": "Enhance another file"
       }
     }
   },
@@ -2041,7 +2160,40 @@
       "tts": "Voices (TTS)",
       "creativeAudio": "Creative Audio",
       "ocr": "Screen OCR",
-      "ariaLabel": "Model categories"
+      "ariaLabel": "Model categories",
+      "audioCleanup": "Audio Cleanup"
+    },
+    "audioCleanup": {
+      "intro": "Pick the engine that removes background noise in Enhance Audio. Your choice is remembered — just drop a file to clean it.",
+      "installFailed": "Failed to set up the DeepFilterNet runtime.",
+      "activeDetail": "Used by Enhance Audio for noise removal.",
+      "checking": "Checking DeepFilterNet setup…",
+      "installing": "Setting up DeepFilterNet… (one-time)",
+      "downloadSize": "PyTorch + model",
+      "setUp": "Set up DeepFilterNet",
+      "sublineBuiltin": "Built-in · No download",
+      "sublineSidecar": "Neural · One-time setup",
+      "chips": {
+        "local": "On-device",
+        "realtime": "Real-time",
+        "neural": "Neural",
+        "offline": "Whole-file",
+        "adjustable": "Adjustable",
+        "fullBand": "Full-band 48 kHz",
+        "sota": "State-of-the-art"
+      },
+      "badges": {
+        "builtin": "Built-in",
+        "builtinDetail": "Ships with Vox Jot — no download required."
+      },
+      "meta": {
+        "bundled": "Bundled with Vox Jot",
+        "sidecar": "Local Python runtime · downloads on first use"
+      },
+      "empty": {
+        "title": "No cleanup engines match the search.",
+        "description": "Clear the search field to show all engines."
+      }
     }
   },
   "titleBar": {

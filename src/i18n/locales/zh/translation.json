@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "无法打开文档。",
         "playbackFailed": "阅读器播放失败。",
-        "copyFailed": "无法复制文档文本。"
+        "copyFailed": "无法复制文档文本。",
+        "audioPrepareFailed": "无法准备阅读器音频。",
+        "audioExportFailed": "无法导出阅读器音频。"
+      },
+      "title": "阅读器",
+      "description": "导入文档、朗读内容，并保存在本地阅读库中。",
+      "viewAriaLabel": "阅读器视图",
+      "sectionFallbackTitle": "章节 {{n}}",
+      "audioExportDialogLabel": "WAV 音频",
+      "emptyPreviewTitle": "添加文档以开始阅读",
+      "emptyPreviewHint": "PDF、DOCX、EPUB、TXT 或 Markdown",
+      "viewerEmptyTitle": "没有打开的文档",
+      "viewerEmptyHint": "从你的库中选择一个文档",
+      "exportAudio": "导出 WAV",
+      "exportingAudio": "正在导出",
+      "libraryCardBadge": "{{kind}}，{{size}}",
+      "sort": {
+        "recent": "最近添加",
+        "oldest": "最早添加",
+        "nameAsc": "名称 (A-Z)",
+        "nameDesc": "名称 (Z-A)",
+        "largest": "最大",
+        "smallest": "最小",
+        "ariaLabel": "筛选文档",
+        "title": "筛选"
+      },
+      "splitView": {
+        "ariaLabel": "阅读器视图",
+        "document": "文档",
+        "viewer": "查看器"
+      },
+      "player": {
+        "appVoice": "应用声音",
+        "sectionPosition": "章节 {{current}} / {{total}}",
+        "scrub": "阅读位置",
+        "speed": "速度",
+        "pause": "暂停",
+        "resume": "继续",
+        "play": "播放",
+        "position": "第 {{current}} 部分，共 {{total}} 部分",
+        "nothingToRead": "没有可读内容",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "正在准备",
+        "readyAudio": "已就绪",
+        "prepareAudio": "准备音频",
+        "previous": "上一个",
+        "next": "下一个",
+        "stop": "停止"
+      },
+      "sections": {
+        "title": "章节",
+        "selectedCount": "已选择 {{selected}} / {{total}}",
+        "readAll": "全部阅读",
+        "skipAll": "全部跳过",
+        "resetVoices": "重置声音",
+        "read": "阅读此章节",
+        "skip": "跳过此章节",
+        "useDocumentVoice": "使用文档声音：{{voice}}",
+        "defaultVoice": "默认声音",
+        "createVoicePresetFailed": "无法保存该声音。请重试。",
+        "searchVoices": "搜索声音",
+        "myVoices": "我的声音",
+        "presetVoices": "预设声音",
+        "noVoices": "未找到声音。"
+      },
+      "transform": {
+        "title": "转换",
+        "failed": "AI 转换失败。",
+        "copyFailed": "无法复制结果。",
+        "listen": "收听",
+        "copy": "复制",
+        "clear": "清除结果"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "从音频或视频文件中移除背景噪声，同时保留全频带质量。",
+      "addFile": "添加文件",
+      "models": "降噪模型",
+      "changeEngine": "更改降噪模型",
+      "changeEngineNamed": "当前降噪模型：{{name}}。可在降噪模型中更改。",
+      "fileDialogLabel": "音频 / 视频",
+      "working": "正在增强 {{name}}…",
+      "dropRelease": "松开以增强",
+      "dropHint": "拖放音频或视频以移除背景噪声",
+      "orLabel": "或",
+      "pickFile": "选择文件",
+      "engine": {
+        "label": "引擎",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - 针对语音调校的神经降噪器，是语音处理的优秀默认选择。",
+        "spectral": "Spectral",
+        "spectralHint": "谱减法 - 可调强度，适合稳定的嘶声、嗡声和风扇噪声。",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - 先进的神经降噪器，支持 48 kHz 全频带。首次使用会一次性下载运行时。"
+      },
+      "quality": {
+        "label": "输出质量",
+        "fullBand": "48 kHz · 全频带",
+        "cd": "44.1 kHz · CD 音质",
+        "voice": "16 kHz · 语音"
+      },
+      "strength": {
+        "label": "降噪强度"
+      },
+      "runtime": {
+        "required": "使用此引擎增强前，请先在降噪模型中设置 DeepFilterNet。",
+        "checking": "正在检查 DeepFilterNet 设置…",
+        "title": "设置 DeepFilterNet",
+        "description": "一次性下载会安装神经降噪引擎（PyTorch + 模型）。请在降噪模型中设置，然后将文件拖放到这里。",
+        "openHub": "打开降噪模型"
+      },
+      "errors": {
+        "failed": "音频增强失败。",
+        "notMedia": "拖放音频或视频文件以增强。"
+      },
+      "result": {
+        "ready": "增强后的音频已就绪",
+        "khz": "{{khz}} kHz",
+        "reveal": "在 Finder 中显示",
+        "another": "增强另一个文件"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "声音 (TTS)",
       "ocr": "屏幕OCR",
       "ariaLabel": "模型类别",
-      "creativeAudio": "创意音频"
+      "creativeAudio": "创意音频",
+      "audioCleanup": "音频清理"
     },
     "download": {
       "failed": "下载失败",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "没有与搜索匹配的创意音频模型。",
         "description": "清除搜索框或模式筛选器，以显示所有可用的创意音频模型。"
+      }
+    },
+    "audioCleanup": {
+      "intro": "选择在增强音频中移除背景噪声的引擎。你的选择会被记住；拖放文件即可清理。",
+      "installFailed": "无法设置 DeepFilterNet 运行时。",
+      "activeDetail": "用于增强音频的降噪处理。",
+      "checking": "正在检查 DeepFilterNet 设置…",
+      "installing": "正在设置 DeepFilterNet…（一次性）",
+      "downloadSize": "PyTorch + 模型",
+      "setUp": "设置 DeepFilterNet",
+      "sublineBuiltin": "内置 · 无需下载",
+      "sublineSidecar": "神经网络 · 一次性设置",
+      "chips": {
+        "local": "设备端",
+        "realtime": "实时",
+        "neural": "神经网络",
+        "offline": "整个文件",
+        "adjustable": "可调",
+        "fullBand": "48 kHz 全频带",
+        "sota": "先进"
+      },
+      "badges": {
+        "builtin": "内置",
+        "builtinDetail": "随 Vox Jot 提供，无需下载。"
+      },
+      "meta": {
+        "bundled": "随 Vox Jot 捆绑",
+        "sidecar": "本地 Python 运行时 · 首次使用时下载"
+      },
+      "empty": {
+        "title": "没有清理引擎匹配搜索。",
+        "description": "清空搜索字段以显示所有引擎。"
       }
     }
   },

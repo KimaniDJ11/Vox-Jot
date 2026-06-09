@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Không mở được tài liệu.",
         "playbackFailed": "Phát trình đọc không thành công.",
-        "copyFailed": "Không sao chép được văn bản tài liệu."
+        "copyFailed": "Không sao chép được văn bản tài liệu.",
+        "audioPrepareFailed": "Khong the chuan bi am thanh trinh doc.",
+        "audioExportFailed": "Khong the xuat am thanh trinh doc."
+      },
+      "title": "Trinh doc",
+      "description": "Nhap tai lieu, nghe doc thanh tieng va luu thu vien doc cuc bo.",
+      "viewAriaLabel": "Che do xem trinh doc",
+      "sectionFallbackTitle": "Phan {{n}}",
+      "audioExportDialogLabel": "Am thanh WAV",
+      "emptyPreviewTitle": "Them tai lieu de bat dau doc",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT hoac Markdown",
+      "viewerEmptyTitle": "Chua mo tai lieu nao",
+      "viewerEmptyHint": "Chon tai lieu tu thu vien cua ban",
+      "exportAudio": "Xuat WAV",
+      "exportingAudio": "Dang xuat",
+      "libraryCardBadge": "{{kind}} · dung luong {{size}}",
+      "sort": {
+        "recent": "Moi them gan day",
+        "oldest": "Cu nhat da them",
+        "nameAsc": "Ten (A-Z)",
+        "nameDesc": "Ten (Z-A)",
+        "largest": "Lon nhat",
+        "smallest": "Nho nhat",
+        "ariaLabel": "Loc tai lieu",
+        "title": "Loc"
+      },
+      "splitView": {
+        "ariaLabel": "Che do xem trinh doc",
+        "document": "Tai lieu",
+        "viewer": "Trinh xem"
+      },
+      "player": {
+        "appVoice": "Giong ung dung",
+        "sectionPosition": "Phan {{current}} / {{total}}",
+        "scrub": "Vi tri doc",
+        "speed": "Toc do",
+        "pause": "Tam dung",
+        "resume": "Tiep tuc",
+        "play": "Phat",
+        "position": "Doan {{current}} / {{total}}",
+        "nothingToRead": "Khong co noi dung de doc",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Dang chuan bi",
+        "readyAudio": "San sang",
+        "prepareAudio": "Chuan bi am thanh",
+        "previous": "Truoc",
+        "next": "Tiep",
+        "stop": "Dung"
+      },
+      "sections": {
+        "title": "Cac phan",
+        "selectedCount": "Da chon {{selected}} / {{total}}",
+        "readAll": "Doc tat ca",
+        "skipAll": "Bo qua tat ca",
+        "resetVoices": "Dat lai giong",
+        "read": "Doc phan nay",
+        "skip": "Bo qua phan nay",
+        "useDocumentVoice": "Dung giong cua tai lieu: {{voice}}",
+        "defaultVoice": "Giong mac dinh",
+        "createVoicePresetFailed": "Khong the luu giong nay. Thu lai.",
+        "searchVoices": "Tim giong",
+        "myVoices": "Giong cua toi",
+        "presetVoices": "Giong co san",
+        "noVoices": "Khong tim thay giong nao."
+      },
+      "transform": {
+        "title": "Bien doi",
+        "failed": "Bien doi AI khong thanh cong.",
+        "copyFailed": "Khong the sao chep ket qua.",
+        "listen": "Nghe",
+        "copy": "Sao chep",
+        "clear": "Xoa ket qua"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Xóa tiếng ồn nền khỏi tệp âm thanh hoặc video trong khi vẫn giữ chất lượng toàn dải.",
+      "addFile": "Thêm tệp",
+      "models": "Mô hình khử nhiễu",
+      "changeEngine": "Đổi mô hình khử nhiễu",
+      "changeEngineNamed": "Mô hình khử nhiễu đang dùng: {{name}}. Đổi trong Mô hình khử nhiễu.",
+      "fileDialogLabel": "Âm thanh / video",
+      "working": "Đang cải thiện {{name}}…",
+      "dropRelease": "Thả để cải thiện",
+      "dropHint": "Thả âm thanh hoặc video để xóa tiếng ồn nền",
+      "orLabel": "hoặc",
+      "pickFile": "Chọn tệp",
+      "engine": {
+        "label": "Bộ xử lý",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - bộ khử nhiễu nơ-ron tinh chỉnh cho giọng nói, lựa chọn mặc định tốt cho lời nói.",
+        "spectral": "Spectral",
+        "spectralHint": "Trừ phổ - chỉnh được cường độ, phù hợp với tiếng xì, tiếng ù và tiếng quạt ổn định.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - bộ khử nhiễu nơ-ron hiện đại, toàn dải 48 kHz. Lần dùng đầu tải runtime một lần."
+      },
+      "quality": {
+        "label": "Chất lượng đầu ra",
+        "fullBand": "48 kHz · toàn dải",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · giọng nói"
+      },
+      "strength": {
+        "label": "Mức giảm nhiễu"
+      },
+      "runtime": {
+        "required": "Thiết lập DeepFilterNet trong Mô hình khử nhiễu trước khi cải thiện bằng bộ xử lý này.",
+        "checking": "Đang kiểm tra thiết lập DeepFilterNet…",
+        "title": "Thiết lập DeepFilterNet",
+        "description": "Một lượt tải xuống duy nhất sẽ cài bộ xử lý khử nhiễu nơ-ron (PyTorch + mô hình). Thiết lập trong Mô hình khử nhiễu, rồi thả tệp vào đây.",
+        "openHub": "Mở mô hình khử nhiễu"
+      },
+      "errors": {
+        "failed": "Không thể cải thiện âm thanh.",
+        "notMedia": "Thả tệp âm thanh hoặc video để cải thiện."
+      },
+      "result": {
+        "ready": "Âm thanh đã cải thiện sẵn sàng",
+        "khz": "{{khz}} kHz",
+        "reveal": "Hiển thị trong Finder",
+        "another": "Cải thiện tệp khác"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Giọng nói (TTS)",
       "ocr": "Màn hình OCR",
       "ariaLabel": "Danh mục mô hình",
-      "creativeAudio": "Âm thanh sáng tạo"
+      "creativeAudio": "Âm thanh sáng tạo",
+      "audioCleanup": "Làm sạch âm thanh"
     },
     "download": {
       "failed": "Tải xuống thất bại",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Không có mô hình âm thanh sáng tạo nào khớp với tìm kiếm.",
         "description": "Xóa ô tìm kiếm hoặc bộ lọc chế độ để hiển thị tất cả mô hình âm thanh sáng tạo có sẵn."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Chọn bộ xử lý xóa tiếng ồn nền trong Cải thiện âm thanh. Lựa chọn sẽ được ghi nhớ; chỉ cần thả tệp để làm sạch.",
+      "installFailed": "Không thể thiết lập runtime DeepFilterNet.",
+      "activeDetail": "Được Cải thiện âm thanh dùng để khử nhiễu.",
+      "checking": "Đang kiểm tra thiết lập DeepFilterNet…",
+      "installing": "Đang thiết lập DeepFilterNet… (một lần)",
+      "downloadSize": "PyTorch + mô hình",
+      "setUp": "Thiết lập DeepFilterNet",
+      "sublineBuiltin": "Tích hợp sẵn · không cần tải",
+      "sublineSidecar": "Nơ-ron · thiết lập một lần",
+      "chips": {
+        "local": "Trên thiết bị",
+        "realtime": "Thời gian thực",
+        "neural": "Nơ-ron",
+        "offline": "Toàn bộ tệp",
+        "adjustable": "Có thể chỉnh",
+        "fullBand": "Toàn dải 48 kHz",
+        "sota": "Hiện đại"
+      },
+      "badges": {
+        "builtin": "Tích hợp sẵn",
+        "builtinDetail": "Đi kèm Vox Jot, không cần tải xuống."
+      },
+      "meta": {
+        "bundled": "Đi kèm Vox Jot",
+        "sidecar": "Runtime Python cục bộ · tải khi dùng lần đầu"
+      },
+      "empty": {
+        "title": "Không có bộ xử lý làm sạch nào khớp với tìm kiếm.",
+        "description": "Xóa ô tìm kiếm để hiển thị tất cả bộ xử lý."
       }
     }
   },

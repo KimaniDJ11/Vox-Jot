@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Dokument se nepodařilo otevřít.",
         "playbackFailed": "Přehrávání čtečky selhalo.",
-        "copyFailed": "Text dokumentu se nepodařilo zkopírovat."
+        "copyFailed": "Text dokumentu se nepodařilo zkopírovat.",
+        "audioPrepareFailed": "Nepodarilo se pripravit zvuk ctecky.",
+        "audioExportFailed": "Nepodarilo se exportovat zvuk ctecky."
+      },
+      "title": "Ctecka",
+      "description": "Importujte dokumenty, nechte je predcitat nahlas a udrzujte mistni knihovnu cteni.",
+      "viewAriaLabel": "Zobrazeni ctecky",
+      "sectionFallbackTitle": "Oddil {{n}}",
+      "audioExportDialogLabel": "Zvuk WAV",
+      "emptyPreviewTitle": "Pridejte dokument a zacnete cist",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT nebo Markdown",
+      "viewerEmptyTitle": "Neni otevren zadny dokument",
+      "viewerEmptyHint": "Vyberte dokument z knihovny",
+      "exportAudio": "Exportovat WAV",
+      "exportingAudio": "Exportuji",
+      "libraryCardBadge": "{{kind}} · velikost {{size}}",
+      "sort": {
+        "recent": "Nedavno pridane",
+        "oldest": "Nejdrive pridane",
+        "nameAsc": "Nazev (A-Z)",
+        "nameDesc": "Nazev (Z-A)",
+        "largest": "Nejvetsi",
+        "smallest": "Nejmensi",
+        "ariaLabel": "Filtrovat dokumenty",
+        "title": "Filtrovat"
+      },
+      "splitView": {
+        "ariaLabel": "Zobrazeni ctecky",
+        "document": "Dokument",
+        "viewer": "Prohlizec"
+      },
+      "player": {
+        "appVoice": "Hlas aplikace",
+        "sectionPosition": "Oddil {{current}} z {{total}}",
+        "scrub": "Pozice cteni",
+        "speed": "Rychlost",
+        "pause": "Pozastavit",
+        "resume": "Pokracovat",
+        "play": "Prehrat",
+        "position": "Cast {{current}} z {{total}}",
+        "nothingToRead": "Neni co cist",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Pripravuji",
+        "readyAudio": "Pripraveno",
+        "prepareAudio": "Pripravit zvuk",
+        "previous": "Predchozi",
+        "next": "Dalsi",
+        "stop": "Zastavit"
+      },
+      "sections": {
+        "title": "Oddily",
+        "selectedCount": "Vybrano {{selected}} z {{total}}",
+        "readAll": "Cist vse",
+        "skipAll": "Preskocit vse",
+        "resetVoices": "Resetovat hlasy",
+        "read": "Cist tento oddil",
+        "skip": "Preskocit tento oddil",
+        "useDocumentVoice": "Pouzit hlas dokumentu: {{voice}}",
+        "defaultVoice": "Vychozi hlas",
+        "createVoicePresetFailed": "Tento hlas se nepodarilo ulozit. Zkuste to znovu.",
+        "searchVoices": "Hledat hlasy",
+        "myVoices": "Moje hlasy",
+        "presetVoices": "Prednastavene hlasy",
+        "noVoices": "Nebyly nalezeny zadne hlasy."
+      },
+      "transform": {
+        "title": "Prevest",
+        "failed": "Transformace AI selhala.",
+        "copyFailed": "Vysledek se nepodarilo zkopirovat.",
+        "listen": "Poslechnout",
+        "copy": "Kopirovat",
+        "clear": "Vymazat vysledek"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Odstraňte šum na pozadí ze zvukových nebo video souborů a zachovejte plnopásmovou kvalitu.",
+      "addFile": "Přidat soubor",
+      "models": "Modely odstranění šumu",
+      "changeEngine": "Změnit model odstranění šumu",
+      "changeEngineNamed": "Aktivní model odstranění šumu: {{name}}. Změňte ho v modelech odstranění šumu.",
+      "fileDialogLabel": "Audio / video",
+      "working": "Vylepšuje se {{name}}…",
+      "dropRelease": "Uvolněte pro vylepšení",
+      "dropHint": "Přetáhněte audio nebo video pro odstranění šumu na pozadí",
+      "orLabel": "nebo",
+      "pickFile": "Vybrat soubor",
+      "engine": {
+        "label": "Modul",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - hlasově laděný neuronový odšumovač, vhodný jako výchozí volba pro řeč.",
+        "spectral": "Spectral",
+        "spectralHint": "Spektrální odečítání - nastavitelná síla, nejlepší pro stálé syčení, brum a hluk ventilátoru.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - špičkový neuronový odšumovač s plným pásmem 48 kHz. První použití stáhne jednorázový runtime."
+      },
+      "quality": {
+        "label": "Kvalita výstupu",
+        "fullBand": "48 kHz · plné pásmo",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · hlas"
+      },
+      "strength": {
+        "label": "Síla redukce šumu"
+      },
+      "runtime": {
+        "required": "Před vylepšením tímto enginem nastavte DeepFilterNet v modelech odstranění šumu.",
+        "checking": "Kontroluje se nastavení DeepFilterNet…",
+        "title": "Nastavit DeepFilterNet",
+        "description": "Jednorázové stažení nainstaluje neuronový engine odstranění šumu (PyTorch + model). Nastavte ho v modelech odstranění šumu a potom sem přetáhněte soubor.",
+        "openHub": "Otevřít modely odstranění šumu"
+      },
+      "errors": {
+        "failed": "Vylepšení zvuku selhalo.",
+        "notMedia": "Přetáhněte audio nebo video soubor k vylepšení."
+      },
+      "result": {
+        "ready": "Vylepšený zvuk je připraven",
+        "khz": "{{khz}} kHz",
+        "reveal": "Zobrazit ve Finderu",
+        "another": "Vylepšit další soubor"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Hlasy (TTS)",
       "ocr": "Obrazovka OCR",
       "ariaLabel": "Kategorie modelů",
-      "creativeAudio": "Kreativní audio"
+      "creativeAudio": "Kreativní audio",
+      "audioCleanup": "Čištění zvuku"
     },
     "download": {
       "failed": "Stahování se nezdařilo",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Žádné modely kreativního audia neodpovídají hledání.",
         "description": "Vymažte vyhledávání nebo filtr režimu a zobrazte všechny dostupné modely kreativního audia."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Vyberte engine, který vylepšení zvuku používá k odstranění šumu na pozadí. Volba se uloží; stačí přetáhnout soubor k vyčištění.",
+      "installFailed": "Nastavení runtime DeepFilterNet selhalo.",
+      "activeDetail": "Používá se ve vylepšení zvuku pro odstranění šumu.",
+      "checking": "Kontroluje se nastavení DeepFilterNet…",
+      "installing": "Nastavuje se DeepFilterNet… (jednorázově)",
+      "downloadSize": "PyTorch + modelová data",
+      "setUp": "Nastavit DeepFilterNet",
+      "sublineBuiltin": "Vestavěné · bez stahování",
+      "sublineSidecar": "Neuronové · jednorázové nastavení",
+      "chips": {
+        "local": "Na zařízení",
+        "realtime": "V reálném čase",
+        "neural": "Neuronové",
+        "offline": "Celý soubor",
+        "adjustable": "Nastavitelné",
+        "fullBand": "Plné pásmo 48 kHz",
+        "sota": "Špičková kvalita"
+      },
+      "badges": {
+        "builtin": "Vestavěné",
+        "builtinDetail": "Dodává se s Vox Jot, není třeba nic stahovat."
+      },
+      "meta": {
+        "bundled": "Součást Vox Jot",
+        "sidecar": "Místní runtime Pythonu · stahuje se při prvním použití"
+      },
+      "empty": {
+        "title": "Vyhledávání nenašlo žádné čisticí enginy.",
+        "description": "Vymažte vyhledávací pole a zobrazte všechny enginy."
       }
     }
   },

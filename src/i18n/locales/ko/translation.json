@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "문서를 열지 못했습니다.",
         "playbackFailed": "리더 재생에 실패했습니다.",
-        "copyFailed": "문서 텍스트를 복사하지 못했습니다."
+        "copyFailed": "문서 텍스트를 복사하지 못했습니다.",
+        "audioPrepareFailed": "리더 오디오를 준비하지 못했습니다.",
+        "audioExportFailed": "리더 오디오를 내보내지 못했습니다."
+      },
+      "title": "리더",
+      "description": "문서를 가져와 소리내어 읽고 로컬 읽기 라이브러리에 보관합니다.",
+      "viewAriaLabel": "리더 보기",
+      "sectionFallbackTitle": "섹션 {{n}}",
+      "audioExportDialogLabel": "WAV 오디오",
+      "emptyPreviewTitle": "읽기를 시작할 문서 추가",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT 또는 Markdown",
+      "viewerEmptyTitle": "열린 문서가 없습니다",
+      "viewerEmptyHint": "라이브러리에서 문서를 선택하세요",
+      "exportAudio": "WAV 내보내기",
+      "exportingAudio": "내보내는 중",
+      "libraryCardBadge": "{{kind}} · 크기 {{size}}",
+      "sort": {
+        "recent": "최근 추가됨",
+        "oldest": "오래된 추가순",
+        "nameAsc": "이름 (A-Z)",
+        "nameDesc": "이름 (Z-A)",
+        "largest": "큰 항목",
+        "smallest": "작은 항목",
+        "ariaLabel": "문서 필터",
+        "title": "필터"
+      },
+      "splitView": {
+        "ariaLabel": "리더 보기",
+        "document": "문서",
+        "viewer": "뷰어"
+      },
+      "player": {
+        "appVoice": "앱 음성",
+        "sectionPosition": "섹션 {{current}} / {{total}}",
+        "scrub": "읽기 위치",
+        "speed": "속도",
+        "pause": "일시 정지",
+        "resume": "다시 시작",
+        "play": "재생",
+        "position": "파트 {{current}} / {{total}}",
+        "nothingToRead": "읽을 내용이 없습니다",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "준비 중",
+        "readyAudio": "준비됨",
+        "prepareAudio": "오디오 준비",
+        "previous": "이전",
+        "next": "다음",
+        "stop": "중지"
+      },
+      "sections": {
+        "title": "섹션",
+        "selectedCount": "{{total}}개 중 {{selected}}개 선택",
+        "readAll": "모두 읽기",
+        "skipAll": "모두 건너뛰기",
+        "resetVoices": "음성 재설정",
+        "read": "이 섹션 읽기",
+        "skip": "이 섹션 건너뛰기",
+        "useDocumentVoice": "문서 음성 사용: {{voice}}",
+        "defaultVoice": "기본 음성",
+        "createVoicePresetFailed": "해당 음성을 저장하지 못했습니다. 다시 시도하세요.",
+        "searchVoices": "음성 검색",
+        "myVoices": "내 음성",
+        "presetVoices": "프리셋 음성",
+        "noVoices": "음성을 찾을 수 없습니다."
+      },
+      "transform": {
+        "title": "변환",
+        "failed": "AI 변환에 실패했습니다.",
+        "copyFailed": "결과를 복사하지 못했습니다.",
+        "listen": "듣기",
+        "copy": "복사",
+        "clear": "결과 지우기"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "오디오 또는 비디오 파일의 배경 소음을 제거하면서 풀밴드 품질을 유지합니다.",
+      "addFile": "파일 추가",
+      "models": "소음 제거 모델",
+      "changeEngine": "소음 제거 모델 변경",
+      "changeEngineNamed": "활성 소음 제거 모델: {{name}}. 소음 제거 모델에서 변경하세요.",
+      "fileDialogLabel": "오디오 / 비디오",
+      "working": "{{name}} 개선 중…",
+      "dropRelease": "놓으면 개선합니다",
+      "dropHint": "오디오 또는 비디오를 놓아 배경 소음을 제거하세요",
+      "orLabel": "또는",
+      "pickFile": "파일 선택",
+      "engine": {
+        "label": "엔진",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - 음성에 맞춘 신경망 노이즈 제거기이며 말소리에 좋은 기본값입니다.",
+        "spectral": "Spectral",
+        "spectralHint": "스펙트럼 차감 - 강도 조절 가능, 일정한 히스·웅웅거림·팬 소음에 적합합니다.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - 48 kHz 풀밴드 최첨단 신경망 노이즈 제거기입니다. 첫 사용 시 런타임을 한 번 다운로드합니다."
+      },
+      "quality": {
+        "label": "출력 품질",
+        "fullBand": "48 kHz · 풀밴드",
+        "cd": "44.1 kHz · CD 품질",
+        "voice": "16 kHz · 음성"
+      },
+      "strength": {
+        "label": "소음 감소 강도"
+      },
+      "runtime": {
+        "required": "이 엔진으로 개선하기 전에 소음 제거 모델에서 DeepFilterNet을 설정하세요.",
+        "checking": "DeepFilterNet 설정 확인 중…",
+        "title": "DeepFilterNet 설정",
+        "description": "일회성 다운로드로 신경망 소음 제거 엔진(PyTorch + 모델)을 설치합니다. 소음 제거 모델에서 설정한 뒤 여기에 파일을 놓으세요.",
+        "openHub": "소음 제거 모델 열기"
+      },
+      "errors": {
+        "failed": "오디오를 개선하지 못했습니다.",
+        "notMedia": "개선할 오디오 또는 비디오 파일을 놓으세요."
+      },
+      "result": {
+        "ready": "개선된 오디오 준비 완료",
+        "khz": "{{khz}} kHz",
+        "reveal": "Finder에서 보기",
+        "another": "다른 파일 개선"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "음색(TTS)",
       "ocr": "스크린 OCR",
       "ariaLabel": "모델 카테고리",
-      "creativeAudio": "크리에이티브 오디오"
+      "creativeAudio": "크리에이티브 오디오",
+      "audioCleanup": "오디오 정리"
     },
     "download": {
       "failed": "다운로드 실패",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "검색과 일치하는 크리에이티브 오디오 모델이 없습니다.",
         "description": "검색 필드나 모드 필터를 지우면 사용 가능한 모든 크리에이티브 오디오 모델이 표시됩니다."
+      }
+    },
+    "audioCleanup": {
+      "intro": "오디오 개선에서 배경 소음을 제거할 엔진을 선택하세요. 선택은 저장되며, 파일을 놓기만 하면 정리됩니다.",
+      "installFailed": "DeepFilterNet 런타임을 설정하지 못했습니다.",
+      "activeDetail": "오디오 개선에서 소음 제거에 사용됩니다.",
+      "checking": "DeepFilterNet 설정 확인 중…",
+      "installing": "DeepFilterNet 설정 중… (일회성)",
+      "downloadSize": "PyTorch + 모델",
+      "setUp": "DeepFilterNet 설정",
+      "sublineBuiltin": "내장 · 다운로드 없음",
+      "sublineSidecar": "신경망 · 일회성 설정",
+      "chips": {
+        "local": "기기 내 실행",
+        "realtime": "실시간",
+        "neural": "신경망",
+        "offline": "전체 파일",
+        "adjustable": "조절 가능",
+        "fullBand": "48 kHz 풀밴드",
+        "sota": "최첨단"
+      },
+      "badges": {
+        "builtin": "내장",
+        "builtinDetail": "Vox Jot에 포함되어 있으며 다운로드가 필요 없습니다."
+      },
+      "meta": {
+        "bundled": "Vox Jot에 포함됨",
+        "sidecar": "로컬 Python 런타임 · 첫 사용 시 다운로드"
+      },
+      "empty": {
+        "title": "검색과 일치하는 정리 엔진이 없습니다.",
+        "description": "검색어를 지우면 모든 엔진이 표시됩니다."
       }
     }
   },

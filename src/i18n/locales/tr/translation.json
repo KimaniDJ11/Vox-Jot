@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Belge açılamadı.",
         "playbackFailed": "Okuyucu oynatması başarısız oldu.",
-        "copyFailed": "Belge metni kopyalanamadı."
+        "copyFailed": "Belge metni kopyalanamadı.",
+        "audioPrepareFailed": "Okuyucu sesi hazirlanamadi.",
+        "audioExportFailed": "Okuyucu sesi disa aktarilamadi."
+      },
+      "title": "Okuyucu",
+      "description": "Belgeleri ice aktar, sesli okut ve yerel bir okuma kitapligi tut.",
+      "viewAriaLabel": "Okuyucu gorunumu",
+      "sectionFallbackTitle": "Bolum {{n}}",
+      "audioExportDialogLabel": "WAV sesi",
+      "emptyPreviewTitle": "Okumaya baslamak icin belge ekle",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT veya Markdown",
+      "viewerEmptyTitle": "Acik belge yok",
+      "viewerEmptyHint": "Kitapligindan bir belge sec",
+      "exportAudio": "WAV disa aktar",
+      "exportingAudio": "Disa aktariliyor",
+      "libraryCardBadge": "{{kind}} · boyut {{size}}",
+      "sort": {
+        "recent": "Son eklenenler",
+        "oldest": "Once eski eklenenler",
+        "nameAsc": "Ad (A-Z)",
+        "nameDesc": "Ad (Z-A)",
+        "largest": "En buyuk",
+        "smallest": "En kucuk",
+        "ariaLabel": "Belgeleri filtrele",
+        "title": "Filtrele"
+      },
+      "splitView": {
+        "ariaLabel": "Okuyucu gorunumu",
+        "document": "Belge",
+        "viewer": "Goruntuleyici"
+      },
+      "player": {
+        "appVoice": "Uygulama sesi",
+        "sectionPosition": "Bolum {{current}} / {{total}}",
+        "scrub": "Okuma konumu",
+        "speed": "Hiz",
+        "pause": "Duraklat",
+        "resume": "Surdur",
+        "play": "Oynat",
+        "position": "Parca {{current}} / {{total}}",
+        "nothingToRead": "Okunacak bir sey yok",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Hazirlaniyor",
+        "readyAudio": "Hazir",
+        "prepareAudio": "Sesi hazirla",
+        "previous": "Onceki",
+        "next": "Sonraki",
+        "stop": "Durdur"
+      },
+      "sections": {
+        "title": "Bolumler",
+        "selectedCount": "{{selected}} / {{total}} secildi",
+        "readAll": "Tumunu oku",
+        "skipAll": "Tumunu atla",
+        "resetVoices": "Sesleri sifirla",
+        "read": "Bu bolumu oku",
+        "skip": "Bu bolumu atla",
+        "useDocumentVoice": "Belge sesini kullan: {{voice}}",
+        "defaultVoice": "Varsayilan ses",
+        "createVoicePresetFailed": "Bu ses kaydedilemedi. Tekrar dene.",
+        "searchVoices": "Ses ara",
+        "myVoices": "Seslerim",
+        "presetVoices": "On ayar sesleri",
+        "noVoices": "Ses bulunamadi."
+      },
+      "transform": {
+        "title": "Donustur",
+        "failed": "AI donusturmesi basarisiz oldu.",
+        "copyFailed": "Sonuc kopyalanamadi.",
+        "listen": "Dinle",
+        "copy": "Kopyala",
+        "clear": "Sonucu temizle"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Ses veya video dosyalarındaki arka plan gürültüsünü kaldırırken tam bant kalitesini koruyun.",
+      "addFile": "Dosya ekle",
+      "models": "Gürültü giderme modelleri",
+      "changeEngine": "Gürültü giderme modelini değiştir",
+      "changeEngineNamed": "Etkin gürültü giderme modeli: {{name}}. Gürültü giderme modellerinden değiştirin.",
+      "fileDialogLabel": "Ses / video",
+      "working": "{{name}} iyileştiriliyor…",
+      "dropRelease": "İyileştirmek için bırakın",
+      "dropHint": "Arka plan gürültüsünü kaldırmak için ses veya video bırakın",
+      "orLabel": "veya",
+      "pickFile": "Dosya seç",
+      "engine": {
+        "label": "Motor",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - konuşmaya göre ayarlanmış nöral gürültü giderici; konuşma için iyi varsayılan seçim.",
+        "spectral": "Spectral",
+        "spectralHint": "Spektral çıkarma - ayarlanabilir güç, sürekli tıslama, uğultu ve fan gürültüsü için idealdir.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - 48 kHz tam bant, son teknoloji nöral gürültü giderici. İlk kullanımda bir kerelik çalışma ortamı indirilir."
+      },
+      "quality": {
+        "label": "Çıkış kalitesi",
+        "fullBand": "48 kHz · tam bant",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · ses"
+      },
+      "strength": {
+        "label": "Gürültü azaltma gücü"
+      },
+      "runtime": {
+        "required": "Bu motorla iyileştirmeden önce DeepFilterNet’i Gürültü giderme modellerinde ayarlayın.",
+        "checking": "DeepFilterNet kurulumu kontrol ediliyor…",
+        "title": "DeepFilterNet’i ayarla",
+        "description": "Tek seferlik indirme, nöral gürültü giderme motorunu (PyTorch + model) kurar. Gürültü giderme modellerinde ayarlayın, sonra buraya dosya bırakın.",
+        "openHub": "Gürültü giderme modellerini aç"
+      },
+      "errors": {
+        "failed": "Ses iyileştirilemedi.",
+        "notMedia": "İyileştirmek için bir ses veya video dosyası bırakın."
+      },
+      "result": {
+        "ready": "İyileştirilmiş ses hazır",
+        "khz": "{{khz}} kHz",
+        "reveal": "Finder’da göster",
+        "another": "Başka bir dosyayı iyileştir"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Sesler (TTS)",
       "ocr": "Ekran OCR",
       "ariaLabel": "Model kategorileri",
-      "creativeAudio": "Yaratıcı ses"
+      "creativeAudio": "Yaratıcı ses",
+      "audioCleanup": "Ses temizleme"
     },
     "download": {
       "failed": "İndirme başarısız",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Aramayla eşleşen yaratıcı ses modeli yok.",
         "description": "Tüm kullanılabilir yaratıcı ses modellerini göstermek için arama alanını veya mod filtresini temizleyin."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Sesi iyileştirmede arka plan gürültüsünü kaldıran motoru seçin. Seçiminiz hatırlanır; temizlemek için dosya bırakmanız yeterlidir.",
+      "installFailed": "DeepFilterNet çalışma ortamı ayarlanamadı.",
+      "activeDetail": "Sesi iyileştirme tarafından gürültü giderme için kullanılır.",
+      "checking": "DeepFilterNet kurulumu kontrol ediliyor…",
+      "installing": "DeepFilterNet ayarlanıyor… (bir kerelik)",
+      "downloadSize": "PyTorch + model dosyası",
+      "setUp": "DeepFilterNet’i ayarla",
+      "sublineBuiltin": "Yerleşik · indirme yok",
+      "sublineSidecar": "Nöral · tek seferlik kurulum",
+      "chips": {
+        "local": "Cihazda",
+        "realtime": "Gerçek zamanlı",
+        "neural": "Nöral",
+        "offline": "Tüm dosya",
+        "adjustable": "Ayarlanabilir",
+        "fullBand": "48 kHz tam bant",
+        "sota": "En yeni teknoloji"
+      },
+      "badges": {
+        "builtin": "Yerleşik",
+        "builtinDetail": "Vox Jot ile birlikte gelir; indirme gerekmez."
+      },
+      "meta": {
+        "bundled": "Vox Jot ile birlikte",
+        "sidecar": "Yerel Python çalışma ortamı · ilk kullanımda indirilir"
+      },
+      "empty": {
+        "title": "Aramayla eşleşen temizleme motoru yok.",
+        "description": "Tüm motorları göstermek için arama alanını temizleyin."
       }
     }
   },

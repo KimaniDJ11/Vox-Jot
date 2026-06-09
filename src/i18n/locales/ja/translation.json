@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "書類を開けませんでした。",
         "playbackFailed": "リーダーの再生に失敗しました。",
-        "copyFailed": "書類のテキストをコピーできませんでした。"
+        "copyFailed": "書類のテキストをコピーできませんでした。",
+        "audioPrepareFailed": "リーダー音声を準備できませんでした。",
+        "audioExportFailed": "リーダー音声を書き出せませんでした。"
+      },
+      "title": "リーダー",
+      "description": "文書を取り込み、音声で読み上げ、ローカルの読書ライブラリに保存します。",
+      "viewAriaLabel": "リーダー表示",
+      "sectionFallbackTitle": "セクション {{n}}",
+      "audioExportDialogLabel": "WAV音声",
+      "emptyPreviewTitle": "読み始める文書を追加",
+      "emptyPreviewHint": "PDF、DOCX、EPUB、TXT、またはMarkdown",
+      "viewerEmptyTitle": "開いている文書がありません",
+      "viewerEmptyHint": "ライブラリから文書を選択してください",
+      "exportAudio": "WAVを書き出す",
+      "exportingAudio": "書き出し中",
+      "libraryCardBadge": "{{kind}}、{{size}}",
+      "sort": {
+        "recent": "最近追加",
+        "oldest": "古い追加順",
+        "nameAsc": "名前 (A-Z)",
+        "nameDesc": "名前 (Z-A)",
+        "largest": "大きい順",
+        "smallest": "小さい順",
+        "ariaLabel": "文書を絞り込み",
+        "title": "絞り込み"
+      },
+      "splitView": {
+        "ariaLabel": "リーダー表示",
+        "document": "文書",
+        "viewer": "ビューア"
+      },
+      "player": {
+        "appVoice": "アプリの音声",
+        "sectionPosition": "セクション {{current}} / {{total}}",
+        "scrub": "読み上げ位置",
+        "speed": "速度",
+        "pause": "一時停止",
+        "resume": "再開",
+        "play": "再生",
+        "position": "パート {{current}} / {{total}}",
+        "nothingToRead": "読む内容がありません",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "準備中",
+        "readyAudio": "準備完了",
+        "prepareAudio": "音声を準備",
+        "previous": "前へ",
+        "next": "次へ",
+        "stop": "停止"
+      },
+      "sections": {
+        "title": "セクション",
+        "selectedCount": "{{total}}件中{{selected}}件を選択",
+        "readAll": "すべて読む",
+        "skipAll": "すべてスキップ",
+        "resetVoices": "音声をリセット",
+        "read": "このセクションを読む",
+        "skip": "このセクションをスキップ",
+        "useDocumentVoice": "文書の音声を使用: {{voice}}",
+        "defaultVoice": "既定の音声",
+        "createVoicePresetFailed": "この音声を保存できませんでした。もう一度お試しください。",
+        "searchVoices": "音声を検索",
+        "myVoices": "マイ音声",
+        "presetVoices": "プリセット音声",
+        "noVoices": "音声が見つかりません。"
+      },
+      "transform": {
+        "title": "変換",
+        "failed": "AI変換に失敗しました。",
+        "copyFailed": "結果をコピーできませんでした。",
+        "listen": "聴く",
+        "copy": "コピー",
+        "clear": "結果をクリア"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "音声または動画ファイルから背景ノイズを除去し、フルバンド品質を保ちます。",
+      "addFile": "ファイルを追加",
+      "models": "ノイズ除去モデル",
+      "changeEngine": "ノイズ除去モデルを変更",
+      "changeEngineNamed": "有効なノイズ除去モデル: {{name}}。ノイズ除去モデルで変更できます。",
+      "fileDialogLabel": "音声 / 動画",
+      "working": "{{name}} を補正中…",
+      "dropRelease": "離すと補正します",
+      "dropHint": "音声または動画をドロップして背景ノイズを除去",
+      "orLabel": "または",
+      "pickFile": "ファイルを選択",
+      "engine": {
+        "label": "エンジン",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - 音声向けに調整されたニューラルノイズ除去。会話音声の既定値に適しています。",
+        "spectral": "Spectral",
+        "spectralHint": "スペクトル減算 - 強度を調整でき、一定のヒス、ハム、ファンノイズに適しています。",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - 48 kHz フルバンド対応の最先端ニューラルノイズ除去。初回のみランタイムをダウンロードします。"
+      },
+      "quality": {
+        "label": "出力品質",
+        "fullBand": "48 kHz · フルバンド",
+        "cd": "44.1 kHz · CD品質",
+        "voice": "16 kHz · 音声"
+      },
+      "strength": {
+        "label": "ノイズ低減の強さ"
+      },
+      "runtime": {
+        "required": "このエンジンで補正する前に、ノイズ除去モデルで DeepFilterNet を設定してください。",
+        "checking": "DeepFilterNet の設定を確認中…",
+        "title": "DeepFilterNet を設定",
+        "description": "一度だけのダウンロードでニューラルノイズ除去エンジン（PyTorch + モデル）をインストールします。ノイズ除去モデルで設定してから、ここにファイルをドロップしてください。",
+        "openHub": "ノイズ除去モデルを開く"
+      },
+      "errors": {
+        "failed": "音声を補正できませんでした。",
+        "notMedia": "補正する音声または動画ファイルをドロップしてください。"
+      },
+      "result": {
+        "ready": "補正済み音声の準備ができました",
+        "khz": "{{khz}} kHz",
+        "reveal": "Finder に表示",
+        "another": "別のファイルを補正"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "声 (TTS)",
       "ocr": "画面 OCR",
       "ariaLabel": "モデルカテゴリ",
-      "creativeAudio": "クリエイティブ音声"
+      "creativeAudio": "クリエイティブ音声",
+      "audioCleanup": "音声クリーンアップ"
     },
     "download": {
       "failed": "ダウンロードに失敗しました",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "検索に一致するクリエイティブ音声モデルはありません。",
         "description": "検索欄またはモードフィルターをクリアすると、利用可能なすべてのクリエイティブ音声モデルを表示できます。"
+      }
+    },
+    "audioCleanup": {
+      "intro": "音声補正で背景ノイズを除去するエンジンを選択します。選択は保存されるので、ファイルをドロップするだけでクリーンアップできます。",
+      "installFailed": "DeepFilterNet ランタイムを設定できませんでした。",
+      "activeDetail": "音声補正のノイズ除去に使用されます。",
+      "checking": "DeepFilterNet の設定を確認中…",
+      "installing": "DeepFilterNet を設定中…（一度だけ）",
+      "downloadSize": "PyTorch + モデル",
+      "setUp": "DeepFilterNet を設定",
+      "sublineBuiltin": "内蔵 · ダウンロード不要",
+      "sublineSidecar": "ニューラル · 初回設定",
+      "chips": {
+        "local": "オンデバイス",
+        "realtime": "リアルタイム",
+        "neural": "ニューラル",
+        "offline": "ファイル全体",
+        "adjustable": "調整可能",
+        "fullBand": "48 kHz フルバンド",
+        "sota": "最先端"
+      },
+      "badges": {
+        "builtin": "内蔵",
+        "builtinDetail": "Vox Jot に同梱されており、ダウンロードは不要です。"
+      },
+      "meta": {
+        "bundled": "Vox Jot に同梱",
+        "sidecar": "ローカル Python ランタイム · 初回使用時にダウンロード"
+      },
+      "empty": {
+        "title": "検索に一致するクリーンアップエンジンはありません。",
+        "description": "検索欄を空にすると、すべてのエンジンが表示されます。"
       }
     }
   },

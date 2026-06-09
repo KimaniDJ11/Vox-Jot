@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Nie udało się otworzyć dokumentu.",
         "playbackFailed": "Odtwarzanie czytnika nie powiodło się.",
-        "copyFailed": "Nie udało się skopiować tekstu dokumentu."
+        "copyFailed": "Nie udało się skopiować tekstu dokumentu.",
+        "audioPrepareFailed": "Nie udalo sie przygotowac dzwieku czytnika.",
+        "audioExportFailed": "Nie udalo sie wyeksportowac dzwieku czytnika."
+      },
+      "title": "Czytnik",
+      "description": "Importuj dokumenty, odsluchuj je na glos i zachowuj lokalna biblioteke czytania.",
+      "viewAriaLabel": "Widok czytnika",
+      "sectionFallbackTitle": "Sekcja {{n}}",
+      "audioExportDialogLabel": "Dzwiek WAV",
+      "emptyPreviewTitle": "Dodaj dokument, aby zaczac czytanie",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT lub Markdown",
+      "viewerEmptyTitle": "Brak otwartego dokumentu",
+      "viewerEmptyHint": "Wybierz dokument z biblioteki",
+      "exportAudio": "Eksportuj WAV",
+      "exportingAudio": "Eksportowanie",
+      "libraryCardBadge": "{{kind}} · rozmiar {{size}}",
+      "sort": {
+        "recent": "Ostatnio dodane",
+        "oldest": "Najpierw najstarsze",
+        "nameAsc": "Nazwa (A-Z)",
+        "nameDesc": "Nazwa (Z-A)",
+        "largest": "Najwieksze",
+        "smallest": "Najmniejsze",
+        "ariaLabel": "Filtruj dokumenty",
+        "title": "Filtruj"
+      },
+      "splitView": {
+        "ariaLabel": "Widok czytnika",
+        "document": "Dokument",
+        "viewer": "Podglad"
+      },
+      "player": {
+        "appVoice": "Glos aplikacji",
+        "sectionPosition": "Sekcja {{current}} z {{total}}",
+        "scrub": "Pozycja czytania",
+        "speed": "Szybkosc",
+        "pause": "Pauza",
+        "resume": "Wznow",
+        "play": "Odtworz",
+        "position": "Czesc {{current}} z {{total}}",
+        "nothingToRead": "Brak tresci do czytania",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Przygotowywanie",
+        "readyAudio": "Gotowe",
+        "prepareAudio": "Przygotuj dzwiek",
+        "previous": "Poprzedni",
+        "next": "Nastepny",
+        "stop": "Zatrzymaj"
+      },
+      "sections": {
+        "title": "Sekcje",
+        "selectedCount": "Wybrano {{selected}} z {{total}}",
+        "readAll": "Czytaj wszystko",
+        "skipAll": "Pomin wszystko",
+        "resetVoices": "Resetuj glosy",
+        "read": "Czytaj te sekcje",
+        "skip": "Pomin te sekcje",
+        "useDocumentVoice": "Uzyj glosu dokumentu: {{voice}}",
+        "defaultVoice": "Domyslny glos",
+        "createVoicePresetFailed": "Nie mozna zapisac tego glosu. Sprobuj ponownie.",
+        "searchVoices": "Szukaj glosow",
+        "myVoices": "Moje glosy",
+        "presetVoices": "Glosy presetow",
+        "noVoices": "Nie znaleziono glosow."
+      },
+      "transform": {
+        "title": "Przeksztalc",
+        "failed": "Transformacja AI nie powiodla sie.",
+        "copyFailed": "Nie udalo sie skopiowac wyniku.",
+        "listen": "Sluchaj",
+        "copy": "Kopiuj",
+        "clear": "Wyczysc wynik"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Usuń szum tła z plików audio lub wideo, zachowując jakość pełnego pasma.",
+      "addFile": "Dodaj plik",
+      "models": "Modele usuwania szumu",
+      "changeEngine": "Zmień model usuwania szumu",
+      "changeEngineNamed": "Aktywny model usuwania szumu: {{name}}. Zmień go w Modelach usuwania szumu.",
+      "fileDialogLabel": "Audio / wideo",
+      "working": "Ulepszanie {{name}}…",
+      "dropRelease": "Upuść, aby ulepszyć",
+      "dropHint": "Upuść audio lub wideo, aby usunąć szum tła",
+      "orLabel": "lub",
+      "pickFile": "Wybierz plik",
+      "engine": {
+        "label": "Silnik",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - neuronowy odszumiacz dostrojony do głosu, dobry domyślny wybór dla mowy.",
+        "spectral": "Spectral",
+        "spectralHint": "Odejmowanie widmowe - regulowana siła, najlepsze dla stałego syku, brumu i szumu wentylatora.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - najnowocześniejszy neuronowy odszumiacz pełnopasmowy 48 kHz. Pierwsze użycie pobiera jednorazowe środowisko."
+      },
+      "quality": {
+        "label": "Jakość wyjściowa",
+        "fullBand": "48 kHz · pełne pasmo",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · głos"
+      },
+      "strength": {
+        "label": "Siła redukcji szumu"
+      },
+      "runtime": {
+        "required": "Skonfiguruj DeepFilterNet w Modelach usuwania szumu przed ulepszaniem tym silnikiem.",
+        "checking": "Sprawdzanie konfiguracji DeepFilterNet…",
+        "title": "Skonfiguruj DeepFilterNet",
+        "description": "Jednorazowe pobranie instaluje neuronowy silnik usuwania szumu (PyTorch + model). Skonfiguruj go w Modelach usuwania szumu, a potem upuść tutaj plik.",
+        "openHub": "Otwórz modele usuwania szumu"
+      },
+      "errors": {
+        "failed": "Nie udało się ulepszyć audio.",
+        "notMedia": "Upuść plik audio lub wideo do ulepszenia."
+      },
+      "result": {
+        "ready": "Ulepszone audio jest gotowe",
+        "khz": "{{khz}} kHz",
+        "reveal": "Pokaż w Finderze",
+        "another": "Ulepsz inny plik"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Głosy (TTS)",
       "ocr": "Ekran OCR",
       "ariaLabel": "Kategorie modeli",
-      "creativeAudio": "Audio kreatywne"
+      "creativeAudio": "Audio kreatywne",
+      "audioCleanup": "Czyszczenie audio"
     },
     "download": {
       "failed": "Pobieranie nie powiodło się",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Brak modeli audio kreatywnego pasujących do wyszukiwania.",
         "description": "Wyczyść pole wyszukiwania lub filtr trybu, aby pokazać wszystkie dostępne modele audio kreatywnego."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Wybierz silnik, który usuwa szum tła w Ulepsz audio. Wybór zostanie zapamiętany; wystarczy upuścić plik do oczyszczenia.",
+      "installFailed": "Nie udało się skonfigurować środowiska DeepFilterNet.",
+      "activeDetail": "Używane przez Ulepsz audio do usuwania szumu.",
+      "checking": "Sprawdzanie konfiguracji DeepFilterNet…",
+      "installing": "Konfigurowanie DeepFilterNet… (jednorazowo)",
+      "downloadSize": "PyTorch + dane modelu",
+      "setUp": "Skonfiguruj DeepFilterNet",
+      "sublineBuiltin": "Wbudowane · bez pobierania",
+      "sublineSidecar": "Neuronowe · jednorazowa konfiguracja",
+      "chips": {
+        "local": "Na urządzeniu",
+        "realtime": "Czas rzeczywisty",
+        "neural": "Neuronowe",
+        "offline": "Cały plik",
+        "adjustable": "Regulowane",
+        "fullBand": "Pełne pasmo 48 kHz",
+        "sota": "Najwyższa klasa"
+      },
+      "badges": {
+        "builtin": "Wbudowane",
+        "builtinDetail": "Dostarczane z Vox Jot, bez wymaganego pobierania."
+      },
+      "meta": {
+        "bundled": "Dołączone do Vox Jot",
+        "sidecar": "Lokalne środowisko Python · pobierane przy pierwszym użyciu"
+      },
+      "empty": {
+        "title": "Brak silników czyszczenia pasujących do wyszukiwania.",
+        "description": "Wyczyść pole wyszukiwania, aby pokazać wszystkie silniki."
       }
     }
   },

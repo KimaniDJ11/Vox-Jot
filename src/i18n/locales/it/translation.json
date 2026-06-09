@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "Impossibile aprire il documento.",
         "playbackFailed": "Riproduzione del lettore non riuscita.",
-        "copyFailed": "Impossibile copiare il testo del documento."
+        "copyFailed": "Impossibile copiare il testo del documento.",
+        "audioPrepareFailed": "Impossibile preparare l audio del lettore.",
+        "audioExportFailed": "Impossibile esportare l audio del lettore."
+      },
+      "title": "Lettore",
+      "description": "Importa documenti, ascoltali ad alta voce e mantieni una libreria di lettura locale.",
+      "viewAriaLabel": "Vista lettore",
+      "sectionFallbackTitle": "Sezione {{n}}",
+      "audioExportDialogLabel": "Audio WAV",
+      "emptyPreviewTitle": "Aggiungi un documento per iniziare la lettura",
+      "emptyPreviewHint": "PDF, DOCX, EPUB, TXT o Markdown",
+      "viewerEmptyTitle": "Nessun documento aperto",
+      "viewerEmptyHint": "Scegli un documento dalla tua libreria",
+      "exportAudio": "Esporta WAV",
+      "exportingAudio": "Esportazione",
+      "libraryCardBadge": "{{kind}} · dimensione {{size}}",
+      "sort": {
+        "recent": "Aggiunti di recente",
+        "oldest": "Aggiunti per primi",
+        "nameAsc": "Nome (A-Z)",
+        "nameDesc": "Nome (Z-A)",
+        "largest": "Piu grandi",
+        "smallest": "Piu piccoli",
+        "ariaLabel": "Filtra documenti",
+        "title": "Filtra"
+      },
+      "splitView": {
+        "ariaLabel": "Vista lettore",
+        "document": "Documento",
+        "viewer": "Visualizzatore"
+      },
+      "player": {
+        "appVoice": "Voce app",
+        "sectionPosition": "Sezione {{current}} di {{total}}",
+        "scrub": "Posizione di lettura",
+        "speed": "Velocita",
+        "pause": "Pausa",
+        "resume": "Riprendi",
+        "play": "Riproduci",
+        "position": "Parte {{current}} di {{total}}",
+        "nothingToRead": "Niente da leggere",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "Preparazione",
+        "readyAudio": "Pronto",
+        "prepareAudio": "Prepara audio",
+        "previous": "Precedente",
+        "next": "Successivo",
+        "stop": "Interrompi"
+      },
+      "sections": {
+        "title": "Sezioni",
+        "selectedCount": "{{selected}} di {{total}} selezionate",
+        "readAll": "Leggi tutto",
+        "skipAll": "Salta tutto",
+        "resetVoices": "Reimposta voci",
+        "read": "Leggi questa sezione",
+        "skip": "Salta questa sezione",
+        "useDocumentVoice": "Usa voce del documento: {{voice}}",
+        "defaultVoice": "Voce predefinita",
+        "createVoicePresetFailed": "Impossibile salvare questa voce. Riprova.",
+        "searchVoices": "Cerca voci",
+        "myVoices": "Le mie voci",
+        "presetVoices": "Voci preimpostate",
+        "noVoices": "Nessuna voce trovata."
+      },
+      "transform": {
+        "title": "Trasforma",
+        "failed": "La trasformazione IA non e riuscita.",
+        "copyFailed": "Impossibile copiare il risultato.",
+        "listen": "Ascolta",
+        "copy": "Copia",
+        "clear": "Cancella risultato"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "Rimuovi il rumore di fondo da file audio o video mantenendo la qualità a banda completa.",
+      "addFile": "Aggiungi file",
+      "models": "Modelli di rimozione rumore",
+      "changeEngine": "Cambia modello di rimozione rumore",
+      "changeEngineNamed": "Modello di rimozione rumore attivo: {{name}}. Cambialo in Modelli di rimozione rumore.",
+      "fileDialogLabel": "Audio / video",
+      "working": "Miglioramento di {{name}}…",
+      "dropRelease": "Rilascia per migliorare",
+      "dropHint": "Rilascia audio o video per rimuovere il rumore di fondo",
+      "orLabel": "o",
+      "pickFile": "Scegli file",
+      "engine": {
+        "label": "Motore",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - denoiser neurale ottimizzato per la voce, ottimo predefinito per il parlato.",
+        "spectral": "Spectral",
+        "spectralHint": "Sottrazione spettrale - intensità regolabile, ideale per fruscii, ronzii e rumore costante di ventole.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - denoiser neurale all’avanguardia, banda completa a 48 kHz. Il primo uso scarica un runtime una sola volta."
+      },
+      "quality": {
+        "label": "Qualità di uscita",
+        "fullBand": "48 kHz · banda completa",
+        "cd": "44,1 kHz · CD",
+        "voice": "16 kHz · voce"
+      },
+      "strength": {
+        "label": "Intensità riduzione rumore"
+      },
+      "runtime": {
+        "required": "Configura DeepFilterNet in Modelli di rimozione rumore prima di migliorare con questo motore.",
+        "checking": "Verifica configurazione DeepFilterNet…",
+        "title": "Configura DeepFilterNet",
+        "description": "Un download una tantum installa il motore neurale di rimozione rumore (PyTorch + modello). Configuralo in Modelli di rimozione rumore, poi rilascia qui un file.",
+        "openHub": "Apri modelli di rimozione rumore"
+      },
+      "errors": {
+        "failed": "Impossibile migliorare l’audio.",
+        "notMedia": "Rilascia un file audio o video da migliorare."
+      },
+      "result": {
+        "ready": "Audio migliorato pronto",
+        "khz": "{{khz}} kHz",
+        "reveal": "Mostra nel Finder",
+        "another": "Migliora un altro file"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "Voci (TTS)",
       "ocr": "Schermo OCR",
       "ariaLabel": "Categorie modelli",
-      "creativeAudio": "Audio creativo"
+      "creativeAudio": "Audio creativo",
+      "audioCleanup": "Pulizia audio"
     },
     "download": {
       "failed": "Download non riuscito",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "Nessun modello audio creativo corrisponde alla ricerca.",
         "description": "Cancella il campo di ricerca o il filtro modalità per mostrare tutti i modelli audio creativi disponibili."
+      }
+    },
+    "audioCleanup": {
+      "intro": "Scegli il motore che rimuove il rumore di fondo in Migliora audio. La scelta viene ricordata: rilascia un file per pulirlo.",
+      "installFailed": "Impossibile configurare il runtime DeepFilterNet.",
+      "activeDetail": "Usato da Migliora audio per rimuovere il rumore.",
+      "checking": "Verifica configurazione DeepFilterNet…",
+      "installing": "Configurazione DeepFilterNet… (una tantum)",
+      "downloadSize": "PyTorch + modello",
+      "setUp": "Configura DeepFilterNet",
+      "sublineBuiltin": "Integrato · nessun download",
+      "sublineSidecar": "Neurale · configurazione una tantum",
+      "chips": {
+        "local": "Sul dispositivo",
+        "realtime": "Tempo reale",
+        "neural": "Neurale",
+        "offline": "File intero",
+        "adjustable": "Regolabile",
+        "fullBand": "Banda completa 48 kHz",
+        "sota": "All’avanguardia"
+      },
+      "badges": {
+        "builtin": "Integrato",
+        "builtinDetail": "Incluso in Vox Jot, non richiede download."
+      },
+      "meta": {
+        "bundled": "Incluso con Vox Jot",
+        "sidecar": "Runtime Python locale · scaricato al primo uso"
+      },
+      "empty": {
+        "title": "Nessun motore di pulizia corrisponde alla ricerca.",
+        "description": "Cancella il campo di ricerca per mostrare tutti i motori."
       }
     }
   },

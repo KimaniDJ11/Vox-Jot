@@ -2277,7 +2277,126 @@
       "errors": {
         "openFailed": "تعذر فتح المستند.",
         "playbackFailed": "فشل تشغيل القارئ.",
-        "copyFailed": "تعذر نسخ نص المستند."
+        "copyFailed": "تعذر نسخ نص المستند.",
+        "audioPrepareFailed": "تعذر تجهيز صوت القارئ.",
+        "audioExportFailed": "تعذر تصدير صوت القارئ."
+      },
+      "title": "القارئ",
+      "description": "استورد المستندات واقرأها بصوت عال واحتفظ بمكتبة قراءة محلية.",
+      "viewAriaLabel": "عرض القارئ",
+      "sectionFallbackTitle": "القسم {{n}}",
+      "audioExportDialogLabel": "صوت WAV",
+      "emptyPreviewTitle": "أضف مستندا لبدء القراءة",
+      "emptyPreviewHint": "PDF أو DOCX أو EPUB أو TXT أو Markdown",
+      "viewerEmptyTitle": "لا يوجد مستند مفتوح",
+      "viewerEmptyHint": "اختر مستندا من مكتبتك",
+      "exportAudio": "تصدير WAV",
+      "exportingAudio": "جار التصدير",
+      "libraryCardBadge": "{{kind}}، الحجم {{size}}",
+      "sort": {
+        "recent": "الأحدث إضافة",
+        "oldest": "الأقدم إضافة",
+        "nameAsc": "الاسم (A-Z)",
+        "nameDesc": "الاسم (Z-A)",
+        "largest": "الأكبر حجما",
+        "smallest": "الأصغر حجما",
+        "ariaLabel": "تصفية المستندات",
+        "title": "تصفية"
+      },
+      "splitView": {
+        "ariaLabel": "عرض القارئ",
+        "document": "المستند",
+        "viewer": "العارض"
+      },
+      "player": {
+        "appVoice": "صوت التطبيق",
+        "sectionPosition": "القسم {{current}} من {{total}}",
+        "scrub": "موضع القراءة",
+        "speed": "السرعة",
+        "pause": "إيقاف مؤقت",
+        "resume": "استئناف",
+        "play": "تشغيل",
+        "position": "الجزء {{current}} من {{total}}",
+        "nothingToRead": "لا يوجد ما يقرأ",
+        "speedOption": "{{rate}}×",
+        "preparingAudio": "جار التجهيز",
+        "readyAudio": "جاهز",
+        "prepareAudio": "تجهيز الصوت",
+        "previous": "السابق",
+        "next": "التالي",
+        "stop": "إيقاف"
+      },
+      "sections": {
+        "title": "الأقسام",
+        "selectedCount": "{{selected}} من {{total}} محدد",
+        "readAll": "قراءة الكل",
+        "skipAll": "تخطي الكل",
+        "resetVoices": "إعادة ضبط الأصوات",
+        "read": "قراءة هذا القسم",
+        "skip": "تخطي هذا القسم",
+        "useDocumentVoice": "استخدم صوت المستند: {{voice}}",
+        "defaultVoice": "الصوت الافتراضي",
+        "createVoicePresetFailed": "تعذر حفظ هذا الصوت. حاول مرة أخرى.",
+        "searchVoices": "البحث في الأصوات",
+        "myVoices": "أصواتي",
+        "presetVoices": "أصوات جاهزة",
+        "noVoices": "لم يتم العثور على أصوات."
+      },
+      "transform": {
+        "title": "تحويل",
+        "failed": "فشل تحويل الذكاء الاصطناعي.",
+        "copyFailed": "تعذر نسخ النتيجة.",
+        "listen": "استماع",
+        "copy": "نسخ",
+        "clear": "مسح النتيجة"
+      }
+    },
+    "enhanceAudio": {
+      "subtitle": "أزل ضوضاء الخلفية من ملفات الصوت أو الفيديو مع الحفاظ على جودة النطاق الكامل.",
+      "addFile": "إضافة ملف",
+      "models": "نماذج إزالة الضوضاء",
+      "changeEngine": "تغيير نموذج إزالة الضوضاء",
+      "changeEngineNamed": "نموذج إزالة الضوضاء النشط: {{name}}. غيّره من نماذج إزالة الضوضاء.",
+      "fileDialogLabel": "صوت / فيديو",
+      "working": "جارٍ تحسين {{name}}…",
+      "dropRelease": "أفلت للمعالجة",
+      "dropHint": "أفلت ملف صوت أو فيديو لإزالة ضوضاء الخلفية",
+      "orLabel": "أو",
+      "pickFile": "اختيار ملف",
+      "engine": {
+        "label": "المحرّك",
+        "rnnoise": "RNNoise",
+        "rnnoiseHint": "RNNoise - مزيل ضوضاء عصبي مضبوط للصوت البشري وخيار افتراضي جيد للكلام.",
+        "spectral": "Spectral",
+        "spectralHint": "الطرح الطيفي - قوة قابلة للضبط ومناسب للهسهسة والطنين وضجيج المراوح المستمر.",
+        "deepfilternet": "DeepFilterNet",
+        "deepfilternetHint": "DeepFilterNet - مزيل ضوضاء عصبي متقدم بنطاق كامل 48 كيلوهرتز. يحتاج أول استخدام إلى تنزيل وقت تشغيل مرة واحدة."
+      },
+      "quality": {
+        "label": "جودة الإخراج",
+        "fullBand": "48 كيلوهرتز · نطاق كامل",
+        "cd": "44.1 كيلوهرتز · جودة CD",
+        "voice": "16 كيلوهرتز · صوت"
+      },
+      "strength": {
+        "label": "قوة تقليل الضوضاء"
+      },
+      "runtime": {
+        "required": "أعدّ DeepFilterNet في نماذج إزالة الضوضاء قبل التحسين بهذا المحرّك.",
+        "checking": "جارٍ التحقق من إعداد DeepFilterNet…",
+        "title": "إعداد DeepFilterNet",
+        "description": "يُثبّت تنزيل لمرة واحدة محرّك إزالة الضوضاء العصبي (PyTorch + النموذج). أعدّه في نماذج إزالة الضوضاء، ثم أفلت ملفاً هنا.",
+        "openHub": "فتح نماذج إزالة الضوضاء"
+      },
+      "errors": {
+        "failed": "فشل تحسين الصوت.",
+        "notMedia": "أفلت ملف صوت أو فيديو لتحسينه."
+      },
+      "result": {
+        "ready": "الصوت المحسّن جاهز",
+        "khz": "{{khz}} kHz",
+        "reveal": "إظهاره في Finder",
+        "another": "تحسين ملف آخر"
       }
     }
   },
@@ -2377,7 +2496,8 @@
       "tts": "الأصوات (TTS)",
       "ocr": "شاشة OCR",
       "ariaLabel": "فئات النماذج",
-      "creativeAudio": "الصوت الإبداعي"
+      "creativeAudio": "الصوت الإبداعي",
+      "audioCleanup": "تنظيف الصوت"
     },
     "download": {
       "failed": "فشل التنزيل",
@@ -2412,6 +2532,38 @@
       "empty": {
         "title": "لا توجد نماذج صوت إبداعي تطابق البحث.",
         "description": "امسح حقل البحث أو مرشح النمط لعرض كل نماذج الصوت الإبداعي المتاحة."
+      }
+    },
+    "audioCleanup": {
+      "intro": "اختر المحرّك الذي يزيل ضوضاء الخلفية في تحسين الصوت. يتم حفظ اختيارك؛ أفلت ملفاً لتنظيفه.",
+      "installFailed": "فشل إعداد وقت تشغيل DeepFilterNet.",
+      "activeDetail": "يستخدمه تحسين الصوت لإزالة الضوضاء.",
+      "checking": "جارٍ التحقق من إعداد DeepFilterNet…",
+      "installing": "جارٍ إعداد DeepFilterNet… (مرة واحدة)",
+      "downloadSize": "PyTorch + النموذج",
+      "setUp": "إعداد DeepFilterNet",
+      "sublineBuiltin": "مدمج · لا تنزيل",
+      "sublineSidecar": "عصبي · إعداد مرة واحدة",
+      "chips": {
+        "local": "على الجهاز",
+        "realtime": "في الوقت الفعلي",
+        "neural": "عصبي",
+        "offline": "ملف كامل",
+        "adjustable": "قابل للضبط",
+        "fullBand": "نطاق كامل 48 كيلوهرتز",
+        "sota": "متقدم جداً"
+      },
+      "badges": {
+        "builtin": "مدمج",
+        "builtinDetail": "يأتي مع Vox Jot، ولا يتطلب تنزيلاً."
+      },
+      "meta": {
+        "bundled": "مضمّن مع Vox Jot",
+        "sidecar": "وقت تشغيل Python محلي · يُنزّل عند أول استخدام"
+      },
+      "empty": {
+        "title": "لا توجد محرّكات تنظيف تطابق البحث.",
+        "description": "امسح حقل البحث لإظهار كل المحرّكات."
       }
     }
   },

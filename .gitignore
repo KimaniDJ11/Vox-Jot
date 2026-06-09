@@ -78,6 +78,7 @@ speech-runtime/vendor/
 
 # Temp runtime state
 tmp/
+scratch/
 
 # Model weights (stored on HuggingFace, not in git)
 *.safetensors

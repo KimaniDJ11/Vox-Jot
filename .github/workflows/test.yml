@@ -2,10 +2,30 @@ name: "test"
 on: [pull_request]
 
 jobs:
+  frontend-build-and-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Run frontend unit tests
+        run: bun run test:unit
+
   rust-tests:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies
         run: |
@@ -15,6 +35,10 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+
+      - name: Run Rust Clippy
+        working-directory: src-tauri
+        run: cargo clippy --no-default-features --features ci-mock-transcription -- -D warnings
 
       - name: Run Rust tests
         working-directory: src-tauri

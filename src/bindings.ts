@@ -997,25 +997,56 @@ async exportReaderAudio(units: ReaderAudioExportUnit[], outputPath: string, play
     else return { status: "error", error: e  as any };
 }
 },
-async getReaderAudioCacheStatus(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null) : Promise<Result<ReaderAudioCacheStatus, string>> {
+/**
+ * Export a full audiobook (chaptered) from the document's reading units. WAV is
+ * written directly; `mp3` and `m4b` are encoded via ffmpeg with embedded
+ * chapter markers (and cover art when provided). Reuses the per-unit audio
+ * cache so a prepared document exports without re-synthesizing.
+ */
+async exportReaderAudiobook(documentId: string, chapters: ReaderAudiobookChapter[], outputPath: string, format: string, playbackRate: number | null, language: string | null, title: string | null, author: string | null, coverDataUrl: string | null) : Promise<Result<ReaderAudiobookResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_reader_audio_cache_status", { documentId, units, playbackRate }) };
+    return { status: "ok", data: await TAURI_INVOKE("export_reader_audiobook", { documentId, chapters, outputPath, format, playbackRate, language, title, author, coverDataUrl }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async prepareReaderAudioCache(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null) : Promise<Result<ReaderAudioCachePrepareResult, string>> {
+async getReaderAudioCacheStatus(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null, language: string | null) : Promise<Result<ReaderAudioCacheStatus, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("prepare_reader_audio_cache", { documentId, units, playbackRate }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_reader_audio_cache_status", { documentId, units, playbackRate, language }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async playReaderAudioUnit(documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null) : Promise<Result<ReaderAudioCachePlayResult, string>> {
+async prepareReaderAudioCache(documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null, language: string | null) : Promise<Result<ReaderAudioCachePrepareResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("play_reader_audio_unit", { documentId, unit, playbackRate }) };
+    return { status: "ok", data: await TAURI_INVOKE("prepare_reader_audio_cache", { documentId, units, playbackRate, language }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async playReaderAudioUnit(documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null, language: string | null) : Promise<Result<ReaderAudioCachePlayResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("play_reader_audio_unit", { documentId, unit, playbackRate, language }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Ensure a reader unit is synthesized to its cache WAV and return the on-disk
+ * path plus per-word timings, WITHOUT playing it. The frontend `<audio>`
+ * element plays the file (read via `readFile` → blob URL), which gives a
+ * precise timeline for word-by-word highlighting, gapless preloading, and
+ * resume. Timings are precise (Whisper forced alignment) when a `.words.json`
+ * sidecar exists (produced by `prepare_reader_audio_cache`), otherwise a
+ * deterministic proportional fallback derived from the audio duration.
+ */
+async synthesizeReaderAudioUnit(documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null, language: string | null) : Promise<Result<ReaderAudioUnitRender, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("synthesize_reader_audio_unit", { documentId, unit, playbackRate, language }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1669,6 +1700,19 @@ async removeReaderDocument(id: string) : Promise<Result<null, string>> {
 async readerTransformText(text: string, task: string) : Promise<Result<string, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("reader_transform_text", { text, task }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Render a single PDF page to a PNG (data URL) with per-word bounding boxes for
+ * the reader's page view (geometry-based highlighting). Reads the original file
+ * recorded in the cached document envelope.
+ */
+async renderReaderPage(documentId: string, pageIndex: number, scale: number | null) : Promise<Result<ReaderRenderedPage, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("render_reader_page", { documentId, pageIndex, scale }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2903,13 +2947,45 @@ export type ReaderAudioCacheStatus = { total_count: number; ready_count: number;
 export type ReaderAudioCacheUnit = { id: string; text: string; preset_id: string | null }
 export type ReaderAudioExportResult = { output_path: string; unit_count: number; duration_ms: number }
 export type ReaderAudioExportUnit = { text: string; preset_id: string | null }
+/**
+ * Result of ensuring a reader unit is synthesized: the on-disk cache WAV path
+ * (read by the frontend `<audio>` via `readFile` → blob URL), its duration,
+ * and per-word timings for word-by-word highlighting.
+ */
+export type ReaderAudioUnitRender = { path: string; duration_ms: number; words: ReaderWordTiming[]; cache_hit: boolean;
+/**
+ * True when the timings came from precise (Whisper) forced alignment,
+ * false when from the deterministic proportional fallback.
+ */
+aligned: boolean }
+export type ReaderAudiobookChapter = { title: string;
+/**
+ * Reading units belonging to this chapter, in order. Carry unit ids so the
+ * export reuses the per-unit audio cache instead of re-synthesizing.
+ */
+units: ReaderAudioCacheUnit[] }
+export type ReaderAudiobookResult = { output_path: string; chapter_count: number; unit_count: number; duration_ms: number; format: string }
 export type ReaderDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; extraction_engine: string; thumbnail_data_url: string | null; text: string; pages: ReaderDocumentPage[]; sections: ReaderDocumentSection[] }
 export type ReaderDocumentBbox = { x0: number; y0: number; x1: number; y1: number }
 export type ReaderDocumentBlock = { index: number; text: string; kind: string; bbox: ReaderDocumentBbox | null }
 export type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text"
 export type ReaderDocumentPage = { index: number; width: number | null; height: number | null; blocks: ReaderDocumentBlock[] }
 export type ReaderDocumentSection = { index: number; title: string; text: string }
+export type ReaderRenderedPage = { index: number;
+/**
+ * Page width/height in PDF points; word bboxes are in the same space, so
+ * the frontend overlays words as percentages independent of render scale.
+ */
+width: number; height: number; scale: number; image_data_url: string; words: ReaderRenderedWord[] }
+export type ReaderRenderedWord = { text: string; x0: number; y0: number; x1: number; y1: number }
 export type ReaderStoredDocument = { id: string; path: string; name: string; kind: ReaderDocumentKind; size_bytes: number; source_modified_ms: number | null; word_count: number; page_count: number; section_count: number; extraction_engine: string; thumbnail_data_url: string | null; imported_at_ms: number; updated_at_ms: number }
+/**
+ * One spoken word (whitespace token) with its time span inside a unit's audio.
+ * `words` always has one entry per whitespace token of the unit text and is
+ * index-aligned with the on-screen word spans, so the frontend highlights the
+ * active word by `currentTime`.
+ */
+export type ReaderWordTiming = { text: string; start_ms: number; end_ms: number }
 export type RecordingOverlayStyle =
 /**
  * Pill-shaped overlay with a small waveform — the historical

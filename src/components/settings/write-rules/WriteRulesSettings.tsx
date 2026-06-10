@@ -49,7 +49,7 @@ import {
   SectionFeatureCards,
   type SectionFeatureCard,
 } from "@/components/app-sections/shared";
-import { SegmentedControl, SettingsGroup, Textarea } from "@/components/ui";
+import { SegmentedControl, Textarea } from "@/components/ui";
 import { WriteRuleEditor } from "./WriteRuleEditor";
 import {
   groupWriteRules,
@@ -643,13 +643,9 @@ export const WriteRulesSettings: React.FC = () => {
         })}
         cards={modeFeatureCards}
       />
-      <SettingsGroup
-        noCard
-        title={t("refine.writeRules.title")}
-        description=""
-        showTitle={false}
-        descriptionOnlyGap="controls"
-      >
+      {/* Sticky toolbar: must be a direct child of this tall root (not nested in
+          SettingsGroup, whose short box would give `sticky` no room to hold). */}
+      <div className="sticky top-0 z-30 -mt-3 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -678,7 +674,7 @@ export const WriteRulesSettings: React.FC = () => {
             ]}
           />
         </div>
-      </SettingsGroup>
+      </div>
 
       {rules.length === 0 ? (
         <EmptyState

@@ -319,7 +319,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   // ─── PAGE MODE ───────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/80">
+      <div className="sticky top-0 z-10 -mx-1 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"

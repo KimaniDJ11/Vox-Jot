@@ -182,7 +182,9 @@ describe("CastBuilder", () => {
 
     const listbox = document.body.querySelector('[role="listbox"]');
     expect(listbox).not.toBeNull();
-    expect(listbox?.parentElement).toBe(document.body);
+    // The picker portals its popover (search box + listbox) directly to body,
+    // so it escapes the clipped cast table.
+    expect(listbox?.parentElement?.parentElement).toBe(document.body);
     expect(view.container.contains(listbox)).toBe(false);
     expect(listbox?.textContent).toContain("Dia");
 

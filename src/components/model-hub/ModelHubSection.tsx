@@ -306,7 +306,7 @@ const ModelHubSection: React.FC = () => {
         {showCategoryHeader ? (
           <div
             data-model-hub-sticky-header=""
-            className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"
+            className="sticky top-0 z-20 -mx-5 px-5 pb-3 pt-0"
           >
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2 overflow-x-auto">

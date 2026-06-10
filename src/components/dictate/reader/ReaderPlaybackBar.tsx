@@ -14,6 +14,7 @@ import {
 
 import { ActionIconButton } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
+import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import type { CreateVoiceHubVoiceRow } from "@/components/settings/general/listen/createVoiceVoiceHub";
 import {
@@ -29,6 +30,7 @@ export type ReaderPlaybackBarProps = {
   index: number;
   total: number;
   playbackRate: number;
+  audiobookFormat: "m4b" | "mp3" | "wav";
   pageLabel: string | null;
   onToggle: () => void;
   onStop: () => void;
@@ -36,8 +38,10 @@ export type ReaderPlaybackBarProps = {
   onNext: () => void;
   onSeek: (index: number) => void;
   onPlaybackRateChange: (rate: number) => void;
+  onAudiobookFormatChange: (format: "m4b" | "mp3" | "wav") => void;
   presets: TtsVoicePreset[];
   presetVoices: CreateVoiceHubVoiceRow[];
+  ttsModels?: CatalogModelDescriptor[];
   selectedPresetId: string | null;
   onSelectPreset: (presetId: string | null) => void;
   onCreatePresetFromVoice: (voice: CreateVoiceHubVoiceRow) => Promise<string>;
@@ -56,6 +60,7 @@ export type ReaderPlaybackBarProps = {
 };
 
 const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
+const readerAudiobookFormatOptions = ["m4b", "mp3", "wav"] as const;
 
 /**
  * Floating, docked Reader player — the same bottom-pinned HUD the Story Studio
@@ -70,6 +75,7 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   index,
   total,
   playbackRate,
+  audiobookFormat,
   pageLabel,
   onToggle,
   onStop,
@@ -77,8 +83,10 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   onNext,
   onSeek,
   onPlaybackRateChange,
+  onAudiobookFormatChange,
   presets,
   presetVoices,
+  ttsModels,
   selectedPresetId,
   onSelectPreset,
   onCreatePresetFromVoice,
@@ -111,6 +119,10 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   const speedLabel = t("dictate.reader.player.speed", {
     defaultValue: "Speed",
   });
+  const formatLabel = t("dictate.reader.player.exportFormat", {
+    defaultValue: "Export format",
+  });
+  const exportFormatLabel = audiobookFormat.toUpperCase();
   const playLabel = isPlaying
     ? t("dictate.reader.player.pause", { defaultValue: "Pause" })
     : status === "paused"
@@ -144,6 +156,7 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
           value={selectedPresetId}
           presets={presets}
           presetVoices={presetVoices}
+          ttsModels={ttsModels}
           onSelectPreset={(presetId) => onSelectPreset(presetId)}
           onSelectDefault={() => onSelectPreset(null)}
           onCreatePresetFromVoice={onCreatePresetFromVoice}
@@ -168,6 +181,26 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
                 defaultValue: "{{rate}}x",
                 rate,
               })}
+            </option>
+          ))}
+        </select>
+
+        <label className="sr-only" htmlFor="reader-audiobook-format">
+          {formatLabel}
+        </label>
+        <select
+          id="reader-audiobook-format"
+          value={audiobookFormat}
+          onChange={(event) =>
+            onAudiobookFormatChange(event.target.value as "m4b" | "mp3" | "wav")
+          }
+          className="h-9 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
+          aria-label={formatLabel}
+          title={`${formatLabel}: ${exportFormatLabel}`}
+        >
+          {readerAudiobookFormatOptions.map((format) => (
+            <option key={format} value={format}>
+              {format.toUpperCase()}
             </option>
           ))}
         </select>
@@ -213,7 +246,10 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
           )}
           {isExportingAudio
             ? t("dictate.reader.exportingAudio", { defaultValue: "Exporting" })
-            : t("dictate.reader.exportAudio", { defaultValue: "Export WAV" })}
+            : t("dictate.reader.exportAudio", {
+                defaultValue: "Export {{format}}",
+                format: exportFormatLabel,
+              })}
         </Button>
 
         <Button

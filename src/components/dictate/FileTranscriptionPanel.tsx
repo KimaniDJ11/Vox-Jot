@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
@@ -24,11 +25,14 @@ import {
   FileText,
   Folder,
   FolderPlus,
+  Headphones,
+  Languages,
   Layers,
   List,
   Loader2,
   LocateFixed,
   Pause,
+  Play,
   SlidersHorizontal,
   Trash2,
   Upload,
@@ -77,6 +81,84 @@ import {
   deriveSectionTitle,
 } from "./reader/readerTextCleanup";
 import { useReaderPlayback } from "./reader/useReaderPlayback";
+import type { ReaderUnitAudio } from "./reader/useReaderPlayback";
+import {
+  ReaderPageView,
+  type ReaderRenderedPage,
+} from "./reader/ReaderPageView";
+
+// Raw shape returned by the `synthesize_reader_audio_unit` command (snake_case
+// from Rust; the Reader calls new commands via raw `invoke`).
+type ReaderAudioUnitRenderResult = {
+  path: string;
+  duration_ms: number;
+  words: { text: string; start_ms: number; end_ms: number }[];
+  cache_hit: boolean;
+  aligned: boolean;
+};
+
+type ReaderAudiobookFormat = "wav" | "mp3" | "m4b";
+
+// Cap the per-unit blob-URL cache; evicted entries are revoked.
+const READER_AUDIO_BLOB_CACHE_MAX = 16;
+
+// Per-document language options for narration + alignment (gap: per-document
+// language selection). "auto" lets the engine/aligner detect.
+const READER_LANGUAGE_OPTIONS = [
+  "auto",
+  "en",
+  "es",
+  "fr",
+  "de",
+  "it",
+  "pt",
+  "nl",
+  "pl",
+  "ru",
+  "uk",
+  "tr",
+  "ar",
+  "hi",
+  "zh",
+  "ja",
+  "ko",
+  "vi",
+] as const;
+
+const READER_LANGUAGE_LABELS: Record<
+  (typeof READER_LANGUAGE_OPTIONS)[number],
+  string
+> = {
+  auto: "Auto",
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  nl: "Dutch",
+  pl: "Polish",
+  ru: "Russian",
+  uk: "Ukrainian",
+  tr: "Turkish",
+  ar: "Arabic",
+  hi: "Hindi",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  vi: "Vietnamese",
+};
+
+function splitReaderWords(text: string): string[] {
+  return text.split(/\s+/).filter(Boolean);
+}
+
+function readerLanguageLabel(value: string): string {
+  return (
+    READER_LANGUAGE_LABELS[value as (typeof READER_LANGUAGE_OPTIONS)[number]] ??
+    value.toUpperCase()
+  );
+}
 
 type FileTranscriptionView = "file" | "documents" | "folders";
 type ReaderSplitView = "library" | "viewer";
@@ -203,6 +285,7 @@ type ReaderLibraryItem = {
 type ReaderDocumentProgress = {
   sectionIndex: number;
   unitIndex: number;
+  positionMs?: number;
   updatedAt: number;
 };
 
@@ -211,6 +294,8 @@ type ReaderDocumentState = {
   sectionDisabled?: Record<number, boolean>;
   selectedPresetId?: string | null;
   playbackRate?: number;
+  /** Per-document narration/alignment language; "auto" or undefined = detect. */
+  language?: string;
   progress?: ReaderDocumentProgress;
   updatedAt?: number;
 };
@@ -2106,6 +2191,38 @@ type ReaderDisplaySection = {
 };
 
 /**
+ * Renders the active sentence's words as individual spans so the spoken word
+ * can be highlighted (word-by-word, synced to the audio clock). Only the active
+ * chunk uses this; every other chunk renders as plain text.
+ */
+const ReaderWordSpans = React.memo(function ReaderWordSpans({
+  text,
+  activeWordIndex,
+}: {
+  text: string;
+  activeWordIndex: number;
+}) {
+  const words = useMemo(() => splitReaderWords(text), [text]);
+  return (
+    <>
+      {words.map((word, index) => (
+        <span
+          key={index}
+          data-word-index={index}
+          className={
+            index === activeWordIndex
+              ? "rounded-[3px] bg-[var(--accent)] px-[1px] text-[var(--on-accent)]"
+              : undefined
+          }
+        >
+          {word}{" "}
+        </span>
+      ))}
+    </>
+  );
+});
+
+/**
  * One section on the continuous reading surface. Memoized so that during
  * playback only the section holding the active sentence re-renders — the
  * `activeUnitId` prop is non-null for exactly that section, so every other
@@ -2115,12 +2232,16 @@ const ReaderSectionView = React.memo(function ReaderSectionView({
   section,
   totalSections,
   activeUnitId,
+  activeWordIndex,
   unitIndexById,
   onSeek,
 }: {
   section: ReaderDisplaySection;
   totalSections: number;
   activeUnitId: string | null;
+  /** Active word within the active unit (-1 when none); only the active unit
+   *  splits into per-word spans so word-by-word highlighting stays cheap. */
+  activeWordIndex: number;
   unitIndexById: Map<string, number>;
   onSeek: (unitIndex: number) => void;
 }) {
@@ -2201,7 +2322,14 @@ const ReaderSectionView = React.memo(function ReaderSectionView({
                     .filter(Boolean)
                     .join(" ")}
                 >
-                  {chunk.text}{" "}
+                  {isActive ? (
+                    <ReaderWordSpans
+                      text={chunk.text}
+                      activeWordIndex={activeWordIndex}
+                    />
+                  ) : (
+                    <>{chunk.text} </>
+                  )}
                 </span>
               );
             })}
@@ -2257,17 +2385,42 @@ const ReaderDocumentsPanel: React.FC<{
   const [sectionDisabled, setSectionDisabled] = useState<
     Record<number, boolean>
   >({});
-  const { presets, presetVoices, createPresetFromVoice } = useTtsVoiceCatalog();
+  const { presets, presetVoices, ttsModels, createPresetFromVoice } =
+    useTtsVoiceCatalog();
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(() =>
     loadReaderLastDocumentVoice(),
   );
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [documentLanguage, setDocumentLanguage] = useState<string>("auto");
+  const [readerViewMode, setReaderViewMode] = useState<"text" | "page">("text");
   const [audioCacheStatus, setAudioCacheStatus] =
     useState<ReaderAudioCacheStatus | null>(null);
   const [isPreparingReaderAudio, setIsPreparingReaderAudio] = useState(false);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(
     null,
   );
+  const [readerRestorePositionMs, setReaderRestorePositionMs] = useState(0);
+  const [showResume, setShowResume] = useState(false);
+  // Audiobook export dialog (gap: m4b/mp3 + chapters).
+  const [audiobookFormat, setAudiobookFormat] =
+    useState<ReaderAudiobookFormat>("m4b");
+  // Rendered PDF pages for the page view (gap: in-page geometry highlighting).
+  const [renderedPages, setRenderedPages] = useState<
+    Map<number, ReaderRenderedPage>
+  >(() => new Map());
+  const renderedPagesRef = useRef<Map<number, ReaderRenderedPage>>(new Map());
+  const [renderedPageErrors, setRenderedPageErrors] = useState<
+    Map<number, string>
+  >(() => new Map());
+  const renderingPagesRef = useRef<Set<number>>(new Set());
+  const [renderingPages, setRenderingPages] = useState<Set<number>>(
+    () => new Set(),
+  );
+  // Per-unit synthesized audio (blob URLs + word timings), keyed by unit
+  // identity + voice + rate + language. Capped + revoked to avoid leaking URLs.
+  const unitAudioCacheRef = useRef<Map<string, ReaderUnitAudio>>(new Map());
+  const unitAudioOrderRef = useRef<string[]>([]);
+  const lastProgressSaveRef = useRef(0);
   const activeReaderDocumentIdRef = useRef<string | null>(null);
   // Continuous-scroll reading surface: the whole document renders at once and
   // the player auto-scrolls to keep the spoken sentence in view. `autoFollow`
@@ -2385,13 +2538,25 @@ const ReaderDocumentsPanel: React.FC<{
           savedProgress?.sectionIndex,
           document.sections.length,
         );
-        setActiveDocument(document);
-        setActiveSectionIndex(nextSectionIndex);
-        setReaderRestoreIndex(
+        const restoreIndex =
           typeof savedProgress?.unitIndex === "number"
             ? Math.max(0, Math.trunc(savedProgress.unitIndex))
-            : 0,
-        );
+            : 0;
+        const restorePositionMs =
+          typeof savedProgress?.positionMs === "number"
+            ? Math.max(0, Math.trunc(savedProgress.positionMs))
+            : 0;
+        setActiveDocument(document);
+        setActiveSectionIndex(nextSectionIndex);
+        setReaderRestoreIndex(restoreIndex);
+        setReaderRestorePositionMs(restorePositionMs);
+        setShowResume(restoreIndex > 0 || restorePositionMs > 1500);
+        setReaderViewMode("text");
+        renderedPagesRef.current = new Map();
+        setRenderedPages(renderedPagesRef.current);
+        setRenderedPageErrors(new Map());
+        renderingPagesRef.current = new Set();
+        setRenderingPages(new Set());
         setSectionVoices(documentState.sectionVoices ?? {});
         setSectionDisabled(documentState.sectionDisabled ?? {});
         setSelectedPresetId(
@@ -2403,6 +2568,12 @@ const ReaderDocumentsPanel: React.FC<{
         );
         setPlaybackRate(
           normalizeReaderPlaybackRate(documentState.playbackRate),
+        );
+        setDocumentLanguage(
+          typeof documentState.language === "string" &&
+            documentState.language.trim()
+            ? documentState.language
+            : "auto",
         );
         setAudioCacheStatus(null);
         persistLibrary(
@@ -2575,6 +2746,8 @@ const ReaderDocumentsPanel: React.FC<{
     (section) => sectionDisabled[section.index] !== true,
   ).length;
   const totalSectionCount = cleanedSections.length;
+  const normalizedLanguage =
+    documentLanguage && documentLanguage !== "auto" ? documentLanguage : null;
 
   const refreshReaderAudioCacheStatus = useCallback(async () => {
     const documentId = activeDocument?.id ?? null;
@@ -2587,6 +2760,7 @@ const ReaderDocumentsPanel: React.FC<{
         documentId,
         readerAudioUnits,
         playbackRate,
+        normalizedLanguage,
       );
       if (result.status === "error") {
         console.warn("Failed to read Reader audio cache status:", result.error);
@@ -2600,7 +2774,7 @@ const ReaderDocumentsPanel: React.FC<{
       console.warn("Failed to read Reader audio cache status:", err);
       return null;
     }
-  }, [activeDocument?.id, playbackRate, readerAudioUnits]);
+  }, [activeDocument?.id, normalizedLanguage, playbackRate, readerAudioUnits]);
 
   useEffect(() => {
     void refreshReaderAudioCacheStatus();
@@ -2647,6 +2821,7 @@ const ReaderDocumentsPanel: React.FC<{
         activeDocument.id,
         readerAudioUnits,
         playbackRate,
+        normalizedLanguage,
       );
       if (result.status === "error") {
         throw new Error(
@@ -2680,43 +2855,73 @@ const ReaderDocumentsPanel: React.FC<{
     t,
   ]);
 
-  const speakUnit = useCallback(
-    async (unit: ReadingUnit) => {
-      if (!activeDocument) {
-        return speakReaderTextWithPreset(
-          unit.text,
-          unit.presetId,
-          playbackRate,
-        );
-      }
-      const result = await commands.playReaderAudioUnit(
-        activeDocument.id,
+  // Synthesize a unit (reusing the on-disk cache) and load its audio into a blob
+  // URL the `<audio>` element plays, plus per-word timings. Cached by unit
+  // identity + voice + rate + language; capped with revoke.
+  const loadUnit = useCallback(
+    async (unit: ReadingUnit): Promise<ReaderUnitAudio> => {
+      const documentId = activeDocument?.id;
+      if (!documentId) throw new Error("No document is open.");
+      const key = `${unit.id}::${unit.presetId ?? ""}::${playbackRate}::${
+        normalizedLanguage ?? ""
+      }`;
+      const existing = unitAudioCacheRef.current.get(key);
+      if (existing) return existing;
+      const render = await invoke<ReaderAudioUnitRenderResult>(
+        "synthesize_reader_audio_unit",
         {
-          id: unit.id,
-          text: unit.text,
-          preset_id: unit.presetId,
+          documentId,
+          unit: { id: unit.id, text: unit.text, preset_id: unit.presetId },
+          playbackRate,
+          language: normalizedLanguage,
         },
-        playbackRate,
       );
-      if (result.status === "error") {
-        throw new Error(
-          readerErrorMessage(
-            result.error,
-            t("dictate.reader.errors.playbackFailed", {
-              defaultValue: "Reader playback failed.",
-            }),
-          ),
-        );
+      const bytes = await readFile(render.path);
+      const blob = new Blob([new Uint8Array(bytes)], { type: "audio/wav" });
+      const value: ReaderUnitAudio = {
+        src: URL.createObjectURL(blob),
+        durationMs: render.duration_ms,
+        words: render.words.map((word) => ({
+          text: word.text,
+          startMs: word.start_ms,
+          endMs: word.end_ms,
+        })),
+      };
+      const cache = unitAudioCacheRef.current;
+      cache.set(key, value);
+      unitAudioOrderRef.current.push(key);
+      while (unitAudioOrderRef.current.length > READER_AUDIO_BLOB_CACHE_MAX) {
+        const evicted = unitAudioOrderRef.current.shift();
+        if (evicted && evicted !== key) {
+          const stale = cache.get(evicted);
+          if (stale) {
+            URL.revokeObjectURL(stale.src);
+            cache.delete(evicted);
+          }
+        }
       }
-      if (!result.data.cache_hit) {
-        void refreshReaderAudioCacheStatus();
-      }
+      if (!render.cache_hit) void refreshReaderAudioCacheStatus();
+      return value;
     },
-    [activeDocument, playbackRate, refreshReaderAudioCacheStatus, t],
+    [
+      activeDocument?.id,
+      playbackRate,
+      normalizedLanguage,
+      refreshReaderAudioCacheStatus,
+    ],
   );
-  const stopReaderAudio = useCallback(async () => {
-    await commands.ttsStop();
-  }, []);
+
+  // Warm the cache for an upcoming unit so playback is gapless (preloading).
+  const prefetchUnit = useCallback(
+    (unit: ReadingUnit | undefined) => {
+      if (!unit || !unit.text.trim()) return;
+      void loadUnit(unit).catch(() => {
+        // Preload failures are non-fatal; the unit retries when reached.
+      });
+    },
+    [loadUnit],
+  );
+
   const handlePlaybackError = useCallback(
     (err: unknown) => {
       setError(
@@ -2731,20 +2936,67 @@ const ReaderDocumentsPanel: React.FC<{
     [t],
   );
 
+  // Persist fine-grained progress (throttled) for resume.
+  const handleReaderProgress = useCallback(
+    (unitIndex: number, posMs: number) => {
+      const documentId = activeReaderDocumentIdRef.current;
+      if (!documentId) return;
+      const now = Date.now();
+      if (posMs !== 0 && now - lastProgressSaveRef.current < 1500) return;
+      lastProgressSaveRef.current = now;
+      const unit = readingUnits[unitIndex];
+      saveReaderDocumentState(documentId, {
+        progress: {
+          sectionIndex: unit?.sectionIndex ?? activeSectionIndex,
+          unitIndex,
+          positionMs: Math.round(posMs),
+          updatedAt: now,
+        },
+      });
+    },
+    [readingUnits, activeSectionIndex],
+  );
+
   const player = useReaderPlayback({
     units: readingUnits,
     initialIndex: readerRestoreIndex,
+    initialPositionMs: readerRestorePositionMs,
     resetKey: activeDocument?.id ?? null,
-    speak: speakUnit,
-    stopAudio: stopReaderAudio,
+    loadUnit,
+    prefetchUnit,
     onError: handlePlaybackError,
+    onProgress: handleReaderProgress,
   });
 
   const currentReadingUnit = readingUnits[player.index] ?? null;
+  const canUseReaderPageView =
+    activeDocument?.kind === "pdf" && (activeDocument.page_count ?? 0) > 0;
+  const activeReaderUnitWords = currentReadingUnit
+    ? splitReaderWords(currentReadingUnit.text)
+    : null;
+  const readerPageHintFraction =
+    readingUnits.length > 1
+      ? player.index / Math.max(readingUnits.length - 1, 1)
+      : 0;
+  const readerLanguageOptions = useMemo<ModelListControlOption[]>(
+    () =>
+      READER_LANGUAGE_OPTIONS.map((value) => ({
+        value,
+        label: readerLanguageLabel(value),
+      })),
+    [],
+  );
+  const selectedReaderLanguageLabel = readerLanguageLabel(documentLanguage);
   // Stable handle to the player so the per-section memo's `onSeek` prop never
   // changes identity (the controller object is recreated every render).
   const playerRef = useRef(player);
   playerRef.current = player;
+  const resumeReaderPlayback = useCallback(() => {
+    setError("");
+    setAutoFollow(true);
+    setShowResume(false);
+    playerRef.current.playAt(readerRestoreIndex, readerRestorePositionMs);
+  }, [readerRestoreIndex, readerRestorePositionMs]);
 
   // Center a unit by id. Works regardless of play state (so scrubbing/seeking
   // moves the view too), and marks the scroll as programmatic so the hand-scroll
@@ -2783,14 +3035,103 @@ const ReaderDocumentsPanel: React.FC<{
   const seekToReadingUnit = useCallback((unitIndex: number) => {
     setError("");
     setAutoFollow(true);
+    setShowResume(false);
     playerRef.current.playAt(unitIndex);
   }, []);
+
+  // Revoke this document's blob audio URLs when it closes / the component
+  // unmounts, so object URLs don't leak across documents.
+  useEffect(() => {
+    const cache = unitAudioCacheRef.current;
+    const order = unitAudioOrderRef.current;
+    return () => {
+      for (const value of cache.values()) URL.revokeObjectURL(value.src);
+      cache.clear();
+      order.length = 0;
+    };
+  }, [activeDocument?.id]);
+
+  // Render a PDF page (image + word bboxes) for the page view, on demand.
+  const requestReaderPage = useCallback(
+    (pageIndex: number) => {
+      const documentId = activeDocument?.id;
+      if (
+        !documentId ||
+        pageIndex < 0 ||
+        renderedPagesRef.current.has(pageIndex) ||
+        renderingPagesRef.current.has(pageIndex)
+      ) {
+        return;
+      }
+      setRenderedPageErrors((current) => {
+        if (!current.has(pageIndex)) return current;
+        const next = new Map(current);
+        next.delete(pageIndex);
+        return next;
+      });
+      renderingPagesRef.current.add(pageIndex);
+      setRenderingPages(new Set(renderingPagesRef.current));
+      void (async () => {
+        try {
+          const page = await invoke<{
+            index: number;
+            width: number;
+            height: number;
+            scale: number;
+            image_data_url: string;
+            words: ReaderRenderedPage["words"];
+          }>("render_reader_page", { documentId, pageIndex, scale: 2 });
+          if (activeReaderDocumentIdRef.current !== documentId) return;
+          setRenderedPages((current) => {
+            const next = new Map(current);
+            next.set(pageIndex, {
+              index: page.index,
+              width: page.width,
+              height: page.height,
+              scale: page.scale,
+              imageDataUrl: page.image_data_url,
+              words: page.words,
+            });
+            renderedPagesRef.current = next;
+            return next;
+          });
+          setRenderedPageErrors((current) => {
+            if (!current.has(pageIndex)) return current;
+            const next = new Map(current);
+            next.delete(pageIndex);
+            return next;
+          });
+        } catch (err) {
+          if (activeReaderDocumentIdRef.current !== documentId) return;
+          const message = readerErrorMessage(
+            err,
+            t("dictate.reader.errors.pageRenderFailed", {
+              defaultValue: "Failed to render Reader page.",
+            }),
+          );
+          setRenderedPageErrors((current) => {
+            const next = new Map(current);
+            next.set(pageIndex, message);
+            return next;
+          });
+          setError(message);
+        } finally {
+          if (activeReaderDocumentIdRef.current === documentId) {
+            renderingPagesRef.current.delete(pageIndex);
+            setRenderingPages(new Set(renderingPagesRef.current));
+          }
+        }
+      })();
+    },
+    [activeDocument?.id, t],
+  );
 
   // Follow the narration: re-center whenever the playing unit advances. Guarded
   // to playing/paused so it never fires on initial mount (explicit seeks below
   // handle the idle case imperatively).
   useEffect(() => {
     if (player.status === "idle" || !autoFollow) return;
+    if (readerViewMode !== "text") return;
     const id = currentReadingUnit?.id;
     const raf = window.requestAnimationFrame(() =>
       scrollToUnitId(id, "smooth"),
@@ -2799,6 +3140,7 @@ const ReaderDocumentsPanel: React.FC<{
   }, [
     player.index,
     player.status,
+    readerViewMode,
     autoFollow,
     currentReadingUnit?.id,
     scrollToUnitId,
@@ -2831,6 +3173,7 @@ const ReaderDocumentsPanel: React.FC<{
       sectionDisabled,
       selectedPresetId,
       playbackRate,
+      language: documentLanguage,
     });
   }, [
     activeDocument,
@@ -2838,18 +3181,11 @@ const ReaderDocumentsPanel: React.FC<{
     sectionDisabled,
     selectedPresetId,
     playbackRate,
+    documentLanguage,
   ]);
-
-  useEffect(() => {
-    if (!activeDocument || !currentReadingUnit) return;
-    saveReaderDocumentState(activeDocument.id, {
-      progress: {
-        sectionIndex: currentReadingUnit.sectionIndex ?? activeSectionIndex,
-        unitIndex: player.index,
-        updatedAt: Date.now(),
-      },
-    });
-  }, [activeDocument, activeSectionIndex, currentReadingUnit, player.index]);
+  // Note: reading progress (unit index + position) is persisted by the player's
+  // throttled `onProgress` (handleReaderProgress), so we don't double-write it
+  // here — that would clobber the saved within-unit position.
 
   const playbackPageLabel =
     currentReadingUnit && currentReadingUnit.sectionIndex !== null
@@ -2876,42 +3212,77 @@ const ReaderDocumentsPanel: React.FC<{
     }
   }, [activeDocument?.text, currentSection?.text, t]);
 
+  // Export a chaptered audiobook (m4b/mp3) or a flat WAV. Chapters are the
+  // enabled sections; reuses the per-unit audio cache so a prepared document
+  // exports without re-synthesizing.
   const exportReaderAudio = useCallback(async () => {
     if (!activeDocument || readingUnits.length === 0) return;
+    const format = audiobookFormat;
     const target = await save({
-      defaultPath: `${stripExtension(activeDocument.name)}.wav`,
+      defaultPath: `${stripExtension(activeDocument.name)}.${format}`,
       filters: [
         {
-          name: t("dictate.reader.audioExportDialogLabel", {
-            defaultValue: "WAV audio",
-          }),
-          extensions: ["wav"],
+          name:
+            format === "wav"
+              ? t("dictate.reader.audioExportDialogLabel", {
+                  defaultValue: "WAV audio",
+                })
+              : t("dictate.reader.audiobookDialogLabel", {
+                  defaultValue: "Audiobook",
+                }),
+          extensions: [format],
         },
       ],
     });
     if (!target) return;
 
+    // Group reading units into chapters by section (in document order).
+    const chapterMap = new Map<
+      number,
+      { title: string; units: ReaderAudioCacheUnit[] }
+    >();
+    for (const unit of readingUnits) {
+      const sectionIndex = unit.sectionIndex ?? 0;
+      let chapter = chapterMap.get(sectionIndex);
+      if (!chapter) {
+        const title =
+          cleanedSections.find((section) => section.index === sectionIndex)
+            ?.title ??
+          t("dictate.reader.sectionFallbackTitle", {
+            defaultValue: "Section {{n}}",
+            n: sectionIndex + 1,
+          });
+        chapter = { title, units: [] };
+        chapterMap.set(sectionIndex, chapter);
+      }
+      chapter.units.push({
+        id: unit.id,
+        text: unit.text,
+        preset_id: unit.presetId,
+      });
+    }
+    const chapters = [...chapterMap.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, chapter]) => chapter);
+
     setIsExportingAudio(true);
     setError("");
     try {
-      const result = await commands.exportReaderAudio(
-        readingUnits.map((unit) => ({
-          text: unit.text,
-          preset_id: unit.presetId,
-        })),
-        target,
-        playbackRate,
+      const result = await invoke<{ output_path: string }>(
+        "export_reader_audiobook",
+        {
+          documentId: activeDocument.id,
+          chapters,
+          outputPath: target,
+          format,
+          playbackRate,
+          language: normalizedLanguage,
+          title: stripExtension(activeDocument.name),
+          author: null,
+          coverDataUrl: activeDocument.thumbnail_data_url,
+        },
       );
-      if (result.status === "error") {
-        throw new Error(
-          readerErrorMessage(
-            result.error,
-            t("dictate.reader.errors.audioExportFailed", {
-              defaultValue: "Failed to export Reader audio.",
-            }),
-          ),
-        );
-      }
+      void result;
     } catch (err) {
       setError(
         readerErrorMessage(
@@ -2924,7 +3295,15 @@ const ReaderDocumentsPanel: React.FC<{
     } finally {
       setIsExportingAudio(false);
     }
-  }, [activeDocument, playbackRate, readingUnits, t]);
+  }, [
+    activeDocument,
+    audiobookFormat,
+    cleanedSections,
+    normalizedLanguage,
+    playbackRate,
+    readingUnits,
+    t,
+  ]);
 
   const removeLibraryItem = useCallback(
     async (item: ReaderLibraryItem) => {
@@ -2948,6 +3327,11 @@ const ReaderDocumentsPanel: React.FC<{
         setSectionVoices({});
         setSectionDisabled({});
         setAudioCacheStatus(null);
+        renderedPagesRef.current = new Map();
+        setRenderedPages(renderedPagesRef.current);
+        setRenderedPageErrors(new Map());
+        renderingPagesRef.current = new Set();
+        setRenderingPages(new Set());
       }
     },
     [activeDocument?.id, activeDocument?.path, library, persistLibrary],
@@ -3005,6 +3389,20 @@ const ReaderDocumentsPanel: React.FC<{
 
   return (
     <div className="space-y-5">
+      {error ? (
+        <div
+          className="flex items-start gap-2.5 rounded-xl bg-[color-mix(in_srgb,var(--danger),transparent_94%)] px-4 py-3 text-xs"
+          role="alert"
+        >
+          <AlertCircle
+            size={14}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-[var(--danger)]"
+          />
+          <div className="min-w-0 break-words text-[var(--text)]">{error}</div>
+        </div>
+      ) : null}
+
       {splitView === "library" ? (
         <section
           className="min-w-0 space-y-3"
@@ -3161,6 +3559,91 @@ const ReaderDocumentsPanel: React.FC<{
           {activeDocument && currentSection ? (
             <>
               <div className="space-y-4 px-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Headphones
+                      size={15}
+                      className="shrink-0 text-[var(--accent)]"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold text-[var(--text)]">
+                        {activeDocument.name}
+                      </div>
+                      <div className="text-[11px] text-[var(--muted)]">
+                        {t("dictate.reader.viewerStatus", {
+                          defaultValue: "{{parts}} parts · {{language}}",
+                          parts: readingUnits.length,
+                          language: selectedReaderLanguageLabel,
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {showResume ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary-soft"
+                        onClick={resumeReaderPlayback}
+                        className="gap-1.5 text-[11px]"
+                      >
+                        <Play size={13} aria-hidden="true" />
+                        {t("dictate.reader.resume", {
+                          defaultValue: "Resume",
+                        })}
+                      </Button>
+                    ) : null}
+                    {canUseReaderPageView ? (
+                      <SegmentedControl<"text" | "page">
+                        value={readerViewMode}
+                        onChange={(value) => {
+                          setReaderViewMode(value);
+                          setAutoFollow(true);
+                        }}
+                        layoutId="reader-page-view-toggle"
+                        ariaLabel={t("dictate.reader.pageView.ariaLabel", {
+                          defaultValue: "Reader layout",
+                        })}
+                        className="bg-[var(--card)]"
+                        items={[
+                          {
+                            value: "text",
+                            label: t("dictate.reader.pageView.text", {
+                              defaultValue: "Text",
+                            }),
+                          },
+                          {
+                            value: "page",
+                            label: t("dictate.reader.pageView.page", {
+                              defaultValue: "Page",
+                            }),
+                          },
+                        ]}
+                      />
+                    ) : null}
+                    <SelectControl
+                      value={documentLanguage}
+                      options={readerLanguageOptions}
+                      onChange={(value) => {
+                        setDocumentLanguage(value);
+                        setAudioCacheStatus(null);
+                      }}
+                      ariaLabel={t("dictate.reader.language.ariaLabel", {
+                        defaultValue: "Reader language",
+                      })}
+                      title={t("dictate.reader.language.title", {
+                        defaultValue: "Language: {{language}}",
+                        language: selectedReaderLanguageLabel,
+                      })}
+                      selectedLabel={selectedReaderLanguageLabel}
+                      active={documentLanguage !== "auto"}
+                    >
+                      <Languages className="h-4 w-4 text-[var(--text)]" />
+                    </SelectControl>
+                  </div>
+                </div>
+
                 {sectionsOpen
                   ? createPortal(
                       <div
@@ -3197,67 +3680,49 @@ const ReaderDocumentsPanel: React.FC<{
                                 })}
                               </div>
                             </div>
-                            <ActionIconButton
-                              type="button"
-                              onClick={() => onSectionsOpenChange(false)}
-                              aria-label={t("common.close", {
-                                defaultValue: "Close",
-                              })}
-                              title={t("common.close", {
-                                defaultValue: "Close",
-                              })}
-                            >
-                              <X size={16} aria-hidden="true" />
-                            </ActionIconButton>
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto p-3">
                             <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5 border-b border-[var(--border)] pb-2">
-                              <Button
+                              <button
                                 type="button"
-                                size="sm"
-                                variant="secondary"
                                 disabled={
                                   totalSectionCount === 0 ||
                                   selectedSectionCount === totalSectionCount
                                 }
                                 onClick={readAllSections}
-                                className="gap-1 text-[11px]"
+                                className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--input)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:pointer-events-none disabled:opacity-40"
                               >
                                 <Check size={12} aria-hidden="true" />
                                 {t("dictate.reader.sections.readAll", {
                                   defaultValue: "Read all",
                                 })}
-                              </Button>
-                              <Button
+                              </button>
+                              <button
                                 type="button"
-                                size="sm"
-                                variant="secondary"
                                 disabled={
                                   totalSectionCount === 0 ||
                                   selectedSectionCount === 0
                                 }
                                 onClick={skipAllSections}
-                                className="gap-1 text-[11px]"
+                                className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--input)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:pointer-events-none disabled:opacity-40"
                               >
                                 <X size={12} aria-hidden="true" />
                                 {t("dictate.reader.sections.skipAll", {
                                   defaultValue: "Skip all",
                                 })}
-                              </Button>
-                              <Button
+                              </button>
+                              <button
                                 type="button"
-                                size="sm"
-                                variant="ghost"
                                 disabled={
                                   Object.keys(sectionVoices).length === 0
                                 }
                                 onClick={resetSectionVoices}
-                                className="text-[11px]"
+                                className="inline-flex items-center rounded-full border border-transparent px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:pointer-events-none disabled:opacity-40"
                               >
                                 {t("dictate.reader.sections.resetVoices", {
                                   defaultValue: "Reset voices",
                                 })}
-                              </Button>
+                              </button>
                             </div>
                             <div className="space-y-1">
                               {cleanedSections.map((section) => {
@@ -3304,7 +3769,7 @@ const ReaderDocumentsPanel: React.FC<{
                                               )
                                         }
                                         className={[
-                                          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                                          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
                                           enabled
                                             ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--on-accent)]"
                                             : "border-[var(--border)] text-transparent",
@@ -3338,6 +3803,7 @@ const ReaderDocumentsPanel: React.FC<{
                                         }
                                         presets={presets}
                                         presetVoices={presetVoices}
+                                        ttsModels={ttsModels}
                                         defaultLabel={sectionDefaultVoiceLabel}
                                         defaultPresetId={selectedPresetId}
                                         onSelectPreset={(presetId) => {
@@ -3395,18 +3861,6 @@ const ReaderDocumentsPanel: React.FC<{
                                 defaultValue: "Transform",
                               })}
                             </div>
-                            <ActionIconButton
-                              type="button"
-                              onClick={() => onTransformOpenChange(false)}
-                              aria-label={t("common.close", {
-                                defaultValue: "Close",
-                              })}
-                              title={t("common.close", {
-                                defaultValue: "Close",
-                              })}
-                            >
-                              <X size={16} aria-hidden="true" />
-                            </ActionIconButton>
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto p-4">
                             <ReaderTransformTools
@@ -3429,40 +3883,79 @@ const ReaderDocumentsPanel: React.FC<{
                     )
                   : null}
 
-                <div ref={readerScrollRef} className="space-y-9">
-                  {displaySections.map((section) => (
-                    <ReaderSectionView
-                      key={section.index}
-                      section={section}
-                      totalSections={activeDocument.sections.length}
-                      activeUnitId={
-                        currentReadingUnit?.sectionIndex === section.index
-                          ? currentReadingUnit.id
-                          : null
-                      }
-                      unitIndexById={unitIndexById}
-                      onSeek={seekToReadingUnit}
-                    />
-                  ))}
-                </div>
+                {readerViewMode === "page" && canUseReaderPageView ? (
+                  <ReaderPageView
+                    pageCount={activeDocument.page_count}
+                    pages={renderedPages}
+                    renderingPages={renderingPages}
+                    pageErrors={renderedPageErrors}
+                    onRequestPage={requestReaderPage}
+                    activeUnitWords={activeReaderUnitWords}
+                    activeWordIndex={player.activeWordIndex}
+                    hintFraction={readerPageHintFraction}
+                    autoFollow={autoFollow}
+                    loadingLabel={t("dictate.reader.pageView.loading", {
+                      defaultValue: "Rendering page",
+                    })}
+                    errorLabel={t("dictate.reader.pageView.error", {
+                      defaultValue: "Page could not render",
+                    })}
+                    retryLabel={t("dictate.reader.pageView.retry", {
+                      defaultValue: "Retry",
+                    })}
+                    renderLabel={t("dictate.reader.pageView.render", {
+                      defaultValue: "Render page",
+                    })}
+                  />
+                ) : (
+                  <div ref={readerScrollRef} className="space-y-9">
+                    {displaySections.map((section) => (
+                      <ReaderSectionView
+                        key={section.index}
+                        section={section}
+                        totalSections={activeDocument.sections.length}
+                        activeUnitId={
+                          currentReadingUnit?.sectionIndex === section.index
+                            ? currentReadingUnit.id
+                            : null
+                        }
+                        activeWordIndex={
+                          currentReadingUnit?.sectionIndex === section.index
+                            ? player.activeWordIndex
+                            : -1
+                        }
+                        unitIndexById={unitIndexById}
+                        onSeek={seekToReadingUnit}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
               <ReaderPlaybackBar
                 status={player.status}
                 index={player.index}
                 total={player.total}
                 playbackRate={playbackRate}
+                audiobookFormat={audiobookFormat}
                 pageLabel={playbackPageLabel}
                 onToggle={() => {
                   setError("");
                   setAutoFollow(true);
+                  setShowResume(false);
                   player.toggle();
                 }}
-                onStop={player.stop}
+                onStop={() => {
+                  setShowResume(false);
+                  player.stop();
+                }}
                 onPrev={() => {
                   const target = Math.max(player.index - 1, 0);
                   setAutoFollow(true);
+                  setShowResume(false);
                   player.prev();
-                  scrollToUnitId(readingUnits[target]?.id, "smooth");
+                  if (readerViewMode === "text") {
+                    scrollToUnitId(readingUnits[target]?.id, "smooth");
+                  }
                 }}
                 onNext={() => {
                   const target = Math.min(
@@ -3470,18 +3963,26 @@ const ReaderDocumentsPanel: React.FC<{
                     Math.max(readingUnits.length - 1, 0),
                   );
                   setAutoFollow(true);
+                  setShowResume(false);
                   player.next();
-                  scrollToUnitId(readingUnits[target]?.id, "smooth");
+                  if (readerViewMode === "text") {
+                    scrollToUnitId(readingUnits[target]?.id, "smooth");
+                  }
                 }}
                 onSeek={(target) => {
                   setAutoFollow(true);
+                  setShowResume(false);
                   player.seek(target);
                   // Instant so the view tracks the scrubber thumb as it drags.
-                  scrollToUnitId(readingUnits[target]?.id, "auto");
+                  if (readerViewMode === "text") {
+                    scrollToUnitId(readingUnits[target]?.id, "auto");
+                  }
                 }}
                 onPlaybackRateChange={selectPlaybackRate}
+                onAudiobookFormatChange={setAudiobookFormat}
                 presets={presets}
                 presetVoices={presetVoices}
+                ttsModels={ttsModels}
                 selectedPresetId={selectedPresetId}
                 onSelectPreset={selectDocumentVoice}
                 onCreatePresetFromVoice={createPresetFromVoice}
@@ -3570,20 +4071,6 @@ const ReaderDocumentsPanel: React.FC<{
           )}
         </section>
       )}
-
-      {error ? (
-        <div
-          className="flex items-start gap-2.5 rounded-xl bg-[color-mix(in_srgb,var(--danger),transparent_94%)] px-4 py-3 text-xs"
-          role="alert"
-        >
-          <AlertCircle
-            size={14}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-[var(--danger)]"
-          />
-          <div className="min-w-0 break-words text-[var(--text)]">{error}</div>
-        </div>
-      ) : null}
     </div>
   );
 };

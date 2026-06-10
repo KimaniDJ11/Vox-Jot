@@ -339,7 +339,7 @@ export const HistorySettings: React.FC = () => {
       <div className="space-y-5 px-1 py-4" data-testid="history-entries">
         {groupedEntries.map((group) => (
           <section key={group.key} className="space-y-2.5">
-            <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
+            <div className="sticky top-0 z-10 -mx-1 px-1 py-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
                 {group.label}
               </p>

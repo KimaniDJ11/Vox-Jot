@@ -244,7 +244,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
         <div className="space-y-5 py-4">
           {jobs.length > 0 ? (
             <section className="space-y-2.5">
-              <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
+              <div className="sticky top-0 z-10 -mx-1 px-1 py-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
                   {t("storyAudio.status.rendering")}
                 </p>
@@ -263,7 +263,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
           ) : null}
           {groupedItems.map((group) => (
             <section key={group.key} className="space-y-2.5">
-              <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
+              <div className="sticky top-0 z-10 -mx-1 px-1 py-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
                   {group.label}
                 </p>

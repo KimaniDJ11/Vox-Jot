@@ -1601,15 +1601,21 @@ export const CorrectionDictionaryView: React.FC<
           {actionButtons}
         </div>
       ) : (
-        <SettingsGroup
-          noCard
-          title={sectionTitle}
-          description={viewDescription}
-          showTitle={false}
-          descriptionOnlyGap="controls"
-        >
-          {actionButtons}
-        </SettingsGroup>
+        <>
+          <SettingsGroup
+            noCard
+            title={sectionTitle}
+            description={viewDescription}
+            showTitle={false}
+            descriptionOnlyGap="controls"
+          >
+            {null}
+          </SettingsGroup>
+          {/* Sticky toolbar: a direct child of the tall root so it holds at the
+              top while the corrections list scrolls (SettingsGroup's short box
+              would give `sticky` no room). */}
+          <div className="sticky top-0 z-30 -mt-3 py-3">{actionButtons}</div>
+        </>
       )}
 
       {importMessage ? (

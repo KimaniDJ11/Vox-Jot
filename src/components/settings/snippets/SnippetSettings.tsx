@@ -819,15 +819,21 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
       )}
 
       {!showEnabledToggle ? (
-        <SettingsGroup
-          noCard
-          title={t("settings.snippets.toggle.title")}
-          description={t("settings.snippets.toggle.description")}
-          showTitle={false}
-          descriptionOnlyGap="controls"
-        >
-          {actionButtons}
-        </SettingsGroup>
+        <>
+          <SettingsGroup
+            noCard
+            title={t("settings.snippets.toggle.title")}
+            description={t("settings.snippets.toggle.description")}
+            showTitle={false}
+            descriptionOnlyGap="controls"
+          >
+            {null}
+          </SettingsGroup>
+          {/* Sticky toolbar: a direct child of the tall root so it holds at the
+              top while the phrase-key list scrolls (SettingsGroup's short box
+              would give `sticky` no room). */}
+          <div className="sticky top-0 z-30 -mt-3 py-3">{actionButtons}</div>
+        </>
       ) : null}
 
       <section className="space-y-2">

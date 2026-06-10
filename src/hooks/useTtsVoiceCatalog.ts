@@ -25,6 +25,8 @@ export type TtsVoiceCatalog = {
   presets: TtsVoicePreset[];
   /** The full preset-voice catalog (every voice across available TTS models). */
   presetVoices: CreateVoiceHubVoiceRow[];
+  /** Full TTS model catalog — used to resolve per-voice capability flags. */
+  ttsModels: CatalogModelDescriptor[];
   isLoading: boolean;
   refreshPresets: () => Promise<void>;
   /**
@@ -162,6 +164,8 @@ export function useTtsVoiceCatalog(): TtsVoiceCatalog {
   return {
     presets,
     presetVoices,
+    /** Full TTS model catalog — used to resolve per-voice capability flags. */
+    ttsModels,
     isLoading: isLoadingPresets || isLoadingModels,
     refreshPresets,
     createPresetFromVoice,

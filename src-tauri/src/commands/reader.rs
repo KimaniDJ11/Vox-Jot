@@ -21,6 +21,11 @@ const READER_RUNTIME_VERSION: &str =
     "reader-runtime-v1|PyMuPDF==1.24.14|python-docx==1.1.2|ebooklib==0.18";
 const READER_RUNTIME_PACKAGES: &[&str] =
     &["PyMuPDF==1.24.14", "python-docx==1.1.2", "ebooklib==0.18"];
+// Optional precise word-alignment dependency, installed on demand and kept
+// separate from the mandatory extraction packages so an install failure can
+// never break document import (playback falls back to proportional timings).
+const READER_ALIGN_VERSION: &str = "reader-align-v1|faster-whisper>=1.0,<2";
+const READER_ALIGN_PACKAGES: &[&str] = &["faster-whisper>=1.0,<2"];
 const NO_EXTRACTABLE_PDF_TEXT: &str =
     "This PDF opened, but Vox Jot could not find selectable text to read aloud.";
 
@@ -526,6 +531,51 @@ fn ensure_reader_python(app: &AppHandle) -> Result<PathBuf, String> {
         )
     })?;
 
+    Ok(python)
+}
+
+/// Resolve a bundled Reader Python helper script (e.g. `reader_align.py`,
+/// `reader_page.py`) by file name. A `VOX_JOT_<STEM>` env var (e.g.
+/// `VOX_JOT_READER_ALIGN`) overrides the bundled path for dev/tests.
+pub(crate) fn resolve_reader_script(app: &AppHandle, file_name: &str) -> Result<PathBuf, String> {
+    let stem = Path::new(file_name)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(file_name);
+    let env_key = format!("VOX_JOT_{}", stem.to_uppercase());
+    if let Ok(custom) = std::env::var(&env_key) {
+        let path = PathBuf::from(custom);
+        if path.is_file() {
+            return Ok(path);
+        }
+    }
+    crate::portable::resolve_resource(app, &format!("resources/python/{file_name}"))
+        .map_err(|err| format!("Failed to resolve Reader script '{file_name}': {err}"))
+}
+
+/// Ensure the optional Whisper alignment dependency (faster-whisper) is present
+/// in the Reader runtime. Best-effort and tracked by its own marker so it is
+/// only installed once; separate from the mandatory extraction packages.
+pub(crate) fn ensure_reader_alignment_runtime(app: &AppHandle) -> Result<PathBuf, String> {
+    let python = ensure_reader_python(app)?;
+    let runtime_dir = crate::storage_paths::reader_runtime_dir(app)
+        .map_err(|err| format!("Failed to resolve Reader runtime directory: {err}"))?;
+    let marker_path = runtime_dir.join("reader-align.version");
+    if fs::read_to_string(&marker_path)
+        .map(|value| value.trim() == READER_ALIGN_VERSION)
+        .unwrap_or(false)
+    {
+        return Ok(python);
+    }
+    let mut install_args = vec!["install", "--disable-pip-version-check", "--no-input"];
+    install_args.extend(READER_ALIGN_PACKAGES.iter().copied());
+    run_python_module(&python, "pip", &install_args)?;
+    fs::write(&marker_path, format!("{READER_ALIGN_VERSION}\n")).map_err(|err| {
+        format!(
+            "Failed to write Reader alignment marker '{}': {err}",
+            marker_path.display()
+        )
+    })?;
     Ok(python)
 }
 
@@ -1294,6 +1344,224 @@ fn count_words(text: &str) -> usize {
         .count()
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderRenderedWord {
+    pub text: String,
+    pub x0: f64,
+    pub y0: f64,
+    pub x1: f64,
+    pub y1: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ReaderRenderedPage {
+    pub index: usize,
+    /// Page width/height in PDF points; word bboxes are in the same space, so
+    /// the frontend overlays words as percentages independent of render scale.
+    pub width: f64,
+    pub height: f64,
+    pub scale: f32,
+    pub image_data_url: String,
+    pub words: Vec<ReaderRenderedWord>,
+}
+
+#[derive(Deserialize)]
+struct PythonRenderedImage {
+    mime_type: String,
+    base64: String,
+}
+
+#[derive(Deserialize)]
+struct PythonRenderedPage {
+    index: usize,
+    width: f64,
+    height: f64,
+    scale: f32,
+    image: PythonRenderedImage,
+    words: Vec<ReaderRenderedWord>,
+}
+
+/// Render a single PDF page to a PNG (data URL) with per-word bounding boxes for
+/// the reader's page view (geometry-based highlighting). Reads the original file
+/// recorded in the cached document envelope.
+#[tauri::command]
+#[specta::specta]
+pub async fn render_reader_page(
+    app: AppHandle,
+    document_id: String,
+    page_index: u32,
+    scale: Option<f32>,
+) -> Result<ReaderRenderedPage, String> {
+    tokio::task::spawn_blocking(move || {
+        if !is_valid_reader_id(&document_id) {
+            return Err("Invalid Reader document id.".to_string());
+        }
+        let reader_data_dir = crate::storage_paths::reader_data_dir(&app)
+            .map_err(|err| format!("Failed to resolve Reader library directory: {err}"))?;
+        let envelope = read_cached_reader_envelope(&reader_data_dir, &document_id)
+            .ok_or_else(|| "This document is no longer in the Reader library.".to_string())?;
+        if !matches!(envelope.document.kind, ReaderDocumentKind::Pdf) {
+            return Err("Page view is only available for PDF documents.".to_string());
+        }
+        let source_path = PathBuf::from(&envelope.source_path);
+        if !source_path.is_file() {
+            return Err(
+                "The original file is no longer available, so its pages can't be rendered."
+                    .to_string(),
+            );
+        }
+        let python = ensure_reader_python(&app)?;
+        let script = resolve_reader_script(&app, "reader_page.py")?;
+        let mut page = render_reader_page_blocking(
+            &python,
+            &script,
+            &source_path,
+            page_index,
+            scale.unwrap_or(2.0),
+        )?;
+        if page.words.is_empty() {
+            page.words = words_from_cached_layout_page(
+                &envelope.document,
+                page_index as usize,
+                page.width,
+                page.height,
+            );
+        }
+        Ok(page)
+    })
+    .await
+    .map_err(|err| format!("Reader page render task failed: {err}"))?
+}
+
+fn render_reader_page_blocking(
+    python: &Path,
+    script: &Path,
+    pdf_path: &Path,
+    page_index: u32,
+    scale: f32,
+) -> Result<ReaderRenderedPage, String> {
+    let output = Command::new(python)
+        .arg(script)
+        .arg("--path")
+        .arg(pdf_path)
+        .arg("--page")
+        .arg(page_index.to_string())
+        .arg("--scale")
+        .arg(format!("{scale}"))
+        .env("PYTHONUNBUFFERED", "1")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|err| format!("Failed to run Reader page renderer: {err}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if stderr.is_empty() {
+            format!("Reader page renderer exited with status {}", output.status)
+        } else {
+            stderr
+        });
+    }
+    let parsed: PythonRenderedPage = serde_json::from_slice(&output.stdout)
+        .map_err(|err| format!("Reader page renderer returned invalid JSON: {err}"))?;
+    Ok(ReaderRenderedPage {
+        index: parsed.index,
+        width: parsed.width,
+        height: parsed.height,
+        scale: parsed.scale,
+        image_data_url: format!(
+            "data:{};base64,{}",
+            parsed.image.mime_type, parsed.image.base64
+        ),
+        words: parsed.words,
+    })
+}
+
+fn words_from_cached_layout_page(
+    document: &ReaderDocument,
+    page_index: usize,
+    rendered_width: f64,
+    rendered_height: f64,
+) -> Vec<ReaderRenderedWord> {
+    let Some(page) = document.pages.iter().find(|page| page.index == page_index) else {
+        return Vec::new();
+    };
+    let x_scale = page
+        .width
+        .filter(|width| *width > 0.0)
+        .map(|width| rendered_width / width)
+        .unwrap_or(1.0);
+    let y_scale = page
+        .height
+        .filter(|height| *height > 0.0)
+        .map(|height| rendered_height / height)
+        .unwrap_or(1.0);
+
+    let mut words = Vec::new();
+    for block in &page.blocks {
+        let Some(bbox) = block.bbox.as_ref() else {
+            continue;
+        };
+        let lines: Vec<&str> = block
+            .text
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect();
+        if lines.is_empty() || bbox.x1 <= bbox.x0 || bbox.y1 <= bbox.y0 {
+            continue;
+        }
+        let line_height = (bbox.y1 - bbox.y0) / lines.len() as f64;
+        for (line_index, line) in lines.iter().enumerate() {
+            let line_words: Vec<&str> = line.split_whitespace().collect();
+            if line_words.is_empty() {
+                continue;
+            }
+            let total_units: usize = line_words
+                .iter()
+                .map(|word| word.chars().count().max(1))
+                .sum::<usize>()
+                + line_words.len().saturating_sub(1);
+            let unit_width = (bbox.x1 - bbox.x0) / total_units.max(1) as f64;
+            let mut x = bbox.x0;
+            let y0 = bbox.y0 + line_height * line_index as f64;
+            let y1 = if line_index + 1 == lines.len() {
+                bbox.y1
+            } else {
+                y0 + line_height
+            };
+            let y_padding = ((y1 - y0) * 0.12).max(0.0);
+            for (word_index, word) in line_words.iter().enumerate() {
+                let width = unit_width * word.chars().count().max(1) as f64;
+                let x0 = x;
+                let x1 = (x + width).min(bbox.x1);
+                if x1 > x0 {
+                    words.push(ReaderRenderedWord {
+                        text: (*word).to_string(),
+                        x0: clamp_page_coord(x0 * x_scale, rendered_width),
+                        y0: clamp_page_coord((y0 + y_padding) * y_scale, rendered_height),
+                        x1: clamp_page_coord(x1 * x_scale, rendered_width),
+                        y1: clamp_page_coord((y1 - y_padding) * y_scale, rendered_height),
+                    });
+                }
+                x = x1;
+                if word_index + 1 < line_words.len() {
+                    x = (x + unit_width).min(bbox.x1);
+                }
+            }
+        }
+    }
+    words
+}
+
+fn clamp_page_coord(value: f64, max: f64) -> f64 {
+    if max.is_finite() && max > 0.0 {
+        value.clamp(0.0, max)
+    } else {
+        value
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1311,6 +1579,48 @@ mod tests {
         assert_eq!(sections[0].index, 0);
         assert!(sections[0].text.contains("Intro paragraph."));
         assert!(sections[0].text.contains("Second paragraph"));
+    }
+
+    #[test]
+    fn cached_layout_blocks_provide_page_word_fallback() {
+        let document = ReaderDocument {
+            id: "doc".to_string(),
+            path: "/tmp/doc.pdf".to_string(),
+            name: "doc.pdf".to_string(),
+            kind: ReaderDocumentKind::Pdf,
+            size_bytes: 1,
+            source_modified_ms: None,
+            word_count: 4,
+            page_count: 1,
+            extraction_engine: "pymupdf-ocr".to_string(),
+            thumbnail_data_url: None,
+            text: "Hello world\nSecond line".to_string(),
+            pages: vec![ReaderDocumentPage {
+                index: 0,
+                width: Some(100.0),
+                height: Some(200.0),
+                blocks: vec![ReaderDocumentBlock {
+                    index: 0,
+                    text: "Hello world\nSecond line".to_string(),
+                    kind: "content".to_string(),
+                    bbox: Some(ReaderDocumentBbox {
+                        x0: 10.0,
+                        y0: 20.0,
+                        x1: 90.0,
+                        y1: 60.0,
+                    }),
+                }],
+            }],
+            sections: Vec::new(),
+        };
+
+        let words = words_from_cached_layout_page(&document, 0, 200.0, 400.0);
+        let texts: Vec<&str> = words.iter().map(|word| word.text.as_str()).collect();
+
+        assert_eq!(texts, vec!["Hello", "world", "Second", "line"]);
+        assert!(words[0].x0 < words[1].x0);
+        assert!(words[2].y0 > words[0].y0);
+        assert!(words.iter().all(|word| word.x0 >= 0.0 && word.x1 <= 200.0));
     }
 
     #[test]

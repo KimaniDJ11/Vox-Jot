@@ -17,11 +17,14 @@ import {
   Search,
 } from "lucide-react";
 
+import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import {
   voiceAvatarGradient,
   type CreateVoiceHubVoiceRow,
 } from "@/components/settings/general/listen/createVoiceVoiceHub";
+import { VoiceCapabilityChips } from "@/components/settings/general/listen/VoiceCapabilityChips";
+import { voiceCapabilityFlagsForPreset } from "@/components/settings/general/listen/voiceCapabilities";
 
 function presetSeed(preset: TtsVoicePreset): string {
   return `${preset.provider_id}::${preset.model_id}::${preset.voice_id ?? "__model__"}`;
@@ -41,6 +44,8 @@ export type ReaderVoicePickerProps = {
   value: string | null;
   presets: TtsVoicePreset[];
   presetVoices: CreateVoiceHubVoiceRow[];
+  /** TTS model catalog, used to tag presets with capability chips (Expressions/Prompts). */
+  ttsModels?: CatalogModelDescriptor[];
   onSelectPreset: (presetId: string) => void;
   onSelectDefault: () => void;
   onCreatePresetFromVoice: (voice: CreateVoiceHubVoiceRow) => Promise<string>;
@@ -50,11 +55,19 @@ export type ReaderVoicePickerProps = {
   defaultPresetId?: string | null;
   disabled?: boolean;
   className?: string;
+  /** Trigger size: "sm" (compact, default) or "md" (taller, for form rows like the Cast picker). */
+  triggerSize?: "sm" | "md";
+  /** When true, the trigger shows `loadingLabel` instead of the current voice. */
+  isLoading?: boolean;
+  loadingLabel?: string;
 };
 
-const Dot: React.FC<{ gradient: string }> = ({ gradient }) => (
+const Dot: React.FC<{ gradient: string; className?: string }> = ({
+  gradient,
+  className = "h-3.5 w-3.5",
+}) => (
   <span
-    className="h-3.5 w-3.5 shrink-0 rounded-full"
+    className={`${className} shrink-0 rounded-full`}
     style={{ background: gradient }}
     aria-hidden="true"
   />
@@ -64,6 +77,7 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
   value,
   presets,
   presetVoices,
+  ttsModels = [],
   onSelectPreset,
   onSelectDefault,
   onCreatePresetFromVoice,
@@ -72,6 +86,9 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
   defaultPresetId,
   disabled = false,
   className = "",
+  triggerSize = "sm",
+  isLoading = false,
+  loadingLabel,
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -93,11 +110,21 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
     [presets, value],
   );
 
+  // Look up the catalog model for each preset so we can tag it with capability
+  // chips (Expressions / Prompts), mirroring the Story Studio cast picker.
+  const modelByKey = useMemo(
+    () =>
+      new Map(
+        ttsModels.map((model) => [`${model.provider_id}::${model.id}`, model]),
+      ),
+    [ttsModels],
+  );
+
   const dotPreset = useMemo(
     () =>
       selectedPreset ??
       (defaultPresetId
-        ? presets.find((preset) => preset.id === defaultPresetId) ?? null
+        ? (presets.find((preset) => preset.id === defaultPresetId) ?? null)
         : null),
     [presets, selectedPreset, defaultPresetId],
   );
@@ -279,28 +306,41 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
         className={[
-          "flex h-7 w-full items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--input)] px-2 text-left text-[11px] text-[var(--text)] outline-none transition-colors hover:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50",
+          "flex w-full items-center border border-[var(--border)] bg-[var(--input)] text-left text-[var(--text)] outline-none transition-colors hover:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50",
+          triggerSize === "md"
+            ? "h-10 gap-2 rounded-lg px-3 text-sm font-medium"
+            : "h-7 gap-1.5 rounded-md px-2 text-[11px]",
           className,
         ].join(" ")}
       >
-        {hasSplitDefaultLabel ? (
+        {isLoading && loadingLabel ? (
+          <span className="min-w-0 flex-1 truncate text-[var(--muted)]">
+            {loadingLabel}
+          </span>
+        ) : hasSplitDefaultLabel ? (
           <span className="min-w-0 flex-1 truncate flex items-center gap-1.5">
             <span className="shrink-0">{defaultLabelParts.prefix}</span>
             {dotPreset ? (
-              <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+              <Dot
+                gradient={voiceAvatarGradient(presetSeed(dotPreset))}
+                className={triggerSize === "md" ? "h-5 w-5" : "h-3.5 w-3.5"}
+              />
             ) : null}
             <span className="truncate">{defaultLabelParts.voice}</span>
           </span>
         ) : (
           <>
             {dotPreset ? (
-              <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+              <Dot
+                gradient={voiceAvatarGradient(presetSeed(dotPreset))}
+                className={triggerSize === "md" ? "h-5 w-5" : "h-3.5 w-3.5"}
+              />
             ) : null}
             <span className="min-w-0 flex-1 truncate">{currentLabel}</span>
           </>
         )}
         <ChevronsUpDown
-          size={12}
+          size={triggerSize === "md" ? 16 : 12}
           className="shrink-0 text-[var(--muted)]"
           aria-hidden="true"
         />
@@ -366,16 +406,28 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                   >
                     {hasSplitDefaultLabel ? (
                       <span className="min-w-0 flex-1 truncate flex items-center gap-1.5">
-                        <span className="shrink-0">{defaultLabelParts.prefix}</span>
+                        <span className="shrink-0">
+                          {defaultLabelParts.prefix}
+                        </span>
                         {dotPreset ? (
-                          <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+                          <Dot
+                            gradient={voiceAvatarGradient(
+                              presetSeed(dotPreset),
+                            )}
+                          />
                         ) : null}
-                        <span className="truncate">{defaultLabelParts.voice}</span>
+                        <span className="truncate">
+                          {defaultLabelParts.voice}
+                        </span>
                       </span>
                     ) : (
                       <>
                         {dotPreset ? (
-                          <Dot gradient={voiceAvatarGradient(presetSeed(dotPreset))} />
+                          <Dot
+                            gradient={voiceAvatarGradient(
+                              presetSeed(dotPreset),
+                            )}
+                          />
                         ) : null}
                         <span className="min-w-0 flex-1 truncate">
                           {defaultVoiceLabel}
@@ -409,8 +461,16 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--accent-soft)]"
                   >
                     <Dot gradient={voiceAvatarGradient(presetSeed(preset))} />
-                    <span className="min-w-0 flex-1 truncate">
-                      {presetLabel(preset)}
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <span className="truncate">{presetLabel(preset)}</span>
+                      <VoiceCapabilityChips
+                        capabilities={voiceCapabilityFlagsForPreset(
+                          preset,
+                          modelByKey.get(
+                            `${preset.provider_id}::${preset.model_id}`,
+                          ),
+                        )}
+                      />
                     </span>
                     {preset.id === value ? (
                       <Check
@@ -440,12 +500,15 @@ export const ReaderVoicePicker: React.FC<ReaderVoicePickerProps> = ({
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--accent-soft)] disabled:cursor-wait disabled:opacity-50"
                   >
                     <Dot gradient={voice.avatarGradient} />
-                    <span className="min-w-0 flex-1 truncate">
-                      {voice.voiceId
-                        ? voice.modelLabel === "System Voices"
-                          ? voice.voiceLabel
-                          : `${voice.modelLabel} · ${voice.voiceLabel}`
-                        : voice.modelLabel}
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                      <span className="truncate">
+                        {voice.voiceId
+                          ? voice.modelLabel === "System Voices"
+                            ? voice.voiceLabel
+                            : `${voice.modelLabel} · ${voice.voiceLabel}`
+                          : voice.modelLabel}
+                      </span>
+                      <VoiceCapabilityChips capabilities={voice.capabilities} />
                     </span>
                     {voice.countryFlag ? (
                       <span className="shrink-0 text-xs">

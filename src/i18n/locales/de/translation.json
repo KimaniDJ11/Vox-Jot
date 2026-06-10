@@ -2349,7 +2349,9 @@
         "listen": "Anhoren",
         "copy": "Kopieren",
         "clear": "Ergebnis loschen"
-      }
+      },
+      "skipped": "Übersprungen",
+      "jumpToPlaying": "Zur Wiedergabe springen"
     },
     "enhanceAudio": {
       "subtitle": "Entferne Hintergrundrauschen aus Audio- oder Videodateien und behalte die volle Bandbreitenqualität.",

@@ -2349,7 +2349,9 @@
         "listen": "Sluchaj",
         "copy": "Kopiuj",
         "clear": "Wyczysc wynik"
-      }
+      },
+      "skipped": "Pominięto",
+      "jumpToPlaying": "Przejdź do odtwarzania"
     },
     "enhanceAudio": {
       "subtitle": "Usuń szum tła z plików audio lub wideo, zachowując jakość pełnego pasma.",

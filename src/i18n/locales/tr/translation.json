@@ -2349,7 +2349,9 @@
         "listen": "Dinle",
         "copy": "Kopyala",
         "clear": "Sonucu temizle"
-      }
+      },
+      "skipped": "Atlandı",
+      "jumpToPlaying": "Çalınana git"
     },
     "enhanceAudio": {
       "subtitle": "Ses veya video dosyalarındaki arka plan gürültüsünü kaldırırken tam bant kalitesini koruyun.",

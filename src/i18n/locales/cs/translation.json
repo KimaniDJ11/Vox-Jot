@@ -2349,7 +2349,9 @@
         "listen": "Poslechnout",
         "copy": "Kopirovat",
         "clear": "Vymazat vysledek"
-      }
+      },
+      "skipped": "Přeskočeno",
+      "jumpToPlaying": "Přejít na přehrávané"
     },
     "enhanceAudio": {
       "subtitle": "Odstraňte šum na pozadí ze zvukových nebo video souborů a zachovejte plnopásmovou kvalitu.",

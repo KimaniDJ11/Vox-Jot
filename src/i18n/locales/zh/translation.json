@@ -2349,7 +2349,9 @@
         "listen": "收听",
         "copy": "复制",
         "clear": "清除结果"
-      }
+      },
+      "skipped": "已跳过",
+      "jumpToPlaying": "跳到正在播放"
     },
     "enhanceAudio": {
       "subtitle": "从音频或视频文件中移除背景噪声，同时保留全频带质量。",

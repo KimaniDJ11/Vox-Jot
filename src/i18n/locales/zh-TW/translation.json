@@ -2349,7 +2349,9 @@
         "listen": "聆聽",
         "copy": "複製",
         "clear": "清除結果"
-      }
+      },
+      "skipped": "已略過",
+      "jumpToPlaying": "跳至播放位置"
     },
     "enhanceAudio": {
       "subtitle": "從音訊或影片檔案中移除背景雜訊，同時保留全頻段品質。",

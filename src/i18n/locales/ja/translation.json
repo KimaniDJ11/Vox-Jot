@@ -2349,7 +2349,9 @@
         "listen": "聴く",
         "copy": "コピー",
         "clear": "結果をクリア"
-      }
+      },
+      "skipped": "スキップ",
+      "jumpToPlaying": "再生位置へ移動"
     },
     "enhanceAudio": {
       "subtitle": "音声または動画ファイルから背景ノイズを除去し、フルバンド品質を保ちます。",

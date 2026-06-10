@@ -343,6 +343,8 @@
       "confirmRemoveDocument": "Confirm remove document",
       "cancelRemoveDocument": "Cancel remove document",
       "sectionLabel": "Section {{current}} of {{total}}",
+      "skipped": "Skipped",
+      "jumpToPlaying": "Jump to playing",
       "readSection": "Read section",
       "readAll": "Read all",
       "readTranscript": "Read",

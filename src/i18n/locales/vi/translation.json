@@ -2349,7 +2349,9 @@
         "listen": "Nghe",
         "copy": "Sao chep",
         "clear": "Xoa ket qua"
-      }
+      },
+      "skipped": "Đã bỏ qua",
+      "jumpToPlaying": "Đến vị trí đang đọc"
     },
     "enhanceAudio": {
       "subtitle": "Xóa tiếng ồn nền khỏi tệp âm thanh hoặc video trong khi vẫn giữ chất lượng toàn dải.",

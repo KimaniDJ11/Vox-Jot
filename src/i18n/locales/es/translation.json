@@ -2349,7 +2349,9 @@
         "listen": "Escuchar",
         "copy": "Copiar",
         "clear": "Borrar resultado"
-      }
+      },
+      "skipped": "Omitido",
+      "jumpToPlaying": "Ir a la reproducción"
     },
     "enhanceAudio": {
       "subtitle": "Elimina el ruido de fondo de archivos de audio o video conservando calidad de banda completa.",

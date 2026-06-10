@@ -1387,6 +1387,7 @@
           "externalScript": "External Script"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "Use an absolute path to an executable file. Vox Jot passes the dictated text as one argument and stops the script after 5 seconds.",
         "directDescription": "Types the final text into the focused field for hands-free assistive text entry.",
         "clipboardDescription": "Copies the text, sends the system paste shortcut to the focused field, then restores the clipboard.",
         "clipboardOnly": "Clipboard only",

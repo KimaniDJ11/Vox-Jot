@@ -687,6 +687,7 @@
           "externalScript": "Scrittura esterna"
         },
         "externalScriptPlaceholder": "/percorso/del/tuo/script.sh",
+        "externalScriptSecurityHint": "Usa un percorso assoluto a un file eseguibile. Vox Jot passa il testo dettato come un unico argomento e interrompe lo script dopo 5 secondi.",
         "directDescription": "Digita il testo finale nel campo evidenziato senza utilizzare gli appunti.",
         "clipboardDescription": "Copia il testo, invia il collegamento di sistema per incollare, quindi ripristina gli appunti.",
         "clipboardOnly": "Solo appunti",

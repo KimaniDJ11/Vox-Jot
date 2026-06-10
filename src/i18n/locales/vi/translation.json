@@ -687,6 +687,7 @@
           "externalScript": "Tập lệnh bên ngoài"
         },
         "externalScriptPlaceholder": "/duong-dan/toi/script.sh",
+        "externalScriptSecurityHint": "Dùng đường dẫn tuyệt đối tới một tệp có thể thực thi. Vox Jot truyền văn bản đã đọc chính tả dưới dạng một đối số và dừng script sau 5 giây.",
         "directDescription": "Nhập văn bản cuối cùng vào trường được tập trung mà không cần sử dụng bảng nhớ tạm.",
         "clipboardDescription": "Sao chép văn bản, gửi phím tắt dán hệ thống, sau đó khôi phục bảng nhớ tạm.",
         "clipboardOnly": "Chỉ bảng nhớ tạm",

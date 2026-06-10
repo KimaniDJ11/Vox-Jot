@@ -687,6 +687,7 @@
           "externalScript": "外部腳本"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "請使用可執行檔的絕對路徑。Vox Jot 會將聽寫文字作為一個參數傳遞，並在 5 秒後停止腳本。",
         "directDescription": "在不使用剪貼簿的情況下將最終文字輸入到焦點欄位中。",
         "clipboardDescription": "複製文本，發送系統貼上捷徑，然後恢復剪貼簿。",
         "clipboardOnly": "僅剪貼簿",
@@ -1663,11 +1664,7 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": [
-        "總結所選文本",
-        "重寫一下更清楚",
-        "拉出行動項目"
-      ]
+      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
     },
     "settingsCoach": {
       "label": "設定教練",

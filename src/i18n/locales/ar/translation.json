@@ -564,6 +564,7 @@
           "externalScript": "البرنامج النصي الخارجي"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "استخدم مسارًا مطلقًا إلى ملف قابل للتنفيذ. يمرر Vox Jot النص المملى كوسيط واحد ويوقف السكربت بعد 5 ثوانٍ.",
         "directDescription": "يكتب النص النهائي في الحقل الذي تم التركيز عليه دون استخدام الحافظة.",
         "clipboardDescription": "ينسخ النص، ويرسل اختصار اللصق إلى النظام، ثم يستعيد الحافظة.",
         "clipboardOnly": "الحافظة فقط",

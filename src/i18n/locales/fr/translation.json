@@ -687,6 +687,7 @@
           "externalScript": "Script externe"
         },
         "externalScriptPlaceholder": "/chemin/vers/votre/script.sh",
+        "externalScriptSecurityHint": "Utilisez un chemin absolu vers un fichier exécutable. Vox Jot transmet le texte dicté comme argument unique et arrête le script après 5 secondes.",
         "directDescription": "Tape le texte final dans le champ sélectionné sans utiliser le presse-papiers.",
         "clipboardDescription": "Copie le texte, envoie le raccourci système de collage, puis restaure le presse-papiers.",
         "clipboardOnly": "Presse-papiers uniquement",

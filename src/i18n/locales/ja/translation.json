@@ -687,6 +687,7 @@
           "externalScript": "外部スクリプト"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "実行可能ファイルへの絶対パスを使用してください。Vox Jot は音声入力されたテキストを 1 つの引数として渡し、5 秒後にスクリプトを停止します。",
         "directDescription": "クリップボードを使用せずに、フォーカスされたフィールドに最終テキストを入力します。",
         "clipboardDescription": "テキストをコピーし、システムの貼り付けショートカットを送信して、クリップボードを復元します。",
         "clipboardOnly": "クリップボードのみ",

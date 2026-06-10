@@ -687,6 +687,7 @@
           "externalScript": "Externes Skript"
         },
         "externalScriptPlaceholder": "/pfad/zu/ihrem/skript.sh",
+        "externalScriptSecurityHint": "Verwenden Sie einen absoluten Pfad zu einer ausführbaren Datei. Vox Jot übergibt den diktierten Text als einzelnes Argument und stoppt das Skript nach 5 Sekunden.",
         "directDescription": "Gibt den endgültigen Text in das fokussierte Feld ein, ohne die Zwischenablage zu verwenden.",
         "clipboardDescription": "Kopiert den Text, sendet die Systemverknüpfung zum Einfügen und stellt dann die Zwischenablage wieder her.",
         "clipboardOnly": "Nur Zwischenablage",

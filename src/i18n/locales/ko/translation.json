@@ -687,6 +687,7 @@
           "externalScript": "외부 스크립트"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "실행 파일의 절대 경로를 사용하세요. Vox Jot은 받아쓴 텍스트를 단일 인수로 전달하고 5초 후 스크립트를 중지합니다.",
         "directDescription": "클립보드를 사용하지 않고 초점이 맞춰진 필드에 최종 텍스트를 입력합니다.",
         "clipboardDescription": "텍스트를 복사하고 시스템 붙여넣기 바로가기를 보낸 다음 클립보드를 복원합니다.",
         "clipboardOnly": "클립보드만",

@@ -1240,7 +1240,15 @@ pub fn change_external_script_path_setting(
     path: Option<String>,
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.external_script_path = path;
+    settings.external_script_path = match path {
+        Some(path) if path.trim().is_empty() => None,
+        Some(path) => Some(
+            crate::clipboard::validate_external_script_path(&path)?
+                .to_string_lossy()
+                .to_string(),
+        ),
+        None => None,
+    };
     settings::write_settings(&app, settings);
     Ok(())
 }

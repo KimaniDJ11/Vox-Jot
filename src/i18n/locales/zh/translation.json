@@ -687,6 +687,7 @@
           "externalScript": "外部脚本"
         },
         "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "externalScriptSecurityHint": "请使用可执行文件的绝对路径。Vox Jot 会将听写文本作为一个参数传递，并在 5 秒后停止脚本。",
         "directDescription": "在不使用剪贴板的情况下将最终文本输入到焦点字段中。",
         "clipboardDescription": "复制文本，发送系统粘贴快捷方式，然后恢复剪贴板。",
         "clipboardOnly": "仅剪贴板",
@@ -1663,11 +1664,7 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": [
-        "总结所选文本",
-        "重写一下更清楚",
-        "拉出行动项目"
-      ]
+      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
     },
     "settingsCoach": {
       "label": "设置教练",

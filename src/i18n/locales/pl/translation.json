@@ -687,6 +687,7 @@
           "externalScript": "Skrypt zewnętrzny"
         },
         "externalScriptPlaceholder": "/sciezka/do/twojego/skryptu.sh",
+        "externalScriptSecurityHint": "Użyj ścieżki bezwzględnej do pliku wykonywalnego. Vox Jot przekazuje podyktowany tekst jako jeden argument i zatrzymuje skrypt po 5 sekundach.",
         "directDescription": "Wpisuje ostateczny tekst w zaznaczonym polu bez użycia schowka.",
         "clipboardDescription": "Kopiuje tekst, wysyła systemowy skrót do wklejania, a następnie przywraca schowek.",
         "clipboardOnly": "Tylko schowek",

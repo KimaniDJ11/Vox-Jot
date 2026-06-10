@@ -1,12 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Clipboard, Keyboard, Zap } from "lucide-react";
+import { AlertTriangle, Clipboard, Keyboard, Zap } from "lucide-react";
 import { Dropdown } from "../ui/Dropdown";
 import { SettingContainer } from "../ui/SettingContainer";
 import { Input } from "../ui/Input";
 import { useSettings } from "../../hooks/useSettings";
 import { useOsType } from "../../hooks/useOsType";
-import type { ClipboardHandling, PasteMethod } from "@/bindings";
+import { commands, type ClipboardHandling, type PasteMethod } from "@/bindings";
 import {
   SelectionDot,
   visualizationStateClass,
@@ -20,7 +20,8 @@ interface PasteMethodProps {
 export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
   ({ descriptionMode = "tooltip", grouped = false }) => {
     const { t } = useTranslation();
-    const { getSetting, updateSetting, isUpdating } = useSettings();
+    const { getSetting, updateSetting, isUpdating, refreshSettings } =
+      useSettings();
     const osType = useOsType();
 
     const getPasteMethodOptions = (osType: string) => {
@@ -77,6 +78,16 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
     const selectedHandling = (getSetting("clipboard_handling") ||
       "dont_modify") as ClipboardHandling;
     const externalScriptPath = getSetting("external_script_path") || "";
+    const [externalScriptDraft, setExternalScriptDraft] =
+      useState(externalScriptPath);
+    const [externalScriptError, setExternalScriptError] = useState("");
+    const [isSavingExternalScriptPath, setIsSavingExternalScriptPath] =
+      useState(false);
+
+    useEffect(() => {
+      setExternalScriptDraft(externalScriptPath);
+      setExternalScriptError("");
+    }, [externalScriptPath]);
 
     const pasteMethodOptions = getPasteMethodOptions(osType);
     const advancedMethodSelected = !["direct", "ctrl_v", "none"].includes(
@@ -90,6 +101,31 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
       await updateSetting("paste_method", method);
       if (clipboardHandling) {
         await updateSetting("clipboard_handling", clipboardHandling);
+      }
+    };
+
+    const saveExternalScriptPath = async () => {
+      if (isSavingExternalScriptPath) return;
+      const nextPath = externalScriptDraft.trim();
+      setIsSavingExternalScriptPath(true);
+      try {
+        const result = await commands.changeExternalScriptPathSetting(
+          nextPath.length > 0 ? nextPath : null,
+        );
+
+        if (result.status === "error") {
+          setExternalScriptError(String(result.error));
+          return;
+        }
+
+        setExternalScriptError("");
+        await refreshSettings();
+      } catch (error) {
+        setExternalScriptError(
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        setIsSavingExternalScriptPath(false);
       }
     };
 
@@ -168,17 +204,56 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
             </div>
           ) : null}
           {selectedMethod === "external_script" && (
-            <Input
-              type="text"
-              value={externalScriptPath}
-              onChange={(e) =>
-                updateSetting("external_script_path", e.target.value)
-              }
-              placeholder={t(
-                "settings.advanced.pasteMethod.externalScriptPlaceholder",
-              )}
-              disabled={isUpdating("external_script_path")}
-            />
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+              <div className="mb-3 flex items-start gap-2 text-xs leading-5 text-[var(--muted)]">
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--warning)]"
+                  aria-hidden
+                />
+                <p>
+                  {t(
+                    "settings.advanced.pasteMethod.externalScriptSecurityHint",
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="text"
+                  value={externalScriptDraft}
+                  onChange={(e) => {
+                    setExternalScriptDraft(e.target.value);
+                    setExternalScriptError("");
+                  }}
+                  placeholder={t(
+                    "settings.advanced.pasteMethod.externalScriptPlaceholder",
+                  )}
+                  disabled={
+                    isSavingExternalScriptPath ||
+                    isUpdating("external_script_path")
+                  }
+                />
+                <button
+                  type="button"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={
+                    isSavingExternalScriptPath ||
+                    isUpdating("external_script_path") ||
+                    externalScriptDraft.trim() === externalScriptPath
+                  }
+                  onClick={() => void saveExternalScriptPath()}
+                >
+                  {t("common.save")}
+                </button>
+              </div>
+              {externalScriptError ? (
+                <p
+                  role="alert"
+                  className="mt-2 text-xs leading-5 text-[var(--danger)]"
+                >
+                  {externalScriptError}
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
       </SettingContainer>

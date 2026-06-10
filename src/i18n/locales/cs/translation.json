@@ -687,6 +687,7 @@
           "externalScript": "Externí skript"
         },
         "externalScriptPlaceholder": "/cesta/k/vasemu/skriptu.sh",
+        "externalScriptSecurityHint": "Použijte absolutní cestu ke spustitelnému souboru. Vox Jot předá nadiktovaný text jako jeden argument a skript zastaví po 5 sekundách.",
         "directDescription": "Zadá konečný text do vybraného pole bez použití schránky.",
         "clipboardDescription": "Zkopíruje text, odešle systémovou zkratku pro vložení a poté obnoví schránku.",
         "clipboardOnly": "Pouze schránka",

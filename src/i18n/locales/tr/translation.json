@@ -687,6 +687,7 @@
           "externalScript": "Harici Komut Dosyası"
         },
         "externalScriptPlaceholder": "/dosya/yolu/betik.sh",
+        "externalScriptSecurityHint": "Yürütülebilir bir dosyaya giden mutlak yolu kullanın. Vox Jot dikte edilen metni tek bir argüman olarak iletir ve betiği 5 saniye sonra durdurur.",
         "directDescription": "Son metni, panoyu kullanmadan odaklanılan alana yazar.",
         "clipboardDescription": "Metni kopyalar, sisteme yapıştırma kısayolunu gönderir ve ardından panoyu geri yükler.",
         "clipboardOnly": "Yalnızca pano",

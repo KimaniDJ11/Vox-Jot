@@ -687,6 +687,7 @@
           "externalScript": "Script Externo"
         },
         "externalScriptPlaceholder": "/caminho/para/seu/script.sh",
+        "externalScriptSecurityHint": "Use um caminho absoluto para um arquivo executável. O Vox Jot passa o texto ditado como um único argumento e interrompe o script após 5 segundos.",
         "directDescription": "Digita o texto final no campo em foco sem usar a área de transferência.",
         "clipboardDescription": "Copia o texto, envia o atalho de colagem do sistema e restaura a área de transferência.",
         "clipboardOnly": "Somente área de transferência",

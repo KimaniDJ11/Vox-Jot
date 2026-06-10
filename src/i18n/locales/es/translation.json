@@ -687,6 +687,7 @@
           "externalScript": "Guión externo"
         },
         "externalScriptPlaceholder": "/ruta/a/su/script.sh",
+        "externalScriptSecurityHint": "Use una ruta absoluta a un archivo ejecutable. Vox Jot pasa el texto dictado como un único argumento y detiene el script después de 5 segundos.",
         "directDescription": "Escribe el texto final en el campo enfocado sin usar el portapapeles.",
         "clipboardDescription": "Copia el texto, envía el acceso directo para pegar del sistema y luego restaura el portapapeles.",
         "clipboardOnly": "Solo portapapeles",

@@ -4,14 +4,22 @@ use crate::settings::TypingTool;
 use crate::settings::{get_settings, AutoSubmitKey, ClipboardHandling, PasteMethod};
 use enigo::{Direction, Enigo, Key, Keyboard};
 use log::{info, warn};
-use std::process::Command;
+use std::fs::{self, File};
+use std::io::Read;
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 #[cfg(target_os = "linux")]
 use crate::utils::{is_kde_wayland, is_wayland};
+
+const EXTERNAL_SCRIPT_TIMEOUT: Duration = Duration::from_secs(5);
+const EXTERNAL_SCRIPT_OUTPUT_LIMIT_BYTES: u64 = 16 * 1024;
 
 /// Mark the macOS general pasteboard as transient so clipboard-history tools
 /// (Paste, Alfred, Pastebot, Maccy, etc.) skip logging our dictated text.
@@ -684,26 +692,163 @@ fn send_key_combo_via_xdotool(paste_method: &PasteMethod) -> Result<(), String> 
 /// Pastes text by invoking an external script.
 /// The script receives the text to paste as a single argument.
 fn paste_via_external_script(text: &str, script_path: &str) -> Result<(), String> {
-    info!("Pasting via external script: {}", script_path);
+    paste_via_external_script_with_timeout(text, script_path, EXTERNAL_SCRIPT_TIMEOUT)
+}
 
-    let output = Command::new(script_path)
+fn paste_via_external_script_with_timeout(
+    text: &str,
+    script_path: &str,
+    timeout: Duration,
+) -> Result<(), String> {
+    let script_path = validate_external_script_path(script_path)?;
+    info!("Pasting via external script: {}", script_path.display());
+
+    let stdout_path = std::env::temp_dir().join(format!(
+        "vox-jot-external-script-{}-stdout.log",
+        uuid::Uuid::new_v4()
+    ));
+    let stderr_path = std::env::temp_dir().join(format!(
+        "vox-jot-external-script-{}-stderr.log",
+        uuid::Uuid::new_v4()
+    ));
+    let stdout = create_external_script_output_file(&stdout_path)
+        .map_err(|err| format!("Failed to create external script stdout file: {err}"))?;
+    let stderr = create_external_script_output_file(&stderr_path).map_err(|err| {
+        let _ = fs::remove_file(&stdout_path);
+        format!("Failed to create external script stderr file: {err}")
+    })?;
+
+    let mut child = Command::new(&script_path)
         .arg(text)
-        .output()
-        .map_err(|e| format!("Failed to execute external script '{}': {}", script_path, e))?;
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr))
+        .spawn()
+        .map_err(|err| {
+            cleanup_external_script_output(&stdout_path, &stderr_path);
+            format!(
+                "Failed to execute external script '{}': {err}",
+                script_path.display()
+            )
+        })?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
+    let started_at = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|err| {
+            cleanup_external_script_output(&stdout_path, &stderr_path);
+            format!("Failed while waiting for external script: {err}")
+        })? {
+            break status;
+        }
+
+        if started_at.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            let stderr = read_limited_external_script_output(&stderr_path);
+            let stdout = read_limited_external_script_output(&stdout_path);
+            cleanup_external_script_output(&stdout_path, &stderr_path);
+            return Err(format!(
+                "External script '{}' timed out after {} seconds. stderr: {}, stdout: {}",
+                script_path.display(),
+                timeout.as_secs(),
+                stderr.trim(),
+                stdout.trim()
+            ));
+        }
+
+        std::thread::sleep(Duration::from_millis(20));
+    };
+
+    let stderr = read_limited_external_script_output(&stderr_path);
+    let stdout = read_limited_external_script_output(&stdout_path);
+    cleanup_external_script_output(&stdout_path, &stderr_path);
+
+    if !status.success() {
         return Err(format!(
             "External script '{}' failed with exit code {:?}. stderr: {}, stdout: {}",
-            script_path,
-            output.status.code(),
+            script_path.display(),
+            status.code(),
             stderr.trim(),
             stdout.trim()
         ));
     }
 
     Ok(())
+}
+
+pub(crate) fn validate_external_script_path(script_path: &str) -> Result<PathBuf, String> {
+    let script_path = script_path.trim();
+    if script_path.is_empty() {
+        return Err("External script path is empty.".to_string());
+    }
+
+    let path = Path::new(script_path);
+    if !path.is_absolute() {
+        return Err("External script path must be absolute.".to_string());
+    }
+
+    let canonical = path
+        .canonicalize()
+        .map_err(|err| format!("External script path is not accessible: {err}"))?;
+    let metadata = fs::metadata(&canonical)
+        .map_err(|err| format!("Failed to inspect external script path: {err}"))?;
+    if !metadata.is_file() {
+        return Err("External script path must point to a file.".to_string());
+    }
+
+    #[cfg(unix)]
+    if metadata.permissions().mode() & 0o111 == 0 {
+        return Err("External script file must be executable.".to_string());
+    }
+
+    Ok(canonical)
+}
+
+fn create_external_script_output_file(path: &Path) -> Result<File, std::io::Error> {
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    options.open(path)
+}
+
+fn read_limited_external_script_output(path: &Path) -> String {
+    let Ok(file) = File::open(path) else {
+        return String::new();
+    };
+    let mut reader = file.take(EXTERNAL_SCRIPT_OUTPUT_LIMIT_BYTES + 1);
+    let mut bytes = Vec::new();
+    if reader.read_to_end(&mut bytes).is_err() {
+        return String::new();
+    }
+
+    let truncated = bytes.len() as u64 > EXTERNAL_SCRIPT_OUTPUT_LIMIT_BYTES;
+    if truncated {
+        bytes.truncate(EXTERNAL_SCRIPT_OUTPUT_LIMIT_BYTES as usize);
+    }
+
+    let mut output = String::from_utf8_lossy(&bytes).to_string();
+    if truncated {
+        output.push_str(" ... [truncated]");
+    }
+    output
+}
+
+fn cleanup_external_script_output(stdout_path: &Path, stderr_path: &Path) {
+    if let Err(err) = fs::remove_file(stdout_path) {
+        warn!(
+            "Failed to remove external script stdout file '{}': {}",
+            stdout_path.display(),
+            err
+        );
+    }
+    if let Err(err) = fs::remove_file(stderr_path) {
+        warn!(
+            "Failed to remove external script stderr file '{}': {}",
+            stderr_path.display(),
+            err
+        );
+    }
 }
 
 /// Types text directly by simulating individual key presses.
@@ -1019,5 +1164,55 @@ mod tests {
             None,
             None
         ));
+    }
+
+    #[test]
+    fn external_script_path_rejects_relative_paths() {
+        let err = validate_external_script_path("scripts/paste.sh").unwrap_err();
+        assert!(err.contains("absolute"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_script_path_requires_executable_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("paste.sh");
+        std::fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+
+        let err = validate_external_script_path(&path.to_string_lossy()).unwrap_err();
+        assert!(err.contains("executable"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_script_path_accepts_absolute_executable_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("paste.sh");
+        std::fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+        let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&path, permissions).unwrap();
+
+        let resolved = validate_external_script_path(&path.to_string_lossy()).unwrap();
+        assert_eq!(resolved, path.canonicalize().unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_script_times_out() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("slow-paste.sh");
+        std::fs::write(&path, "#!/bin/sh\nsleep 1\n").unwrap();
+        let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&path, permissions).unwrap();
+
+        let err = paste_via_external_script_with_timeout(
+            "hello",
+            &path.to_string_lossy(),
+            std::time::Duration::from_millis(30),
+        )
+        .unwrap_err();
+        assert!(err.contains("timed out"));
     }
 }

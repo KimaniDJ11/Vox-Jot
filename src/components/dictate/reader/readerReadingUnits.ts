@@ -11,6 +11,8 @@ export type ReadingUnit = {
   pageIndex: number | null;
   /** 0-based source section index, or null when not section-derived. */
   sectionIndex: number | null;
+  /** 0-based paragraph index within the section, or null when not section-derived. */
+  paragraphIndex: number | null;
   /** Voice preset to read this unit with (null = the reader's default voice). */
   presetId: string | null;
 };
@@ -42,19 +44,65 @@ export function buildSectionReadingUnits(
   for (const section of sections) {
     if (!options.isSectionEnabled(section.index)) continue;
     const presetId = options.voiceForSection(section.index);
-    const chunks = chunkText(section.text ?? "");
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
-      const chunk = chunks[chunkIndex];
+    for (const chunk of sectionChunks(section.text ?? "")) {
       units.push({
-        id: `section-${section.index}-chunk-${chunkIndex}`,
-        text: chunk,
+        id: readingUnitId(
+          section.index,
+          chunk.paragraphIndex,
+          chunk.chunkIndex,
+        ),
+        text: chunk.text,
         pageIndex: null,
         sectionIndex: section.index,
+        paragraphIndex: chunk.paragraphIndex,
         presetId,
       });
     }
   }
   return units;
+}
+
+export type SectionChunk = {
+  /** 0-based paragraph index within the section. */
+  paragraphIndex: number;
+  /** 0-based chunk index within the paragraph. */
+  chunkIndex: number;
+  text: string;
+};
+
+const PARAGRAPH_BREAK_RE = /\r?\n\s*\r?\n/;
+
+/**
+ * Split a section into paragraph-aligned chunks. Paragraphs (separated by blank
+ * lines) are chunked independently, so a single spoken unit never spans a
+ * paragraph break. This keeps the on-screen paragraphs and the narration units
+ * aligned, which lets the reader highlight — and click to play from — the exact
+ * sentence being spoken.
+ */
+export function sectionChunks(text: string): SectionChunk[] {
+  const out: SectionChunk[] = [];
+  let paragraphIndex = 0;
+  for (const paragraph of (text ?? "").split(PARAGRAPH_BREAK_RE)) {
+    const chunks = chunkText(paragraph);
+    if (chunks.length === 0) continue;
+    chunks.forEach((chunk, chunkIndex) => {
+      out.push({ paragraphIndex, chunkIndex, text: chunk });
+    });
+    paragraphIndex += 1;
+  }
+  return out;
+}
+
+/**
+ * Stable id for a reading unit, shared by the player queue and the on-screen
+ * text so the active unit can be located in the DOM for highlight/auto-scroll.
+ */
+export function readingUnitId(
+  sectionIndex: number,
+  paragraphIndex: number,
+  chunkIndex: number,
+): string {
+  return `s${sectionIndex}-p${paragraphIndex}-c${chunkIndex}`;
 }
 
 // Structural shape — the panel's ReaderDocument satisfies this without coupling
@@ -92,6 +140,7 @@ export function buildReadingUnits(
         text: chunk,
         pageIndex,
         sectionIndex: null,
+        paragraphIndex: null,
         presetId: null,
       });
     }

@@ -5,6 +5,7 @@ import {
   buildSectionReadingUnits,
   chunkText,
   readingUnitPageNumbers,
+  sectionChunks,
 } from "./readerReadingUnits";
 
 describe("chunkText", () => {
@@ -27,6 +28,36 @@ describe("chunkText", () => {
     const chunks = chunkText("x".repeat(1000), 480);
     expect(chunks.length).toBe(3);
     expect(chunks.every((c) => c.length <= 480)).toBe(true);
+  });
+});
+
+describe("sectionChunks", () => {
+  it("keeps paragraphs separate and never merges across blank lines", () => {
+    const chunks = sectionChunks("First paragraph.\n\nSecond paragraph.");
+    expect(chunks).toEqual([
+      { paragraphIndex: 0, chunkIndex: 0, text: "First paragraph." },
+      { paragraphIndex: 1, chunkIndex: 0, text: "Second paragraph." },
+    ]);
+  });
+
+  it("chunks a long paragraph into ordered chunks under one paragraph index", () => {
+    const long = `${"a".repeat(300)}. ${"b".repeat(300)}.`;
+    const chunks = sectionChunks(long);
+    expect(chunks.map((c) => c.paragraphIndex)).toEqual([0, 0]);
+    expect(chunks.map((c) => c.chunkIndex)).toEqual([0, 1]);
+  });
+
+  it("skips blank paragraphs without advancing the paragraph index", () => {
+    const chunks = sectionChunks("One.\n\n\n\nTwo.");
+    expect(chunks.map((c) => c.paragraphIndex)).toEqual([0, 1]);
+  });
+
+  it("treats CRLF and whitespace-only blank lines as paragraph breaks", () => {
+    const chunks = sectionChunks("One.\r\n  \r\nTwo.");
+    expect(chunks).toEqual([
+      { paragraphIndex: 0, chunkIndex: 0, text: "One." },
+      { paragraphIndex: 1, chunkIndex: 0, text: "Two." },
+    ]);
   });
 });
 
@@ -99,16 +130,26 @@ describe("buildSectionReadingUnits", () => {
     });
 
     expect(units.map((unit) => unit.sectionIndex)).toEqual([0, 1, 2]);
+    expect(units.map((unit) => unit.paragraphIndex)).toEqual([0, 0, 0]);
     expect(units.map((unit) => unit.presetId)).toEqual([
       "voice-narrator",
       "voice-character",
       "voice-narrator",
     ]);
     expect(units.map((unit) => unit.id)).toEqual([
-      "section-0-chunk-0",
-      "section-1-chunk-0",
-      "section-2-chunk-0",
+      "s0-p0-c0",
+      "s1-p0-c0",
+      "s2-p0-c0",
     ]);
+  });
+
+  it("ids encode paragraph and chunk position within a section", () => {
+    const units = buildSectionReadingUnits(
+      [{ index: 0, text: "Para one sentence.\n\nPara two sentence." }],
+      { voiceForSection: () => null, isSectionEnabled: () => true },
+    );
+    expect(units.map((unit) => unit.id)).toEqual(["s0-p0-c0", "s0-p1-c0"]);
+    expect(units.map((unit) => unit.paragraphIndex)).toEqual([0, 1]);
   });
 
   it("omits disabled sections from the playback queue", () => {

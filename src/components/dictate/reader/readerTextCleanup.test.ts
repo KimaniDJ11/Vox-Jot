@@ -18,6 +18,13 @@ describe("cleanReaderText", () => {
     );
   });
 
+  it("keeps CRLF whitespace-only blank lines as paragraph breaks", () => {
+    const input = "First paragraph line one\r\n  \r\nSecond paragraph.";
+    expect(cleanReaderText(input)).toBe(
+      "First paragraph line one\n\nSecond paragraph.",
+    );
+  });
+
   it("drops lone OCR checkbox markers", () => {
     const input =
       "X\nMotion: review and sign.\nx\nAffidavit: supports the motion.";

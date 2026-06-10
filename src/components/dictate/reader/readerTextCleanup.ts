@@ -8,6 +8,8 @@ function isJunkLine(line: string): boolean {
   return stripped === "" || /^[xX]{1,3}$/.test(stripped);
 }
 
+const PARAGRAPH_BREAK_RE = /\r?\n\s*\r?\n/;
+
 /**
  * Reflow a section's extracted text into clean paragraphs: keep blank-line
  * paragraph breaks, join hard-wrapped lines within a paragraph (de-hyphenating
@@ -15,7 +17,7 @@ function isJunkLine(line: string): boolean {
  */
 export function cleanReaderText(text: string): string {
   return text
-    .split(/\n{2,}/)
+    .split(PARAGRAPH_BREAK_RE)
     .map((paragraph) => {
       const lines = paragraph
         .split("\n")

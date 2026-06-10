@@ -27,6 +27,7 @@ import {
   Layers,
   List,
   Loader2,
+  LocateFixed,
   Pause,
   SlidersHorizontal,
   Trash2,
@@ -67,6 +68,8 @@ import { ReaderSearchControl } from "./reader/ReaderSearchControl";
 import { ReaderTransformTools } from "./reader/ReaderTransformTools";
 import {
   buildSectionReadingUnits,
+  readingUnitId,
+  sectionChunks,
   type ReadingUnit,
 } from "./reader/readerReadingUnits";
 import {
@@ -1011,8 +1014,15 @@ const FileTranscriptionPanelShell: React.FC<{
               })
         }
         showTitle={false}
-        descriptionOnlyGap="controls"
       >
+        {null}
+      </SettingsGroup>
+
+      {/* Toolbar sticks to the top of the scroll area so the view toggle and
+          Transform/Sections stay reachable while reading a long document. It
+          must be a direct child of this tall root (not nested in SettingsGroup,
+          whose short box would give `sticky` no room to hold). */}
+      <div className="sticky top-0 z-30 -mt-3 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg),transparent_8%)] py-3 backdrop-blur-md">
         <WatchedFoldersToolbar
           kind={kind}
           view={view}
@@ -1030,7 +1040,7 @@ const FileTranscriptionPanelShell: React.FC<{
           onReaderTransformOpenChange={setReaderTransformOpen}
           readerHasDocument={readerHasDocument}
         />
-      </SettingsGroup>
+      </div>
 
       {view === "file" ? (
         <>
@@ -2085,6 +2095,123 @@ const WatchedFoldersToolbar: React.FC<{
   );
 };
 
+type ReaderDisplaySection = {
+  index: number;
+  title: string;
+  enabled: boolean;
+  paragraphs: Array<{
+    paragraphIndex: number;
+    chunks: Array<{ id: string; text: string }>;
+  }>;
+};
+
+/**
+ * One section on the continuous reading surface. Memoized so that during
+ * playback only the section holding the active sentence re-renders — the
+ * `activeUnitId` prop is non-null for exactly that section, so every other
+ * section's props are referentially stable and React skips them.
+ */
+const ReaderSectionView = React.memo(function ReaderSectionView({
+  section,
+  totalSections,
+  activeUnitId,
+  unitIndexById,
+  onSeek,
+}: {
+  section: ReaderDisplaySection;
+  totalSections: number;
+  activeUnitId: string | null;
+  unitIndexById: Map<string, number>;
+  onSeek: (unitIndex: number) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section
+      data-section-index={section.index}
+      className="scroll-mt-24 space-y-3"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-[var(--border)] pb-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+          {t("dictate.reader.sectionLabel", {
+            defaultValue: "Section {{current}} of {{total}}",
+            current: section.index + 1,
+            total: totalSections,
+          })}
+        </div>
+        <div
+          className={[
+            "min-w-0 flex-1 truncate text-right text-sm font-semibold",
+            section.enabled
+              ? "text-[var(--text)]"
+              : "text-[var(--muted)] line-through",
+          ].join(" ")}
+        >
+          {section.title}
+          {!section.enabled ? (
+            <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] no-underline">
+              {t("dictate.reader.skipped", { defaultValue: "Skipped" })}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div
+        className={[
+          "space-y-3 text-[15px] leading-8",
+          section.enabled ? "text-[var(--text)]" : "text-[var(--muted)]",
+        ].join(" ")}
+      >
+        {section.paragraphs.map((paragraph) => (
+          <p key={paragraph.paragraphIndex} className="break-words">
+            {paragraph.chunks.map((chunk) => {
+              const unitIndex = unitIndexById.get(chunk.id);
+              const interactive = unitIndex !== undefined;
+              const isActive = chunk.id === activeUnitId;
+              const activate = () => {
+                if (unitIndex !== undefined) onSeek(unitIndex);
+              };
+              return (
+                <span
+                  key={chunk.id}
+                  data-unit-id={chunk.id}
+                  role={interactive ? "button" : undefined}
+                  tabIndex={interactive ? 0 : undefined}
+                  onClick={interactive ? activate : undefined}
+                  onKeyDown={
+                    interactive
+                      ? (event) => {
+                          if (event.key !== "Enter" && event.key !== " ") {
+                            return;
+                          }
+                          event.preventDefault();
+                          activate();
+                        }
+                      : undefined
+                  }
+                  className={[
+                    "rounded-[3px] [box-decoration-break:clone] [-webkit-box-decoration-break:clone]",
+                    interactive
+                      ? "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+                      : "",
+                    isActive
+                      ? "bg-[var(--accent-soft)] text-[var(--text)] shadow-[inset_0_0_0_1px_var(--accent-soft)]"
+                      : interactive
+                        ? "hover:bg-[var(--input)]"
+                        : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {chunk.text}{" "}
+                </span>
+              );
+            })}
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+});
+
 const ReaderDocumentsPanel: React.FC<{
   query: string;
   sort: ReaderLibrarySort;
@@ -2142,10 +2269,32 @@ const ReaderDocumentsPanel: React.FC<{
     null,
   );
   const activeReaderDocumentIdRef = useRef<string | null>(null);
+  // Continuous-scroll reading surface: the whole document renders at once and
+  // the player auto-scrolls to keep the spoken sentence in view. `autoFollow`
+  // turns off when the reader scrolls away by hand (so we stop yanking them
+  // back) and a "Jump to playing" pill re-engages it.
+  const readerScrollRef = useRef<HTMLDivElement | null>(null);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<number | null>(null);
+  const [autoFollow, setAutoFollow] = useState(true);
 
   useEffect(() => {
     activeReaderDocumentIdRef.current = activeDocument?.id ?? null;
   }, [activeDocument?.id]);
+
+  // A freshly opened document should follow playback again.
+  useEffect(() => {
+    setAutoFollow(true);
+  }, [activeDocument?.id]);
+
+  useEffect(
+    () => () => {
+      if (programmaticScrollTimerRef.current !== null) {
+        window.clearTimeout(programmaticScrollTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const resolveDocumentVoicePresetId = useCallback(
     (preferredPresetId: string | null | undefined) => {
@@ -2358,6 +2507,47 @@ const ReaderDocumentsPanel: React.FC<{
       }),
     [cleanedSections, sectionVoices, sectionDisabled, selectedPresetId],
   );
+  // The on-screen text and the playback queue share unit ids, so the active
+  // sentence can highlight while spoken and seek when clicked. Skipped sections
+  // produce no units, so their chunks simply won't be in this map.
+  const unitIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    readingUnits.forEach((unit, index) => map.set(unit.id, index));
+    return map;
+  }, [readingUnits]);
+  // Display model for the continuous reading surface: every section (including
+  // skipped ones, rendered muted) split into paragraphs of chunks whose ids
+  // match the queue. Built from the same `sectionChunks` as the units so the
+  // two never drift.
+  const displaySections = useMemo(
+    () =>
+      cleanedSections.map((section) => {
+        const paragraphs: Array<{
+          paragraphIndex: number;
+          chunks: Array<{ id: string; text: string }>;
+        }> = [];
+        for (const chunk of sectionChunks(section.text)) {
+          const id = readingUnitId(
+            section.index,
+            chunk.paragraphIndex,
+            chunk.chunkIndex,
+          );
+          let paragraph = paragraphs[paragraphs.length - 1];
+          if (!paragraph || paragraph.paragraphIndex !== chunk.paragraphIndex) {
+            paragraph = { paragraphIndex: chunk.paragraphIndex, chunks: [] };
+            paragraphs.push(paragraph);
+          }
+          paragraph.chunks.push({ id, text: chunk.text });
+        }
+        return {
+          index: section.index,
+          title: section.title,
+          enabled: sectionDisabled[section.index] !== true,
+          paragraphs,
+        };
+      }),
+    [cleanedSections, sectionDisabled],
+  );
   const readerAudioUnits = useMemo<ReaderAudioCacheUnit[]>(
     () =>
       readingUnits.map((unit) => ({
@@ -2551,6 +2741,80 @@ const ReaderDocumentsPanel: React.FC<{
   });
 
   const currentReadingUnit = readingUnits[player.index] ?? null;
+  // Stable handle to the player so the per-section memo's `onSeek` prop never
+  // changes identity (the controller object is recreated every render).
+  const playerRef = useRef(player);
+  playerRef.current = player;
+
+  // Center a unit by id. Works regardless of play state (so scrubbing/seeking
+  // moves the view too), and marks the scroll as programmatic so the hand-scroll
+  // listener below doesn't mistake it for the reader scrolling.
+  const scrollToUnitId = useCallback(
+    (
+      unitId: string | null | undefined,
+      behavior: ScrollBehavior = "smooth",
+    ) => {
+      if (!unitId) return;
+      const el = readerScrollRef.current?.querySelector<HTMLElement>(
+        `[data-unit-id="${unitId}"]`,
+      );
+      if (!el) return;
+      programmaticScrollRef.current = true;
+      if (programmaticScrollTimerRef.current !== null) {
+        window.clearTimeout(programmaticScrollTimerRef.current);
+      }
+      el.scrollIntoView({ block: "center", behavior });
+      programmaticScrollTimerRef.current = window.setTimeout(() => {
+        programmaticScrollRef.current = false;
+        programmaticScrollTimerRef.current = null;
+      }, 800);
+    },
+    [],
+  );
+
+  const scrollToSection = useCallback((sectionIndex: number) => {
+    const el = readerScrollRef.current?.querySelector<HTMLElement>(
+      `[data-section-index="${sectionIndex}"]`,
+    );
+    el?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
+
+  // Clicking a sentence reads from there (Speechify-style), in any state.
+  const seekToReadingUnit = useCallback((unitIndex: number) => {
+    setError("");
+    setAutoFollow(true);
+    playerRef.current.playAt(unitIndex);
+  }, []);
+
+  // Follow the narration: re-center whenever the playing unit advances. Guarded
+  // to playing/paused so it never fires on initial mount (explicit seeks below
+  // handle the idle case imperatively).
+  useEffect(() => {
+    if (player.status === "idle" || !autoFollow) return;
+    const id = currentReadingUnit?.id;
+    const raf = window.requestAnimationFrame(() =>
+      scrollToUnitId(id, "smooth"),
+    );
+    return () => window.cancelAnimationFrame(raf);
+  }, [
+    player.index,
+    player.status,
+    autoFollow,
+    currentReadingUnit?.id,
+    scrollToUnitId,
+  ]);
+
+  // Stop following the instant the reader scrolls by hand (capture catches
+  // scrolls from whichever ancestor actually owns the scrollbar).
+  useEffect(() => {
+    if (splitView !== "viewer") return;
+    const onScroll = () => {
+      if (programmaticScrollRef.current || player.status === "idle") return;
+      setAutoFollow((current) => (current ? false : current));
+    };
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [splitView, player.status]);
 
   useEffect(() => {
     if (!activeDocument || currentReadingUnit?.sectionIndex === null) return;
@@ -2897,21 +3161,6 @@ const ReaderDocumentsPanel: React.FC<{
           {activeDocument && currentSection ? (
             <>
               <div className="space-y-4 px-1">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                      {t("dictate.reader.sectionLabel", {
-                        defaultValue: "Section {{current}} of {{total}}",
-                        current: activeSectionIndex + 1,
-                        total: activeDocument.sections.length,
-                      })}
-                    </div>
-                    <div className="mt-1 truncate text-sm font-semibold text-[var(--text)]">
-                      {currentSection.title}
-                    </div>
-                  </div>
-                </div>
-
                 {sectionsOpen
                   ? createPortal(
                       <div
@@ -3065,9 +3314,11 @@ const ReaderDocumentsPanel: React.FC<{
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          setActiveSectionIndex(section.index)
-                                        }
+                                        onClick={() => {
+                                          setActiveSectionIndex(section.index);
+                                          onSectionsOpenChange(false);
+                                          scrollToSection(section.index);
+                                        }}
                                         className={[
                                           "min-w-0 flex-1 truncate text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
                                           selected
@@ -3178,14 +3429,21 @@ const ReaderDocumentsPanel: React.FC<{
                     )
                   : null}
 
-                <div className="space-y-3 text-[15px] leading-8 text-[var(--text)]">
-                  {currentSection.text
-                    .split(/\n{2,}/)
-                    .map((paragraph, index) => (
-                      <p key={index} className="break-words">
-                        {paragraph}
-                      </p>
-                    ))}
+                <div ref={readerScrollRef} className="space-y-9">
+                  {displaySections.map((section) => (
+                    <ReaderSectionView
+                      key={section.index}
+                      section={section}
+                      totalSections={activeDocument.sections.length}
+                      activeUnitId={
+                        currentReadingUnit?.sectionIndex === section.index
+                          ? currentReadingUnit.id
+                          : null
+                      }
+                      unitIndexById={unitIndexById}
+                      onSeek={seekToReadingUnit}
+                    />
+                  ))}
                 </div>
               </div>
               <ReaderPlaybackBar
@@ -3196,12 +3454,31 @@ const ReaderDocumentsPanel: React.FC<{
                 pageLabel={playbackPageLabel}
                 onToggle={() => {
                   setError("");
+                  setAutoFollow(true);
                   player.toggle();
                 }}
                 onStop={player.stop}
-                onPrev={player.prev}
-                onNext={player.next}
-                onSeek={player.seek}
+                onPrev={() => {
+                  const target = Math.max(player.index - 1, 0);
+                  setAutoFollow(true);
+                  player.prev();
+                  scrollToUnitId(readingUnits[target]?.id, "smooth");
+                }}
+                onNext={() => {
+                  const target = Math.min(
+                    player.index + 1,
+                    Math.max(readingUnits.length - 1, 0),
+                  );
+                  setAutoFollow(true);
+                  player.next();
+                  scrollToUnitId(readingUnits[target]?.id, "smooth");
+                }}
+                onSeek={(target) => {
+                  setAutoFollow(true);
+                  player.seek(target);
+                  // Instant so the view tracks the scrubber thumb as it drags.
+                  scrollToUnitId(readingUnits[target]?.id, "auto");
+                }}
                 onPlaybackRateChange={selectPlaybackRate}
                 presets={presets}
                 presetVoices={presetVoices}
@@ -3217,6 +3494,21 @@ const ReaderDocumentsPanel: React.FC<{
                 onCopySection={copyDocumentText}
                 copyFeedback={copyFeedback}
               />
+              {player.status !== "idle" && !autoFollow ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoFollow(true);
+                    scrollToUnitId(currentReadingUnit?.id, "smooth");
+                  }}
+                  className="reader-jump-to-playing fixed bottom-[8.75rem] left-1/2 z-30 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-2 text-xs font-semibold text-[var(--on-accent)] shadow-[0_10px_30px_-12px_color-mix(in_srgb,var(--accent),transparent_30%)] transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+                >
+                  <LocateFixed size={14} aria-hidden="true" />
+                  {t("dictate.reader.jumpToPlaying", {
+                    defaultValue: "Jump to playing",
+                  })}
+                </button>
+              ) : null}
             </>
           ) : isLoading ? (
             <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted,var(--bg))] px-6 text-center">

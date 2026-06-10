@@ -17,6 +17,8 @@ export type ReaderPlaybackController = {
   next: () => void;
   prev: () => void;
   seek: (index: number) => void;
+  /** Start playing from a specific unit, regardless of current status. */
+  playAt: (index: number) => void;
 };
 
 type UseReaderPlaybackOptions = {
@@ -76,29 +78,32 @@ export function useReaderPlayback({
     onIndexChangeRef.current?.(nextIndex);
   }, []);
 
-  const runLoop = useCallback(async (generation: number, start: number) => {
-    const list = unitsRef.current;
-    for (let i = start; i < list.length; i += 1) {
-      if (generation !== generationRef.current) return;
-      setPlaybackIndex(i);
-      try {
-        await speakRef.current(list[i]);
-      } catch (error) {
-        if (generation === generationRef.current) {
-          generationRef.current += 1;
-          setStatus("idle");
-          onErrorRef.current?.(error);
+  const runLoop = useCallback(
+    async (generation: number, start: number) => {
+      const list = unitsRef.current;
+      for (let i = start; i < list.length; i += 1) {
+        if (generation !== generationRef.current) return;
+        setPlaybackIndex(i);
+        try {
+          await speakRef.current(list[i]);
+        } catch (error) {
+          if (generation === generationRef.current) {
+            generationRef.current += 1;
+            setStatus("idle");
+            onErrorRef.current?.(error);
+          }
+          return;
         }
-        return;
+        if (generation !== generationRef.current) return;
       }
-      if (generation !== generationRef.current) return;
-    }
-    if (generation === generationRef.current) {
-      generationRef.current += 1;
-      setStatus("idle");
-      setPlaybackIndex(0);
-    }
-  }, [setPlaybackIndex]);
+      if (generation === generationRef.current) {
+        generationRef.current += 1;
+        setStatus("idle");
+        setPlaybackIndex(0);
+      }
+    },
+    [setPlaybackIndex],
+  );
 
   const startAt = useCallback(
     (start: number) => {
@@ -202,5 +207,6 @@ export function useReaderPlayback({
     next,
     prev,
     seek,
+    playAt: startAt,
   };
 }

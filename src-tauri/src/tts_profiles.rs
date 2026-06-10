@@ -521,42 +521,7 @@ fn clean_optional_text(value: Option<String>) -> Option<String> {
 }
 
 pub fn read_wav_as_mono_f32(path: &Path) -> Result<(Vec<f32>, u32), String> {
-    let mut reader = hound::WavReader::open(path)
-        .map_err(|err| format!("Failed to open WAV file '{}': {err}", path.display()))?;
-    let spec = reader.spec();
-
-    if spec.channels == 0 {
-        return Err("WAV file has no channels.".to_string());
-    }
-
-    let mut mono = Vec::new();
-    match spec.sample_format {
-        hound::SampleFormat::Float => {
-            let all: Vec<f32> = reader
-                .samples::<f32>()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| format!("Failed reading WAV float samples: {err}"))?;
-
-            for frame in all.chunks(spec.channels as usize) {
-                let sum: f32 = frame.iter().copied().sum();
-                mono.push(sum / frame.len() as f32);
-            }
-        }
-        hound::SampleFormat::Int => {
-            let all: Vec<i32> = reader
-                .samples::<i32>()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| format!("Failed reading WAV int samples: {err}"))?;
-
-            let scale = 2f32.powi((spec.bits_per_sample as i32) - 1);
-            for frame in all.chunks(spec.channels as usize) {
-                let sum: f32 = frame.iter().map(|sample| (*sample as f32) / scale).sum();
-                mono.push(sum / frame.len() as f32);
-            }
-        }
-    }
-
-    Ok((mono, spec.sample_rate))
+    crate::audio_toolkit::read_wav_file_as_mono_f32(path)
 }
 
 pub fn read_wav_as_mono_16k(path: &Path) -> Result<Vec<f32>, String> {

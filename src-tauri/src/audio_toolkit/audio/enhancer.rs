@@ -322,7 +322,7 @@ mod tests {
             model: AudioEnhancementModel::Spectral,
             strength: 0.8,
         };
-        let input: Vec<f32> = (0..(48_000))
+        let input: Vec<f32> = (0..48_000)
             .map(|index| {
                 let theta = index as f32 * 2.0 * std::f32::consts::PI * 440.0 / 48_000.0;
                 theta.sin() * 0.2

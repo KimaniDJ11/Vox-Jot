@@ -33,8 +33,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::Semaphore;
 
 /// Audio/video extensions we'll auto-transcribe. Mirrors the frontend
 /// drag-drop allow-list in `FileTranscriptionPanel.tsx`.
@@ -42,6 +43,10 @@ const AUDIO_VIDEO_EXTENSIONS: &[&str] = &[
     "wav", "mp3", "m4a", "aac", "flac", "ogg", "oga", "opus", "wma", "mp4", "mov", "m4v", "webm",
     "mkv", "3gp",
 ];
+const WATCH_FOLDER_MAX_CONCURRENT_FILES: usize = 2;
+const WATCH_FOLDER_STABLE_CHECKS: usize = 3;
+const WATCH_FOLDER_STABLE_INTERVAL: Duration = Duration::from_millis(500);
+const WATCH_FOLDER_STABLE_MAX_WAIT: Duration = Duration::from_secs(30);
 
 #[derive(Clone, serde::Serialize)]
 pub struct WatchFolderProgressEvent {
@@ -70,6 +75,9 @@ pub struct WatchFolderManager {
     /// Files we've already started processing — guard against the same
     /// `notify` event firing twice (which is common across editors).
     in_flight: Arc<Mutex<HashSet<PathBuf>>>,
+    /// Expensive decode/transcribe work is bounded so a large folder drop
+    /// cannot monopolize all blocking worker threads.
+    processing_slots: Arc<Semaphore>,
     /// Folder ids already reported as missing so a deleted directory does not
     /// spam the activity feed while settings still contain its row.
     missing_reported: Arc<Mutex<HashSet<String>>>,
@@ -85,6 +93,7 @@ impl WatchFolderManager {
             shutdown: Arc::new(AtomicBool::new(false)),
             supervisor_handle: Mutex::new(None),
             in_flight: Arc::new(Mutex::new(HashSet::new())),
+            processing_slots: Arc::new(Semaphore::new(WATCH_FOLDER_MAX_CONCURRENT_FILES)),
             missing_reported: Arc::new(Mutex::new(HashSet::new())),
             config_version: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         });
@@ -283,10 +292,36 @@ impl WatchFolderManager {
         }
 
         let manager = Arc::clone(self);
-        // The transcription call is sync; offload to a blocking task so
-        // the supervisor thread can keep dispatching events.
-        tauri::async_runtime::spawn_blocking(move || {
-            manager.process_file(path.clone(), cfg);
+        let slots = Arc::clone(&self.processing_slots);
+        // The transcription call is sync; queue an async task first so heavy
+        // blocking work is bounded by the semaphore.
+        tauri::async_runtime::spawn(async move {
+            let permit = match slots.acquire_owned().await {
+                Ok(permit) => permit,
+                Err(err) => {
+                    warn!("watch-folders: processing semaphore closed: {err}");
+                    manager
+                        .in_flight
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .remove(&path);
+                    return;
+                }
+            };
+
+            let manager_for_blocking = Arc::clone(&manager);
+            let path_for_blocking = path.clone();
+            let join_result = tauri::async_runtime::spawn_blocking(move || {
+                manager_for_blocking.process_file(path_for_blocking, cfg);
+            })
+            .await;
+
+            drop(permit);
+
+            if let Err(err) = join_result {
+                warn!("watch-folders: processing task failed to join: {err}");
+            }
+
             manager
                 .in_flight
                 .lock()
@@ -314,6 +349,11 @@ impl WatchFolderManager {
                 return;
             }
         };
+
+        if let Err(err) = wait_for_stable_file(&path) {
+            self.emit_failure(&cfg, &path_str, &err);
+            return;
+        }
 
         // Reuse the same audio-decoding helpers the file command uses.
         let audio_result = decode_audio_file(&path);
@@ -439,6 +479,52 @@ fn build_output_path(input: &Path, format: WatchFolderOutputFormat) -> PathBuf {
     let mut out = input.to_path_buf();
     out.set_extension(ext);
     out
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FileStabilitySignature {
+    len: u64,
+    modified: Option<SystemTime>,
+}
+
+fn file_stability_signature(path: &Path) -> Result<FileStabilitySignature, String> {
+    let metadata = std::fs::metadata(path)
+        .map_err(|err| format!("failed to inspect '{}': {}", path.display(), err))?;
+    if !metadata.is_file() {
+        return Err(format!("'{}' is not a file", path.display()));
+    }
+
+    Ok(FileStabilitySignature {
+        len: metadata.len(),
+        modified: metadata.modified().ok(),
+    })
+}
+
+fn wait_for_stable_file(path: &Path) -> Result<(), String> {
+    let started_at = std::time::Instant::now();
+    let mut stable_count = 0usize;
+    let mut last_signature = file_stability_signature(path)?;
+
+    loop {
+        if started_at.elapsed() >= WATCH_FOLDER_STABLE_MAX_WAIT {
+            return Err(format!(
+                "file did not become stable within {} seconds",
+                WATCH_FOLDER_STABLE_MAX_WAIT.as_secs()
+            ));
+        }
+
+        thread::sleep(WATCH_FOLDER_STABLE_INTERVAL);
+        let next_signature = file_stability_signature(path)?;
+        if next_signature == last_signature {
+            stable_count += 1;
+            if stable_count >= WATCH_FOLDER_STABLE_CHECKS {
+                return Ok(());
+            }
+        } else {
+            stable_count = 0;
+            last_signature = next_signature;
+        }
+    }
 }
 
 /// Decode an audio file into 16 kHz mono f32 samples by reusing the

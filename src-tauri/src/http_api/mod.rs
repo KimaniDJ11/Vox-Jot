@@ -49,7 +49,6 @@ use axum::{
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::io::Cursor;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -882,50 +881,13 @@ fn extract_bearer_token(value: &str) -> Option<&str> {
 }
 
 pub(crate) fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
-    let cursor = Cursor::new(bytes);
-    let mut reader = hound::WavReader::new(cursor).map_err(|e| format!("WavReader: {}", e))?;
-    let spec = reader.spec();
-    if spec.channels == 0 {
-        return Err("WAV file has no channels".to_string());
-    }
-    if spec.sample_rate == 0 {
-        return Err("WAV file has no sample rate".to_string());
-    }
-    if matches!(spec.sample_format, hound::SampleFormat::Int) && spec.bits_per_sample == 0 {
-        return Err("WAV integer sample width must be greater than zero".to_string());
-    }
-
-    let channels = spec.channels as usize;
-    let mut mono: Vec<f32> = Vec::new();
-    match spec.sample_format {
-        hound::SampleFormat::Float => {
-            let all: Vec<f32> = reader
-                .samples::<f32>()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| format!("read float samples: {}", e))?;
-            for frame in all.chunks(channels) {
-                let sum: f32 = frame.iter().copied().sum();
-                mono.push(sum / frame.len() as f32);
-            }
-        }
-        hound::SampleFormat::Int => {
-            let all: Vec<i32> = reader
-                .samples::<i32>()
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| format!("read int samples: {}", e))?;
-            let scale = 2f32.powi((spec.bits_per_sample as i32) - 1);
-            for frame in all.chunks(channels) {
-                let sum: f32 = frame.iter().map(|s| (*s as f32) / scale).sum();
-                mono.push(sum / frame.len() as f32);
-            }
-        }
-    }
-    if spec.sample_rate == 16_000 {
+    let (mono, sample_rate) = crate::audio_toolkit::decode_wav_bytes_as_mono_f32(bytes)?;
+    if sample_rate == 16_000 {
         return Ok(mono);
     }
     Ok(crate::commands::transcription::resample_linear(
         &mono,
-        spec.sample_rate,
+        sample_rate,
         16_000,
     ))
 }

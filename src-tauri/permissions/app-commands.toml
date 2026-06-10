@@ -322,3 +322,13 @@ commands.allow = [
   "convo_ensure_helper_running",
   "convo_is_audio_capturing",
 ]
+
+[[permission]]
+identifier = "recording-overlay-commands"
+description = "Allows the recording overlay to read display settings, cancel current work, and open detail views."
+commands.allow = [
+  "get_app_settings",
+  "get_screen_context_diagnostics",
+  "show_detail_view",
+  "cancel_operation",
+]

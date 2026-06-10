@@ -793,7 +793,9 @@ export const VoiceCloningSection: React.FC<{
       onRetry: downloadFailed
         ? () => void handleDownloadOrSelectCloneModel(model)
         : undefined,
-      onDismiss: downloadFailed ? () => clearTtsDownloadProgress(model) : undefined,
+      onDismiss: downloadFailed
+        ? () => clearTtsDownloadProgress(model)
+        : undefined,
     });
 
     return (
@@ -812,13 +814,10 @@ export const VoiceCloningSection: React.FC<{
         selectedBadgeLabel={t("listen.voiceCloning.selectedModelBadge", {
           defaultValue: "Selected",
         })}
-        selectedBadgeDetail={t(
-          "listen.voiceCloning.selectedModelBadgeDetail",
-          {
-            defaultValue:
-              "Selected for this voice clone only. The active app voice is unchanged.",
-          },
-        )}
+        selectedBadgeDetail={t("listen.voiceCloning.selectedModelBadgeDetail", {
+          defaultValue:
+            "Selected for this voice clone only. The active app voice is unchanged.",
+        })}
         statusBadges={
           modelReady
             ? undefined
@@ -837,7 +836,10 @@ export const VoiceCloningSection: React.FC<{
               ]
         }
         trailing={
-          !modelReady && model.downloadable && !downloadActive && !downloadFailed
+          !modelReady &&
+          model.downloadable &&
+          !downloadActive &&
+          !downloadFailed
             ? {
                 kind: "acquire",
                 onClick: () => void handleDownloadOrSelectCloneModel(model),
@@ -851,8 +853,7 @@ export const VoiceCloningSection: React.FC<{
         }
         downloadState={downloadState}
         disabled={
-          speech.loadingPlatform ||
-          (!modelReady && !model.downloadable)
+          speech.loadingPlatform || (!modelReady && !model.downloadable)
         }
         onSelect={() => handleSelectDraftCloneModel(model)}
       />

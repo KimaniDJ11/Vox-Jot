@@ -144,9 +144,7 @@ describe("VoiceTuningCard", () => {
       'button[aria-label="Preview current tuning"]',
     );
     expect(previewButton).not.toBeNull();
-    expect(view.container.querySelector("h3")?.textContent).not.toBe(
-      "Tuning",
-    );
+    expect(view.container.querySelector("h3")?.textContent).not.toBe("Tuning");
     expect(view.container.textContent).toContain("Chatterbox");
 
     await act(async () => {

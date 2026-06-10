@@ -189,7 +189,9 @@ describe("Write Profiles rule UI", () => {
     expect(firstDeleteButton).toBeDefined();
 
     await act(async () => {
-      firstDeleteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      firstDeleteButton.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
     expect(onDelete).not.toHaveBeenCalled();
 
@@ -198,7 +200,9 @@ describe("Write Profiles rule UI", () => {
     ) as HTMLButtonElement;
     expect(confirmDeleteButton).toBeDefined();
     await act(async () => {
-      confirmDeleteButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      confirmDeleteButton.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
     expect(onDelete).toHaveBeenCalledWith("rule-1");
   });
@@ -233,7 +237,9 @@ describe("Write Profiles rule UI", () => {
             name: "Messages",
           },
         ]}
-        tones={[{ id: "casual", label: "Casual", instruction: toneInstruction }]}
+        tones={[
+          { id: "casual", label: "Casual", instruction: toneInstruction },
+        ]}
         prompts={[]}
         models={[]}
         activeRuleId={null}
@@ -259,11 +265,13 @@ describe("Write Profiles rule UI", () => {
         .querySelector("p")
         ?.classList.contains("write-profile-group-description"),
     ).toBe(true);
-    expect(view.querySelector("p")?.classList.contains("font-bold")).toBe(false);
-    expect(view.querySelector("p")?.classList.contains("text-sm")).toBe(true);
-    expect(view.querySelector("p")?.classList.contains("text-[var(--text)]")).toBe(
-      true,
+    expect(view.querySelector("p")?.classList.contains("font-bold")).toBe(
+      false,
     );
+    expect(view.querySelector("p")?.classList.contains("text-sm")).toBe(true);
+    expect(
+      view.querySelector("p")?.classList.contains("text-[var(--text)]"),
+    ).toBe(true);
     expect(view.textContent).toContain("Casual");
     expect(view.textContent).toContain(toneSummary);
     expect(view.textContent).not.toContain(toneInstruction);
@@ -299,7 +307,9 @@ describe("Write Profiles rule UI", () => {
             name: "Code",
           },
         ]}
-        tones={[{ id: "coding", label: "Coding", instruction: longInstruction }]}
+        tones={[
+          { id: "coding", label: "Coding", instruction: longInstruction },
+        ]}
         prompts={[]}
         models={[]}
         activeRuleId={null}
@@ -353,7 +363,9 @@ describe("Write Profiles rule UI", () => {
       'button[aria-label="Show 1 more profiles"]',
     ) as HTMLButtonElement;
     expect(showMoreButton).toBeDefined();
-    expect(view.querySelector('button[aria-label="Edit Profile 6"]')).toBeNull();
+    expect(
+      view.querySelector('button[aria-label="Edit Profile 6"]'),
+    ).toBeNull();
 
     await act(async () => {
       showMoreButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));

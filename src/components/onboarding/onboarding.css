@@ -84,17 +84,9 @@
     var(--overlay-text) 18%,
     transparent
   );
-  --ob-story-dot-bg: color-mix(
-    in srgb,
-    var(--overlay-text) 38%,
-    transparent
-  );
+  --ob-story-dot-bg: color-mix(in srgb, var(--overlay-text) 38%, transparent);
   --ob-story-dot-active-bg: var(--overlay-text);
-  --ob-story-dot-done-bg: color-mix(
-    in srgb,
-    var(--success) 95%,
-    transparent
-  );
+  --ob-story-dot-done-bg: color-mix(in srgb, var(--success) 95%, transparent);
   --ob-story-focus-ring: var(--overlay-text);
   --ob-story-icon-border: color-mix(
     in srgb,
@@ -108,20 +100,14 @@
   );
   --ob-story-icon-foreground: var(--overlay-text);
   --ob-story-icon-shadow:
-    inset 0 1px 0
-      color-mix(in srgb, var(--overlay-text) 56%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--overlay-text) 56%, transparent),
     0 20px 44px color-mix(in srgb, var(--text) 24%, transparent);
   --ob-story-privacy-shadow: 0 8px 28px
     color-mix(in srgb, var(--text) 6%, transparent);
   --ob-story-cta-shadow:
-    inset 0 1px 0
-      color-mix(in srgb, var(--overlay-text) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--overlay-text) 22%, transparent),
     0 14px 34px color-mix(in srgb, var(--accent-teal) 22%, transparent);
-  --ob-story-complete-bg: color-mix(
-    in srgb,
-    var(--card) 76%,
-    transparent
-  );
+  --ob-story-complete-bg: color-mix(in srgb, var(--card) 76%, transparent);
   --ob-story-complete-shadow: 0 24px 64px
     color-mix(in srgb, var(--text) 20%, transparent);
 }

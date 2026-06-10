@@ -38,7 +38,10 @@ import { TemplatesRow } from "./editor/TemplatesRow";
 import { LiveMatchHint } from "./editor/LiveMatchHint";
 import { hasNonBrowserAppMatcher } from "./lib/browserMatchers";
 import { PROFILE_TEMPLATES, type ProfileTemplateId } from "./lib/templates";
-import { countActiveOverrides, resetAllOverrides } from "./lib/overrideRegistry";
+import {
+  countActiveOverrides,
+  resetAllOverrides,
+} from "./lib/overrideRegistry";
 
 const backLabel = "Back to profiles";
 const newProfileTitle = "New mode";
@@ -55,7 +58,9 @@ const cancelLabel = "Cancel";
 const saveLabel = "Save mode";
 const nameRequiredHelp = "Give the mode a short, descriptive name.";
 const createNamePlaceholder = "Name this mode";
-const templateLabels = new Set(PROFILE_TEMPLATES.map((template) => template.label));
+const templateLabels = new Set(
+  PROFILE_TEMPLATES.map((template) => template.label),
+);
 const nonBrowserUrlConflictMessage =
   "URL filters only work with browsers. Remove the non-browser app or remove the URL filter.";
 const urlDisabledByNonBrowserAppMessage =
@@ -229,9 +234,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {triggersHeading}
             </h3>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">
-              {triggersHelp}
-            </p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">{triggersHelp}</p>
           </div>
           <LiveMatchHint matchers={draft.matchers} />
         </header>

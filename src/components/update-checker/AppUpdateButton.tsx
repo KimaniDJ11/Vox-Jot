@@ -309,8 +309,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
                         style={{
                           width:
                             percent === undefined
-                              ? phase === "installing" ||
-                                phase === "restarting"
+                              ? phase === "installing" || phase === "restarting"
                                 ? "100%"
                                 : "18%"
                               : `${percent}%`,

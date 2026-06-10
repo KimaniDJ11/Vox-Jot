@@ -640,7 +640,9 @@ const ScreenContextSettingsSection: React.FC = () => {
                       <>
                         <ActionIconButton
                           tone="confirm"
-                          onClick={() => void removeExcludedApp(entry.bundle_id)}
+                          onClick={() =>
+                            void removeExcludedApp(entry.bundle_id)
+                          }
                           aria-label={t(
                             "settings.screenContext.removeExclusionConfirm",
                             {
@@ -649,7 +651,9 @@ const ScreenContextSettingsSection: React.FC = () => {
                                 'Remove "{{appName}}" from screen context exclusions?',
                             },
                           )}
-                          title={t("settings.screenContext.removeExclusionLabel")}
+                          title={t(
+                            "settings.screenContext.removeExclusionLabel",
+                          )}
                           disabled={isUpdating(
                             "screen_context_excluded_bundle_ids",
                           )}

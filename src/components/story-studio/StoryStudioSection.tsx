@@ -1106,7 +1106,12 @@ const SoundTagPopover = React.forwardRef<
             <p className="text-xs text-[var(--muted)]">
               {t("storyStudio.noProjectSoundsForTags")}
             </p>
-            <Button type="button" variant="secondary" size="sm" onClick={onOpenSoundTab}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onOpenSoundTab}
+            >
               {t("storyStudio.openSoundTab")}
             </Button>
           </div>

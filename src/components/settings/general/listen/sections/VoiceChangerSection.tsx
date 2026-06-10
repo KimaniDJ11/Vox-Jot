@@ -1039,7 +1039,9 @@ export const VoiceChangerSection: React.FC<{
       onRetry: downloadFailed
         ? () => void handleDownloadVoiceChangerModel(model)
         : undefined,
-      onDismiss: downloadFailed ? () => clearTtsDownloadProgress(model) : undefined,
+      onDismiss: downloadFailed
+        ? () => clearTtsDownloadProgress(model)
+        : undefined,
     });
     return (
       <DraftVoiceModelLibraryCard
@@ -1076,7 +1078,10 @@ export const VoiceChangerSection: React.FC<{
               ]
         }
         trailing={
-          !modelReady && model.downloadable && !downloadActive && !downloadFailed
+          !modelReady &&
+          model.downloadable &&
+          !downloadActive &&
+          !downloadFailed
             ? {
                 kind: "acquire",
                 onClick: () => void handleDownloadVoiceChangerModel(model),
@@ -1090,9 +1095,7 @@ export const VoiceChangerSection: React.FC<{
         }
         downloadState={downloadState}
         disabled={
-          isConverting ||
-          isRecording ||
-          (!modelReady && !model.downloadable)
+          isConverting || isRecording || (!modelReady && !model.downloadable)
         }
         onSelect={() => handleSelectVoiceChangerModel(model)}
       />

@@ -643,7 +643,8 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
             id="story-studio-script-hint"
             className={`min-w-0 flex-1 truncate ${contentHintClassName}`}
           >
-            {t("storyStudio.script.title")} - {t("storyStudio.script.description")}
+            {t("storyStudio.script.title")} -{" "}
+            {t("storyStudio.script.description")}
           </p>
           {headerAction ? (
             <div className="ml-auto shrink-0">{headerAction}</div>
@@ -731,8 +732,7 @@ function renderDecoratedText(
   syncScriptEditorHeight(editor);
 }
 
-const SPEAKER_KNOWN_CLASS =
-  "font-semibold text-[var(--accent)]";
+const SPEAKER_KNOWN_CLASS = "font-semibold text-[var(--accent)]";
 const SPEAKER_UNKNOWN_CLASS =
   "font-semibold text-[var(--danger)] underline decoration-wavy decoration-[var(--danger)] underline-offset-2";
 const SPEAKER_COLON_CLASS = "text-[var(--muted)]";

@@ -15,7 +15,9 @@ export const VoiceCapabilityChips: React.FC<{
     "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-4";
 
   return (
-    <span className={`inline-flex min-w-0 flex-wrap items-center gap-1 ${className}`}>
+    <span
+      className={`inline-flex min-w-0 flex-wrap items-center gap-1 ${className}`}
+    >
       {capabilities.supportsExpressions ? (
         <span
           className={`${chipClassName} border-[color-mix(in_srgb,var(--accent),transparent_62%)] bg-[var(--accent-soft)] text-[var(--accent)]`}

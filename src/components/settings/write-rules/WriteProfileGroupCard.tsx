@@ -44,9 +44,9 @@ const toneCardDescription = (tone: ToneDefinition): string | null =>
 const hasPreviewableCleanup = (overrides: WriteRuleOverrides): boolean =>
   Boolean(
     (overrides.cleanup_level && overrides.cleanup_level !== "raw") ||
-      overrides.tone_id ||
-      overrides.post_process_prompt_id ||
-      overrides.force_post_process === true,
+    overrides.tone_id ||
+    overrides.post_process_prompt_id ||
+    overrides.force_post_process === true,
   );
 
 const initialsFor = (label: string): string =>
@@ -205,11 +205,11 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     },
     [appNameFor],
   );
-  const confirmingTarget = confirmingRule ? targetForRule(confirmingRule) : null;
+  const confirmingTarget = confirmingRule
+    ? targetForRule(confirmingRule)
+    : null;
   const cardTitle =
-    group.rules.length === 1
-      ? (group.rules[0]?.name.trim() ?? "")
-      : "";
+    group.rules.length === 1 ? (group.rules[0]?.name.trim() ?? "") : "";
   const targetChips = React.useMemo(() => {
     const hasUrlTarget = group.rules.some(
       (rule) => (rule.matchers.url_patterns ?? []).length > 0,
@@ -327,7 +327,9 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     return "Runs in any app.";
   }, [appNameFor, group.rules]);
   const cardDescription = [
-    cardTitle && overridesSummary.length > 0 ? overridesSummary.join(" · ") : null,
+    cardTitle && overridesSummary.length > 0
+      ? overridesSummary.join(" · ")
+      : null,
     toneDescription,
     targetDescription,
   ]
@@ -523,11 +525,7 @@ const TargetChip: React.FC<{
     title={label}
   >
     {kind === "app" && bundleId ? (
-      <AppMonogram
-        bundleId={bundleId}
-        name={appNameFor(bundleId)}
-        size="xs"
-      />
+      <AppMonogram bundleId={bundleId} name={appNameFor(bundleId)} size="xs" />
     ) : (
       <Globe className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" aria-hidden />
     )}

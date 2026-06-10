@@ -2382,11 +2382,27 @@ export const AboutSection: React.FC = () => {
               </span>
             </div>
             {[
-              ["Privacy", "Local-first dictation", "Audio commonly leaves device"],
-              ["Offline", "Offline-capable after model install", "Network required"],
+              [
+                "Privacy",
+                "Local-first dictation",
+                "Audio commonly leaves device",
+              ],
+              [
+                "Offline",
+                "Offline-capable after model install",
+                "Network required",
+              ],
               ["Source", "Open source app", "Closed service"],
-              ["Models", "User chooses local model", "Provider chooses backend"],
-              ["Downloads", "Model size shown before install", "No local model choice"],
+              [
+                "Models",
+                "User chooses local model",
+                "Provider chooses backend",
+              ],
+              [
+                "Downloads",
+                "Model size shown before install",
+                "No local model choice",
+              ],
               ["Cleanup", "Optional cloud cleanup", "Cloud cleanup by default"],
             ].map(([label, voxJot, cloud]) => (
               <div

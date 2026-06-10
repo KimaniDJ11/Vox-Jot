@@ -154,7 +154,8 @@ const OverrideRow: React.FC<{
     const translated = t(overrideOptionKey(spec, option.value), {
       defaultValue: option.label,
     });
-    const model = spec.key === "stt_model_id" ? modelById.get(option.value) : null;
+    const model =
+      spec.key === "stt_model_id" ? modelById.get(option.value) : null;
     if (!model) return { ...option, label: translated };
     const providerId = resolveModelProviderId(
       `${model.name} ${model.id}`,

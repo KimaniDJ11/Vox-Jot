@@ -214,11 +214,14 @@ export function useDictationReadiness(): DictationReadiness {
       {
         id: "post_processing",
         label: t("appSections.readiness.gates.postProcessing.label"),
-        detail: postProcessingEnabled && cleanupLevel !== "raw"
-          ? postKeyReady
-            ? t("appSections.readiness.gates.postProcessing.ready")
-            : t("appSections.readiness.gates.postProcessing.missingCredentials")
-          : t("appSections.readiness.gates.postProcessing.off"),
+        detail:
+          postProcessingEnabled && cleanupLevel !== "raw"
+            ? postKeyReady
+              ? t("appSections.readiness.gates.postProcessing.ready")
+              : t(
+                  "appSections.readiness.gates.postProcessing.missingCredentials",
+                )
+            : t("appSections.readiness.gates.postProcessing.off"),
         state:
           postProcessingEnabled && cleanupLevel !== "raw" && !postKeyReady
             ? "warning"

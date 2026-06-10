@@ -212,7 +212,9 @@ export const SavedVoiceProfilesSection: React.FC<{
                         await speech.removePreset(preset.id);
                         setConfirmingDeletePresetId(null);
                       }}
-                      disabled={!speech.ttsEnabled || speech.presets.length <= 1}
+                      disabled={
+                        !speech.ttsEnabled || speech.presets.length <= 1
+                      }
                       title={`${deleteLabel} ${preset.label}`}
                       aria-label={t("listen.myVoices.deletePresetConfirm", {
                         presetLabel: preset.label,
@@ -224,7 +226,9 @@ export const SavedVoiceProfilesSection: React.FC<{
                     <ActionIconButton
                       onClick={() => setConfirmingDeletePresetId(null)}
                       title={t("common.cancel", { defaultValue: "Cancel" })}
-                      aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+                      aria-label={t("common.cancel", {
+                        defaultValue: "Cancel",
+                      })}
                     >
                       <X aria-hidden />
                     </ActionIconButton>

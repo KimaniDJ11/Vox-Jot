@@ -62,9 +62,7 @@ const model = (
   ...patch,
 });
 
-const provider = (
-  patch: Partial<ProviderDescriptor>,
-): ProviderDescriptor => ({
+const provider = (patch: Partial<ProviderDescriptor>): ProviderDescriptor => ({
   id: "test-provider",
   domain: "tts",
   source_kind: "runtime",

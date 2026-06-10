@@ -113,7 +113,9 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
       parts.push(modelById.get(o.stt_model_id) ?? o.stt_model_id);
     }
     if (o.post_process_prompt_id)
-      parts.push(promptById.get(o.post_process_prompt_id) ?? o.post_process_prompt_id);
+      parts.push(
+        promptById.get(o.post_process_prompt_id) ?? o.post_process_prompt_id,
+      );
     if (o.force_post_process === true) parts.push("Always post-process");
     if (o.force_post_process === false) parts.push("Skip post-process");
     return parts.length > 0
@@ -123,9 +125,17 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   const targetChips = React.useMemo(() => {
     if (urls.length === 0) return [];
 
-    const chips: Array<{ key: string; label: string; kind: "app" | "url" | "any-browser" }> = [];
+    const chips: Array<{
+      key: string;
+      label: string;
+      kind: "app" | "url" | "any-browser";
+    }> = [];
     if (urls.length > 0 && bundleIds.length === 0) {
-      chips.push({ key: "any-browser", label: anyBrowserLabel, kind: "any-browser" });
+      chips.push({
+        key: "any-browser",
+        label: anyBrowserLabel,
+        kind: "any-browser",
+      });
     }
     for (const bundleId of bundleIds) {
       chips.push({
@@ -265,7 +275,10 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
                   size="xs"
                 />
               ) : (
-                <Globe className="h-3 w-3 shrink-0 text-[var(--muted)]" aria-hidden />
+                <Globe
+                  className="h-3 w-3 shrink-0 text-[var(--muted)]"
+                  aria-hidden
+                />
               )}
               <span className="min-w-0 truncate">{chip.label}</span>
             </span>

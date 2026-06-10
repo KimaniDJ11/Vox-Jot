@@ -1,6 +1,9 @@
 import { useTranslation } from "react-i18next";
 
-import { useDictationStats, type DictationStats } from "@/hooks/useDictationStats";
+import {
+  useDictationStats,
+  type DictationStats,
+} from "@/hooks/useDictationStats";
 
 const selectDictationEncouragementKey = (
   stats: DictationStats | null,

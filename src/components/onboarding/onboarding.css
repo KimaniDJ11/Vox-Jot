@@ -2548,6 +2548,13 @@
 
   .ob-permission-grid-card {
     grid-template-columns: 1fr;
+    height: max-content;
+    min-height: max-content;
+  }
+
+  .ob-permission-grid {
+    align-content: start;
+    grid-auto-rows: max-content;
   }
 
   .ob-permission-grid-header .ob-heading {

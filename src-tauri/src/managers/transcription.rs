@@ -60,6 +60,7 @@ struct GemmaAudioSttEngine {
     model_source: String,
     backend: &'static str,
     child: Option<Child>,
+    stderr_tail: crate::utils::ChildStderrTail,
 }
 
 const MLX_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
@@ -337,6 +338,7 @@ impl GemmaAudioSttEngine {
                 model_source,
                 backend,
                 child: None,
+                stderr_tail: crate::utils::ChildStderrTail::default(),
             });
         }
 
@@ -358,14 +360,22 @@ impl GemmaAudioSttEngine {
             command.env("HF_TOKEN", token);
         }
 
-        let child = command
+        let mut child = command
             .spawn()
             .map_err(|err| anyhow::anyhow!("Failed to start Gemma audio sidecar: {err}"))?;
+        // Drain stderr continuously: transformers/MLX warnings and download
+        // progress would otherwise fill the pipe buffer and freeze the server.
+        let stderr_tail = child
+            .stderr
+            .take()
+            .map(|stderr| crate::utils::drain_child_stderr("gemma-stt", stderr))
+            .unwrap_or_default();
         let mut engine = Self {
             base_url,
             model_source,
             backend,
             child: Some(child),
+            stderr_tail,
         };
         engine.wait_until_ready()?;
         Ok(engine)
@@ -378,19 +388,9 @@ impl GemmaAudioSttEngine {
             }
             if let Some(child) = self.child.as_mut() {
                 if let Some(status) = child.try_wait()? {
-                    let stderr = child
-                        .stderr
-                        .take()
-                        .map(|mut stderr| {
-                            use std::io::Read;
-                            let mut buf = String::new();
-                            let _ = stderr.read_to_string(&mut buf);
-                            buf
-                        })
-                        .unwrap_or_default();
+                    let stderr = crate::utils::child_stderr_tail_snapshot(&self.stderr_tail, 1000);
                     return Err(anyhow::anyhow!(
-                        "Gemma audio sidecar exited with {status}. Stderr: {}",
-                        stderr.chars().take(1000).collect::<String>()
+                        "Gemma audio sidecar exited with {status}. Stderr: {stderr}"
                     ));
                 }
             }
@@ -874,6 +874,26 @@ impl TranscriptionManager {
         self.next_partial_generation();
     }
 
+    /// Return an engine a partial worker took out of the shared slot.
+    ///
+    /// Partial inference runs without the lifecycle lock, so `load_model` on
+    /// another thread may have installed a replacement engine while the worker
+    /// held the old one. In that case the stale engine is dropped instead of
+    /// clobbering the replacement (which would both leak the new engine and
+    /// keep transcribing with a model the user switched away from).
+    fn restore_partial_engine(&self, engine: LoadedEngine) {
+        let mut engine_guard = self.lock_engine();
+        if engine_guard.is_none() {
+            *engine_guard = Some(engine);
+            return;
+        }
+        drop(engine_guard);
+        debug!(
+            "Discarding stale engine after partial inference; a replacement was loaded mid-flight"
+        );
+        // `engine` drops here, after the lock is released.
+    }
+
     fn create_loaded_engine(
         &self,
         model_id: &str,
@@ -1331,13 +1351,11 @@ impl TranscriptionManager {
 
                 match inference_result {
                     PartialTranscriptionOutcome::Success(text) => {
-                        let mut engine_guard = self.lock_engine();
-                        *engine_guard = Some(engine);
+                        self.restore_partial_engine(engine);
                         text
                     }
                     PartialTranscriptionOutcome::Error(err) => {
-                        let mut engine_guard = self.lock_engine();
-                        *engine_guard = Some(engine);
+                        self.restore_partial_engine(engine);
                         warn!(
                             "Partial transcription failed for binding {}: {}",
                             binding_id, err
@@ -1577,6 +1595,27 @@ impl TranscriptionManager {
         }
 
         let _lifecycle_guard = self.lock_lifecycle();
+
+        // Drop any previously loaded engine BEFORE creating the replacement so
+        // two models are never resident at once. Large engines hold multiple GB
+        // of RAM/VRAM each; loading the new one alongside the old spikes memory
+        // and makes Metal allocations fail, silently downgrading Whisper to the
+        // CPU fallback. Keeping the old engine on load failure has no value
+        // either: every call path keys off the selected model and reloads on
+        // mismatch, so a stale engine never serves another request.
+        self.stop_partial_session_internal();
+        let had_engine = {
+            let mut engine = self.lock_engine();
+            engine.take().is_some()
+        };
+        if had_engine {
+            let mut current_model = self
+                .current_model_id
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            *current_model = None;
+        }
+
         let loaded_engine = self.create_loaded_engine(model_id, &model_info, true)?;
 
         // Update the current engine and model ID

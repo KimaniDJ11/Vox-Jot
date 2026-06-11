@@ -244,7 +244,7 @@ impl PersonaPlexHelper {
             binary.display()
         );
 
-        let child = std::process::Command::new(&binary)
+        let mut child = std::process::Command::new(&binary)
             .arg("--port")
             .arg(PERSONAPLEX_PORT.to_string())
             .env("PERSONAPLEX_MODEL_ID", "aufklarer/PersonaPlex-7B-MLX-8bit")
@@ -257,6 +257,14 @@ impl PersonaPlexHelper {
             .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|e| format!("Failed to start audio-server: {}", e))?;
+
+        // Drain stderr continuously so the server can never block on a full
+        // pipe buffer once model loading / serving logs exceed ~64KB.
+        let _stderr_tail = child
+            .stderr
+            .take()
+            .map(|stderr| crate::utils::drain_child_stderr("personaplex", stderr))
+            .unwrap_or_default();
 
         {
             let mut child_guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
@@ -278,15 +286,7 @@ impl PersonaPlexHelper {
             let mut child_guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(ref mut child) = *child_guard {
                 if let Ok(Some(status)) = child.try_wait() {
-                    let stderr = child
-                        .stderr
-                        .take()
-                        .and_then(|mut s| {
-                            let mut buf = String::new();
-                            std::io::Read::read_to_string(&mut s, &mut buf).ok()?;
-                            Some(buf)
-                        })
-                        .unwrap_or_default();
+                    let stderr = crate::utils::child_stderr_tail_snapshot(&_stderr_tail, 1000);
                     child_guard.take();
                     return Err(format!(
                         "audio-server exited with {}: {}",

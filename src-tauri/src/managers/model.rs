@@ -1769,11 +1769,12 @@ impl ModelManager {
             .parent()
             .ok_or_else(|| anyhow::anyhow!("Invalid model path: {}", model_path.display()))?;
         fs::create_dir_all(parent)?;
+        // Leave any existing staging dir alone: download_hf_repo resumes
+        // per-file (HTTP Range) from it because resume_existing_staging is
+        // set below. Wiping it here forced every retry of a multi-GB
+        // snapshot (MLX/Gemma/Voxtral) to restart from byte zero, which on
+        // unstable connections could make those models impossible to finish.
         let staging_path = parent.join(format!(".staging-{}", model_info.id));
-        if staging_path.exists() {
-            fs::remove_dir_all(&staging_path)?;
-        }
-        fs::create_dir_all(&staging_path)?;
 
         {
             let mut models = self

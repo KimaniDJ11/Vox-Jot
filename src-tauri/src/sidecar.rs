@@ -471,11 +471,19 @@ impl SidecarManager {
             command.env("VOX_JOT_TTS_FALLBACK_PROMPT", prompt_path);
         }
 
-        let child = command
+        let mut child = command
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|err| format!("Failed to start Speech runtime: {err}"))?;
+
+        // Drain stderr continuously so the server can never block on a full
+        // pipe buffer once it has logged enough (uvicorn logs every request).
+        let stderr_tail = child
+            .stderr
+            .take()
+            .map(|stderr| crate::utils::drain_child_stderr("speech-runtime", stderr))
+            .unwrap_or_default();
 
         {
             let mut guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
@@ -487,6 +495,7 @@ impl SidecarManager {
             HEALTH_LEGACY,
             SPEECH_RUNTIME_HEALTH_ATTEMPTS,
             |manager| manager.is_speech_runtime_running(),
+            &stderr_tail,
         )
     }
 
@@ -499,7 +508,7 @@ impl SidecarManager {
 
         info!("Starting mlx-audio sidecar from {}", venv_dir.display());
 
-        let child = Command::new(&python)
+        let mut child = Command::new(&python)
             .args([
                 "-m",
                 "mlx_audio.server",
@@ -513,6 +522,14 @@ impl SidecarManager {
             .spawn()
             .map_err(|err| format!("Failed to start mlx-audio sidecar: {err}"))?;
 
+        // Drain stderr continuously so the server can never block on a full
+        // pipe buffer (tqdm model-download bars alone can emit hundreds of KB).
+        let stderr_tail = child
+            .stderr
+            .take()
+            .map(|stderr| crate::utils::drain_child_stderr("mlx-audio", stderr))
+            .unwrap_or_default();
+
         {
             let mut guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
             *guard = Some(child);
@@ -523,6 +540,7 @@ impl SidecarManager {
             HEALTH_MLX,
             MLX_AUDIO_HEALTH_ATTEMPTS,
             |manager| manager.is_mlx_audio_running(),
+            &stderr_tail,
         )
     }
 
@@ -532,6 +550,7 @@ impl SidecarManager {
         healthy_state: u8,
         attempts: usize,
         probe: F,
+        stderr_tail: &crate::utils::ChildStderrTail,
     ) -> Result<(), String>
     where
         F: Fn(&Self) -> bool,
@@ -550,20 +569,10 @@ impl SidecarManager {
             let mut guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(ref mut child) = *guard {
                 if let Ok(Some(status)) = child.try_wait() {
-                    let stderr = child
-                        .stderr
-                        .take()
-                        .map(|mut stderr| {
-                            use std::io::Read;
-                            let mut buf = String::new();
-                            let _ = stderr.read_to_string(&mut buf);
-                            buf
-                        })
-                        .unwrap_or_default();
+                    let stderr = crate::utils::child_stderr_tail_snapshot(stderr_tail, 500);
                     *guard = None;
                     return Err(format!(
-                        "{runtime_label} exited with {status}. Stderr: {}",
-                        stderr.chars().take(500).collect::<String>()
+                        "{runtime_label} exited with {status}. Stderr: {stderr}"
                     ));
                 }
             }

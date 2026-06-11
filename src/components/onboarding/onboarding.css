@@ -2474,12 +2474,13 @@
 
   .ob-permission-grid-screen {
     padding: 84px 20px 24px;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .ob-permission-grid {
     grid-template-columns: 1fr;
-    overflow: visible;
+    overflow: auto;
+    padding-bottom: 8px;
   }
 
   .ob-permission-grid-card {
@@ -2549,13 +2550,22 @@
     grid-template-columns: 1fr;
   }
 
+  .ob-permission-grid-header .ob-heading {
+    font-size: 34px;
+    line-height: 1.05;
+  }
+
+  .ob-permission-grid-header .ob-subtext {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
   .ob-theme-grid {
     grid-template-columns: 1fr;
   }
 
   .ob-permission-card-visual {
-    grid-row: auto;
-    height: 124px;
+    display: none;
   }
 }
 

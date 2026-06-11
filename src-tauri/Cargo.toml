@@ -1,6 +1,6 @@
 [package]
 name = "vox_jot"
-version = "1.0.4"
+version = "1.0.5"
 description = "Vox Jot"
 authors = ["Irie Dinamik", "cjpais"]
 edition = "2021"
@@ -48,7 +48,6 @@ tauri-plugin-macos-permissions = "2.3.0"
 tauri-plugin-process = "2.3.1"
 rusqlite_migration = "2.3"
 tauri-plugin-fs = "2.5.1"
-tauri-plugin-localhost = "2.3.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 plist = "1.9"
@@ -142,6 +141,8 @@ core-foundation = { version = "0.10", features = ["mac_os_10_8_features"] }
 core-graphics = "0.24"
 window-vibrancy = "0.5"
 objc = "0.2"
+# Loopback asset server for release builds (see src/asset_server.rs).
+tiny_http = "0.12"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 dbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }

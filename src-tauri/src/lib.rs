@@ -11,6 +11,8 @@
 mod actions;
 mod apple_intelligence;
 mod artifact_download;
+#[cfg(all(target_os = "macos", not(dev)))]
+mod asset_server;
 mod audio_feedback;
 mod audio_playback;
 pub mod audio_toolkit;
@@ -73,8 +75,6 @@ const MAIN_WINDOW_DEFAULT_W: f64 = 1200.0;
 const MAIN_WINDOW_DEFAULT_H: f64 = 1020.0;
 const MAIN_WINDOW_MIN_W: f64 = 940.0;
 const MAIN_WINDOW_MIN_H: f64 = 760.0;
-#[cfg(all(target_os = "macos", not(dev)))]
-const LOCALHOST_ASSET_PORT: u16 = 47635;
 #[cfg(all(target_os = "macos", dev))]
 const DEV_ASSET_ORIGIN: &str = "http://localhost:1420";
 #[cfg(all(target_os = "macos", not(dev)))]
@@ -246,11 +246,12 @@ pub(crate) fn app_webview_url(path: impl Into<String>) -> tauri::WebviewUrl {
     {
         // macOS 26 WebKit can crash in WKURLSchemeHandler when Tauri's custom asset
         // scheme races resource loading, so release builds serve bundled assets locally.
+        let asset_port = crate::asset_server::active_port();
         let asset_path = path.trim_start_matches('/');
         let url = if asset_path.is_empty() {
-            format!("http://127.0.0.1:{LOCALHOST_ASSET_PORT}")
+            format!("http://127.0.0.1:{asset_port}")
         } else {
-            format!("http://127.0.0.1:{LOCALHOST_ASSET_PORT}/{asset_path}")
+            format!("http://127.0.0.1:{asset_port}/{asset_path}")
         };
         tauri::WebviewUrl::External(
             url.parse()
@@ -1217,15 +1218,6 @@ pub fn run(cli_args: CliArgs) {
         }));
     }
 
-    #[cfg(all(target_os = "macos", not(dev)))]
-    {
-        builder = builder.plugin(
-            tauri_plugin_localhost::Builder::new(LOCALHOST_ASSET_PORT)
-                .host("127.0.0.1")
-                .build(),
-        );
-    }
-
     builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
@@ -1254,6 +1246,14 @@ pub fn run(cli_args: CliArgs) {
             telemetry::set_crash_reporting_enabled(
                 settings::get_settings(app.handle()).enable_crash_reporting,
             );
+
+            // macOS release builds load every window from the loopback asset
+            // server, so it must be running before any webview is created.
+            #[cfg(all(target_os = "macos", not(dev)))]
+            asset_server::start(app.handle()).map_err(|error| {
+                log::error!("Failed to start localhost asset server: {error:#}");
+                Box::<dyn std::error::Error>::from(error)
+            })?;
 
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)

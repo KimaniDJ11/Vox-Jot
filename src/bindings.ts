@@ -1437,6 +1437,22 @@ async getMicrophoneMode() : Promise<Result<boolean, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async startMicrophoneLevelPreview() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("start_microphone_level_preview") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopMicrophoneLevelPreview() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stop_microphone_level_preview") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getWindowsMicrophonePermissionStatus() : Promise<WindowsMicrophonePermissionStatus> {
     return await TAURI_INVOKE("get_windows_microphone_permission_status");
 },

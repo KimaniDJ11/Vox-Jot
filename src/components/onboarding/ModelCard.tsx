@@ -57,6 +57,18 @@ const sourceHostLabel = (sourceUrl?: string | null): string | null => {
   }
 };
 
+const BYTES_PER_MIB = 1024 * 1024;
+
+const formatDownloadedSize = (bytes?: number): string | null => {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) {
+    return null;
+  }
+  if (bytes === 0) {
+    return "0 MB";
+  }
+  return formatModelSize(bytes / BYTES_PER_MIB);
+};
+
 export type ModelCardStatus =
   | "downloadable"
   | "downloading"
@@ -81,6 +93,8 @@ interface ModelCardProps {
   onCancel?: (modelId: string) => void;
   downloadProgress?: number;
   downloadSpeed?: number; // MB/s
+  downloadedBytes?: number;
+  totalBytes?: number;
   showRecommended?: boolean;
   providerId?: string;
   providerLabel?: string;
@@ -104,6 +118,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
   onCancel,
   downloadProgress,
   downloadSpeed,
+  downloadedBytes,
+  totalBytes,
   showRecommended = true,
   providerId,
   providerLabel,
@@ -435,22 +451,36 @@ const ModelCard: React.FC<ModelCardProps> = ({
       </div>
     ) : null;
 
+  const downloadedSizeLabel = formatDownloadedSize(downloadedBytes);
+  const totalSizeLabel = formatDownloadedSize(totalBytes);
+  const transferDetail =
+    downloadedSizeLabel && totalSizeLabel
+      ? `${downloadedSizeLabel} / ${totalSizeLabel}`
+      : downloadedSizeLabel;
+  const speedDetail =
+    downloadSpeed !== undefined && downloadSpeed >= 0.05
+      ? t("modelSelector.downloadSpeed", {
+          speed: downloadSpeed.toFixed(1),
+        })
+      : downloadSpeed !== undefined
+        ? t("modelSelector.waitingForData", {
+            defaultValue: "Waiting for data...",
+          })
+        : null;
+  const keepOpenDetail = t("modelSelector.keepOpenDuringDownload", {
+    defaultValue: "Keep Vox Jot open until install finishes.",
+  });
+  const downloadingDetail =
+    [transferDetail, speedDetail, keepOpenDetail].filter(Boolean).join(" · ") ||
+    metadataItems.join(" · ");
+
   const downloadState: HubDownloadState | undefined =
     status === "downloading"
       ? {
           label: t("common.downloading", {
             defaultValue: "Downloading...",
           }),
-          detail:
-            downloadSpeed !== undefined && downloadSpeed >= 0.05
-              ? t("modelSelector.downloadSpeed", {
-                  speed: downloadSpeed.toFixed(1),
-                })
-              : downloadSpeed !== undefined
-                ? t("modelSelector.waitingForData", {
-                    defaultValue: "Waiting for data...",
-                  })
-                : metadataItems.join(" · "),
+          detail: downloadingDetail,
           progress: downloadProgress,
           indeterminate: downloadProgress === undefined,
           onCancel: onCancel ? () => onCancel(model.id) : undefined,

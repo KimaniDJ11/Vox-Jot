@@ -30,6 +30,7 @@ pub struct AudioRecorder {
     vad: Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
     enhancement_config: Option<AudioEnhancementConfig>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
+    error_cb: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 }
 
 impl AudioRecorder {
@@ -41,6 +42,7 @@ impl AudioRecorder {
             vad: None,
             enhancement_config: None,
             level_cb: None,
+            error_cb: None,
         })
     }
 
@@ -62,6 +64,16 @@ impl AudioRecorder {
         self
     }
 
+    /// Register a callback invoked (once per open) when the capture stream
+    /// reports an error — e.g. the device disappeared mid-recording.
+    pub fn with_error_callback<F>(mut self, cb: F) -> Self
+    where
+        F: Fn(String) + Send + Sync + 'static,
+    {
+        self.error_cb = Some(Arc::new(cb));
+        self
+    }
+
     pub fn open(&mut self, device: Option<Device>) -> Result<(), Box<dyn std::error::Error>> {
         if self.worker_handle.is_some() {
             return Ok(()); // already open
@@ -69,6 +81,7 @@ impl AudioRecorder {
 
         let (sample_tx, sample_rx) = mpsc::channel::<Vec<f32>>();
         let (cmd_tx, cmd_rx) = mpsc::channel::<Cmd>();
+        let (error_tx, error_rx) = mpsc::channel::<String>();
         let (init_tx, init_rx) = mpsc::sync_channel::<Result<(), String>>(1);
 
         let host = crate::audio_toolkit::get_cpal_host();
@@ -82,8 +95,9 @@ impl AudioRecorder {
         let thread_device = device.clone();
         let vad = self.vad.clone();
         let enhancement_config = self.enhancement_config;
-        // Move the optional level callback into the worker thread
+        // Move the optional level/error callbacks into the worker thread
         let level_cb = self.level_cb.clone();
+        let error_cb = self.error_cb.clone();
 
         let worker = std::thread::spawn(move || {
             let init_result = (|| -> Result<
@@ -109,6 +123,7 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        error_tx,
                         channels,
                     )
                     .map_err(|e| format!("Failed to build input stream: {e}"))?,
@@ -116,6 +131,7 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        error_tx,
                         channels,
                     )
                     .map_err(|e| format!("Failed to build input stream: {e}"))?,
@@ -123,6 +139,7 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        error_tx,
                         channels,
                     )
                     .map_err(|e| format!("Failed to build input stream: {e}"))?,
@@ -130,6 +147,7 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        error_tx,
                         channels,
                     )
                     .map_err(|e| format!("Failed to build input stream: {e}"))?,
@@ -137,6 +155,7 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        error_tx,
                         channels,
                     )
                     .map_err(|e| format!("Failed to build input stream: {e}"))?,
@@ -181,7 +200,9 @@ impl AudioRecorder {
                         frame_resampler,
                         sample_rx,
                         cmd_rx,
+                        error_rx,
                         level_cb,
+                        error_cb,
                     );
                     drop(stream);
                 }
@@ -226,10 +247,13 @@ impl AudioRecorder {
     }
 
     pub fn stop(&self) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        // Without a worker there is nothing to stop; waiting on the reply
+        // channel would block forever since the request was never sent.
+        let Some(tx) = &self.cmd_tx else {
+            return Ok(Vec::new());
+        };
         let (resp_tx, resp_rx) = mpsc::channel();
-        if let Some(tx) = &self.cmd_tx {
-            tx.send(Cmd::Stop(resp_tx))?;
-        }
+        tx.send(Cmd::Stop(resp_tx))?;
         Ok(resp_rx.recv()?) // wait for the samples
     }
 
@@ -257,6 +281,7 @@ impl AudioRecorder {
         device: &cpal::Device,
         config: &cpal::SupportedStreamConfig,
         sample_tx: mpsc::Sender<Vec<f32>>,
+        error_tx: mpsc::Sender<String>,
         channels: usize,
     ) -> Result<cpal::Stream, cpal::BuildStreamError>
     where
@@ -295,7 +320,12 @@ impl AudioRecorder {
         device.build_input_stream(
             &stream_config,
             stream_cb,
-            |err| log::error!("Stream error: {}", err),
+            // Forward stream failures (e.g. the device disappeared) to the
+            // worker so they can be surfaced instead of dying as a log line.
+            move |err| {
+                log::error!("Microphone stream error: {}", err);
+                let _ = error_tx.send(err.to_string());
+            },
             None,
         )
     }
@@ -354,6 +384,7 @@ fn normalize_microphone_error(error_message: String) -> String {
     error_message
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_consumer(
     in_sample_rate: u32,
     vad: Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
@@ -361,7 +392,9 @@ fn run_consumer(
     mut frame_resampler: FrameResampler,
     sample_rx: mpsc::Receiver<Vec<f32>>,
     cmd_rx: mpsc::Receiver<Cmd>,
+    error_rx: mpsc::Receiver<String>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
+    error_cb: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) {
     // Pre-allocate for ~10 seconds of audio at 16kHz to avoid repeated reallocs
     let mut processed_samples = Vec::<f32>::with_capacity(160_000);
@@ -399,25 +432,47 @@ fn run_consumer(
         }
     }
 
-    while let Ok(s) = sample_rx.recv() {
-        let raw = s;
+    let mut stream_error_reported = false;
 
-        // ---------- spectrum processing ---------------------------------- //
-        if let Some(buckets) = visualizer.feed(&raw) {
-            if let Some(cb) = &level_cb {
-                cb(buckets);
+    loop {
+        // Block briefly for samples, but wake up regularly so commands are
+        // still serviced when the stream stops delivering (e.g. the capture
+        // device disappeared mid-recording). With the old `recv()`-driven
+        // loop a dead stream wedged the worker forever: `stop()` blocked on
+        // its reply channel and `close()` hung joining this thread, so one
+        // Bluetooth-mic dropout bricked dictation until a force-quit.
+        match sample_rx.recv_timeout(Duration::from_millis(50)) {
+            Ok(raw) => {
+                // ---------- spectrum processing -------------------------- //
+                if let Some(buckets) = visualizer.feed(&raw) {
+                    if let Some(cb) = &level_cb {
+                        cb(buckets);
+                    }
+                }
+
+                // ---------- existing pipeline ----------------------------- //
+                if let Some(enhancer) = enhancer.as_mut() {
+                    enhancer.push(&raw, &mut |frame: &[f32]| {
+                        handle_frame(frame, recording, &vad, &mut processed_samples)
+                    });
+                } else {
+                    frame_resampler.push(&raw, &mut |frame: &[f32]| {
+                        handle_frame(frame, recording, &vad, &mut processed_samples)
+                    });
+                }
             }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
 
-        // ---------- existing pipeline ------------------------------------ //
-        if let Some(enhancer) = enhancer.as_mut() {
-            enhancer.push(&raw, &mut |frame: &[f32]| {
-                handle_frame(frame, recording, &vad, &mut processed_samples)
-            });
-        } else {
-            frame_resampler.push(&raw, &mut |frame: &[f32]| {
-                handle_frame(frame, recording, &vad, &mut processed_samples)
-            });
+        // Surface the first stream failure to the registered callback.
+        if !stream_error_reported {
+            if let Ok(error_message) = error_rx.try_recv() {
+                stream_error_reported = true;
+                if let Some(cb) = &error_cb {
+                    cb(error_message);
+                }
+            }
         }
 
         // non-blocking check for a command

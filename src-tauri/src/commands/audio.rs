@@ -179,6 +179,28 @@ pub fn get_microphone_mode(app: AppHandle) -> Result<bool, String> {
 
 #[tauri::command]
 #[specta::specta]
+pub fn start_microphone_level_preview(app: AppHandle) -> Result<(), String> {
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    audio_manager
+        .start_microphone_stream()
+        .map_err(|e| format!("Failed to start microphone preview: {}", e))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn stop_microphone_level_preview(app: AppHandle) -> Result<(), String> {
+    let settings = get_settings(&app);
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+
+    if !settings.always_on_microphone && !audio_manager.is_recording() {
+        audio_manager.stop_microphone_stream();
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn get_available_microphones() -> Result<Vec<AudioDevice>, String> {
     let devices =
         list_input_devices().map_err(|e| format!("Failed to list audio devices: {}", e))?;

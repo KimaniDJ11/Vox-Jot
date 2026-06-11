@@ -14,6 +14,7 @@ import {
 import type { ModelInfo } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
+import { formatModelSize } from "@/lib/utils/format";
 import OnboardingLayout from "./OnboardingLayout";
 import ModelCard from "./ModelCard";
 
@@ -21,6 +22,16 @@ interface ModelStepProps {
   onModelSelected: () => void;
   onBack?: () => void;
 }
+
+const BYTES_PER_MIB = 1024 * 1024;
+
+const formatDownloadBytes = (bytes?: number): string | null => {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) {
+    return null;
+  }
+  if (bytes === 0) return "0 MB";
+  return formatModelSize(bytes / BYTES_PER_MIB);
+};
 
 const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
   const { t } = useTranslation();
@@ -157,6 +168,35 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     return downloadStats[modelId]?.speed;
   };
 
+  const selectedDownload = selectedModelId
+    ? downloadProgress[selectedModelId]
+    : undefined;
+  const selectedDownloadSpeed = selectedModelId
+    ? downloadStats[selectedModelId]?.speed
+    : undefined;
+  const selectedDownloadPercent =
+    selectedDownload?.percentage !== undefined
+      ? Math.max(0, Math.min(100, selectedDownload.percentage))
+      : undefined;
+  const selectedDownloadedLabel = formatDownloadBytes(
+    selectedDownload?.downloaded,
+  );
+  const selectedTotalLabel = formatDownloadBytes(selectedDownload?.total);
+  const selectedTransferLabel =
+    selectedDownloadedLabel && selectedTotalLabel
+      ? `${selectedDownloadedLabel} / ${selectedTotalLabel}`
+      : selectedDownloadedLabel;
+  const selectedSpeedLabel =
+    selectedDownloadSpeed !== undefined && selectedDownloadSpeed >= 0.05
+      ? t("modelSelector.downloadSpeed", {
+          speed: selectedDownloadSpeed.toFixed(1),
+        })
+      : selectedDownloadSpeed !== undefined
+        ? t("modelSelector.waitingForData", {
+            defaultValue: "Waiting for data...",
+          })
+        : null;
+
   // Build right-side visual
   const rightVisual = loading ? (
     <div className="ob-visual-card ob-visual-center ob-visual-stack">
@@ -189,6 +229,56 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
       <p className="ob-card-copy">
         {t("onboarding.setup.downloading.description")}
       </p>
+      <div className="ob-download-progress-card">
+        <div className="ob-download-progress-row">
+          <span>
+            {selectedDownloadPercent !== undefined
+              ? t("onboarding.setup.downloading.percent", {
+                  percent: Math.round(selectedDownloadPercent),
+                  defaultValue: `${Math.round(selectedDownloadPercent)}%`,
+                })
+              : t("onboarding.setup.downloading.preparing", {
+                  defaultValue: "Preparing",
+                })}
+          </span>
+          {selectedTransferLabel && <span>{selectedTransferLabel}</span>}
+        </div>
+        <div
+          className={`ob-download-progress-track ${
+            selectedDownloadPercent === undefined
+              ? "ob-download-progress-indeterminate"
+              : ""
+          }`}
+          role="progressbar"
+          aria-label={t("modelSelector.downloadProgress", {
+            defaultValue: "Model download progress",
+          })}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={
+            selectedDownloadPercent !== undefined
+              ? Math.round(selectedDownloadPercent)
+              : undefined
+          }
+        >
+          <div
+            className="ob-download-progress-fill"
+            style={
+              selectedDownloadPercent !== undefined
+                ? { width: `${selectedDownloadPercent}%` }
+                : undefined
+            }
+          />
+        </div>
+        <div className="ob-download-progress-detail">
+          {selectedSpeedLabel && <span>{selectedSpeedLabel}</span>}
+          <span>
+            {t("modelSelector.keepOpenDuringDownload", {
+              defaultValue: "Keep Vox Jot open until install finishes.",
+            })}
+          </span>
+        </div>
+      </div>
     </div>
   ) : (
     <div className="ob-visual-card ob-visual-center ob-visual-stack">
@@ -311,6 +401,8 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                 onDownload={handleDownloadModel}
                 downloadProgress={getModelDownloadProgress(heroModel.id)}
                 downloadSpeed={getModelDownloadSpeed(heroModel.id)}
+                downloadedBytes={downloadProgress[heroModel.id]?.downloaded}
+                totalBytes={downloadProgress[heroModel.id]?.total}
               />
             </div>
           ) : hasNoCatalogModels ? (
@@ -422,6 +514,8 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                       }
                       downloadProgress={getModelDownloadProgress(model.id)}
                       downloadSpeed={getModelDownloadSpeed(model.id)}
+                      downloadedBytes={downloadProgress[model.id]?.downloaded}
+                      totalBytes={downloadProgress[model.id]?.total}
                     />
                   ))}
                 </div>

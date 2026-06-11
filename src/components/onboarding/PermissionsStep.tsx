@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import {
@@ -138,6 +139,9 @@ const macPermissionOrder: PermissionId[] = [
 ];
 
 const windowsPermissionOrder: PermissionId[] = ["microphone"];
+const MIC_LEVEL_BAR_COUNT = 16;
+const emptyMicLevels = () =>
+  Array.from({ length: MIC_LEVEL_BAR_COUNT }, () => 0);
 
 const PermissionsStep: React.FC<PermissionsStepProps> = ({
   onComplete,
@@ -150,6 +154,9 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const refreshOutputDevices = useSettingsStore(
     (state) => state.refreshOutputDevices,
   );
+  const audioDevices = useSettingsStore((state) => state.audioDevices);
+  const settings = useSettingsStore((state) => state.settings);
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
   const [permissionPlatform, setPermissionPlatform] =
     useState<PermissionPlatform | null>(null);
   const [permissions, setPermissions] =
@@ -157,8 +164,14 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const [skippedOptional, setSkippedOptional] = useState<
     Partial<Record<PermissionId, boolean>>
   >({});
+  const [micPreviewStatus, setMicPreviewStatus] = useState<
+    "idle" | "starting" | "live" | "error"
+  >("idle");
+  const [micPreviewError, setMicPreviewError] = useState<string | null>(null);
+  const [micLevels, setMicLevels] = useState<number[]>(emptyMicLevels);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const micDevicesLoadedRef = useRef(false);
   const errorCountRef = useRef<number>(0);
   const MAX_POLLING_ERRORS = 3;
 
@@ -182,6 +195,24 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       .filter((id) => !permissionStories[id].required)
       .every((id) => permissions[id] === "granted" || skippedOptional[id]);
   }, [permissionOrder, permissions, skippedOptional]);
+
+  const microphoneOptions = useMemo(() => {
+    return audioDevices.length > 0
+      ? audioDevices
+      : [{ index: "default", name: "Default", is_default: true }];
+  }, [audioDevices]);
+
+  const selectedMicrophone = useMemo(() => {
+    const value = settings?.selected_microphone;
+    return !value || value === "default" ? "Default" : value;
+  }, [settings?.selected_microphone]);
+
+  const selectedMicrophoneLabel = useMemo(() => {
+    return (
+      microphoneOptions.find((device) => device.name === selectedMicrophone)
+        ?.name ?? selectedMicrophone
+    );
+  }, [microphoneOptions, selectedMicrophone]);
 
   const completeOnboarding = useCallback(async () => {
     await Promise.all([refreshAudioDevices(), refreshOutputDevices()]);
@@ -353,6 +384,76 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   }, [hasWindowsMicrophoneAccess, onComplete, t]);
 
   useEffect(() => {
+    if (permissions.microphone !== "granted" || permissionPlatform === null) {
+      setMicPreviewStatus("idle");
+      setMicPreviewError(null);
+      setMicLevels(emptyMicLevels);
+      return;
+    }
+
+    if (!micDevicesLoadedRef.current) {
+      micDevicesLoadedRef.current = true;
+      void refreshAudioDevices();
+    }
+
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+
+    setMicPreviewStatus("starting");
+    setMicPreviewError(null);
+    setMicLevels(emptyMicLevels);
+
+    const normalizeLevels = (levels: number[]) => {
+      const next = emptyMicLevels();
+      for (let i = 0; i < MIC_LEVEL_BAR_COUNT; i += 1) {
+        const raw = Number(levels[i] ?? 0);
+        next[i] = Math.max(0, Math.min(1, raw * 1.35));
+      }
+      return next;
+    };
+
+    void (async () => {
+      try {
+        unlisten = await listen<number[]>("mic-level", (event) => {
+          if (disposed) return;
+          setMicLevels(normalizeLevels(event.payload));
+          setMicPreviewStatus("live");
+          setMicPreviewError(null);
+        });
+
+        if (disposed) {
+          unlisten();
+          return;
+        }
+
+        const result = await commands.startMicrophoneLevelPreview();
+        if (disposed) return;
+
+        if (result.status === "ok") {
+          setMicPreviewStatus("live");
+          return;
+        }
+
+        setMicPreviewStatus("error");
+        setMicPreviewError(result.error);
+      } catch (error) {
+        if (disposed) return;
+        setMicPreviewStatus("error");
+        setMicPreviewError(String(error));
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+      setMicPreviewStatus("idle");
+      setMicPreviewError(null);
+      setMicLevels(emptyMicLevels);
+      void commands.stopMicrophoneLevelPreview();
+    };
+  }, [permissionPlatform, permissions.microphone, refreshAudioDevices]);
+
+  useEffect(() => {
     return () => {
       stopPolling();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -467,6 +568,22 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     await completeOnboarding();
   };
 
+  const handleMicrophoneChange = async (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const nextMicrophone = event.currentTarget.value;
+    setMicPreviewStatus("starting");
+    setMicPreviewError(null);
+    setMicLevels(emptyMicLevels);
+    await updateSetting("selected_microphone", nextMicrophone);
+
+    const result = await commands.startMicrophoneLevelPreview();
+    if (result.status === "error") {
+      setMicPreviewStatus("error");
+      setMicPreviewError(result.error);
+    }
+  };
+
   if (isChecking) {
     return (
       <OnboardingLayout
@@ -546,6 +663,102 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
                   <div className="ob-permission-card-privacy">
                     {t(story.privacyKey)}
                   </div>
+
+                  {id === "microphone" && isGranted && (
+                    <div className="ob-mic-check">
+                      <label className="ob-mic-select-label">
+                        <span>
+                          {t("onboarding.permissions.microphone.deviceLabel", {
+                            defaultValue: "Input device",
+                          })}
+                        </span>
+                        <select
+                          className="ob-mic-select"
+                          value={selectedMicrophone}
+                          onChange={(event) =>
+                            void handleMicrophoneChange(event)
+                          }
+                          aria-label={t(
+                            "onboarding.permissions.microphone.deviceAriaLabel",
+                            {
+                              defaultValue:
+                                "Choose the microphone Vox Jot should test",
+                            },
+                          )}
+                        >
+                          {!microphoneOptions.some(
+                            (device) => device.name === selectedMicrophone,
+                          ) && (
+                            <option value={selectedMicrophone}>
+                              {selectedMicrophone}
+                            </option>
+                          )}
+                          {microphoneOptions.map((device) => (
+                            <option key={device.index} value={device.name}>
+                              {device.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <div
+                        className="ob-mic-meter"
+                        role="meter"
+                        aria-label={t(
+                          "onboarding.permissions.microphone.meterLabel",
+                          {
+                            defaultValue:
+                              "Live microphone input level for {{device}}",
+                            device: selectedMicrophoneLabel,
+                          },
+                        )}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(Math.max(...micLevels) * 100)}
+                      >
+                        {micLevels.map((level, index) => (
+                          <span
+                            key={index}
+                            className="ob-mic-meter-bar"
+                            style={
+                              {
+                                "--ob-mic-level": level.toFixed(3),
+                              } as React.CSSProperties
+                            }
+                          />
+                        ))}
+                      </div>
+
+                      <div
+                        className={`ob-mic-status ob-mic-status-${micPreviewStatus}`}
+                        aria-live="polite"
+                      >
+                        {micPreviewStatus === "error"
+                          ? (micPreviewError ??
+                            t(
+                              "onboarding.permissions.microphone.previewError",
+                              {
+                                defaultValue:
+                                  "Could not start the microphone check.",
+                              },
+                            ))
+                          : micPreviewStatus === "starting"
+                            ? t(
+                                "onboarding.permissions.microphone.previewStarting",
+                                {
+                                  defaultValue: "Starting microphone check...",
+                                },
+                              )
+                            : t(
+                                "onboarding.permissions.microphone.previewLive",
+                                {
+                                  defaultValue:
+                                    "Speak normally to confirm Vox Jot can hear this input.",
+                                },
+                              )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="ob-permission-card-actions">

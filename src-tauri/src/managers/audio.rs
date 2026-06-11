@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 fn query_mute() -> Option<bool> {
     #[cfg(target_os = "windows")]
@@ -204,6 +204,7 @@ pub enum MicrophoneMode {
 fn create_audio_recorder(
     vad_path: &str,
     app_handle: &tauri::AppHandle,
+    stream_failed: Arc<AtomicBool>,
 ) -> Result<AudioRecorder, anyhow::Error> {
     let settings = get_settings(app_handle);
     let silero = SileroVad::new(vad_path, 0.3)
@@ -220,6 +221,19 @@ fn create_audio_recorder(
             move |levels| {
                 utils::emit_levels(&app_handle, &levels);
             }
+        })
+        .with_error_callback({
+            let app_handle = app_handle.clone();
+            move |error_message| {
+                stream_failed.store(true, Ordering::SeqCst);
+                // The callback runs on the recorder worker thread; tearing the
+                // stream down from here would self-join that thread, so hand
+                // recovery to a detached thread.
+                let app_handle = app_handle.clone();
+                std::thread::spawn(move || {
+                    handle_stream_failure(&app_handle, error_message);
+                });
+            }
         });
 
     let recorder = if let Some(config) = AudioEnhancementConfig::from_settings(
@@ -234,6 +248,51 @@ fn create_audio_recorder(
     Ok(recorder)
 }
 
+/// React to a fatal capture-stream error (e.g. the microphone disappeared).
+///
+/// If a recording is in flight, leave it intact: the recorder worker still
+/// services stop/snapshot, so stopping normally salvages the audio captured
+/// before the failure, and the stream is rebuilt on the next open via
+/// `stream_failed`. If the stream died while idle (always-on mode), rebuild it
+/// right away so always-on capture keeps its invariant.
+fn handle_stream_failure(app_handle: &tauri::AppHandle, error_message: String) {
+    let Some(manager) = app_handle.try_state::<Arc<AudioRecordingManager>>() else {
+        warn!(
+            "Microphone stream failed before the recording manager was available: {error_message}"
+        );
+        return;
+    };
+    let manager = manager.inner().clone();
+
+    if manager.is_recording() {
+        warn!("Microphone stream failed mid-recording: {error_message}");
+        let _ = app_handle.emit(
+            "recording-error",
+            format!(
+                "Microphone stopped delivering audio ({error_message}). Stop dictation to keep what was captured; the microphone is reconnected on the next recording."
+            ),
+        );
+        return;
+    }
+
+    warn!("Microphone stream failed while idle: {error_message}");
+    manager.stop_microphone_stream();
+
+    let always_on = matches!(
+        *manager.mode.lock().unwrap_or_else(|e| e.into_inner()),
+        MicrophoneMode::AlwaysOn
+    );
+    if always_on {
+        if let Err(error) = manager.start_microphone_stream() {
+            let message = format!(
+                "Failed to reopen the always-on microphone after a stream failure: {error}"
+            );
+            warn!("{message}");
+            let _ = app_handle.emit("recording-error", message);
+        }
+    }
+}
+
 /* ──────────────────────────────────────────────────────────────── */
 
 #[derive(Clone)]
@@ -246,6 +305,9 @@ pub struct AudioRecordingManager {
     recorder: Arc<Mutex<Option<AudioRecorder>>>,
     is_open: Arc<AtomicBool>,
     is_recording: Arc<AtomicBool>,
+    /// Set when the capture stream reports a fatal error (e.g. the device
+    /// disappeared). The next open tears the dead stream down and rebuilds.
+    stream_failed: Arc<AtomicBool>,
     stream_epoch: Arc<AtomicU64>,
     audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
@@ -273,6 +335,7 @@ impl AudioRecordingManager {
             recorder: Arc::new(Mutex::new(None)),
             is_open: Arc::new(AtomicBool::new(false)),
             is_recording: Arc::new(AtomicBool::new(false)),
+            stream_failed: Arc::new(AtomicBool::new(false)),
             stream_epoch: Arc::new(AtomicU64::new(0)),
             audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
@@ -409,8 +472,16 @@ impl AudioRecordingManager {
         let mut recorder_opt = self.recorder.lock().unwrap_or_else(|e| e.into_inner());
 
         if self.is_open.load(Ordering::SeqCst) {
-            debug!("Microphone stream already active");
-            return Ok(());
+            if self.stream_failed.load(Ordering::SeqCst) {
+                warn!("Previous microphone stream failed; rebuilding it");
+                if let Some(rec) = recorder_opt.as_mut() {
+                    let _ = rec.close();
+                }
+                self.is_open.store(false, Ordering::SeqCst);
+            } else {
+                debug!("Microphone stream already active");
+                return Ok(());
+            }
         }
 
         // Don't mute immediately - caller will handle muting after audio feedback.
@@ -427,6 +498,7 @@ impl AudioRecordingManager {
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("VAD path contains invalid UTF-8"))?,
                 &self.app_handle,
+                Arc::clone(&self.stream_failed),
             )?);
         }
 
@@ -440,6 +512,7 @@ impl AudioRecordingManager {
         }
 
         self.is_open.store(true, Ordering::SeqCst);
+        self.stream_failed.store(false, Ordering::SeqCst);
         info!(
             "Microphone stream initialized in {:?}",
             start_time.elapsed()
@@ -531,10 +604,13 @@ impl AudioRecordingManager {
 
         // Open the stream before taking the recording-state lock so start/mute
         // paths cannot deadlock on inverted lock ordering.
+        // Also reopen in always-on mode when the previous stream failed
+        // (device disconnect); start_microphone_stream rebuilds it.
         if matches!(
             *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
             MicrophoneMode::OnDemand
-        ) {
+        ) || self.stream_failed.load(Ordering::SeqCst)
+        {
             if let Err(e) = self.start_microphone_stream() {
                 let msg = format!("{e}");
                 error!("Failed to open microphone stream: {msg}");

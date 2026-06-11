@@ -130,6 +130,10 @@
   background: var(--ob-page-wash), var(--bg);
 }
 
+.ob-root-split {
+  background: var(--ob-page-wash), var(--bg);
+}
+
 /* ── Progress bar ────────────────────────────────────────── */
 .ob-progress-bar {
   display: flex;
@@ -577,6 +581,67 @@
   color: var(--ob-text);
   line-height: 1.6;
   margin: 0;
+}
+
+.ob-download-progress-card {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding-top: 2px;
+  text-align: left;
+}
+
+.ob-download-progress-row,
+.ob-download-progress-detail {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.ob-download-progress-row span,
+.ob-download-progress-detail span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ob-download-progress-row span:first-child {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ob-download-progress-track {
+  position: relative;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--input);
+}
+
+.ob-download-progress-fill {
+  height: 100%;
+  min-width: 8px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-teal));
+  transition: width 260ms ease;
+}
+
+.ob-download-progress-indeterminate .ob-download-progress-fill {
+  width: 42%;
+  animation: ob-progress-sweep 1.35s ease-in-out infinite;
+}
+
+.ob-download-progress-detail {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .ob-feature-list,
@@ -1201,6 +1266,22 @@
 @keyframes ob-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.ob-download-progress-indeterminate {
+  isolation: isolate;
+}
+
+@keyframes ob-progress-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(75%);
+  }
+  100% {
+    transform: translateX(240%);
   }
 }
 
@@ -1829,6 +1910,77 @@
   line-height: 1.35;
 }
 
+.ob-mic-check {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  padding-top: 10px;
+}
+
+.ob-mic-select-label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ob-mic-select {
+  min-height: 36px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ob-mic-select:focus-visible {
+  outline: 2px solid var(--focus-ring-solid);
+  outline-offset: 2px;
+}
+
+.ob-mic-meter {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  align-items: end;
+  gap: 3px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--text), transparent 88%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  padding: 6px;
+}
+
+.ob-mic-meter-bar {
+  display: block;
+  min-height: 4px;
+  height: calc(4px + (var(--ob-mic-level, 0) * 20px));
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent-teal), var(--accent));
+  transition: height 80ms linear;
+}
+
+.ob-mic-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ob-mic-status-live {
+  color: var(--text);
+}
+
+.ob-mic-status-error {
+  color: var(--danger);
+}
+
 .ob-permission-card-actions {
   display: flex;
   align-items: center;
@@ -2065,6 +2217,31 @@
   .ob-permission-card-privacy {
     margin-top: 6px;
     font-size: 11px;
+  }
+
+  .ob-mic-check {
+    gap: 7px;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .ob-mic-select {
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .ob-mic-meter {
+    min-height: 24px;
+    padding: 5px;
+  }
+
+  .ob-mic-meter-bar {
+    height: calc(3px + (var(--ob-mic-level, 0) * 15px));
+  }
+
+  .ob-mic-status {
+    font-size: 11px;
+    line-height: 1.25;
   }
 
   .ob-permission-grid-card .ob-perm-allow-btn {

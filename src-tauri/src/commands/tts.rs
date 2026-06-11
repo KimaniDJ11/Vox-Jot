@@ -29,6 +29,16 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
 const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+// Each TTS command runs on its own 64 MB-stack OS thread; bound how many run at
+// once so rapid frontend calls (e.g. Reader preloading) can't spawn an unbounded
+// number of large-stack threads. Excess calls queue on the semaphore.
+const TTS_COMMAND_MAX_CONCURRENCY: usize = 6;
+// Reader synthesis/export input caps so a hostile or runaway request can't
+// exhaust memory/disk/time.
+const READER_MAX_UNITS: usize = 20_000;
+const READER_MAX_UNIT_CHARS: usize = 8_000;
+const READER_MAX_TOTAL_CHARS: usize = 12_000_000;
+const READER_MAX_COVER_BYTES: usize = 8 * 1024 * 1024;
 const READER_EXPORT_SAMPLE_RATE: u32 = 24_000;
 const READER_EXPORT_UNIT_GAP_SECONDS: f32 = 0.12;
 const READER_AUDIO_CACHE_DIR: &str = "audio-cache";
@@ -347,6 +357,7 @@ pub async fn tts_speak_reader(
     remember_last_output: Option<bool>,
 ) -> Result<(), String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    ensure_reader_units_within_limits(std::iter::once(text.as_str()), 1)?;
     let settings = get_settings(&app);
     let preset = reader_preset_for_request(&settings, preset_id.as_deref(), normalized_rate)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
@@ -432,6 +443,7 @@ pub async fn get_reader_audio_cache_status(
     language: Option<String>,
 ) -> Result<ReaderAudioCacheStatus, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    ensure_reader_units_within_limits(units.iter().map(|unit| unit.text.as_str()), units.len())?;
     let settings = get_settings(&app);
     reader_audio_cache_status(
         &app,
@@ -478,6 +490,7 @@ pub async fn play_reader_audio_unit(
     language: Option<String>,
 ) -> Result<ReaderAudioCachePlayResult, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     run_tts_async_command_on_stack("tts-command-reader-cache-play", move || async move {
         let settings = get_settings(&app);
@@ -514,6 +527,7 @@ pub async fn synthesize_reader_audio_unit(
     language: Option<String>,
 ) -> Result<ReaderAudioUnitRender, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     run_tts_async_command_on_stack("tts-command-reader-cache-synth", move || async move {
         let settings = get_settings(&app);
@@ -650,6 +664,41 @@ pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Resu
     .await
 }
 
+/// Bounds concurrent TTS command threads (each carries a 64 MB stack).
+fn tts_command_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SEM.get_or_init(|| tokio::sync::Semaphore::new(TTS_COMMAND_MAX_CONCURRENCY))
+}
+
+/// Validate Reader unit input against the synthesis caps (count, per-unit
+/// length, total length) before doing any work.
+fn ensure_reader_units_within_limits<'a>(
+    texts: impl Iterator<Item = &'a str>,
+    count: usize,
+) -> Result<(), String> {
+    if count > READER_MAX_UNITS {
+        return Err(format!(
+            "This document has too many parts to synthesize ({count}); the limit is {READER_MAX_UNITS}."
+        ));
+    }
+    let mut total = 0usize;
+    for text in texts {
+        let chars = text.chars().count();
+        if chars > READER_MAX_UNIT_CHARS {
+            return Err(format!(
+                "A reading part is too long to synthesize ({chars} characters); the limit is {READER_MAX_UNIT_CHARS}."
+            ));
+        }
+        total = total.saturating_add(chars);
+        if total > READER_MAX_TOTAL_CHARS {
+            return Err(format!(
+                "This document is too large to synthesize; the limit is {READER_MAX_TOTAL_CHARS} characters."
+            ));
+        }
+    }
+    Ok(())
+}
+
 async fn run_tts_async_command_on_stack<T, F, Fut>(
     thread_name: &'static str,
     task: F,
@@ -659,6 +708,12 @@ where
     F: FnOnce() -> Fut + Send + 'static,
     Fut: Future<Output = Result<T, String>> + 'static,
 {
+    // Hold a permit for the lifetime of the command so concurrent large-stack
+    // threads stay bounded; excess callers queue here.
+    let _permit = tts_command_semaphore()
+        .acquire()
+        .await
+        .map_err(|_| "TTS command queue is unavailable.".to_string())?;
     let (tx, rx) = tokio::sync::oneshot::channel();
     thread::Builder::new()
         .name(thread_name.to_string())
@@ -845,6 +900,7 @@ async fn prepare_reader_audio_cache_inner(
     playback_rate: Option<f32>,
     language: Option<String>,
 ) -> Result<ReaderAudioCachePrepareResult, String> {
+    ensure_reader_units_within_limits(units.iter().map(|unit| unit.text.as_str()), units.len())?;
     let settings = get_settings(&app);
     let mut total_count = 0usize;
     let mut reused_count = 0usize;
@@ -1151,6 +1207,7 @@ async fn export_reader_audio_inner(
     output_path: String,
     playback_rate: Option<f32>,
 ) -> Result<ReaderAudioExportResult, String> {
+    ensure_reader_units_within_limits(units.iter().map(|unit| unit.text.as_str()), units.len())?;
     let target = PathBuf::from(output_path.trim());
     if target.as_os_str().is_empty() {
         return Err("Choose where to save the Reader audio file.".to_string());
@@ -1165,10 +1222,19 @@ async fn export_reader_audio_inner(
 
     let settings = get_settings(&app);
     let stop_flag = Arc::new(AtomicBool::new(false));
-    let mut output_samples = Vec::new();
     let mut rendered_units = 0usize;
+    let mut total_samples = 0usize;
     let gap_samples =
         (READER_EXPORT_SAMPLE_RATE as f32 * READER_EXPORT_UNIT_GAP_SECONDS).round() as usize;
+    let temp_wav = reader_temp_sibling_path(&target, "tmp.wav");
+    let wav_spec = WavSpec {
+        channels: 1,
+        sample_rate: READER_EXPORT_SAMPLE_RATE,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer =
+        WavWriter::create(&temp_wav, wav_spec).map_err(|err| format!("WAV write error: {err}"))?;
 
     for unit in units {
         let text = unit.text.trim().to_string();
@@ -1192,30 +1258,35 @@ async fn export_reader_audio_inner(
             )
             .await?;
 
-        let mut unit_samples = Vec::new();
+        let mut wrote_unit = false;
         for temp_path in temp_paths {
             let decoded = decode_rendered_audio_file_mono(&temp_path, READER_EXPORT_SAMPLE_RATE)?;
-            unit_samples.extend(decoded);
             let _ = fs::remove_file(temp_path);
+            if decoded.is_empty() {
+                continue;
+            }
+            if !wrote_unit && total_samples > 0 && gap_samples > 0 {
+                write_reader_wav_silence(&mut writer, gap_samples)?;
+                total_samples += gap_samples;
+            }
+            write_reader_wav_samples(&mut writer, &decoded)?;
+            total_samples += decoded.len();
+            wrote_unit = true;
         }
-        if unit_samples.is_empty() {
-            continue;
-        }
-        if !output_samples.is_empty() && gap_samples > 0 {
-            output_samples.extend(std::iter::repeat_n(0.0, gap_samples));
-        }
-        output_samples.extend(unit_samples);
-        rendered_units += 1;
+        rendered_units += usize::from(wrote_unit);
     }
 
-    if rendered_units == 0 || output_samples.is_empty() {
+    writer
+        .finalize()
+        .map_err(|err| format!("WAV finalize error: {err}"))?;
+
+    if rendered_units == 0 || total_samples == 0 {
+        let _ = fs::remove_file(&temp_wav);
         return Err("There is no readable text to export.".to_string());
     }
 
-    write_reader_export_wav(&output_samples, READER_EXPORT_SAMPLE_RATE, &target)?;
-    let duration_ms = ((output_samples.len() as f64 / f64::from(READER_EXPORT_SAMPLE_RATE))
-        * 1000.0)
-        .round() as u32;
+    replace_with_completed_output(&temp_wav, &target)?;
+    let duration_ms = reader_samples_to_ms(total_samples);
 
     Ok(ReaderAudioExportResult {
         output_path: target.to_string_lossy().to_string(),
@@ -1319,7 +1390,9 @@ fn write_cover_temp(cover_data_url: Option<&str>) -> Option<PathBuf> {
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(data_url[comma + 1..].trim().as_bytes())
         .ok()?;
-    if bytes.is_empty() {
+    // Skip an empty or oversized cover rather than embedding unbounded bytes;
+    // the audiobook still exports without art.
+    if bytes.is_empty() || bytes.len() > READER_MAX_COVER_BYTES {
         return None;
     }
     let path = std::env::temp_dir().join(format!(
@@ -1328,6 +1401,34 @@ fn write_cover_temp(cover_data_url: Option<&str>) -> Option<PathBuf> {
     ));
     fs::write(&path, bytes).ok()?;
     Some(path)
+}
+
+fn reader_temp_sibling_path(target: &Path, suffix: &str) -> PathBuf {
+    let stem = target
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("reader-export");
+    let file_name = format!("{stem}.voxjot-{}.{}", Uuid::new_v4(), suffix);
+    target
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .map(|parent| parent.join(&file_name))
+        .unwrap_or_else(|| PathBuf::from(file_name))
+}
+
+fn replace_with_completed_output(source: &Path, target: &Path) -> Result<(), String> {
+    let _ = fs::remove_file(target);
+    fs::rename(source, target).or_else(|rename_err| {
+        fs::copy(source, target)
+            .and_then(|_| fs::remove_file(source))
+            .map(|_| ())
+            .map_err(|copy_err| {
+                format!(
+                    "Failed to move completed audiobook into place: {rename_err}; copy fallback failed: {copy_err}"
+                )
+            })
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1360,15 +1461,37 @@ async fn export_reader_audiobook_inner(
             .map_err(|err| format!("Failed to create audiobook export folder: {err}"))?;
     }
 
+    // Cap total input before synthesizing anything.
+    let total_units: usize = chapters.iter().map(|chapter| chapter.units.len()).sum();
+    ensure_reader_units_within_limits(
+        chapters
+            .iter()
+            .flat_map(|chapter| chapter.units.iter())
+            .map(|unit| unit.text.as_str()),
+        total_units,
+    )?;
+
     let settings = get_settings(&app);
     let gap_samples =
         (READER_EXPORT_SAMPLE_RATE as f32 * READER_EXPORT_UNIT_GAP_SECONDS).round() as usize;
-    let mut book_samples: Vec<f32> = Vec::new();
+
+    // Stream samples straight to a WAV on disk (the final target for `wav`, or a
+    // temp staging file for ffmpeg) so the whole book never sits in memory.
+    let wav_path = reader_temp_sibling_path(&target, "tmp.wav");
+    let wav_spec = WavSpec {
+        channels: 1,
+        sample_rate: READER_EXPORT_SAMPLE_RATE,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer =
+        WavWriter::create(&wav_path, wav_spec).map_err(|err| format!("WAV write error: {err}"))?;
+    let mut total_samples = 0usize;
     let mut chapter_marks: Vec<(String, u32, u32)> = Vec::new();
     let mut unit_count = 0usize;
 
     for (chapter_index, chapter) in chapters.iter().enumerate() {
-        let chapter_start = book_samples.len();
+        let chapter_start = total_samples;
         for unit in &chapter.units {
             if unit.text.trim().is_empty() {
                 continue;
@@ -1387,13 +1510,15 @@ async fn export_reader_audiobook_inner(
             if decoded.is_empty() {
                 continue;
             }
-            if !book_samples.is_empty() && gap_samples > 0 {
-                book_samples.extend(std::iter::repeat_n(0.0, gap_samples));
+            if total_samples > 0 && gap_samples > 0 {
+                write_reader_wav_silence(&mut writer, gap_samples)?;
+                total_samples += gap_samples;
             }
-            book_samples.extend(decoded);
+            write_reader_wav_samples(&mut writer, &decoded)?;
+            total_samples += decoded.len();
             unit_count += 1;
         }
-        if book_samples.len() > chapter_start {
+        if total_samples > chapter_start {
             let chapter_title = if chapter.title.trim().is_empty() {
                 format!("Chapter {}", chapter_index + 1)
             } else {
@@ -1402,18 +1527,23 @@ async fn export_reader_audiobook_inner(
             chapter_marks.push((
                 chapter_title,
                 reader_samples_to_ms(chapter_start),
-                reader_samples_to_ms(book_samples.len()),
+                reader_samples_to_ms(total_samples),
             ));
         }
     }
 
-    if unit_count == 0 || book_samples.is_empty() {
+    writer
+        .finalize()
+        .map_err(|err| format!("WAV finalize error: {err}"))?;
+
+    if unit_count == 0 || total_samples == 0 {
+        let _ = fs::remove_file(&wav_path);
         return Err("There is no readable text to export.".to_string());
     }
-    let duration_ms = reader_samples_to_ms(book_samples.len());
+    let duration_ms = reader_samples_to_ms(total_samples);
 
     if format == "wav" {
-        write_reader_export_wav(&book_samples, READER_EXPORT_SAMPLE_RATE, &target)?;
+        replace_with_completed_output(&wav_path, &target)?;
         return Ok(ReaderAudiobookResult {
             output_path: target.to_string_lossy().to_string(),
             chapter_count: chapter_marks.len(),
@@ -1424,16 +1554,18 @@ async fn export_reader_audiobook_inner(
     }
 
     let ffmpeg = locate_ffmpeg().ok_or_else(|| {
+        let _ = fs::remove_file(&wav_path);
         "ffmpeg is required to export MP3 / M4B audiobooks. Install it (e.g. `brew install ffmpeg`) or export WAV instead.".to_string()
     })?;
 
-    // Stage the concatenated audio + chapter metadata next to the target.
-    let temp_wav = target.with_extension("voxjot-tmp.wav");
-    write_reader_export_wav(&book_samples, READER_EXPORT_SAMPLE_RATE, &temp_wav)?;
+    // The streamed WAV is the ffmpeg input; chapter metadata goes beside it.
+    let temp_wav = wav_path;
     let meta_path = target.with_extension("voxjot-ffmeta");
     let metadata = build_ffmetadata(title.as_deref(), author.as_deref(), &chapter_marks);
-    fs::write(&meta_path, metadata)
-        .map_err(|err| format!("Failed to write audiobook chapter metadata: {err}"))?;
+    if let Err(err) = fs::write(&meta_path, metadata) {
+        let _ = fs::remove_file(&temp_wav);
+        return Err(format!("Failed to write audiobook chapter metadata: {err}"));
+    }
     let cover_path = write_cover_temp(cover_data_url.as_deref());
 
     let mut args: Vec<String> = vec!["-y".into(), "-i".into()];
@@ -1482,7 +1614,7 @@ async fn export_reader_audiobook_inner(
     }
     args.push(target.to_string_lossy().to_string());
 
-    let run = tokio::task::spawn_blocking(move || {
+    let run = match tokio::task::spawn_blocking(move || {
         Command::new(&ffmpeg)
             .args(&args)
             .stdin(Stdio::null())
@@ -1491,7 +1623,17 @@ async fn export_reader_audiobook_inner(
             .output()
     })
     .await
-    .map_err(|err| format!("Audiobook encode task failed to join: {err}"))?;
+    {
+        Ok(run) => run,
+        Err(err) => {
+            let _ = fs::remove_file(&temp_wav);
+            let _ = fs::remove_file(&meta_path);
+            if let Some(cover) = cover_path {
+                let _ = fs::remove_file(cover);
+            }
+            return Err(format!("Audiobook encode task failed to join: {err}"));
+        }
+    };
 
     let _ = fs::remove_file(&temp_wav);
     let _ = fs::remove_file(&meta_path);
@@ -1578,6 +1720,34 @@ fn resample_reader_audio_linear(samples: &[f32], source_rate: u32, target_rate: 
         .collect()
 }
 
+/// Append f32 samples to an open WAV writer as clamped i16 (shared by the
+/// streaming audiobook export and the flat WAV export).
+fn write_reader_wav_samples<W: std::io::Write + std::io::Seek>(
+    writer: &mut WavWriter<W>,
+    samples: &[f32],
+) -> Result<(), String> {
+    for sample in samples {
+        let sample_i16 = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+        writer
+            .write_sample(sample_i16)
+            .map_err(|err| format!("WAV sample write error: {err}"))?;
+    }
+    Ok(())
+}
+
+/// Append `count` silent samples to an open WAV writer (inter-unit gaps).
+fn write_reader_wav_silence<W: std::io::Write + std::io::Seek>(
+    writer: &mut WavWriter<W>,
+    count: usize,
+) -> Result<(), String> {
+    for _ in 0..count {
+        writer
+            .write_sample(0i16)
+            .map_err(|err| format!("WAV sample write error: {err}"))?;
+    }
+    Ok(())
+}
+
 fn write_reader_export_wav(
     samples: &[f32],
     sample_rate: u32,
@@ -1591,16 +1761,56 @@ fn write_reader_export_wav(
     };
     let mut writer =
         WavWriter::create(output_path, spec).map_err(|err| format!("WAV write error: {err}"))?;
-    for sample in samples {
-        let sample_i16 = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
-        writer
-            .write_sample(sample_i16)
-            .map_err(|err| format!("WAV sample write error: {err}"))?;
-    }
+    write_reader_wav_samples(&mut writer, samples)?;
     writer
         .finalize()
         .map_err(|err| format!("WAV finalize error: {err}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine as _;
+
+    #[test]
+    fn reader_unit_limits_reject_too_many_units() {
+        let err = ensure_reader_units_within_limits(
+            std::iter::repeat("ok").take(READER_MAX_UNITS + 1),
+            READER_MAX_UNITS + 1,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("too many parts"));
+    }
+
+    #[test]
+    fn reader_unit_limits_reject_oversized_unit() {
+        let text = "x".repeat(READER_MAX_UNIT_CHARS + 1);
+        let err = ensure_reader_units_within_limits(std::iter::once(text.as_str()), 1).unwrap_err();
+
+        assert!(err.contains("too long"));
+    }
+
+    #[test]
+    fn reader_unit_limits_reject_total_text_over_limit() {
+        let unit = "x".repeat(READER_MAX_UNIT_CHARS);
+        let count = (READER_MAX_TOTAL_CHARS / READER_MAX_UNIT_CHARS) + 1;
+        let err =
+            ensure_reader_units_within_limits(std::iter::repeat(unit.as_str()).take(count), count)
+                .unwrap_err();
+
+        assert!(err.contains("too large"));
+    }
+
+    #[test]
+    fn reader_cover_temp_skips_oversized_cover() {
+        let data = vec![0u8; READER_MAX_COVER_BYTES + 1];
+        let encoded = base64::engine::general_purpose::STANDARD.encode(data);
+        let data_url = format!("data:image/png;base64,{encoded}");
+
+        assert!(write_cover_temp(Some(&data_url)).is_none());
+    }
 }
 
 #[tauri::command]

@@ -26,6 +26,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Cap rendered pixel area so an enormous page (or scale) can't allocate a huge
+# pixmap or emit a massive base64 PNG. ~30 MP keeps any page comfortably bounded.
+MAX_RENDER_PIXELS = 30_000_000
+MAX_RENDER_WORDS = 100_000
+
 
 def render_page(path: Path, page_index: int, scale: float) -> dict[str, Any]:
     try:
@@ -39,12 +44,20 @@ def render_page(path: Path, page_index: int, scale: float) -> dict[str, Any]:
     page = document[page_index]
     rect = page.rect
     scale = max(0.5, min(4.0, scale))
+    # Clamp scale down (below 0.5 if necessary) so the rendered pixel area stays
+    # within MAX_RENDER_PIXELS for oversized pages.
+    if rect.width > 0 and rect.height > 0:
+        area = (rect.width * scale) * (rect.height * scale)
+        if area > MAX_RENDER_PIXELS:
+            scale = min(scale, (MAX_RENDER_PIXELS / (rect.width * rect.height)) ** 0.5)
     matrix = fitz.Matrix(scale, scale)
     pixmap = page.get_pixmap(matrix=matrix, alpha=False)
     image_b64 = base64.b64encode(pixmap.tobytes("png")).decode("ascii")
 
     words: list[dict[str, Any]] = []
     for raw in page.get_text("words"):
+        if len(words) >= MAX_RENDER_WORDS:
+            break
         if len(raw) < 5:
             continue
         x0, y0, x1, y1, text = raw[:5]

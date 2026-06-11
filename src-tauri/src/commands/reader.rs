@@ -9,7 +9,8 @@ use std::fs::{self, File};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use zip::ZipArchive;
 
@@ -24,8 +25,23 @@ const READER_RUNTIME_PACKAGES: &[&str] =
 // Optional precise word-alignment dependency, installed on demand and kept
 // separate from the mandatory extraction packages so an install failure can
 // never break document import (playback falls back to proportional timings).
-const READER_ALIGN_VERSION: &str = "reader-align-v1|faster-whisper>=1.0,<2";
-const READER_ALIGN_PACKAGES: &[&str] = &["faster-whisper>=1.0,<2"];
+// Pinned to an exact version for reproducible, auditable installs.
+const READER_ALIGN_VERSION: &str = "reader-align-v2|faster-whisper==1.0.3";
+const READER_ALIGN_PACKAGES: &[&str] = &["faster-whisper==1.0.3"];
+
+// Resource limits for document import / page render. These bound memory, disk,
+// and worker time so a huge or hostile document can't exhaust the host or stall
+// a blocking worker. Extraction/render run in untrusted-input territory (the
+// document is attacker-controllable), so every subprocess is time-boxed and its
+// stdout is capped.
+const MAX_READER_FILE_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_READER_TEXT_CHARS: usize = 5_000_000;
+const MAX_READER_FALLBACK_XML_BYTES: u64 = 64 * 1024 * 1024;
+const READER_EXTRACT_TIMEOUT: Duration = Duration::from_secs(180);
+const READER_RENDER_TIMEOUT: Duration = Duration::from_secs(60);
+const MAX_READER_EXTRACT_STDOUT_BYTES: usize = 96 * 1024 * 1024;
+const MAX_READER_RENDER_STDOUT_BYTES: usize = 48 * 1024 * 1024;
+const READER_SUBPROCESS_STDERR_CAP: usize = 64 * 1024;
 const NO_EXTRACTABLE_PDF_TEXT: &str =
     "This PDF opened, but Vox Jot could not find selectable text to read aloud.";
 
@@ -323,21 +339,35 @@ fn read_reader_document_blocking(
         }
     }
 
+    // Past the cache: any path below re-extracts, which reads the whole file.
+    // Reject oversized documents before spending memory/CPU on extraction.
+    if metadata.len() > MAX_READER_FILE_BYTES {
+        return Err(format!(
+            "This document is too large to open ({:.0} MB). The limit is {} MB.",
+            metadata.len() as f64 / (1024.0 * 1024.0),
+            MAX_READER_FILE_BYTES / (1024 * 1024)
+        ));
+    }
+
     if let (Some(extractor_path), Some(python_path)) = (extractor_path, python_path) {
-        if let Ok(extracted) = extract_with_python(&path, extractor_path, python_path) {
-            let document = build_reader_document_from_extraction(
-                id,
-                &path,
-                metadata.len(),
-                source_modified_ms,
-                name,
-                kind,
-                extracted,
-            )?;
-            if let Some(reader_data_dir) = reader_data_dir {
-                persist_reader_document(reader_data_dir, &document, metadata.len())?;
+        match extract_with_python(&path, extractor_path, python_path) {
+            Ok(extracted) => {
+                let document = build_reader_document_from_extraction(
+                    id,
+                    &path,
+                    metadata.len(),
+                    source_modified_ms,
+                    name,
+                    kind,
+                    extracted,
+                )?;
+                if let Some(reader_data_dir) = reader_data_dir {
+                    persist_reader_document(reader_data_dir, &document, metadata.len())?;
+                }
+                return Ok(document);
             }
-            return Ok(document);
+            Err(err) if err.is_resource_limit() => return Err(err.to_string()),
+            Err(_) => {}
         }
     }
 
@@ -363,7 +393,7 @@ fn read_reader_document_blocking(
         ReaderDocumentKind::Epub => extract_epub_text(&path)?,
         ReaderDocumentKind::Markdown | ReaderDocumentKind::Text => read_plain_text(&path)?,
     };
-    let text = normalize_document_text(&raw_text);
+    let text = truncate_reader_text(normalize_document_text(&raw_text));
     if text.is_empty() {
         if matches!(kind, ReaderDocumentKind::Pdf) {
             let document = placeholder_pdf_document(
@@ -664,38 +694,170 @@ fn locate_reader_python() -> Option<PathBuf> {
     None
 }
 
+#[derive(Debug)]
+struct ReaderHelperError {
+    message: String,
+    resource_limit: bool,
+}
+
+impl ReaderHelperError {
+    fn recoverable(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            resource_limit: false,
+        }
+    }
+
+    fn resource_limit(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            resource_limit: true,
+        }
+    }
+
+    fn is_resource_limit(&self) -> bool {
+        self.resource_limit
+    }
+}
+
+impl std::fmt::Display for ReaderHelperError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+/// Read a child pipe into a buffer capped at `cap` bytes, but keep draining
+/// past the cap so the child never blocks on a full pipe. Returns the captured
+/// bytes and whether the stream was truncated (exceeded the cap).
+fn read_stream_capped<R: Read + Send + 'static>(
+    mut reader: R,
+    cap: usize,
+) -> thread::JoinHandle<(Vec<u8>, bool)> {
+    thread::spawn(move || {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 16 * 1024];
+        let mut truncated = false;
+        loop {
+            match reader.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(n) => {
+                    if buf.len() < cap {
+                        let take = n.min(cap - buf.len());
+                        buf.extend_from_slice(&chunk[..take]);
+                        if take < n {
+                            truncated = true;
+                        }
+                    } else {
+                        truncated = true;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        (buf, truncated)
+    })
+}
+
+/// Run a Reader helper subprocess (extractor / page renderer) over untrusted
+/// document input with a hard time limit and a stdout byte cap. On timeout the
+/// child is killed; on oversized output an error is returned. stdout/stderr are
+/// drained on threads so a chatty child can't deadlock on a full pipe.
+fn run_reader_subprocess_capped(
+    mut command: Command,
+    timeout: Duration,
+    max_stdout_bytes: usize,
+) -> Result<Vec<u8>, ReaderHelperError> {
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| {
+            ReaderHelperError::recoverable(format!("Failed to start Reader helper: {err}"))
+        })?;
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(ReaderHelperError::recoverable(
+            "Failed to capture Reader helper output.",
+        ));
+    };
+    let Some(stderr) = child.stderr.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(ReaderHelperError::recoverable(
+            "Failed to capture Reader helper errors.",
+        ));
+    };
+    let stdout_handle = read_stream_capped(stdout, max_stdout_bytes);
+    let stderr_handle = read_stream_capped(stderr, READER_SUBPROCESS_STDERR_CAP);
+
+    let start = Instant::now();
+    let exit_status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    break None;
+                }
+                thread::sleep(Duration::from_millis(40));
+            }
+            Err(err) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(ReaderHelperError::recoverable(format!(
+                    "Failed to wait for Reader helper: {err}"
+                )));
+            }
+        }
+    };
+
+    let (stdout_bytes, stdout_truncated) =
+        stdout_handle.join().unwrap_or_else(|_| (Vec::new(), false));
+    let (stderr_bytes, _) = stderr_handle.join().unwrap_or_else(|_| (Vec::new(), false));
+    let stderr_str = String::from_utf8_lossy(&stderr_bytes).trim().to_string();
+
+    let Some(status) = exit_status else {
+        return Err(ReaderHelperError::resource_limit(
+            "This document took too long to process and was stopped.",
+        ));
+    };
+    if stdout_truncated {
+        return Err(ReaderHelperError::resource_limit(
+            "This document produced too much data to open safely.",
+        ));
+    }
+    if !status.success() {
+        return Err(ReaderHelperError::recoverable(if stderr_str.is_empty() {
+            format!("Reader helper exited with status {status}")
+        } else {
+            stderr_str
+        }));
+    }
+    Ok(stdout_bytes)
+}
+
 fn extract_with_python(
     path: &Path,
     extractor_path: &Path,
     python: &Path,
-) -> Result<PythonReaderDocument, String> {
-    let output = Command::new(python)
+) -> Result<PythonReaderDocument, ReaderHelperError> {
+    let mut command = Command::new(python);
+    command
         .arg(extractor_path)
         .arg("--path")
         .arg(path)
-        .env("PYTHONUNBUFFERED", "1")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|err| {
-            format!(
-                "Failed to run Reader extractor with '{}': {err}",
-                python.display()
-            )
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if stderr.is_empty() {
-            format!("Reader extractor exited with status {}", output.status)
-        } else {
-            stderr
-        });
-    }
-
-    serde_json::from_slice(&output.stdout)
-        .map_err(|err| format!("Reader extractor returned invalid JSON: {err}"))
+        .env("PYTHONUNBUFFERED", "1");
+    let stdout = run_reader_subprocess_capped(
+        command,
+        READER_EXTRACT_TIMEOUT,
+        MAX_READER_EXTRACT_STDOUT_BYTES,
+    )?;
+    serde_json::from_slice(&stdout).map_err(|err| {
+        ReaderHelperError::recoverable(format!("Reader extractor returned invalid JSON: {err}"))
+    })
 }
 
 fn build_reader_document_from_extraction(
@@ -1034,8 +1196,13 @@ fn kind_from_path(path: &Path) -> Result<ReaderDocumentKind, String> {
 }
 
 fn read_plain_text(path: &Path) -> Result<String, String> {
-    let bytes =
-        fs::read(path).map_err(|err| format!("Failed to read '{}': {err}", path.display()))?;
+    let file =
+        File::open(path).map_err(|err| format!("Failed to read '{}': {err}", path.display()))?;
+    let mut reader = file.take(MAX_READER_TEXT_CHARS as u64 + 1);
+    let mut bytes = Vec::new();
+    reader
+        .read_to_end(&mut bytes)
+        .map_err(|err| format!("Failed to read '{}': {err}", path.display()))?;
     Ok(String::from_utf8(bytes)
         .unwrap_or_else(|err| String::from_utf8_lossy(err.as_bytes()).to_string()))
 }
@@ -1044,12 +1211,18 @@ fn extract_docx_text(path: &Path) -> Result<String, String> {
     let file = File::open(path).map_err(|err| format!("Failed to open DOCX: {err}"))?;
     let mut archive = ZipArchive::new(file).map_err(|err| format!("Failed to read DOCX: {err}"))?;
     let mut xml = String::new();
-    archive
+    let mut body = archive
         .by_name("word/document.xml")
-        .map_err(|err| format!("DOCX is missing word/document.xml: {err}"))?
-        .read_to_string(&mut xml)
+        .map_err(|err| format!("DOCX is missing word/document.xml: {err}"))?;
+    if body.size() > MAX_READER_FALLBACK_XML_BYTES {
+        return Err(format!(
+            "DOCX body is too large to read safely; the limit is {} MB.",
+            MAX_READER_FALLBACK_XML_BYTES / (1024 * 1024)
+        ));
+    }
+    body.read_to_string(&mut xml)
         .map_err(|err| format!("Failed to read DOCX body: {err}"))?;
-    xml_text(&xml, XmlFlavor::Docx)
+    xml_text(&xml, XmlFlavor::Docx).map(truncate_reader_text)
 }
 
 fn extract_epub_text(path: &Path) -> Result<String, String> {
@@ -1070,10 +1243,16 @@ fn extract_epub_text(path: &Path) -> Result<String, String> {
 
     entries.sort();
     let mut out = String::new();
+    let mut total_xml_bytes = 0u64;
     for name in entries {
         let mut entry = archive
             .by_name(&name)
             .map_err(|err| format!("Failed to read EPUB entry '{}': {err}", name))?;
+        let entry_size = entry.size();
+        if total_xml_bytes.saturating_add(entry_size) > MAX_READER_FALLBACK_XML_BYTES {
+            break;
+        }
+        total_xml_bytes += entry_size;
         let mut xml = String::new();
         entry
             .read_to_string(&mut xml)
@@ -1082,10 +1261,25 @@ fn extract_epub_text(path: &Path) -> Result<String, String> {
         if !text.trim().is_empty() {
             push_paragraph_break(&mut out);
             out.push_str(text.trim());
+            out = truncate_reader_text(out);
+            if reader_text_at_limit(&out) {
+                break;
+            }
         }
     }
 
     Ok(out)
+}
+
+fn reader_text_at_limit(text: &str) -> bool {
+    text.chars().count() >= MAX_READER_TEXT_CHARS
+}
+
+fn truncate_reader_text(text: String) -> String {
+    if !reader_text_at_limit(&text) {
+        return text;
+    }
+    text.chars().take(MAX_READER_TEXT_CHARS).collect()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1440,7 +1634,8 @@ fn render_reader_page_blocking(
     page_index: u32,
     scale: f32,
 ) -> Result<ReaderRenderedPage, String> {
-    let output = Command::new(python)
+    let mut command = Command::new(python);
+    command
         .arg(script)
         .arg("--path")
         .arg(pdf_path)
@@ -1448,21 +1643,14 @@ fn render_reader_page_blocking(
         .arg(page_index.to_string())
         .arg("--scale")
         .arg(format!("{scale}"))
-        .env("PYTHONUNBUFFERED", "1")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|err| format!("Failed to run Reader page renderer: {err}"))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if stderr.is_empty() {
-            format!("Reader page renderer exited with status {}", output.status)
-        } else {
-            stderr
-        });
-    }
-    let parsed: PythonRenderedPage = serde_json::from_slice(&output.stdout)
+        .env("PYTHONUNBUFFERED", "1");
+    let stdout = run_reader_subprocess_capped(
+        command,
+        READER_RENDER_TIMEOUT,
+        MAX_READER_RENDER_STDOUT_BYTES,
+    )
+    .map_err(|err| err.to_string())?;
+    let parsed: PythonRenderedPage = serde_json::from_slice(&stdout)
         .map_err(|err| format!("Reader page renderer returned invalid JSON: {err}"))?;
     Ok(ReaderRenderedPage {
         index: parsed.index,
@@ -1756,6 +1944,54 @@ raise SystemExit(2)
         assert_eq!(document.text, "Fallback text.");
         assert_eq!(document.extraction_engine, "rust-fallback");
         assert_eq!(document.page_count, 1);
+    }
+
+    #[test]
+    fn reader_helper_timeout_is_fatal_resource_limit() {
+        let Some(python) = locate_reader_python() else {
+            return;
+        };
+        let dir = tempdir().unwrap();
+        let script = dir.path().join("slow.py");
+        fs::write(&script, "import time\ntime.sleep(1)\nprint('{}')\n").unwrap();
+        let mut command = Command::new(python);
+        command.arg(&script);
+
+        let err =
+            run_reader_subprocess_capped(command, Duration::from_millis(30), 1024).unwrap_err();
+
+        assert!(err.is_resource_limit());
+        assert!(err.to_string().contains("too long"));
+    }
+
+    #[test]
+    fn reader_helper_stdout_cap_is_fatal_resource_limit() {
+        let Some(python) = locate_reader_python() else {
+            return;
+        };
+        let dir = tempdir().unwrap();
+        let script = dir.path().join("large.py");
+        fs::write(&script, "print('x' * 2048)\n").unwrap();
+        let mut command = Command::new(python);
+        command.arg(&script);
+
+        let err = run_reader_subprocess_capped(command, Duration::from_secs(5), 64).unwrap_err();
+
+        assert!(err.is_resource_limit());
+        assert!(err.to_string().contains("too much data"));
+    }
+
+    #[test]
+    fn oversized_reader_file_is_rejected_before_extraction() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("huge.txt");
+        let file = File::create(&path).unwrap();
+        file.set_len(MAX_READER_FILE_BYTES + 1).unwrap();
+
+        let err = read_reader_document_blocking(path.to_str().unwrap(), None, None, None)
+            .expect_err("oversized file should be rejected");
+
+        assert!(err.contains("too large"));
     }
 
     #[test]

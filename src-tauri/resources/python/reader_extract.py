@@ -64,6 +64,11 @@ OCR_DPI = 200
 # Bound worst-case OCR time on very large scans; pages beyond this keep whatever
 # native text they have (usually none) so a huge document still imports.
 READER_OCR_MAX_PAGES = 200
+# Hard caps so a huge or hostile document can't exhaust memory / produce an
+# enormous JSON payload. Extraction stops once either bound is hit and reports
+# the result as truncated rather than failing outright.
+READER_MAX_PAGES = 4000
+READER_MAX_TEXT_CHARS = 5_000_000
 _TESSERACT_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/opt/local/bin")
 _TESSDATA_DIRS = (
     "/opt/homebrew/share/tessdata",
@@ -219,7 +224,12 @@ def extract_pdf(path: Path) -> dict[str, Any]:
     except Exception:
         thumbnail = None
 
+    total_text_chars = 0
+    truncated = False
     for page_index, page in enumerate(document):
+        if page_index >= READER_MAX_PAGES:
+            truncated = True
+            break
         rect = page.rect
         width = float(rect.width)
         height = float(rect.height)
@@ -243,6 +253,7 @@ def extract_pdf(path: Path) -> dict[str, Any]:
             except Exception:
                 pass
         text_block_index = 0
+        page_text_chars = 0
         for raw in raw_blocks:
             if len(raw) < 5:
                 continue
@@ -250,6 +261,13 @@ def extract_pdf(path: Path) -> dict[str, Any]:
             text = normalize_document_text(str(text))
             if not text:
                 continue
+            remaining_chars = READER_MAX_TEXT_CHARS - total_text_chars - page_text_chars
+            if remaining_chars <= 0:
+                truncated = True
+                break
+            if len(text) > remaining_chars:
+                text = text[:remaining_chars]
+                truncated = True
             bbox = {
                 "x0": round(float(x0), 2),
                 "y0": round(float(y0), 2),
@@ -264,6 +282,7 @@ def extract_pdf(path: Path) -> dict[str, Any]:
                     repeated_candidates.get((kind, normalized, y_bucket), 0) + 1
                 )
             blocks.append(make_block(text_block_index, text, kind, bbox))
+            page_text_chars += len(text)
             text_block_index += 1
 
         page_blocks.append(
@@ -274,6 +293,10 @@ def extract_pdf(path: Path) -> dict[str, Any]:
                 "blocks": blocks,
             }
         )
+        total_text_chars += page_text_chars
+        if total_text_chars >= READER_MAX_TEXT_CHARS:
+            truncated = True
+            break
 
     repeated = {
         key
@@ -309,9 +332,10 @@ def extract_pdf(path: Path) -> dict[str, Any]:
         "meta": {
             "engine": "pymupdf-ocr" if used_ocr else "pymupdf",
             "page_count": len(page_blocks),
+            "truncated": truncated,
         },
         "thumbnail": thumbnail,
-        "text": normalize_document_text(text),
+        "text": normalize_document_text(text)[:READER_MAX_TEXT_CHARS],
         "pages": page_blocks,
     }
 
@@ -351,9 +375,17 @@ def extract_docx(path: Path) -> dict[str, Any]:
         raise ExtractionError("python-docx is required for DOCX extraction.") from exc
 
     document = docx.Document(path)
-    paragraphs = [normalize_document_text(paragraph.text) for paragraph in document.paragraphs]
-    text = "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
-    return simple_document(path, "docx", "python-docx", text)
+    parts: list[str] = []
+    total = 0
+    for paragraph in document.paragraphs:
+        normalized = normalize_document_text(paragraph.text)
+        if not normalized:
+            continue
+        parts.append(normalized)
+        total += len(normalized)
+        if total >= READER_MAX_TEXT_CHARS:
+            break
+    return simple_document(path, "docx", "python-docx", "\n\n".join(parts))
 
 
 def extract_epub(path: Path) -> dict[str, Any]:
@@ -364,6 +396,7 @@ def extract_epub(path: Path) -> dict[str, Any]:
 
     book = epub.read_epub(str(path))
     parts: list[str] = []
+    total = 0
     for item in book.get_items():
         media_type = getattr(item, "media_type", "")
         if media_type not in {"application/xhtml+xml", "text/html"}:
@@ -373,16 +406,22 @@ def extract_epub(path: Path) -> dict[str, Any]:
         text = collector.text()
         if text:
             parts.append(text)
+            total += len(text)
+            if total >= READER_MAX_TEXT_CHARS:
+                break
     return simple_document(path, "epub", "ebooklib", "\n\n".join(parts))
 
 
 def extract_plain(path: Path, kind: str) -> dict[str, Any]:
-    text = path.read_text(encoding="utf-8", errors="replace")
+    # Read at most the text cap (plus a margin) so a giant plain-text file can't
+    # pull hundreds of MB into memory; simple_document truncates to the cap.
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        text = handle.read(READER_MAX_TEXT_CHARS + 1)
     return simple_document(path, kind, "python-plain-text", text)
 
 
 def simple_document(path: Path, kind: str, engine: str, text: str) -> dict[str, Any]:
-    normalized = normalize_document_text(text)
+    normalized = normalize_document_text(text)[:READER_MAX_TEXT_CHARS]
     return {
         "title": path.stem,
         "kind": kind,

@@ -128,7 +128,7 @@ windows = { version = "0.61.3", features = [
   "Storage_Streams",
 ] }
 winreg = "0.56"
-uiautomation = "0.10"
+uiautomation = "0.25"
 window-vibrancy = "0.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]

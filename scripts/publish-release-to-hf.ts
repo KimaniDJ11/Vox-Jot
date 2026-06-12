@@ -6,6 +6,7 @@
  *
  * Environment:
  *   GITHUB_TOKEN       Required. Used to download release assets via `gh`.
+ *   GITHUB_RELEASE_ID  Optional. Prefer this exact release over tag lookup.
  *   HF_TOKEN           Required. Used to upload to Hugging Face via `hf`.
  *   GITHUB_REPOSITORY  Optional, defaults to "KimaniDJ11/Vox-Jot".
  *   HF_REPO            Optional, defaults to "IrieDinamik/vox-jot-releases".
@@ -129,11 +130,21 @@ async function downloadReleaseAssets(
     throw new Error(`GITHUB_REPOSITORY must be owner/repo, got: ${GH_REPO}`);
   }
 
-  const release = await githubRequest<GitHubRelease>(
-    `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`,
-  );
+  const releaseId = process.env.GITHUB_RELEASE_ID?.trim();
+  const release = releaseId
+    ? await githubRequest<GitHubRelease>(
+        `https://api.github.com/repos/${owner}/${repo}/releases/${releaseId}`,
+      )
+    : await githubRequest<GitHubRelease>(
+        `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`,
+      );
+  if (release.tag_name !== tag) {
+    throw new Error(
+      `Release ${release.id} has tag ${release.tag_name}; expected ${tag}.`,
+    );
+  }
   if (release.assets.length === 0) {
-    throw new Error(`Release ${tag} has no assets.`);
+    throw new Error(`Release ${release.id} (${tag}) has no assets.`);
   }
 
   for (const asset of release.assets) {

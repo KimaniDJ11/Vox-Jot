@@ -34,20 +34,21 @@ jobs:
         with:
           script: |
             const tagName = `v${{ steps.get-version.outputs.version }}`
-            try {
-              const { data: existing } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tagName
-              })
-              if (!existing.draft) {
-                throw new Error(`Release ${tagName} already exists and is not a draft.`)
-              }
-              return existing.id
-            } catch (error) {
-              if (error.status !== 404) {
-                throw error
-              }
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            })
+            const sameTag = releases.filter((release) => release.tag_name === tagName)
+            const published = sameTag.find((release) => !release.draft)
+            if (published) {
+              throw new Error(`Release ${tagName} already exists and is not a draft.`)
+            }
+            const existingDraft = sameTag
+              .filter((release) => release.draft)
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+            if (existingDraft) {
+              return existingDraft.id
             }
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
@@ -99,6 +100,7 @@ jobs:
       - name: Publish macOS release to Hugging Face
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RELEASE_ID: ${{ needs.create-release.outputs.release-id }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           HF_REPO: IrieDinamik/vox-jot-releases

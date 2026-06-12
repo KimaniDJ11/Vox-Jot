@@ -1175,14 +1175,22 @@ fn synthesize_system_chunk_macos(
         .spawn()
         .map_err(|err| format!("Failed to start macOS speech synthesis: {err}"))?;
 
+    // Drain stderr continuously so `say` can never block on a full pipe
+    // buffer while this loop only polls try_wait (same failure class as the
+    // sidecar runtimes; see utils::drain_child_stderr).
+    let stderr_tail = child
+        .stderr
+        .take()
+        .map(|stderr| crate::utils::drain_child_stderr("say-tts", stderr))
+        .unwrap_or_default();
+
     while !stop_flag.load(Ordering::Relaxed) {
         match child.try_wait() {
             Ok(Some(status)) => {
                 if !status.success() {
-                    let output = child.wait_with_output().map_err(|err| {
-                        format!("Failed to read macOS speech synthesis error: {err}")
-                    })?;
-                    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                    let stderr = crate::utils::child_stderr_tail_snapshot(&stderr_tail, 500)
+                        .trim()
+                        .to_string();
                     return Err(if stderr.is_empty() {
                         "macOS speech synthesis failed.".to_string()
                     } else {

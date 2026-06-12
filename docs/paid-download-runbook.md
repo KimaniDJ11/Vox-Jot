@@ -187,3 +187,30 @@ One-time $2 beta download for Apple Silicon Macs. Vox Jot is signed and notarize
 9. Update `https://www.iriedinamik.org/voxjot/` so the primary CTA points to checkout.
 10. Verify purchase success page and public download URL in a browser.
 11. For updater-capable releases, run the Release workflow so Hugging Face `latest.json` points at the new signed updater artifacts.
+
+## Local release without GitHub Actions
+
+When GitHub Actions is unavailable because of billing or spending limits, use the local distributor instead of the `Release macOS` workflow:
+
+```sh
+VOX_JOT_R2_BUCKET="YOUR_R2_BUCKET" \
+TAURI_SIGNING_PRIVATE_KEY_PATH="/path/to/tauri-updater-private-key" \
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..." \
+bun run release:local-mac -- 1.0.7
+```
+
+The script:
+
+- bumps `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`;
+- refreshes Rust lockfile state through `cargo check`;
+- runs focused updater tests, frontend build, lint, distribution audit, and `git diff --check`;
+- runs the local signed/notarized macOS release build;
+- stages the DMG/checksum under `release-assets/vX.Y.Z/`;
+- creates and signs the Tauri updater archive from the signed app bundle;
+- uploads the DMG and checksum to Cloudflare R2 versioned and `latest/` paths;
+- uploads updater artifacts and `latest.json` to the current Hugging Face updater repo;
+- verifies the public latest DMG/checksum URLs, Gumroad product content, and website-to-Gumroad path.
+
+Use `--skip-hf` only after already-shipped installed apps point at a non-Hugging-Face updater endpoint. Current installed builds still read the Hugging Face updater manifest, so skipping Hugging Face would prevent in-app updates for those users.
+
+Use `--skip-r2`, `--skip-gumroad`, or `--skip-website-check` only for a dry run or a deliberately partial release. A public paid release is not complete until R2, Gumroad, the website path, and the updater feed are all verified.

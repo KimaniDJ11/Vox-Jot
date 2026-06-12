@@ -19,8 +19,19 @@ use crate::audio_toolkit::{
 enum Cmd {
     Start,
     Stop(mpsc::Sender<Vec<f32>>),
-    Snapshot(mpsc::Sender<Vec<f32>>),
+    Snapshot(mpsc::Sender<AudioSnapshot>, Option<usize>),
     Shutdown,
+}
+
+/// A point-in-time view of the in-progress recording buffer.
+///
+/// `samples` may be capped to the most recent N samples (see
+/// [`AudioRecorder::snapshot`]); `total_samples` always reports the full
+/// buffer length so callers can track growth across snapshots without
+/// forcing a full-buffer copy every poll.
+pub struct AudioSnapshot {
+    pub total_samples: usize,
+    pub samples: Vec<f32>,
 }
 
 pub struct AudioRecorder {
@@ -257,13 +268,23 @@ impl AudioRecorder {
         Ok(resp_rx.recv()?) // wait for the samples
     }
 
-    pub fn snapshot(&self) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    /// Copy the current recording buffer. With `max_samples` set, only the
+    /// most recent samples are copied — essential for live partials during
+    /// long recordings, where cloning the whole buffer every poll would cost
+    /// O(recording length) per tick.
+    pub fn snapshot(
+        &self,
+        max_samples: Option<usize>,
+    ) -> Result<AudioSnapshot, Box<dyn std::error::Error>> {
         let (resp_tx, resp_rx) = mpsc::channel();
         if let Some(tx) = &self.cmd_tx {
-            tx.send(Cmd::Snapshot(resp_tx))?;
+            tx.send(Cmd::Snapshot(resp_tx, max_samples))?;
             return Ok(resp_rx.recv()?);
         }
-        Ok(Vec::new())
+        Ok(AudioSnapshot {
+            total_samples: 0,
+            samples: Vec::new(),
+        })
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -514,11 +535,24 @@ fn run_consumer(
 
                     let _ = reply_tx.send(std::mem::take(&mut processed_samples));
                 }
-                Cmd::Snapshot(reply_tx) => {
+                Cmd::Snapshot(reply_tx, max_samples) => {
                     let snapshot = if recording {
-                        processed_samples.clone()
+                        let total_samples = processed_samples.len();
+                        let samples = match max_samples {
+                            Some(max) if total_samples > max => {
+                                processed_samples[total_samples - max..].to_vec()
+                            }
+                            _ => processed_samples.clone(),
+                        };
+                        AudioSnapshot {
+                            total_samples,
+                            samples,
+                        }
                     } else {
-                        Vec::new()
+                        AudioSnapshot {
+                            total_samples: 0,
+                            samples: Vec::new(),
+                        }
                     };
                     let _ = reply_tx.send(snapshot);
                 }

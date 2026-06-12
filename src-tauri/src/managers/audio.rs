@@ -185,6 +185,16 @@ fn set_mute(mute: bool) {
 
 const WHISPER_SAMPLE_RATE: usize = 16000;
 
+/// How long an on-demand microphone stream lingers after a recording ends
+/// before it is closed. Reopening a CoreAudio stream costs 150-200ms — the
+/// bulk of the `recording_start` latency budget — and consecutive dictations
+/// within a few seconds are the most common usage pattern. The stream-epoch
+/// guard makes the delayed close a no-op when a new recording starts during
+/// the linger, so back-to-back dictations skip the reopen entirely. Kept
+/// short so the OS microphone indicator clears promptly when the user is
+/// actually done.
+const ON_DEMAND_STREAM_LINGER: std::time::Duration = std::time::Duration::from_secs(10);
+
 /* ──────────────────────────────────────────────────────────────── */
 
 #[derive(Clone, Debug)]
@@ -702,7 +712,9 @@ impl AudioRecordingManager {
                 // In on-demand mode turn the mic off again after returning
                 // samples to the transcription task. Closing joins the audio
                 // worker thread, so doing it inline adds stop-to-transcript
-                // latency for every on-demand dictation.
+                // latency for every on-demand dictation. The close is also
+                // delayed by a short linger so a follow-up dictation reuses
+                // the warm stream instead of paying the reopen cost.
                 if matches!(
                     *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                     MicrophoneMode::OnDemand
@@ -710,6 +722,7 @@ impl AudioRecordingManager {
                     let manager = self.clone();
                     let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
                     std::thread::spawn(move || {
+                        std::thread::sleep(ON_DEMAND_STREAM_LINGER);
                         manager.stop_microphone_stream_if_epoch(expected_epoch);
                     });
                 }
@@ -730,7 +743,10 @@ impl AudioRecordingManager {
     }
 
     #[cfg(not(feature = "ci-mock-transcription"))]
-    pub fn snapshot_recording(&self) -> Option<Vec<f32>> {
+    pub fn snapshot_recording(
+        &self,
+        max_samples: Option<usize>,
+    ) -> Option<crate::audio_toolkit::AudioSnapshot> {
         if !self.is_recording() {
             return None;
         }
@@ -741,8 +757,8 @@ impl AudioRecordingManager {
             .unwrap_or_else(|e| e.into_inner())
             .as_ref()
         {
-            match rec.snapshot() {
-                Ok(samples) => Some(samples),
+            match rec.snapshot(max_samples) {
+                Ok(snapshot) => Some(snapshot),
                 Err(e) => {
                     error!("snapshot() failed: {e}");
                     None
@@ -778,7 +794,8 @@ impl AudioRecordingManager {
             self.is_recording.store(false, Ordering::SeqCst);
             self.remove_mute();
 
-            // In on-demand mode turn the mic off again
+            // In on-demand mode turn the mic off again (after the same
+            // linger as stop_recording so a quick retry reuses the stream).
             if matches!(
                 *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                 MicrophoneMode::OnDemand
@@ -786,6 +803,7 @@ impl AudioRecordingManager {
                 let manager = self.clone();
                 let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
                 std::thread::spawn(move || {
+                    std::thread::sleep(ON_DEMAND_STREAM_LINGER);
                     manager.stop_microphone_stream_if_epoch(expected_epoch);
                 });
             }

@@ -12,7 +12,7 @@ pub use enhancer::{
     enhance_audio_samples, AudioEnhancementConfig, AudioEnhancementModel, AudioEnhancer,
     DEFAULT_ENHANCEMENT_STRENGTH, FULL_BAND_SAMPLE_RATE,
 };
-pub use recorder::AudioRecorder;
+pub use recorder::{AudioRecorder, AudioSnapshot};
 pub use resampler::FrameResampler;
 pub use utils::save_wav_file;
 pub use visualizer::AudioVisualiser;

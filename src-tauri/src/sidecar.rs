@@ -617,12 +617,38 @@ impl SidecarManager {
             .unwrap_or_else(|e| e.into_inner())
             .as_ref()
             .map(|child| child.id());
+        let app_data_dir = crate::portable::app_data_dir(&self.app_handle)
+            .map(|dir| dir.to_string_lossy().to_string())
+            .unwrap_or_default();
         let listener_pids = self.listener_pids(port);
         for pid in listener_pids {
             if Some(pid) == tracked_pid {
                 continue;
             }
-            info!("Stopping external sidecar listener on port {port} (pid {pid})");
+            // Only ever terminate processes we can positively identify as one
+            // of our own runtimes (e.g. orphans from a crashed previous app
+            // run). These are common developer ports — blindly killing
+            // whatever listens here used to take down user processes like
+            // `python -m http.server`.
+            let Some(command_line) = process_command_line(pid) else {
+                if !self.listener_pids(port).contains(&pid) {
+                    // Process exited between enumeration and inspection.
+                    continue;
+                }
+                return Err(format!(
+                    "Port {port} is in use by another process (pid {pid}) that Vox Jot cannot identify. Free the port or quit that process, then try again."
+                ));
+            };
+            if !command_line_is_vox_jot_runtime(&command_line, &app_data_dir) {
+                let mut shown = command_line;
+                if shown.chars().count() > 120 {
+                    shown = shown.chars().take(120).collect::<String>() + "…";
+                }
+                return Err(format!(
+                    "Port {port} is in use by another application (pid {pid}: {shown}). Vox Jot needs this port for its speech runtime — quit that application and try again."
+                ));
+            }
+            info!("Stopping orphaned Vox Jot sidecar on port {port} (pid {pid})");
             self.terminate_pid(pid)?;
         }
         Ok(())
@@ -1466,9 +1492,101 @@ impl Drop for SidecarManager {
     }
 }
 
+/// Best-effort full command line of a process, used to decide whether a
+/// listener on one of our sidecar ports is actually one of our runtimes.
+pub(crate) fn process_command_line(pid: u32) -> Option<String> {
+    #[cfg(target_os = "windows")]
+    {
+        let output = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!("(Get-CimInstance Win32_Process -Filter \"ProcessId={pid}\").CommandLine"),
+            ])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let line = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        (!line.is_empty()).then_some(line)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = Command::new("ps")
+            .args(["-p", &pid.to_string(), "-o", "command="])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let line = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        (!line.is_empty()).then_some(line)
+    }
+}
+
+/// Whether a process command line belongs to a Vox Jot speech runtime: it
+/// references our app data directory (venvs and runtimes live there) or runs
+/// one of our exact runtime entry points. Anything else on our ports is a
+/// foreign process that must never be killed.
+pub(crate) fn command_line_is_vox_jot_runtime(command_line: &str, app_data_dir: &str) -> bool {
+    if !app_data_dir.trim().is_empty() && command_line.contains(app_data_dir) {
+        return true;
+    }
+    command_line_has_python_module(command_line, "runtime.app")
+        || command_line_has_python_module(command_line, "mlx_audio.server")
+        || command_line.contains("gemma4_stt_server.py")
+}
+
+fn command_line_has_python_module(command_line: &str, module: &str) -> bool {
+    let mut tokens = command_line.split_whitespace();
+    while let Some(token) = tokens.next() {
+        if token == "-m" && tokens.next() == Some(module) {
+            return true;
+        }
+        if token.strip_prefix("-m") == Some(module) {
+            return true;
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
-    use super::SidecarManager;
+    use super::{command_line_is_vox_jot_runtime, SidecarManager};
+
+    #[test]
+    fn command_line_matcher_accepts_vox_jot_runtimes() {
+        assert!(command_line_is_vox_jot_runtime(
+            "/Users/me/Library/Application Support/Vox Jot/speech-runtime/.venv/bin/python -m runtime.app",
+            "/Users/me/Library/Application Support/Vox Jot",
+        ));
+        assert!(command_line_is_vox_jot_runtime(
+            "python -m mlx_audio.server --port 8765",
+            "",
+        ));
+        assert!(command_line_is_vox_jot_runtime(
+            "python /tmp/gemma4_stt_server.py",
+            "",
+        ));
+    }
+
+    #[test]
+    fn command_line_matcher_rejects_foreign_port_listeners() {
+        assert!(!command_line_is_vox_jot_runtime(
+            "python -m http.server 8765",
+            "/Users/me/Library/Application Support/Vox Jot",
+        ));
+        assert!(!command_line_is_vox_jot_runtime(
+            "node /tmp/dev-server.js",
+            "",
+        ));
+        assert!(!command_line_is_vox_jot_runtime(
+            "python -m runtime.application",
+            "",
+        ));
+    }
 
     #[test]
     fn mlx_audio_stt_patch_adds_parakeet_remap_once() {

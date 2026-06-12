@@ -342,7 +342,7 @@ impl GemmaAudioSttEngine {
             });
         }
 
-        terminate_listeners_on_port(GEMMA_AUDIO_STT_PORT)?;
+        terminate_listeners_on_port(app_handle, GEMMA_AUDIO_STT_PORT)?;
         let server_path = gemma_audio_stt_server_path(app_handle)?;
         let mut command = Command::new(python);
         command
@@ -501,8 +501,34 @@ fn listener_pids_on_port(port: u16) -> Vec<u32> {
     Vec::new()
 }
 
-fn terminate_listeners_on_port(port: u16) -> Result<()> {
+fn terminate_listeners_on_port(app_handle: &AppHandle, port: u16) -> Result<()> {
+    let app_data_dir = crate::portable::app_data_dir(app_handle)
+        .map(|dir| dir.to_string_lossy().to_string())
+        .unwrap_or_default();
+
     for pid in listener_pids_on_port(port) {
+        // Only reclaim the port from our own (orphaned) Gemma runtime. The
+        // port is in the common developer range, so anything we cannot
+        // positively identify as ours must be left alone — killing it could
+        // destroy a user's unrelated process.
+        let command_line = crate::sidecar::process_command_line(pid);
+        let is_ours = command_line
+            .as_deref()
+            .map(|line| crate::sidecar::command_line_is_vox_jot_runtime(line, &app_data_dir))
+            .unwrap_or(false);
+        if !is_ours {
+            if !listener_pids_on_port(port).contains(&pid) {
+                continue; // exited between enumeration and inspection
+            }
+            let mut shown = command_line.unwrap_or_else(|| "unknown process".to_string());
+            if shown.chars().count() > 120 {
+                shown = shown.chars().take(120).collect::<String>() + "…";
+            }
+            return Err(anyhow::anyhow!(
+                "Port {port} is in use by another application (pid {pid}: {shown}). Quit that application and try loading the Gemma model again."
+            ));
+        }
+
         let status = Command::new("kill")
             .args(["-TERM", &pid.to_string()])
             .status()
@@ -519,10 +545,20 @@ fn terminate_listeners_on_port(port: u16) -> Result<()> {
         }
         thread::sleep(Duration::from_millis(100));
     }
+    // Escalate only for pids verified above as our own runtime.
+    let escalation_app_data_dir = app_data_dir;
     for pid in listener_pids_on_port(port) {
-        let _ = Command::new("kill")
-            .args(["-KILL", &pid.to_string()])
-            .status();
+        let is_ours = crate::sidecar::process_command_line(pid)
+            .as_deref()
+            .map(|line| {
+                crate::sidecar::command_line_is_vox_jot_runtime(line, &escalation_app_data_dir)
+            })
+            .unwrap_or(false);
+        if is_ours {
+            let _ = Command::new("kill")
+                .args(["-KILL", &pid.to_string()])
+                .status();
+        }
     }
     Ok(())
 }
@@ -592,20 +628,6 @@ fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {
         min_growth: 4_800,
         max_samples: Some(96_000),
     }
-}
-
-fn trim_partial_audio(mut samples: Vec<f32>, max_samples: Option<usize>) -> Vec<f32> {
-    let Some(max_samples) = max_samples else {
-        return samples;
-    };
-
-    if samples.len() <= max_samples {
-        return samples;
-    }
-
-    let start = samples.len().saturating_sub(max_samples);
-    samples.drain(..start);
-    samples
 }
 
 fn supports_live_partial_provider(model_info: &ModelInfo) -> bool {
@@ -1311,10 +1333,16 @@ impl TranscriptionManager {
                 break;
             }
 
-            let Some(snapshot) = recording_manager.snapshot_recording() else {
+            // The snapshot is bounded at the recorder so each poll copies at
+            // most `max_samples` (the window the engine sees anyway) instead
+            // of the whole recording — full-buffer clones every few hundred
+            // milliseconds grow O(recording length) and thrash memory on long
+            // takes. `total_samples` still reports the full buffer length so
+            // growth detection keeps working once the cap is hit.
+            let Some(snapshot) = recording_manager.snapshot_recording(config.max_samples) else {
                 break;
             };
-            let snapshot_len = snapshot.len();
+            let snapshot_len = snapshot.total_samples;
             let growth = snapshot_len.saturating_sub(last_snapshot_len);
             if snapshot_len < config.min_samples || growth < config.min_growth {
                 continue;
@@ -1322,7 +1350,7 @@ impl TranscriptionManager {
             last_snapshot_len = snapshot_len;
 
             let settings = get_settings(&self.app_handle);
-            let partial_audio = trim_partial_audio(snapshot, config.max_samples);
+            let partial_audio = snapshot.samples;
 
             // Reuse the already-warmed main engine. Partials only proceed when
             // the engine is immediately available; a pending final transcription

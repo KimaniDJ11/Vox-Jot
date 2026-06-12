@@ -533,6 +533,16 @@
         "tested": "已测试",
         "blocked": "被阻止",
         "pending": "待定"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "列出的语音模型均已下载。",
+        "availableAllDownloadedHint": "此设备上已拥有所有列出的语音模型。",
+        "availableNoMatch": "没有可用的模型符合当前筛选条件。",
+        "availableNoMatchHint": "尝试其他筛选条件，或清除筛选以浏览完整目录。",
+        "downloadedNoMatch": "没有已下载的模型符合当前筛选条件。",
+        "downloadedNoMatchHint": "清除搜索或筛选条件，或在下方下载兼容的模型。",
+        "downloadedNone": "尚未下载任何语音模型。",
+        "downloadedNoneHint": "从可用模型中下载一个，即可开始离线听写。"
       }
     },
     "general": {
@@ -801,7 +811,8 @@
           "placeholder": "sk-...",
           "savedPlaceholder": "已存储在系统钥匙串中。输入新值以替换。",
           "getKeyLink": "获取您的 {{provider}} API 密钥",
-          "accountNote": "在浏览器中打开 {{provider}}。您可能需要创建免费账户才能生成密钥。"
+          "accountNote": "在浏览器中打开 {{provider}}。您可能需要创建免费账户才能生成密钥。",
+          "optionalStatus": "无需填写"
         },
         "model": {
           "title": "型号",
@@ -1664,7 +1675,11 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
+      "starterPrompts": [
+        "总结所选文本",
+        "重写一下更清楚",
+        "拉出行动项目"
+      ]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -1957,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2182,7 +2202,7 @@
       "preview": {
         "title": "预览模式",
         "description": "这预览了 {{name}} 的文本清理。当 {{target}} 聚焦时，实时听写仍会自动应用该模式。",
-        "multipleApps": "{{count}}应用程序",
+        "multipleApps": "其匹配的 {{count}} 个应用中的任意一个",
         "urlOnly": "此预览强制选择所选的网站模式。在实时听写中，打开 {{target}}，将焦点置于文本字段，然后使用听写快捷方式。",
         "inputLabel": "听写样本",
         "outputLabel": "模式输出",
@@ -2191,7 +2211,8 @@
         "running": "正在预览...",
         "appliedTone": "适用音调：{{tone}}",
         "unchanged": "预览完成，文本未更改。当样本已经干净或未配置清理时，可能会发生这种情况；实时听写仍然使用此模式的应用程序、模型、语气和输出设置。",
-        "error": "无法预览此模式。"
+        "error": "无法预览此模式。",
+        "anyApp": "任意应用"
       }
     }
   },

@@ -533,6 +533,16 @@
         "tested": "テスト済み",
         "blocked": "ブロックされました",
         "pending": "保留中"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "一覧の音声モデルはすべてダウンロード済みです。",
+        "availableAllDownloadedHint": "このデバイスには一覧の音声モデルがすべて揃っています。",
+        "availableNoMatch": "現在のフィルターに一致する利用可能なモデルはありません。",
+        "availableNoMatchHint": "別のフィルターを試すか、クリアしてカタログ全体を表示してください。",
+        "downloadedNoMatch": "現在のフィルターに一致するダウンロード済みモデルはありません。",
+        "downloadedNoMatchHint": "検索やフィルターをクリアするか、下から互換性のあるモデルをダウンロードしてください。",
+        "downloadedNone": "ダウンロード済みの音声モデルはまだありません。",
+        "downloadedNoneHint": "オフラインで音声入力するには、利用可能なモデルからダウンロードしてください。"
       }
     },
     "general": {
@@ -801,7 +811,8 @@
           "placeholder": "スク...",
           "savedPlaceholder": "システムキーチェーンに保存済みです。置き換えるには新しい値を入力してください。",
           "getKeyLink": "{{provider}} の API キーを取得",
-          "accountNote": "ブラウザで {{provider}} を開きます。キーを生成するには無料アカウントの作成が必要な場合があります。"
+          "accountNote": "ブラウザで {{provider}} を開きます。キーを生成するには無料アカウントの作成が必要な場合があります。",
+          "optionalStatus": "不要"
         },
         "model": {
           "title": "モデル",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "プレビューモード",
         "description": "これは、{{name}} のテキスト クリーンアップをプレビューします。 {{target}} がフォーカスされている場合、ライブ ディクテーションは引き続きモードを自動的に適用します。",
-        "multipleApps": "{{count}} アプリ",
+        "multipleApps": "対象の {{count}} 個のアプリのいずれか",
         "urlOnly": "このプレビューは、選択した Web サイト モードを強制します。ライブディクテーションでは、{{target}} を開き、テキストフィールドにフォーカスして、ディクテーションショートカットを使用します。",
         "inputLabel": "ディクテーションのサンプル",
         "outputLabel": "モード出力",
@@ -2195,7 +2211,8 @@
         "running": "プレビュー中…",
         "appliedTone": "適用音色：{{tone}}",
         "unchanged": "テキストが変更されていない状態でプレビューが完了しました。これは、サンプルがすでにクリーンであるか、クリーンアップが構成されていない場合に発生する可能性があります。ライブディクテーションでは、このモードのアプリ、モデル、トーン、出力設定が引き続き使用されます。",
-        "error": "このモードをプレビューできませんでした。"
+        "error": "このモードをプレビューできませんでした。",
+        "anyApp": "任意のアプリ"
       }
     }
   },

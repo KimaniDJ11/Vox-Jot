@@ -533,6 +533,16 @@
         "tested": "Đã thử nghiệm",
         "blocked": "Bị chặn",
         "pending": "Đang chờ xử lý"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "Tất cả mô hình giọng nói được liệt kê đã được tải xuống.",
+        "availableAllDownloadedHint": "Bạn đã có tất cả mô hình giọng nói được liệt kê trên thiết bị này.",
+        "availableNoMatch": "Không có mô hình khả dụng nào khớp với bộ lọc hiện tại.",
+        "availableNoMatchHint": "Thử bộ lọc khác hoặc xóa bộ lọc để xem toàn bộ danh mục.",
+        "downloadedNoMatch": "Không có mô hình đã tải nào khớp với bộ lọc hiện tại.",
+        "downloadedNoMatchHint": "Xóa tìm kiếm hoặc bộ lọc, hoặc tải một mô hình tương thích bên dưới.",
+        "downloadedNone": "Chưa có mô hình giọng nói nào được tải xuống.",
+        "downloadedNoneHint": "Tải một mô hình từ Mô hình có sẵn để bắt đầu đọc chính tả ngoại tuyến."
       }
     },
     "general": {
@@ -801,7 +811,8 @@
           "placeholder": "sk-...",
           "savedPlaceholder": "Đã lưu trong chuỗi khóa hệ thống. Nhập giá trị mới để thay thế.",
           "getKeyLink": "Lấy khóa API {{provider}} của bạn",
-          "accountNote": "Mở {{provider}} trong trình duyệt của bạn. Bạn có thể cần tạo tài khoản miễn phí để tạo khóa."
+          "accountNote": "Mở {{provider}} trong trình duyệt của bạn. Bạn có thể cần tạo tài khoản miễn phí để tạo khóa.",
+          "optionalStatus": "Không bắt buộc"
         },
         "model": {
           "title": "người mẫu",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "Chế độ xem trước",
         "description": "Điều này xem trước việc dọn dẹp văn bản cho {{name}}. Đọc chính tả trực tiếp vẫn tự động áp dụng chế độ này khi {{target}} được lấy nét.",
-        "multipleApps": "Ứng dụng {{count}}",
+        "multipleApps": "bất kỳ ứng dụng nào trong {{count}} ứng dụng của nó",
         "urlOnly": "Bản xem trước này buộc chế độ trang web đã chọn. Trong tính năng đọc chính tả trực tiếp, hãy mở {{target}}, đặt tiêu điểm vào trường văn bản, sau đó sử dụng phím tắt đọc chính tả của bạn.",
         "inputLabel": "Chính tả mẫu",
         "outputLabel": "Chế độ đầu ra",
@@ -2195,7 +2211,8 @@
         "running": "Đang xem trước…",
         "appliedTone": "Âm áp dụng: {{tone}}",
         "unchanged": "Bản xem trước đã hoàn tất với văn bản không thay đổi. Điều đó có thể xảy ra khi mẫu đã được làm sạch hoặc việc dọn dẹp chưa được cấu hình; đọc chính tả trực tiếp vẫn sử dụng cài đặt ứng dụng, kiểu máy, âm sắc và đầu ra của chế độ này.",
-        "error": "Không thể xem trước chế độ này."
+        "error": "Không thể xem trước chế độ này.",
+        "anyApp": "bất kỳ ứng dụng nào"
       }
     }
   },

@@ -131,7 +131,13 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       languageFilter
     );
   }, [languageFilter, idleLanguageFilterLabel]);
-  const hasActiveFilter = languageFilter !== "all";
+  // Mirrors every input that can hide models from the lists below — the
+  // empty states must never claim "no models yet" when a search or filter
+  // is simply excluding downloaded models.
+  const hasActiveFilter =
+    languageFilter !== "all" ||
+    providerFilter !== "all" ||
+    hubSearchQuery.trim().length > 0;
 
   const sttProviderOptions = useMemo(() => {
     const providers = platformOverview?.stt.providers ?? [];
@@ -573,13 +579,13 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
                 <p className="font-semibold text-[var(--text)]">
                   {hasActiveFilter
-                    ? "No downloaded models match this language filter."
-                    : "No downloaded speech models yet."}
+                    ? t("settings.models.emptyStates.downloadedNoMatch")
+                    : t("settings.models.emptyStates.downloadedNone")}
                 </p>
                 <p className="mt-1 leading-6">
                   {hasActiveFilter
-                    ? "Try showing all languages or download a compatible model below."
-                    : "Download one from Available Models to start dictating offline."}
+                    ? t("settings.models.emptyStates.downloadedNoMatchHint")
+                    : t("settings.models.emptyStates.downloadedNoneHint")}
                 </p>
               </div>
             ) : (
@@ -642,13 +648,15 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
                 <p className="font-semibold text-[var(--text)]">
                   {hasActiveFilter
-                    ? "No available models match this language filter."
-                    : "All listed speech models are already downloaded."}
+                    ? t("settings.models.emptyStates.availableNoMatch")
+                    : t("settings.models.emptyStates.availableAllDownloaded")}
                 </p>
                 <p className="mt-1 leading-6">
                   {hasActiveFilter
-                    ? "Try a different language or clear the filter to browse the full catalog."
-                    : "You already have every currently listed speech model on this device."}
+                    ? t("settings.models.emptyStates.availableNoMatchHint")
+                    : t(
+                        "settings.models.emptyStates.availableAllDownloadedHint",
+                      )}
                 </p>
               </div>
             ) : (

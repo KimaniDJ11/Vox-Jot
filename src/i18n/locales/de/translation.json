@@ -533,6 +533,16 @@
         "tested": "Getestet",
         "blocked": "Blockiert",
         "pending": "Ausstehend"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "Alle gelisteten Sprachmodelle sind bereits heruntergeladen.",
+        "availableAllDownloadedHint": "Du hast bereits alle gelisteten Sprachmodelle auf diesem Gerät.",
+        "availableNoMatch": "Keine verfügbaren Modelle entsprechen den aktuellen Filtern.",
+        "availableNoMatchHint": "Andere Filter ausprobieren oder Filter löschen, um den ganzen Katalog zu sehen.",
+        "downloadedNoMatch": "Keine heruntergeladenen Modelle entsprechen den aktuellen Filtern.",
+        "downloadedNoMatchHint": "Suche oder Filter löschen oder unten ein kompatibles Modell herunterladen.",
+        "downloadedNone": "Noch keine Sprachmodelle heruntergeladen.",
+        "downloadedNoneHint": "Lade eines aus Verfügbare Modelle herunter, um offline zu diktieren."
       }
     },
     "general": {
@@ -801,7 +811,8 @@
           "placeholder": "sk-...",
           "savedPlaceholder": "Im Systemschlüsselbund gespeichert. Geben Sie einen neuen Wert ein, um ihn zu ersetzen.",
           "getKeyLink": "Holen Sie sich Ihren {{provider}}-API-Schlüssel",
-          "accountNote": "Öffnet {{provider}} in Ihrem Browser. Möglicherweise müssen Sie ein kostenloses Konto erstellen, um einen Schlüssel zu generieren."
+          "accountNote": "Öffnet {{provider}} in Ihrem Browser. Möglicherweise müssen Sie ein kostenloses Konto erstellen, um einen Schlüssel zu generieren.",
+          "optionalStatus": "Nicht erforderlich"
         },
         "model": {
           "title": "Modell",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "Vorschaumodus",
         "description": "Dies zeigt eine Vorschau der Textbereinigung für {{name}}. Beim Live-Diktieren wird der Modus weiterhin automatisch angewendet, wenn {{target}} fokussiert ist.",
-        "multipleApps": "{{count}}-Apps",
+        "multipleApps": "eine seiner {{count}} Apps",
         "urlOnly": "Diese Vorschau erzwingt den ausgewählten Website-Modus. Öffnen Sie beim Live-Diktieren {{target}}, fokussieren Sie ein Textfeld und verwenden Sie dann Ihre Diktierverknüpfung.",
         "inputLabel": "Beispieldiktat",
         "outputLabel": "Modusausgabe",
@@ -2195,7 +2211,8 @@
         "running": "Vorschau...",
         "appliedTone": "Angewandter Ton: {{tone}}",
         "unchanged": "Vorschau mit unverändertem Text abgeschlossen. Dies kann passieren, wenn die Probe bereits bereinigt ist oder die Bereinigung nicht konfiguriert ist; Beim Live-Diktieren werden weiterhin die App-, Modell-, Ton- und Ausgabeeinstellungen dieses Modus verwendet.",
-        "error": "Dieser Modus konnte nicht in der Vorschau angezeigt werden."
+        "error": "Dieser Modus konnte nicht in der Vorschau angezeigt werden.",
+        "anyApp": "eine beliebige App"
       }
     }
   },

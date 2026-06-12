@@ -303,12 +303,13 @@ export const WriteRulesSettings: React.FC = () => {
       return appsByBundleId.get(bundleIds[0]) ?? bundleIds[0];
     }
     if (bundleIds.length > 1) {
+      // Phrased so it reads correctly inside "…when {{target}} is focused."
       return t("refine.writeRules.preview.multipleApps", {
-        defaultValue: "{{count}} apps",
+        defaultValue: "any of its {{count}} apps",
         count: bundleIds.length,
       });
     }
-    return t("refine.writeRules.row.anyApp", { defaultValue: "Any app" });
+    return t("refine.writeRules.preview.anyApp", { defaultValue: "any app" });
   }, [appsByBundleId, previewRule, t]);
 
   const previewUsesUrlRule =

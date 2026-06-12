@@ -600,6 +600,16 @@
         "tested": "Перевірено",
         "blocked": "заблоковано",
         "pending": "В очікуванні"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "Усі перелічені мовні моделі вже завантажено.",
+        "availableAllDownloadedHint": "На цьому пристрої вже є всі перелічені мовні моделі.",
+        "availableNoMatch": "Жодна доступна модель не відповідає поточним фільтрам.",
+        "availableNoMatchHint": "Спробуйте інші фільтри або очистьте їх, щоб переглянути весь каталог.",
+        "downloadedNoMatch": "Жодна завантажена модель не відповідає поточним фільтрам.",
+        "downloadedNoMatchHint": "Очистьте пошук чи фільтри або завантажте сумісну модель нижче.",
+        "downloadedNone": "Завантажених мовних моделей поки немає.",
+        "downloadedNoneHint": "Завантажте модель із розділу «Доступні моделі», щоб диктувати офлайн."
       }
     },
     "sound": {
@@ -801,7 +811,8 @@
           "placeholder": "ск-...",
           "savedPlaceholder": "Збережено в системному сховищі ключів. Введіть нове значення, щоб замінити його.",
           "getKeyLink": "Отримайте ключ API {{provider}}",
-          "accountNote": "Відкриває {{provider}} у вашому браузері. Щоб згенерувати ключ, можливо, потрібно створити безкоштовний обліковий запис."
+          "accountNote": "Відкриває {{provider}} у вашому браузері. Щоб згенерувати ключ, можливо, потрібно створити безкоштовний обліковий запис.",
+          "optionalStatus": "Не потрібен"
         },
         "model": {
           "title": "Модель",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "Режим попереднього перегляду",
         "description": "Це попередній перегляд очищення тексту для {{name}}. Диктування в реальному часі все ще застосовує режим автоматично, коли {{target}} сфокусовано.",
-        "multipleApps": "Програми {{count}}",
+        "multipleApps": "будь-який із його {{count}} додатків",
         "urlOnly": "Цей попередній перегляд примусово активує вибраний режим веб-сайту. Під час живого диктування відкрийте {{target}}, виберіть текстове поле, а потім скористайтеся ярликом диктування.",
         "inputLabel": "Зразок диктанту",
         "outputLabel": "Режим виведення",
@@ -2195,7 +2211,8 @@
         "running": "Попередній перегляд…",
         "appliedTone": "Застосований тон: {{tone}}",
         "unchanged": "Попередній перегляд завершено з незмінним текстом. Це може статися, коли зразок уже чистий або очищення не налаштовано; Диктування в режимі реального часу все ще використовує налаштування програми, моделі, тону та виведення цього режиму.",
-        "error": "Не вдалося переглянути цей режим."
+        "error": "Не вдалося переглянути цей режим.",
+        "anyApp": "будь-який додаток"
       }
     }
   },

@@ -62,6 +62,15 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
     ? PROVIDER_API_KEY_URLS[state.selectedProvider.id]
     : undefined;
 
+  // Local providers (Ollama, local custom endpoints) work without a key —
+  // mirror the readiness logic so the badge never claims a key is "Missing"
+  // when none is required.
+  const apiKeyOptional =
+    state.selectedProvider?.id === "custom" ||
+    state.selectedProvider?.id === "ollama"
+      ? isLocalBaseUrl(state.baseUrl)
+      : isLocalBaseUrl(state.selectedProvider?.base_url ?? "");
+
   return (
     <>
       <SettingContainer
@@ -146,9 +155,13 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                   ? t("settings.postProcessing.api.apiKey.savedStatus", {
                       defaultValue: "Saved",
                     })
-                  : t("settings.postProcessing.api.apiKey.missingStatus", {
-                      defaultValue: "Missing",
-                    })}
+                  : apiKeyOptional
+                    ? t("settings.postProcessing.api.apiKey.optionalStatus", {
+                        defaultValue: "Not required",
+                      })
+                    : t("settings.postProcessing.api.apiKey.missingStatus", {
+                        defaultValue: "Missing",
+                      })}
               </span>
             </div>
             {apiKeyHelpUrl ? (

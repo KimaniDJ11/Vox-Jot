@@ -627,6 +627,16 @@
         "tested": "테스트됨",
         "blocked": "차단됨",
         "pending": "보류 중"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "목록의 모든 음성 모델이 이미 다운로드되었습니다.",
+        "availableAllDownloadedHint": "이 기기에는 목록의 모든 음성 모델이 이미 있습니다.",
+        "availableNoMatch": "현재 필터와 일치하는 사용 가능한 모델이 없습니다.",
+        "availableNoMatchHint": "다른 필터를 사용하거나 필터를 지워 전체 카탈로그를 살펴보세요.",
+        "downloadedNoMatch": "현재 필터와 일치하는 다운로드된 모델이 없습니다.",
+        "downloadedNoMatchHint": "검색이나 필터를 지우거나 아래에서 호환되는 모델을 다운로드하세요.",
+        "downloadedNone": "아직 다운로드된 음성 모델이 없습니다.",
+        "downloadedNoneHint": "오프라인 받아쓰기를 시작하려면 사용 가능한 모델에서 다운로드하세요."
       }
     },
     "advanced": {
@@ -801,7 +811,8 @@
           "placeholder": "sk-...",
           "savedPlaceholder": "시스템 키체인에 저장되었습니다. 바꾸려면 새 값을 입력하세요.",
           "getKeyLink": "{{provider}} API 키 받기",
-          "accountNote": "브라우저에서 {{provider}}을(를) 엽니다. 키를 생성하려면 무료 계정을 만들어야 할 수 있습니다."
+          "accountNote": "브라우저에서 {{provider}}을(를) 엽니다. 키를 생성하려면 무료 계정을 만들어야 할 수 있습니다.",
+          "optionalStatus": "필요 없음"
         },
         "model": {
           "title": "모델",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "미리보기 모드",
         "description": "{{name}}의 텍스트 정리를 미리 봅니다. 라이브 받아쓰기는 {{target}}에 초점이 맞춰지면 자동으로 모드를 적용합니다.",
-        "multipleApps": "{{count}} 앱",
+        "multipleApps": "해당 {{count}}개 앱 중 하나",
         "urlOnly": "이 미리보기는 선택된 웹사이트 모드를 강제합니다. 실시간 받아쓰기에서 {{target}}를 열고 텍스트 필드에 초점을 맞춘 다음 받아쓰기 단축키를 사용하세요.",
         "inputLabel": "샘플 받아쓰기",
         "outputLabel": "모드 출력",
@@ -2195,7 +2211,8 @@
         "running": "미리보기 중…",
         "appliedTone": "적용톤 : {{tone}}",
         "unchanged": "텍스트가 변경되지 않은 상태로 미리보기가 완료되었습니다. 이는 샘플이 이미 깨끗하거나 정리가 구성되지 않은 경우 발생할 수 있습니다. 실시간 받아쓰기는 여전히 이 모드의 앱, 모델, 톤 및 출력 설정을 사용합니다.",
-        "error": "이 모드를 미리 볼 수 없습니다."
+        "error": "이 모드를 미리 볼 수 없습니다.",
+        "anyApp": "모든 앱"
       }
     }
   },

@@ -533,6 +533,16 @@
         "tested": "Test edildi",
         "blocked": "Engellendi",
         "pending": "Beklemede"
+      },
+      "emptyStates": {
+        "availableAllDownloaded": "Listelenen tüm konuşma modelleri zaten indirildi.",
+        "availableAllDownloadedHint": "Listelenen tüm konuşma modelleri zaten bu cihazda mevcut.",
+        "availableNoMatch": "Mevcut modellerden hiçbiri geçerli filtrelerle eşleşmiyor.",
+        "availableNoMatchHint": "Farklı filtreler deneyin veya tüm kataloğu görmek için filtreleri temizleyin.",
+        "downloadedNoMatch": "İndirilen modellerden hiçbiri geçerli filtrelerle eşleşmiyor.",
+        "downloadedNoMatchHint": "Aramayı veya filtreleri temizleyin ya da aşağıdan uyumlu bir model indirin.",
+        "downloadedNone": "Henüz indirilmiş konuşma modeli yok.",
+        "downloadedNoneHint": "Çevrimdışı dikte için Mevcut Modeller bölümünden bir model indirin."
       }
     },
     "general": {
@@ -801,7 +811,8 @@
           "placeholder": "sk-...",
           "savedPlaceholder": "Sistem anahtar zincirinde saklanıyor. Değiştirmek için yeni bir değer girin.",
           "getKeyLink": "{{provider}} API anahtarınızı alın",
-          "accountNote": "{{provider}} tarayıcınızda açılır. Anahtar oluşturmak için ücretsiz bir hesap oluşturmanız gerekebilir."
+          "accountNote": "{{provider}} tarayıcınızda açılır. Anahtar oluşturmak için ücretsiz bir hesap oluşturmanız gerekebilir.",
+          "optionalStatus": "Gerekli değil"
         },
         "model": {
           "title": "Modeli",
@@ -1961,6 +1972,11 @@
     "voiceDesign": {
       "title": "Voice Design",
       "description": "Tune saved voices and browse voice presets without generating speech audio.",
+      "setupTitle": "Set up a voice model first",
+      "setupDetail": "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+      "loadingSetupTitle": "Checking voice models",
+      "loadingSetupDetail": "Vox Jot is loading the voice catalog and saved voices.",
+      "openVoiceModels": "Open Voice Models",
       "toolAriaLabel": "Voice Design tools",
       "cloneProfile": "Clone Profile",
       "cloneProfileAriaLabel": "Clone profile: {{profile}}",
@@ -2186,7 +2202,7 @@
       "preview": {
         "title": "Önizleme modu",
         "description": "Bu, {{name}} için metin temizlemenin önizlemesini gösterir. Canlı dikte, {{target}} odaklandığında modu otomatik olarak uygulamaya devam eder.",
-        "multipleApps": "{{count}} uygulamaları",
+        "multipleApps": "eşleşen {{count}} uygulamadan herhangi biri",
         "urlOnly": "Bu önizleme seçilen web sitesi modunu zorlar. Canlı diktede {{target}}'i açın, bir metin alanına odaklanın ve ardından dikte kısayolunuzu kullanın.",
         "inputLabel": "Örnek dikte",
         "outputLabel": "Mod çıkışı",
@@ -2195,7 +2211,8 @@
         "running": "Önizleniyor…",
         "appliedTone": "Uygulanan ton: {{tone}}",
         "unchanged": "Önizleme değiştirilmemiş metinle tamamlandı. Bu, numune zaten temiz olduğunda veya temizleme yapılandırılmadığında meydana gelebilir; canlı dikte hala bu modun uygulamasını, modelini, tonunu ve çıkış ayarlarını kullanıyor.",
-        "error": "Bu modun önizlemesi yapılamadı."
+        "error": "Bu modun önizlemesi yapılamadı.",
+        "anyApp": "herhangi bir uygulama"
       }
     }
   },

@@ -1296,7 +1296,7 @@ function App() {
                 className="shrink-0"
               />
             </Button>
-            <AppUpdateButton />
+            <AppUpdateButton showLabel={!sidebarCollapsed} />
           </div>
           <div className="app-macos-titlebar-overlay__center">
             <PrimaryModeSwitcher
@@ -1338,7 +1338,7 @@ function App() {
                 className="h-5 w-5 shrink-0"
               />
             </Button>
-            <AppUpdateButton />
+            <AppUpdateButton showLabel={!sidebarCollapsed} />
           </div>
           <div className="app-window-toolbar__center">
             <PrimaryModeSwitcher

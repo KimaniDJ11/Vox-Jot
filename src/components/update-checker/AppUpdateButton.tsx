@@ -47,8 +47,14 @@ const progressPercent = ({ downloaded, total }: ProgressState) => {
   return Math.min(100, Math.max(0, Math.round((downloaded / total) * 100)));
 };
 
-const AppUpdateButton: React.FC<{ className?: string }> = ({
+interface AppUpdateButtonProps {
+  className?: string;
+  showLabel?: boolean;
+}
+
+const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
   className = "",
+  showLabel = false,
 }) => {
   const { t } = useTranslation();
   const { settings, isLoading } = useSettings();
@@ -201,6 +207,11 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
                 defaultValue: "Ready to install.",
               });
 
+  const shouldShowLabel = showLabel && !isInstalling;
+  const buttonClassName = shouldShowLabel
+    ? "h-8 min-h-8 w-auto min-w-[5.5rem] px-4 text-sm font-bold"
+    : "h-8 min-h-8 w-8 px-0";
+
   return (
     <>
       {updateInfo?.available ? (
@@ -208,7 +219,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className={`app-no-drag app-update-button h-8 min-h-8 w-8 border-transparent bg-[var(--update-accent)] text-[var(--update-accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--update-accent),transparent_72%)] hover:bg-[var(--update-accent-hover)] hover:text-[var(--update-accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
+          className={`app-no-drag app-update-button ${buttonClassName} border-transparent bg-[var(--update-accent)] text-[var(--update-accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--update-accent),transparent_72%)] hover:bg-[var(--update-accent-hover)] hover:text-[var(--update-accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
           onClick={() => {
             setModalOpen(true);
             if (phase === "idle" || phase === "error") {
@@ -222,6 +233,8 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
         >
           {isInstalling ? (
             <LoaderCircle className="animate-spin" aria-hidden />
+          ) : shouldShowLabel ? (
+            <span>{t("common.update", { defaultValue: "Update" })}</span>
           ) : (
             <Download aria-hidden />
           )}

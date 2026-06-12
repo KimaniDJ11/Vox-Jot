@@ -127,7 +127,7 @@ const modelMatchesQuery = (
 };
 
 const progressCanCancel = (phase?: string): boolean =>
-  !["complete", "failed", "cancelled"].includes(phase ?? "");
+  !["complete", "failed", "cancelled", "cancelling"].includes(phase ?? "");
 
 const creativeAudioLicenseGate = (
   model: CreativeAudioModelDescriptor,
@@ -272,6 +272,8 @@ const CreativeAudioEnginesSection: React.FC<
               progress.phase === "cancelled"
             ) {
               next.delete(progress.model_id);
+            } else if (progress.phase === "cancelling") {
+              next.add(progress.model_id);
             }
             return next;
           });
@@ -941,6 +943,11 @@ function labelForProgressPhase(
   if (phase === "cancelled") {
     return t("modelHub.creativeAudio.progress.cancelled", {
       defaultValue: "Download cancelled",
+    });
+  }
+  if (phase === "cancelling") {
+    return t("modelHub.creativeAudio.progress.cancelling", {
+      defaultValue: "Cancelling download...",
     });
   }
   return t("modelHub.creativeAudio.progress.preparing", {

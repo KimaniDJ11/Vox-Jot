@@ -223,6 +223,8 @@ type RefineDownloadProgress = {
     | "starting_ollama"
     | "downloading"
     | "importing"
+    | "cancelling"
+    | "cancelled"
     | "complete"
     | "failed";
 };
@@ -276,6 +278,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     : setLocalQuery;
   const portalTarget = usePortalTarget(titleActionTargetId);
   const [busyModelIds, setBusyModelIds] = useState<Set<string>>(new Set());
+  const [cancellingModelIds, setCancellingModelIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [progressMap, setProgressMap] = useState<
     Record<string, RefineDownloadProgress>
   >({});
@@ -298,7 +303,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     (event: { payload: RefineDownloadProgress }) => {
       const p = event.payload;
       const key = p.model_id;
-      if (p.stage === "complete" || p.stage === "failed") {
+      if (
+        p.stage === "complete" ||
+        p.stage === "failed" ||
+        p.stage === "cancelled"
+      ) {
         setProgressMap((prev) => {
           const next = { ...prev };
           delete next[key];
@@ -309,8 +318,16 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           next.delete(key);
           return next;
         });
+        setCancellingModelIds((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
         delete speedMapRef.current[key];
         return;
+      }
+      if (p.stage === "cancelling") {
+        setCancellingModelIds((prev) => new Set(prev).add(key));
       }
       const now = Date.now();
       const prev = speedMapRef.current[key] ?? {
@@ -350,6 +367,12 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }) => {
       const p = event.payload;
       const key = p.model;
+      if (p.status === "cancelled") {
+        onProgressEvent({
+          payload: { model_id: key, stage: "cancelled" },
+        });
+        return;
+      }
       if (p.status === "success") {
         onProgressEvent({
           payload: { model_id: key, stage: "complete" },
@@ -394,6 +417,21 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           setBusyModelIds((prev) => {
             const next = new Set(prev);
             for (const mid of activeModelIds) next.add(mid);
+            return next;
+          });
+          setProgressMap((prev) => {
+            const next = { ...prev };
+            for (const mid of activeModelIds) {
+              if (!next[mid]) {
+                next[mid] = {
+                  model_id: mid,
+                  stage: "downloading",
+                  downloaded: 0,
+                  total: 0,
+                  percentage: 0,
+                };
+              }
+            }
             return next;
           });
         }
@@ -755,7 +793,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         err instanceof Error
           ? err.message
           : t("settings.refineModels.toast.installError");
-      toast.error(message);
+      if (!message.toLowerCase().includes("cancel")) {
+        toast.error(message);
+      }
       setProgressMap((prev) => {
         const next = { ...prev };
         delete next[model.runtime_model_id];
@@ -767,8 +807,50 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         next.delete(model.runtime_model_id);
         return next;
       });
+      setCancellingModelIds((prev) => {
+        const next = new Set(prev);
+        next.delete(model.runtime_model_id);
+        return next;
+      });
     }
   };
+
+  const handleCancelInstall = useCallback(
+    async (model: RefineModelDescriptor) => {
+      const modelId = model.runtime_model_id;
+      setCancellingModelIds((prev) => new Set(prev).add(modelId));
+      setProgressMap((prev) => ({
+        ...prev,
+        [modelId]: {
+          ...(prev[modelId] ?? {
+            model_id: modelId,
+            downloaded: 0,
+            total: 0,
+            percentage: 0,
+          }),
+          model_id: modelId,
+          stage: "cancelling",
+        },
+      }));
+      try {
+        await invoke("cancel_refine_model_install", { modelId });
+      } catch (err) {
+        setCancellingModelIds((prev) => {
+          const next = new Set(prev);
+          next.delete(modelId);
+          return next;
+        });
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t("settings.refineModels.toast.cancelError", {
+                defaultValue: "Could not cancel this model download.",
+              }),
+        );
+      }
+    },
+    [t],
+  );
 
   const handleCustomImport = async () => {
     const repoId = customRepoId.trim();
@@ -1189,6 +1271,32 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   ): HubDownloadState | undefined => {
     const progress = progressMap[model.runtime_model_id];
     if (!progress) return undefined;
+    const isCancelling =
+      progress.stage === "cancelling" ||
+      cancellingModelIds.has(model.runtime_model_id);
+    const cancellable =
+      progress.stage === "downloading" || progress.stage === "importing";
+    const cancelFields = cancellable
+      ? {
+          cancelling: isCancelling,
+          onCancel: () => void handleCancelInstall(model),
+          cancelLabel: t("settings.refineModels.actions.cancelDownload", {
+            title: model.title,
+            defaultValue: "Cancel {{title}} download",
+          }),
+        }
+      : { cancelling: isCancelling };
+
+    if (progress.stage === "cancelling") {
+      return {
+        label: t("settings.refineModels.actions.cancelling", {
+          defaultValue: "Cancelling download...",
+        }),
+        detail: model.runtime_label,
+        indeterminate: true,
+        cancelling: true,
+      };
+    }
 
     if (progress.stage === "downloading") {
       const downloaded = progress.downloaded ?? 0;
@@ -1215,6 +1323,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         detail,
         progress: hasKnownTotal ? percentage : null,
         indeterminate: !hasKnownTotal,
+        ...cancelFields,
       };
     }
 
@@ -1225,6 +1334,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         }),
         detail: model.runtime_label,
         indeterminate: true,
+        ...cancelFields,
       };
     }
 
@@ -1237,6 +1347,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           defaultValue: "Local refine runtime",
         }),
         indeterminate: true,
+        ...cancelFields,
       };
     }
 
@@ -1249,6 +1360,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           defaultValue: "Preparing the local refine service",
         }),
         indeterminate: true,
+        ...cancelFields,
       };
     }
 
@@ -1259,6 +1371,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         }),
         detail: model.runtime_label,
         indeterminate: true,
+        ...cancelFields,
       };
     }
 

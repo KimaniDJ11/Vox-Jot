@@ -1021,6 +1021,7 @@ pub async fn download_hf_tts_repo_impl(
         gated: false,
         resume_existing_staging: true,
         cancel_flag: Some(cancel_flag),
+        file_filter: None,
         progress: Some(progress),
     })
     .await

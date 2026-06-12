@@ -39,6 +39,7 @@ import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatu
 import {
   buildHubDownloadState,
   isDownloadActive,
+  isDownloadCancelled,
   isDownloadFailed,
 } from "@/components/model-hub/hubDownloadState";
 import {
@@ -349,7 +350,12 @@ const SpeechModelLibraryCard: React.FC<{
   const canAcquire = model.downloadable && !model.installed;
   const canActivate = model.installed && model.runnable;
   const downloadActive = isDownloadActive(downloadProgress, locallyDownloading);
+  const downloadCancelled = isDownloadCancelled(
+    downloadProgress,
+    localDownloadError,
+  );
   const downloadFailed = isDownloadFailed(downloadProgress, localDownloadError);
+  const downloadRecoverable = downloadFailed || downloadCancelled;
   const clickable =
     !active &&
     !speech.loadingPlatform &&
@@ -415,7 +421,7 @@ const SpeechModelLibraryCard: React.FC<{
   }, [model, onCancelDownload]);
 
   let trailing: HubTrailing = null;
-  if (!active && canAcquire && !downloadActive && !downloadFailed) {
+  if (!active && canAcquire && !downloadActive && !downloadRecoverable) {
     trailing = {
       kind: "acquire",
       onClick: () => void downloadOrActivate(),
@@ -485,8 +491,8 @@ const SpeechModelLibraryCard: React.FC<{
       !localDownloadError && byteProgress === null && fileProgress === null,
     cancelling: cancellingDownload,
     onCancel: downloadActive ? () => void cancelDownload() : undefined,
-    onRetry: downloadFailed ? () => void downloadOrActivate() : undefined,
-    onDismiss: downloadFailed ? dismissDownload : undefined,
+    onRetry: downloadRecoverable ? () => void downloadOrActivate() : undefined,
+    onDismiss: downloadRecoverable ? dismissDownload : undefined,
   });
 
   const footerExtra =

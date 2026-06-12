@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 use specta::Type;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
+use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -490,6 +491,38 @@ static ACTIVE_CREATIVE_AUDIO_DOWNLOADS: Lazy<Mutex<HashMap<String, Arc<AtomicBoo
 static CREATIVE_AUDIO_INSTALL_LOCK: Lazy<tokio::sync::Mutex<()>> =
     Lazy::new(|| tokio::sync::Mutex::new(()));
 const STORY_GENERATION_STACK_BYTES: usize = 64 * 1024 * 1024;
+const CREATIVE_AUDIO_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+
+async fn run_creative_audio_command_on_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(CREATIVE_AUDIO_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| {
+                        format!("Failed to start creative audio command runtime: {err}")
+                    })?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start creative audio command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "Creative audio command thread stopped before returning data.".to_string())?
+}
 
 pub(crate) fn active_story_render_references_tts_model(
     settings: &AppSettings,
@@ -697,7 +730,17 @@ pub async fn download_creative_audio_model(
     app: AppHandle,
     model_id: String,
 ) -> Result<CreativeAudioModelDescriptor, String> {
-    let model = creative_audio_model_by_id(&app, &model_id)?;
+    run_creative_audio_command_on_stack("download-creative-audio-model", move || async move {
+        download_creative_audio_model_impl(&app, model_id).await
+    })
+    .await
+}
+
+async fn download_creative_audio_model_impl(
+    app: &AppHandle,
+    model_id: String,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    let model = creative_audio_model_by_id(app, &model_id)?;
     if model.installed {
         return Ok(model);
     }
@@ -720,9 +763,9 @@ pub async fn download_creative_audio_model(
         downloads.insert(model_id.clone(), Arc::clone(&stop_flag));
     }
 
-    emit_creative_audio_download_progress(&app, &model_id, "preparing", Some(0.0), None);
+    emit_creative_audio_download_progress(app, &model_id, "preparing", Some(0.0), None);
     let _install_guard = CREATIVE_AUDIO_INSTALL_LOCK.lock().await;
-    let result = download_creative_audio_model_inner(&app, &model_id, Arc::clone(&stop_flag)).await;
+    let result = download_creative_audio_model_inner(app, &model_id, Arc::clone(&stop_flag)).await;
 
     ACTIVE_CREATIVE_AUDIO_DOWNLOADS
         .lock()
@@ -731,8 +774,8 @@ pub async fn download_creative_audio_model(
 
     match result {
         Ok(_) => {
-            emit_creative_audio_download_progress(&app, &model_id, "complete", Some(100.0), None);
-            creative_audio_model_by_id(&app, &model_id)
+            emit_creative_audio_download_progress(app, &model_id, "complete", Some(100.0), None);
+            creative_audio_model_by_id(app, &model_id)
         }
         Err(error) => {
             let phase = if error.to_lowercase().contains("cancelled") {
@@ -740,7 +783,7 @@ pub async fn download_creative_audio_model(
             } else {
                 "failed"
             };
-            emit_creative_audio_download_progress(&app, &model_id, phase, None, Some(&error));
+            emit_creative_audio_download_progress(app, &model_id, phase, None, Some(&error));
             Err(error)
         }
     }
@@ -748,7 +791,10 @@ pub async fn download_creative_audio_model(
 
 #[tauri::command]
 #[specta::specta]
-pub fn cancel_creative_audio_model_download(model_id: String) -> Result<(), String> {
+pub fn cancel_creative_audio_model_download(
+    app: AppHandle,
+    model_id: String,
+) -> Result<(), String> {
     let Some(stop_flag) = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
         .lock()
         .unwrap_or_else(|err| err.into_inner())
@@ -758,6 +804,7 @@ pub fn cancel_creative_audio_model_download(model_id: String) -> Result<(), Stri
         return Ok(());
     };
     stop_flag.store(true, Ordering::Relaxed);
+    emit_creative_audio_download_progress(&app, &model_id, "cancelling", None, None);
     Ok(())
 }
 
@@ -1688,6 +1735,20 @@ fn generic_creative_model_ready(model_dir: &Path, required_files: &[&str]) -> bo
         .all(|rel_path| model_dir.join(rel_path).exists())
 }
 
+fn creative_hf_model_file_allowed(path: &str, ignored_patterns: &[&str]) -> bool {
+    !ignored_patterns
+        .iter()
+        .any(|pattern| creative_hf_ignore_pattern_matches(pattern, path))
+}
+
+fn creative_hf_ignore_pattern_matches(pattern: &str, path: &str) -> bool {
+    if let Some(suffix) = pattern.strip_prefix("**/") {
+        path == suffix || path.ends_with(&format!("/{suffix}"))
+    } else {
+        path == pattern
+    }
+}
+
 async fn ensure_hf_creative_runtime_installed(
     app: &AppHandle,
     model_id: &str,
@@ -1757,16 +1818,11 @@ fn ensure_hf_creative_runtime_installed_blocking(
             script_dir.display()
         )
     })?;
-    for (resource, target_name) in [
-        (
+    {
+        let (resource, target_name) = (
             "resources/python/creative_audio_hf_generate.py",
             HF_CREATIVE_RUNTIME_SCRIPT,
-        ),
-        (
-            "resources/python/creative_audio_hf_download.py",
-            "hf_text_to_audio_download.py",
-        ),
-    ] {
+        );
         let source_script = crate::portable::resolve_resource(app, resource)
             .map_err(|err| format!("Failed to resolve HF creative runtime script: {err}"))?;
         if !source_script.exists() {
@@ -1886,6 +1942,7 @@ async fn download_ace_step_model_snapshot(
         gated: false,
         resume_existing_staging: true,
         cancel_flag: Some(stop_flag),
+        file_filter: None,
         progress: Some(progress),
     })
     .await?;
@@ -1908,94 +1965,44 @@ async fn download_hf_creative_model_snapshot(
     }
 
     emit_creative_audio_download_progress(app, model_id, "downloading-weights", None, None);
-    let app_for_task = app.clone();
-    let model_id_for_task = model_id.to_string();
-    tokio::task::spawn_blocking(move || {
-        download_hf_creative_model_snapshot_blocking(
-            &app_for_task,
-            &model_id_for_task,
-            spec,
-            &model_dir,
-            &stop_flag,
-        )
+    let staging_dir = model_dir.with_file_name(format!(
+        ".staging-{}",
+        sanitize_creative_artifact_id(&format!("{model_id}-{}", spec.hf_repo_id))
+    ));
+    let progress_app = app.clone();
+    let progress_model_id = model_id.to_string();
+    let progress = Arc::new(
+        move |progress: crate::artifact_download::ArtifactProgress| {
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress.clone());
+            emit_creative_audio_download_progress(
+                &progress_app,
+                &progress_model_id,
+                "downloading-weights",
+                Some(progress.percentage),
+                progress.error.as_deref(),
+            );
+        },
+    );
+    let ignored_patterns = spec.ignored_download_patterns;
+    let file_filter: crate::artifact_download::HfFileFilter =
+        Arc::new(move |path: &str| creative_hf_model_file_allowed(path, ignored_patterns));
+
+    crate::artifact_download::download_hf_repo(crate::artifact_download::HfRepoDownloadOptions {
+        domain: "creative_audio".to_string(),
+        artifact_id: model_id.to_string(),
+        repo_id: spec.hf_repo_id.to_string(),
+        staging_dir,
+        final_dir: model_dir.clone(),
+        token: crate::speech_analysis::hugging_face_token_for_runtime(),
+        gated: false,
+        resume_existing_staging: true,
+        cancel_flag: Some(stop_flag),
+        file_filter: Some(file_filter),
+        progress: Some(progress),
     })
-    .await
-    .map_err(|err| format!("HF creative model download task failed: {err}"))?
-}
+    .await?;
 
-fn download_hf_creative_model_snapshot_blocking(
-    app: &AppHandle,
-    model_id: &str,
-    spec: &HfCreativeAudioModelSpec,
-    model_dir: &Path,
-    stop_flag: &AtomicBool,
-) -> Result<(), String> {
-    ensure_download_not_cancelled(stop_flag)?;
-    fs::create_dir_all(model_dir).map_err(|err| {
-        format!(
-            "Failed to create creative audio model dir '{}': {err}",
-            model_dir.display()
-        )
-    })?;
-    let python = hf_creative_python_path(app)?;
-    let script = hf_creative_runtime_dir(app)?
-        .join("scripts")
-        .join("hf_text_to_audio_download.py");
-    if !script.exists() {
-        return Err(format!(
-            "HF creative downloader script is missing at {}.",
-            script.display()
-        ));
-    }
-    let mut command = Command::new(python);
-    command
-        .current_dir(hf_creative_runtime_dir(app)?)
-        .env("PYTHONUNBUFFERED", "1")
-        .arg(script)
-        .arg("--repo-id")
-        .arg(spec.hf_repo_id)
-        .arg("--local-dir")
-        .arg(model_dir)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    for pattern in spec.ignored_download_patterns {
-        command.arg("--ignore-pattern").arg(pattern);
-    }
-    if let Some(token) = crate::speech_analysis::hugging_face_token_for_runtime() {
-        command.env("HF_TOKEN", &token);
-        command.env("HUGGINGFACE_HUB_TOKEN", token);
-    }
-    let mut child = command
-        .spawn()
-        .map_err(|err| format!("Failed to start {} downloader: {err}", spec.label))?;
-
-    loop {
-        if stop_flag.load(Ordering::Relaxed) {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err("Download cancelled.".to_string());
-        }
-        match child
-            .try_wait()
-            .map_err(|err| format!("Failed to monitor {} downloader: {err}", spec.label))?
-        {
-            Some(_) => break,
-            None => thread::sleep(Duration::from_millis(500)),
-        }
-    }
-
-    let output = child
-        .wait_with_output()
-        .map_err(|err| format!("Failed to read {} downloader output: {err}", spec.label))?;
-    if !output.status.success() {
-        return Err(format!(
-            "{} downloader failed: {}",
-            spec.label,
-            command_output_preview(&output)
-        ));
-    }
-    if generic_creative_model_ready(model_dir, spec.required_model_files) {
+    if generic_creative_model_ready(&model_dir, spec.required_model_files) {
         Ok(())
     } else {
         Err(format!(
@@ -2045,6 +2052,7 @@ async fn download_creative_model_snapshot(
         gated: false,
         resume_existing_staging: true,
         cancel_flag: Some(stop_flag),
+        file_filter: None,
         progress: Some(progress),
     })
     .await?;
@@ -4791,6 +4799,28 @@ mod tests {
         assert!(ids.contains(&FIGARO_MODEL_ID));
         assert!(!ids.contains(&"audiocraft-musicgen"));
         assert!(!ids.contains(&"levo-2-songgeneration"));
+    }
+
+    #[test]
+    fn hf_creative_download_filter_skips_bin_checkpoint_duplicates() {
+        let ignored = &["**/pytorch_model.bin", "**/diffusion_pytorch_model.bin"];
+
+        assert!(!creative_hf_model_file_allowed(
+            "text_encoder/pytorch_model.bin",
+            ignored
+        ));
+        assert!(!creative_hf_model_file_allowed(
+            "unet/diffusion_pytorch_model.bin",
+            ignored
+        ));
+        assert!(creative_hf_model_file_allowed(
+            "unet/diffusion_pytorch_model.safetensors",
+            ignored
+        ));
+        assert!(creative_hf_model_file_allowed(
+            "scheduler/scheduler_config.json",
+            ignored
+        ));
     }
 
     #[test]

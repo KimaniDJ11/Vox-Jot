@@ -58,6 +58,10 @@ describe("HubModelCard", () => {
           progress: 42,
           onCancel,
           cancelLabel: "Cancel test model download",
+          cancelConfirmLabel: "Stop this download?",
+          cancelConfirmDetail: "The current transfer will stop.",
+          cancelKeepLabel: "Keep downloading",
+          cancelConfirmActionLabel: "Stop download",
         }}
       />,
     );
@@ -73,8 +77,41 @@ describe("HubModelCard", () => {
       'button[aria-label="Cancel test model download"]',
     ) as HTMLButtonElement | null;
     expect(cancel).not.toBeNull();
+    const cancelAgain = view.container.querySelector(
+      'button[aria-label="Cancel test model download"]',
+    ) as HTMLButtonElement | null;
+    expect(cancelAgain).not.toBeNull();
     await act(async () => {
-      cancel?.click();
+      cancelAgain?.click();
+    });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(view.container.textContent).toContain("Stop this download?");
+    expect(view.container.textContent).toContain(
+      "The current transfer will stop.",
+    );
+
+    const keep = view.container.querySelector(
+      'button[aria-label="Keep downloading"]',
+    ) as HTMLButtonElement | null;
+    expect(keep).not.toBeNull();
+    await act(async () => {
+      keep?.click();
+    });
+    expect(view.container.textContent).not.toContain("Stop this download?");
+
+    const cancelAfterKeep = view.container.querySelector(
+      'button[aria-label="Cancel test model download"]',
+    ) as HTMLButtonElement | null;
+    expect(cancelAfterKeep).not.toBeNull();
+    await act(async () => {
+      cancelAfterKeep?.click();
+    });
+    const confirmCancel = view.container.querySelector(
+      'button[aria-label="Stop download"]',
+    ) as HTMLButtonElement | null;
+    expect(confirmCancel).not.toBeNull();
+    await act(async () => {
+      confirmCancel?.click();
     });
     expect(onCancel).toHaveBeenCalledTimes(1);
 
@@ -129,6 +166,48 @@ describe("HubModelCard", () => {
     expect(dismiss).not.toBeNull();
     await act(async () => {
       retry?.click();
+      dismiss?.click();
+    });
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    await view.cleanup();
+  });
+
+  it("shows cancelled downloads as neutral with resume and dismiss", async () => {
+    const onRetry = vi.fn();
+    const onDismiss = vi.fn();
+    const view = await render(
+      <HubModelCard
+        title="Cancelled model"
+        downloadState={{
+          label: "Download cancelled",
+          detail: "Download stopped. Start it again from this card.",
+          cancelled: true,
+          onRetry,
+          onDismiss,
+          retryLabel: "Resume",
+          dismissLabel: "Dismiss",
+        }}
+      />,
+    );
+
+    expect(view.container.textContent).toContain("Download cancelled");
+    expect(view.container.textContent).toContain(
+      "Download stopped. Start it again from this card.",
+    );
+    expect(view.container.textContent).not.toContain("Download failed");
+    expect(view.container.querySelector('[role="progressbar"]')).toBeNull();
+    const resume = view.container.querySelector(
+      'button[aria-label="Resume"]',
+    ) as HTMLButtonElement | null;
+    const dismiss = view.container.querySelector(
+      'button[aria-label="Dismiss"]',
+    ) as HTMLButtonElement | null;
+    expect(resume).not.toBeNull();
+    expect(dismiss).not.toBeNull();
+    await act(async () => {
+      resume?.click();
       dismiss?.click();
     });
     expect(onRetry).toHaveBeenCalledTimes(1);

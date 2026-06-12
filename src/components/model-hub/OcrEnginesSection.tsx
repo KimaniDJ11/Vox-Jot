@@ -52,6 +52,7 @@ import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatu
 import {
   buildHubDownloadState,
   isDownloadActive,
+  isDownloadCancelled,
   isDownloadFailed,
 } from "@/components/model-hub/hubDownloadState";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
@@ -936,9 +937,11 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     let trailing: HubTrailing = null;
     const dl = downloadProgress[model.id];
     const downloadActive = isDownloadActive(dl);
+    const downloadCancelled = isDownloadCancelled(dl);
     const downloadFailed = isDownloadFailed(dl);
+    const downloadRecoverable = downloadFailed || downloadCancelled;
 
-    if (!model.installed && !downloadActive && !downloadFailed) {
+    if (!model.installed && !downloadActive && !downloadRecoverable) {
       trailing = {
         kind: "acquire",
         label: t("modelHub.ocr.actions.downloadFromHub", {
@@ -995,10 +998,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       onCancel: downloadActive
         ? () => void cancelOcrDownload(model.id)
         : undefined,
-      onRetry: downloadFailed
+      onRetry: downloadRecoverable
         ? () => void onDownloadNeuralHf(model)
         : undefined,
-      onDismiss: downloadFailed
+      onDismiss: downloadRecoverable
         ? () => clearOcrDownloadProgress(model.id)
         : undefined,
     });

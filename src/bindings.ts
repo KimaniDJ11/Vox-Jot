@@ -1609,6 +1609,14 @@ async prepareDenoiseRuntime() : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async cancelDenoiseRuntimeSetup() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_denoise_runtime_setup") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async transcribeFile(path: string) : Promise<Result<TranscriptionFileResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("transcribe_file", { path }) };
@@ -2111,6 +2119,14 @@ async deleteRefineModel(providerId: string, modelId: string) : Promise<Result<nu
 },
 async getActiveRefineInstalls() : Promise<string[]> {
     return await TAURI_INVOKE("get_active_refine_installs");
+},
+async cancelRefineModelInstall(modelId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_refine_model_install", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 },
 async getOcrModelCatalog() : Promise<Result<OcrModelCatalog, string>> {
     try {

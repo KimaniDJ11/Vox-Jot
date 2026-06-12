@@ -924,6 +924,7 @@ async fn download_ocr_model_inner(
         gated: false,
         resume_existing_staging: true,
         cancel_flag: Some(cancel_flag),
+        file_filter: None,
         progress: Some(progress),
     })
     .await?;

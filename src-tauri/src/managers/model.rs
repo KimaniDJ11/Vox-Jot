@@ -1822,6 +1822,7 @@ impl ModelManager {
             gated: false,
             resume_existing_staging: true,
             cancel_flag: Some(Arc::clone(&cancel_flag)),
+            file_filter: None,
             progress: Some(progress),
         })
         .await

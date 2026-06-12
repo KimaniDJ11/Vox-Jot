@@ -68,6 +68,7 @@ pub struct ArtifactProgress {
 }
 
 pub type ProgressCallback = Arc<dyn Fn(ArtifactProgress) + Send + Sync>;
+pub type HfFileFilter = Arc<dyn Fn(&str) -> bool + Send + Sync>;
 
 #[derive(Debug, Clone)]
 pub struct HfRepoFile {
@@ -86,6 +87,7 @@ pub struct HfRepoDownloadOptions {
     pub gated: bool,
     pub resume_existing_staging: bool,
     pub cancel_flag: Option<Arc<AtomicBool>>,
+    pub file_filter: Option<HfFileFilter>,
     pub progress: Option<ProgressCallback>,
 }
 
@@ -381,13 +383,14 @@ pub async fn download_hf_repo(
         ),
     );
 
-    let mut files = fetch_hf_repo_files(
-        &client,
-        &options.repo_id,
-        token,
-        options.gated,
-        default_hf_file_filter,
-    )
+    let file_filter = options.file_filter.clone();
+    let mut files = fetch_hf_repo_files(&client, &options.repo_id, token, options.gated, |path| {
+        default_hf_file_filter(path)
+            && match &file_filter {
+                Some(filter) => filter(path),
+                None => true,
+            }
+    })
     .await?;
     files.sort_by(|a, b| a.path.cmp(&b.path));
 

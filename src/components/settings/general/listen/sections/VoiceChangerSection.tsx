@@ -36,6 +36,7 @@ import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatu
 import {
   buildHubDownloadState,
   isDownloadActive,
+  isDownloadCancelled,
   isDownloadFailed,
 } from "@/components/model-hub/hubDownloadState";
 import {
@@ -998,6 +999,11 @@ export const VoiceChangerSection: React.FC<{
       downloadProgress,
       localDownloadError,
     );
+    const downloadCancelled = isDownloadCancelled(
+      downloadProgress,
+      localDownloadError,
+    );
+    const downloadRecoverable = downloadFailed || downloadCancelled;
     const byteProgress =
       downloadProgress?.total_bytes && downloadProgress.total_bytes > 0
         ? Math.min(
@@ -1036,10 +1042,10 @@ export const VoiceChangerSection: React.FC<{
       onCancel: downloadActive
         ? () => void cancelTtsModelDownload(model)
         : undefined,
-      onRetry: downloadFailed
+      onRetry: downloadRecoverable
         ? () => void handleDownloadVoiceChangerModel(model)
         : undefined,
-      onDismiss: downloadFailed
+      onDismiss: downloadRecoverable
         ? () => clearTtsDownloadProgress(model)
         : undefined,
     });
@@ -1081,7 +1087,7 @@ export const VoiceChangerSection: React.FC<{
           !modelReady &&
           model.downloadable &&
           !downloadActive &&
-          !downloadFailed
+          !downloadRecoverable
             ? {
                 kind: "acquire",
                 onClick: () => void handleDownloadVoiceChangerModel(model),

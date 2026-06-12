@@ -3,8 +3,12 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::future::Future;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 pub const OLLAMA_BASE_URL: &str = "http://127.0.0.1:11434";
 
@@ -435,12 +439,37 @@ pub async fn install_ollama_impl(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Pull (download) an Ollama model, streaming progress events to the frontend
+fn ensure_ollama_pull_not_cancelled(
+    cancel_flag: Option<&Arc<AtomicBool>>,
+    app: &AppHandle,
+    model_name: &str,
+) -> Result<(), String> {
+    if cancel_flag.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        app.emit(
+            "ollama-pull-progress",
+            serde_json::json!({ "model": model_name, "status": "cancelled", "percent": 0 }),
+        )
+        .ok();
+        return Err(crate::artifact_download::DOWNLOAD_CANCELLED_MESSAGE.to_string());
+    }
+    Ok(())
+}
+
+/// Pull (download) an Ollama model, streaming progress events to the frontend.
 pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Result<(), String> {
+    pull_ollama_model_with_cancel_impl(app, model_name, None).await
+}
+
+pub async fn pull_ollama_model_with_cancel_impl(
+    app: &AppHandle,
+    model_name: String,
+    cancel_flag: Option<Arc<AtomicBool>>,
+) -> Result<(), String> {
     use futures_util::StreamExt;
     use tauri::Emitter;
 
     info!("Pulling Ollama model: {}", model_name);
+    ensure_ollama_pull_not_cancelled(cancel_flag.as_ref(), app, &model_name)?;
     app.emit(
         "ollama-pull-progress",
         serde_json::json!({ "model": model_name, "status": "starting", "percent": 0 }),
@@ -465,6 +494,7 @@ pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Resu
 
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
+        ensure_ollama_pull_not_cancelled(cancel_flag.as_ref(), app, &model_name)?;
         let chunk = chunk.map_err(|e| format!("Stream error: {}", e))?;
         let text = String::from_utf8_lossy(&chunk);
         for line in text.lines() {
@@ -500,10 +530,12 @@ pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Resu
                     info!("Ollama model {} pulled successfully.", model_name);
                     return Ok(());
                 }
+                ensure_ollama_pull_not_cancelled(cancel_flag.as_ref(), app, &model_name)?;
             }
         }
     }
 
+    ensure_ollama_pull_not_cancelled(cancel_flag.as_ref(), app, &model_name)?;
     app.emit("ollama-pull-complete", &model_name).ok();
     Ok(())
 }

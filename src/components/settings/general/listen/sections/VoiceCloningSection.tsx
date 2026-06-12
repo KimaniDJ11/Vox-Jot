@@ -30,6 +30,7 @@ import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatu
 import {
   buildHubDownloadState,
   isDownloadActive,
+  isDownloadCancelled,
   isDownloadFailed,
 } from "@/components/model-hub/hubDownloadState";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
@@ -752,6 +753,11 @@ export const VoiceCloningSection: React.FC<{
       downloadProgress,
       localDownloadError,
     );
+    const downloadCancelled = isDownloadCancelled(
+      downloadProgress,
+      localDownloadError,
+    );
+    const downloadRecoverable = downloadFailed || downloadCancelled;
     const byteProgress =
       downloadProgress?.total_bytes && downloadProgress.total_bytes > 0
         ? Math.min(
@@ -790,10 +796,10 @@ export const VoiceCloningSection: React.FC<{
       onCancel: downloadActive
         ? () => void cancelTtsModelDownload(model)
         : undefined,
-      onRetry: downloadFailed
+      onRetry: downloadRecoverable
         ? () => void handleDownloadOrSelectCloneModel(model)
         : undefined,
-      onDismiss: downloadFailed
+      onDismiss: downloadRecoverable
         ? () => clearTtsDownloadProgress(model)
         : undefined,
     });
@@ -839,7 +845,7 @@ export const VoiceCloningSection: React.FC<{
           !modelReady &&
           model.downloadable &&
           !downloadActive &&
-          !downloadFailed
+          !downloadRecoverable
             ? {
                 kind: "acquire",
                 onClick: () => void handleDownloadOrSelectCloneModel(model),

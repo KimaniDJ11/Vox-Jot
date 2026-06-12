@@ -4,17 +4,23 @@ use crate::settings::{self, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
+use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
-static ACTIVE_INSTALLS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static ACTIVE_INSTALLS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 // Refine catalog/download commands can run under WebKit's URL-scheme callback.
 // Keep large Ollama/Hugging Face work off that stack on macOS.
@@ -1307,7 +1313,9 @@ async fn ensure_hf_gguf_downloaded(
     repo_id: &str,
     file_name: &str,
     target_path: &Path,
+    cancel_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
+    ensure_refine_install_not_cancelled(&cancel_flag)?;
     let encoded_file = file_name.replace(' ', "%20");
     let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded_file}");
     let client = reqwest::Client::new();
@@ -1323,6 +1331,7 @@ async fn ensure_hf_gguf_downloaded(
 
             if let Some(expected) = remote_size {
                 if local_size >= expected {
+                    ensure_refine_install_not_cancelled(&cancel_flag)?;
                     log::info!("ensure_hf_gguf_downloaded: {file_name} already complete ({local_size} / {expected} bytes)");
                     let _ = app.emit(
                         "refine-download-progress",
@@ -1340,6 +1349,7 @@ async fn ensure_hf_gguf_downloaded(
                     "ensure_hf_gguf_downloaded: {file_name} is truncated ({local_size} / {expected} bytes), re-downloading"
                 );
             } else {
+                ensure_refine_install_not_cancelled(&cancel_flag)?;
                 log::info!("ensure_hf_gguf_downloaded: {file_name} exists ({local_size} bytes), cannot verify size — assuming complete");
                 let _ = app.emit(
                     "refine-download-progress",
@@ -1403,7 +1413,7 @@ async fn ensure_hf_gguf_downloaded(
             expected_sha256: None,
             expected_size: (expected_size > 0).then_some(expected_size),
             bearer_token: None,
-            cancel_flag: None,
+            cancel_flag: Some(Arc::clone(&cancel_flag)),
             progress: Some(progress),
         },
     )
@@ -1411,6 +1421,11 @@ async fn ensure_hf_gguf_downloaded(
     {
         Ok(report) => report,
         Err(err) => {
+            let stage = if crate::artifact_download::is_cancelled_error(&err) {
+                "cancelled"
+            } else {
+                "failed"
+            };
             let _ = app.emit(
                 "refine-download-progress",
                 serde_json::json!({
@@ -1418,7 +1433,7 @@ async fn ensure_hf_gguf_downloaded(
                     "downloaded": 0u64,
                     "total": 0u64,
                     "percentage": 0.0f64,
-                    "stage": "failed",
+                    "stage": stage,
                 }),
             );
             return Err(err);
@@ -1448,11 +1463,13 @@ async fn import_hf_gguf_to_ollama(
     model_id: &str,
     repo_id: &str,
     file_name: Option<String>,
+    cancel_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
     log::info!(
         "import_hf_gguf_to_ollama: model_id={model_id}, repo_id={repo_id}, file_name={file_name:?}"
     );
 
+    ensure_refine_install_not_cancelled(&cancel_flag)?;
     if !ollama::is_ollama_available().await {
         return Err("Install and start Ollama before importing Hugging Face models.".to_string());
     }
@@ -1483,7 +1500,16 @@ async fn import_hf_gguf_to_ollama(
         }
     }
 
-    ensure_hf_gguf_downloaded(app, model_id, repo_id, &resolved_file, &gguf_path).await?;
+    ensure_hf_gguf_downloaded(
+        app,
+        model_id,
+        repo_id,
+        &resolved_file,
+        &gguf_path,
+        Arc::clone(&cancel_flag),
+    )
+    .await?;
+    ensure_refine_install_not_cancelled(&cancel_flag)?;
     log::info!("import_hf_gguf_to_ollama: download complete, running ollama create");
 
     let modelfile_path = import_dir.join("Modelfile");
@@ -1496,14 +1522,16 @@ async fn import_hf_gguf_to_ollama(
         "Ollama is not installed. Install it before importing models.".to_string()
     })?;
 
-    let output = Command::new(binary)
+    let mut command = Command::new(binary);
+    command
         .arg("create")
         .arg(model_id)
         .arg("-f")
         .arg(&modelfile_path)
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run ollama create: {e}"))?;
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let output = run_refine_child_with_cancel(command, &cancel_flag, "ollama create").await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -1528,8 +1556,92 @@ async fn import_hf_gguf_to_ollama(
     Ok(())
 }
 
+fn ensure_refine_install_not_cancelled(cancel_flag: &Arc<AtomicBool>) -> Result<(), String> {
+    if cancel_flag.load(Ordering::Relaxed) {
+        Err(crate::artifact_download::DOWNLOAD_CANCELLED_MESSAGE.to_string())
+    } else {
+        Ok(())
+    }
+}
+
+fn spawn_async_pipe_reader<R>(
+    reader: Option<R>,
+    label: String,
+    stream_name: &'static str,
+) -> Option<tokio::task::JoinHandle<Result<Vec<u8>, String>>>
+where
+    R: AsyncRead + Unpin + Send + 'static,
+{
+    reader.map(|mut reader| {
+        tokio::spawn(async move {
+            let mut buffer = Vec::new();
+            reader
+                .read_to_end(&mut buffer)
+                .await
+                .map_err(|err| format!("Failed to read {label} {stream_name}: {err}"))?;
+            Ok(buffer)
+        })
+    })
+}
+
+async fn join_async_pipe_reader(
+    reader: Option<tokio::task::JoinHandle<Result<Vec<u8>, String>>>,
+    label: &str,
+    stream_name: &'static str,
+) -> Result<Vec<u8>, String> {
+    match reader {
+        Some(handle) => handle
+            .await
+            .map_err(|_| format!("{label} {stream_name} reader stopped"))?,
+        None => Ok(Vec::new()),
+    }
+}
+
+async fn run_refine_child_with_cancel(
+    mut command: Command,
+    cancel_flag: &Arc<AtomicBool>,
+    label: &str,
+) -> Result<std::process::Output, String> {
+    ensure_refine_install_not_cancelled(cancel_flag)?;
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("Failed to run {label}: {err}"))?;
+    let mut stdout_reader =
+        spawn_async_pipe_reader(child.stdout.take(), label.to_string(), "stdout");
+    let mut stderr_reader =
+        spawn_async_pipe_reader(child.stderr.take(), label.to_string(), "stderr");
+
+    loop {
+        if cancel_flag.load(Ordering::Relaxed) {
+            let _ = child.start_kill();
+            let _ = child.wait().await;
+            let _ = join_async_pipe_reader(stdout_reader.take(), label, "stdout").await;
+            let _ = join_async_pipe_reader(stderr_reader.take(), label, "stderr").await;
+            return Err(crate::artifact_download::DOWNLOAD_CANCELLED_MESSAGE.to_string());
+        }
+
+        match child
+            .try_wait()
+            .map_err(|err| format!("Failed to monitor {label}: {err}"))?
+        {
+            Some(status) => {
+                let stdout_buf =
+                    join_async_pipe_reader(stdout_reader.take(), label, "stdout").await?;
+                let stderr_buf =
+                    join_async_pipe_reader(stderr_reader.take(), label, "stderr").await?;
+                return Ok(std::process::Output {
+                    status,
+                    stdout: stdout_buf,
+                    stderr: stderr_buf,
+                });
+            }
+            None => tokio::time::sleep(Duration::from_millis(250)).await,
+        }
+    }
+}
+
 pub async fn get_active_refine_installs_impl() -> Vec<String> {
-    ACTIVE_INSTALLS.lock().await.iter().cloned().collect()
+    ACTIVE_INSTALLS.lock().await.keys().cloned().collect()
 }
 
 pub async fn delete_refine_model_impl(
@@ -1543,7 +1655,7 @@ pub async fn delete_refine_model_impl(
 
     {
         let active = ACTIVE_INSTALLS.lock().await;
-        if active.contains(&model_id) {
+        if active.contains_key(&model_id) {
             return Err(format!(
                 "'{}' is still downloading or importing. Wait for it to finish.",
                 model_id
@@ -1606,27 +1718,50 @@ pub async fn install_refine_model_impl(
         ));
     }
 
+    let cancel_flag = Arc::new(AtomicBool::new(false));
     {
         let mut active = ACTIVE_INSTALLS.lock().await;
-        if !active.insert(model_id.clone()) {
+        if active.contains_key(&model_id) {
             return Err(format!(
                 "'{}' is already being downloaded. Please wait for it to finish.",
                 model_id
             ));
         }
+        active.insert(model_id.clone(), Arc::clone(&cancel_flag));
     }
 
     let result = async {
         if let Some(repo_id) = source_repo_id {
-            import_hf_gguf_to_ollama(app, &model_id, &repo_id, source_file_name).await?;
+            import_hf_gguf_to_ollama(
+                app,
+                &model_id,
+                &repo_id,
+                source_file_name,
+                Arc::clone(&cancel_flag),
+            )
+            .await?;
         } else {
-            ollama::pull_ollama_model_impl(app, model_id.clone()).await?;
+            ollama::pull_ollama_model_with_cancel_impl(
+                app,
+                model_id.clone(),
+                Some(Arc::clone(&cancel_flag)),
+            )
+            .await?;
         }
+        ensure_refine_install_not_cancelled(&cancel_flag)?;
         set_refine_model_selection_impl(app, provider_id, model_id.clone()).await
     }
     .await;
 
     ACTIVE_INSTALLS.lock().await.remove(&model_id);
+    if let Err(error) = &result {
+        if crate::artifact_download::is_cancelled_error(error) {
+            let _ = app.emit(
+                "refine-download-progress",
+                serde_json::json!({ "model_id": model_id, "stage": "cancelled" }),
+            );
+        }
+    }
     result
 }
 
@@ -1656,6 +1791,20 @@ pub async fn set_refine_model_selection(
 #[specta::specta]
 pub async fn get_active_refine_installs() -> Vec<String> {
     get_active_refine_installs_impl().await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn cancel_refine_model_install(app: AppHandle, model_id: String) -> Result<(), String> {
+    let Some(cancel_flag) = ACTIVE_INSTALLS.lock().await.get(&model_id).cloned() else {
+        return Ok(());
+    };
+    cancel_flag.store(true, Ordering::Relaxed);
+    let _ = app.emit(
+        "refine-download-progress",
+        serde_json::json!({ "model_id": model_id, "stage": "cancelling" }),
+    );
+    Ok(())
 }
 
 #[tauri::command]

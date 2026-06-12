@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
@@ -131,12 +131,17 @@ export interface HubDownloadState {
   label: string;
   detail?: string | null;
   error?: string | null;
+  cancelled?: boolean;
   /** 0-100. Omit for indeterminate/preparing/importing stages. */
   progress?: number | null;
   indeterminate?: boolean;
   cancelling?: boolean;
   onCancel?: () => void;
   cancelLabel?: string;
+  cancelConfirmLabel?: string;
+  cancelConfirmDetail?: string;
+  cancelConfirmActionLabel?: string;
+  cancelKeepLabel?: string;
   onRetry?: () => void;
   retryLabel?: string;
   onDismiss?: () => void;
@@ -175,11 +180,13 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   className = "",
 }) => {
   const { t } = useTranslation();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const isClickable = Boolean(onClick) && !disabled;
   const isFeatured = variant === "featured";
   const fillClasses = fillHeight ? "h-full min-h-[176px]" : "";
+  const canCancelDownload = Boolean(downloadState?.onCancel);
   const hasNestedInteractive =
-    Boolean(downloadState?.onCancel) ||
+    canCancelDownload ||
     Boolean(downloadState?.onRetry) ||
     Boolean(downloadState?.onDismiss) ||
     Boolean(footerExtra) ||
@@ -223,6 +230,22 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
     (visibleCapabilityChips && visibleCapabilityChips.length > 0) ||
     Boolean(secondary);
   const inlineFooterExtraParts = getInlineFooterExtraParts(footerExtra);
+
+  useEffect(() => {
+    if (
+      !canCancelDownload ||
+      downloadState?.cancelling ||
+      downloadState?.cancelled ||
+      downloadState?.error
+    ) {
+      setConfirmingCancel(false);
+    }
+  }, [
+    canCancelDownload,
+    downloadState?.cancelling,
+    downloadState?.cancelled,
+    downloadState?.error,
+  ]);
 
   return (
     <div
@@ -314,7 +337,24 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
 
       {/* FOOTER — meta + trailing action, or unified download state. */}
       {downloadState ? (
-        renderDownloadState(downloadState)
+        renderDownloadState(
+          downloadState,
+          confirmingCancel,
+          setConfirmingCancel,
+          t("modelHub.download.cancelConfirmLabel", {
+            defaultValue: "Cancel download?",
+          }),
+          t("modelHub.download.cancelConfirmDetail", {
+            defaultValue:
+              "This stops the current transfer. You can start it again from this card.",
+          }),
+          t("modelHub.download.keepDownloading", {
+            defaultValue: "Keep downloading",
+          }),
+          t("modelHub.download.confirmCancel", {
+            defaultValue: "Cancel download",
+          }),
+        )
       ) : inlineFooterExtraParts ? (
         renderInlineFooterExtra(
           inlineFooterExtraParts,
@@ -454,19 +494,40 @@ function renderInlineFooterExtra(
   );
 }
 
-function renderDownloadState(state: HubDownloadState): React.ReactNode {
-  const failed = Boolean(state.error);
+function renderDownloadState(
+  state: HubDownloadState,
+  confirmingCancel: boolean,
+  setConfirmingCancel: (value: boolean) => void,
+  defaultCancelConfirmLabel: string,
+  defaultCancelConfirmDetail: string,
+  defaultCancelKeepLabel: string,
+  defaultCancelConfirmActionLabel: string,
+): React.ReactNode {
+  const cancelled = Boolean(state.cancelled);
+  const failed = Boolean(state.error) && !cancelled;
+  const terminal = failed || cancelled;
+  const showCancelConfirmation =
+    confirmingCancel && Boolean(state.onCancel) && !state.cancelling && !terminal;
   const hasKnownProgress =
     !failed &&
+    !cancelled &&
     typeof state.progress === "number" &&
     Number.isFinite(state.progress);
   const progress = hasKnownProgress
     ? Math.max(0, Math.min(100, state.progress ?? 0))
     : null;
-  const indeterminate = !failed && (state.indeterminate || progress === null);
-  const label = state.label;
-  const detail = state.detail ?? (failed ? state.error : null);
+  const indeterminate =
+    !failed && !cancelled && (state.indeterminate || progress === null);
+  const label = showCancelConfirmation
+    ? (state.cancelConfirmLabel ?? defaultCancelConfirmLabel)
+    : state.label;
+  const detail = showCancelConfirmation
+    ? (state.cancelConfirmDetail ?? defaultCancelConfirmDetail)
+    : (state.detail ?? (failed ? state.error : null));
   const cancelLabel = state.cancelLabel ?? "Cancel download";
+  const cancelKeepLabel = state.cancelKeepLabel ?? defaultCancelKeepLabel;
+  const cancelConfirmActionLabel =
+    state.cancelConfirmActionLabel ?? defaultCancelConfirmActionLabel;
   const retryLabel = state.retryLabel ?? "Try again";
   const dismissLabel = state.dismissLabel ?? "Dismiss";
 
@@ -476,6 +537,8 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
         "relative flex min-h-11 min-w-0 items-center gap-2 overflow-hidden rounded-lg border px-2.5 pb-2.5 pt-1.5",
         failed
           ? "border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)]"
+          : showCancelConfirmation
+            ? "border-[color-mix(in_srgb,var(--warning),transparent_58%)] bg-[var(--warning-soft)]"
           : "border-[var(--border)] bg-[var(--panel-bg)]",
       ].join(" ")}
       onClick={(event) => event.stopPropagation()}
@@ -483,7 +546,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
       role="group"
       aria-label={label}
     >
-      {!failed ? (
+      {!failed && !cancelled ? (
         <div
           className={[
             "pointer-events-none absolute inset-y-0 left-0 opacity-55",
@@ -496,7 +559,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           aria-hidden
         />
       ) : null}
-      {!failed ? (
+      {!failed && !cancelled ? (
         <div
           className="absolute inset-x-2.5 bottom-1 h-1 overflow-hidden rounded-full bg-[var(--input)]"
           role="progressbar"
@@ -519,11 +582,13 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
       <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--accent)] shadow-[inset_0_0_0_1px_var(--border)]">
         {state.cancelling ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        ) : failed ? (
+        ) : failed || showCancelConfirmation ? (
           <AlertTriangle
             className="h-3.5 w-3.5 text-[var(--danger)]"
             aria-hidden
           />
+        ) : cancelled ? (
+          <X className="h-3.5 w-3.5 text-[var(--muted)]" aria-hidden />
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden />
         )}
@@ -544,12 +609,49 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           </p>
         ) : null}
       </div>
-      {progress !== null && !failed ? (
+      {progress !== null && !failed && !cancelled && !showCancelConfirmation ? (
         <span className="relative z-10 shrink-0 text-xs font-semibold tabular-nums text-[var(--muted)]">
           {Math.round(progress)}%
         </span>
       ) : null}
-      {failed && state.onRetry ? (
+      {showCancelConfirmation ? (
+        <div className="relative z-10 flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            title={cancelKeepLabel}
+            aria-label={cancelKeepLabel}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setConfirmingCancel(false);
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="shrink-0 px-2 text-[var(--text)]"
+          >
+            {cancelKeepLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            title={cancelConfirmActionLabel}
+            aria-label={cancelConfirmActionLabel}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setConfirmingCancel(false);
+              state.onCancel?.();
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="shrink-0 px-2"
+          >
+            {cancelConfirmActionLabel}
+          </Button>
+        </div>
+      ) : null}
+      {terminal && state.onRetry ? (
         <Button
           type="button"
           variant="ghost"
@@ -568,7 +670,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           <span className="hidden sm:inline">{retryLabel}</span>
         </Button>
       ) : null}
-      {failed && state.onDismiss ? (
+      {terminal && state.onDismiss ? (
         <Button
           type="button"
           variant="ghost"
@@ -586,7 +688,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           {dismissLabel}
         </Button>
       ) : null}
-      {!failed && state.onCancel ? (
+      {!terminal && !showCancelConfirmation && state.onCancel ? (
         <ActionIconButton
           type="button"
           tone="danger"
@@ -596,7 +698,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            state.onCancel?.();
+            setConfirmingCancel(true);
           }}
           onKeyDown={(event) => event.stopPropagation()}
           className="relative z-10"

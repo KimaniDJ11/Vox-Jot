@@ -61,6 +61,7 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     null,
   );
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
 
   // Keep selection in sync with the Enhance Audio panel (another window).
@@ -89,6 +90,7 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
   const installRuntime = useCallback(async () => {
     if (isInstalling) return;
     setIsInstalling(true);
+    setIsCancelling(false);
     setInstallError(null);
     try {
       await invoke("prepare_denoise_runtime");
@@ -96,18 +98,39 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
       // Auto-select DeepFilterNet once it is ready to use.
       selectModel("deepfilternet");
     } catch (err) {
-      setInstallError(
+      const message =
         typeof err === "string"
           ? err
           : t("modelHub.audioCleanup.installFailed", {
               defaultValue: "Failed to set up the DeepFilterNet runtime.",
-            }),
-      );
+            });
+      if (!message.toLowerCase().includes("cancel")) {
+        setInstallError(message);
+      }
       setRuntimeInstalled(false);
     } finally {
       setIsInstalling(false);
+      setIsCancelling(false);
+      void refreshRuntime();
     }
-  }, [isInstalling, selectModel, t]);
+  }, [isInstalling, refreshRuntime, selectModel, t]);
+
+  const cancelRuntimeSetup = useCallback(async () => {
+    if (!isInstalling || isCancelling) return;
+    setIsCancelling(true);
+    try {
+      await invoke("cancel_denoise_runtime_setup");
+    } catch (err) {
+      setIsCancelling(false);
+      setInstallError(
+        typeof err === "string"
+          ? err
+          : t("modelHub.audioCleanup.cancelFailed", {
+              defaultValue: "Could not cancel DeepFilterNet setup.",
+            }),
+      );
+    }
+  }, [isCancelling, isInstalling, t]);
 
   const query = (hubSearchQuery ?? "").trim().toLowerCase();
   const sortMode = modelHubControls?.sortMode ?? localSortMode;
@@ -309,16 +332,28 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
         ? t("modelHub.audioCleanup.checking", {
             defaultValue: "Checking DeepFilterNet setup…",
           })
-        : t("modelHub.audioCleanup.installing", {
-            defaultValue: "Setting up DeepFilterNet… (one-time)",
-          }),
+        : isCancelling
+          ? t("modelHub.audioCleanup.cancelling", {
+              defaultValue: "Cancelling DeepFilterNet setup…",
+            })
+          : t("modelHub.audioCleanup.installing", {
+              defaultValue: "Setting up DeepFilterNet… (one-time)",
+            }),
       indeterminate: true,
+      cancelling: isCancelling,
+      onCancel:
+        isDeepFilter && isInstalling
+          ? () => void cancelRuntimeSetup()
+          : undefined,
+      cancelLabel: t("modelHub.audioCleanup.cancelSetup", {
+        defaultValue: "Cancel DeepFilterNet setup",
+      }),
       onRetry: () => void installRuntime(),
       onDismiss: () => setInstallError(null),
     });
 
     let trailing: HubTrailing | undefined;
-    if (needsSetup && !isInstalling) {
+    if (needsSetup && !isInstalling && !isCancelling) {
       trailing = {
         kind: "acquire",
         onClick: () => void installRuntime(),
@@ -344,7 +379,7 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
         ];
 
     const onClick = (() => {
-      if (isChecking || isInstalling) return undefined;
+      if (isChecking || isInstalling || isCancelling) return undefined;
       if (needsSetup) return () => void installRuntime();
       if (!isActive) return () => selectModel(model.id);
       return undefined;

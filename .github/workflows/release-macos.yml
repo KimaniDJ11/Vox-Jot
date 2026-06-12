@@ -1,0 +1,105 @@
+name: "Release macOS"
+
+on: workflow_dispatch
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.create-release.outputs.result }}
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Audit distribution readiness
+        run: bun scripts/audit-distribution-readiness.ts
+
+      - name: Get version from tauri.conf.json
+        id: get-version
+        shell: bash
+        run: |
+          VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | cut -d'"' -f4)
+          echo "Application version from tauri.conf.json: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create Draft Release
+        id: create-release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const tagName = `v${{ steps.get-version.outputs.version }}`
+            try {
+              const { data: existing } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tagName
+              })
+              if (!existing.draft) {
+                throw new Error(`Release ${tagName} already exists and is not a draft.`)
+              }
+              return existing.id
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error
+              }
+            }
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tagName,
+              name: tagName,
+              draft: true,
+              prerelease: false,
+              generate_release_notes: true
+            })
+            return data.id
+
+  publish-tauri-macos:
+    permissions:
+      contents: write
+    needs: create-release
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: "macos-26"
+      target: "aarch64-apple-darwin"
+      build-args: "--target aarch64-apple-darwin"
+      sign-binaries: true
+      asset-prefix: "vox-jot"
+      upload-artifacts: false
+      release-id: ${{ needs.create-release.outputs.release-id }}
+    secrets: inherit
+
+  publish-hf-mirror:
+    name: Mirror signed macOS artifacts to Hugging Face
+    needs: [create-release, publish-tauri-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Hugging Face CLI
+        run: pip install --quiet "huggingface_hub[cli]>=0.24"
+
+      - name: Publish macOS release to Hugging Face
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          HF_REPO: IrieDinamik/vox-jot-releases
+        run: bun scripts/publish-release-to-hf.ts ${{ needs.create-release.outputs.version }}

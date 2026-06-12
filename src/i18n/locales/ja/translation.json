@@ -1081,7 +1081,8 @@
         "next": "古い音声入力",
         "dictionaryAdded": "「{{original}}」→「{{corrected}}」を辞書に保存しました",
         "saveError": "変更を保存できませんでした: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "音声を保存しました — 文字起こしは完了しませんでした"
     },
     "debug": {
       "title": "デバッグ",

@@ -1081,7 +1081,8 @@
         "next": "Dictado más antiguo",
         "dictionaryAdded": "Se guardó “{{original}}” → “{{corrected}}” en tu diccionario",
         "saveError": "No se pudo guardar el cambio: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Audio guardado: la transcripción no se completó"
     },
     "debug": {
       "title": "Depurar",

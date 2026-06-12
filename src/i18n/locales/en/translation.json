@@ -1850,7 +1850,8 @@
         "next": "Older dictation",
         "dictionaryAdded": "Saved “{{original}}” → “{{corrected}}” to your dictionary",
         "saveError": "Could not save your change: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Audio saved — transcription did not complete"
     },
     "debug": {
       "title": "Debug",

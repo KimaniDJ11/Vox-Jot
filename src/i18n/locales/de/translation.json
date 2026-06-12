@@ -1081,7 +1081,8 @@
         "next": "Älteres Diktat",
         "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ in deinem Wörterbuch gespeichert",
         "saveError": "Änderung konnte nicht gespeichert werden: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Audio gespeichert — Transkription nicht abgeschlossen"
     },
     "debug": {
       "title": "Debuggen",

@@ -1081,7 +1081,8 @@
         "next": "Starsze dyktowanie",
         "dictionaryAdded": "Zapisano „{{original}}” → „{{corrected}}” w Twoim słowniku",
         "saveError": "Nie udało się zapisać zmiany: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Zapisano audio — transkrypcja nie została ukończona"
     },
     "debug": {
       "title": "Debuguj",

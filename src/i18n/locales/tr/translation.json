@@ -1081,7 +1081,8 @@
         "next": "Daha eski dikte",
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” sözlüğünüze kaydedildi",
         "saveError": "Değişiklik kaydedilemedi: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Ses kaydedildi — transkripsiyon tamamlanamadı"
     },
     "debug": {
       "title": "Hata ayıklama",

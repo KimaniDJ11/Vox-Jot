@@ -1081,7 +1081,8 @@
         "next": "Ditado mais antigo",
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvo no seu dicionário",
         "saveError": "Não foi possível salvar a alteração: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Áudio salvo — a transcrição não foi concluída"
     },
     "debug": {
       "title": "Depurar",

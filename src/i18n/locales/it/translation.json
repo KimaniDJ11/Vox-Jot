@@ -1081,7 +1081,8 @@
         "next": "Dettatura meno recente",
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvato nel tuo dizionario",
         "saveError": "Impossibile salvare la modifica: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Audio salvato — trascrizione non completata"
     },
     "debug": {
       "title": "Debug",

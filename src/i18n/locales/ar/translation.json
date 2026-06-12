@@ -948,7 +948,8 @@
         "next": "إملاء أقدم",
         "dictionaryAdded": "تم حفظ «{{original}}» → «{{corrected}}» في قاموسك",
         "saveError": "تعذّر حفظ التغيير: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "تم حفظ الصوت — لم يكتمل التفريغ النصي"
     },
     "debug": {
       "title": "تصحيح",

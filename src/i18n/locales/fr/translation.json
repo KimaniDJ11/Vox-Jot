@@ -1081,7 +1081,8 @@
         "next": "Dictée plus ancienne",
         "dictionaryAdded": "« {{original}} » → « {{corrected}} » enregistré dans votre dictionnaire",
         "saveError": "Impossible d’enregistrer la modification : {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Audio enregistré — la transcription n'a pas abouti"
     },
     "debug": {
       "title": "Débogage",

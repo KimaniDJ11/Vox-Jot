@@ -1081,7 +1081,8 @@
         "next": "较旧的听写",
         "dictionaryAdded": "已将“{{original}}”→“{{corrected}}”保存到你的词典",
         "saveError": "无法保存你的更改：{{error}}"
-      }
+      },
+      "audioOnlyEntry": "已保存音频 — 转写未完成"
     },
     "debug": {
       "title": "调试",

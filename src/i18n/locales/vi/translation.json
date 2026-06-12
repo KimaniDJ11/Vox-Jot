@@ -1081,7 +1081,8 @@
         "next": "Bản đọc cũ hơn",
         "dictionaryAdded": "Đã lưu “{{original}}” → “{{corrected}}” vào từ điển của bạn",
         "saveError": "Không thể lưu thay đổi của bạn: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Đã lưu âm thanh — phiên âm chưa hoàn tất"
     },
     "debug": {
       "title": "Gỡ lỗi",

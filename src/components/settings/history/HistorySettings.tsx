@@ -347,10 +347,16 @@ export const HistorySettings: React.FC = () => {
             <div className="space-y-3">
               {group.entries.map((entry) => {
                 const fallbackText = entry.transcription_text;
+                // Entries saved after a transcription failure carry audio but
+                // no text; label them so the row isn't a blank mystery.
                 const displayText =
                   entry.pasted_text?.trim() ||
                   entry.post_processed_text?.trim() ||
-                  fallbackText;
+                  fallbackText.trim() ||
+                  t("settings.history.audioOnlyEntry", {
+                    defaultValue:
+                      "Audio saved — transcription did not complete",
+                  });
 
                 return (
                   <HistoryEntryComponent

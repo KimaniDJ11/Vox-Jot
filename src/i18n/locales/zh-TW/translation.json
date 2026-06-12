@@ -1081,7 +1081,8 @@
         "next": "較舊的聽寫",
         "dictionaryAdded": "已將「{{original}}」→「{{corrected}}」儲存到你的字典",
         "saveError": "無法儲存你的變更：{{error}}"
-      }
+      },
+      "audioOnlyEntry": "已儲存音訊 — 轉錄未完成"
     },
     "debug": {
       "title": "偵錯",

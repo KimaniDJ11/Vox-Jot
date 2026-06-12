@@ -1081,7 +1081,8 @@
         "next": "Starší diktát",
         "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ uloženo do vašeho slovníku",
         "saveError": "Změnu se nepodařilo uložit: {{error}}"
-      }
+      },
+      "audioOnlyEntry": "Zvuk uložen — přepis nebyl dokončen"
     },
     "debug": {
       "title": "Ladit",

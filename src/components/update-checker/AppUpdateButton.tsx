@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import { Download, LoaderCircle, RotateCcw, X } from "lucide-react";
@@ -15,14 +14,11 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { useSettings } from "@/hooks/useSettings";
-import {
-  checkForCustomUpdate,
-  installUpdate,
-  type CustomUpdateResult,
-} from "@/lib/utils/customUpdateChecker";
+import { installUpdate } from "@/lib/utils/customUpdateChecker";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import { isMacAppStoreBuild } from "@/lib/distribution";
 import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
+import { useUpdateStore } from "@/stores/updateStore";
 
 const BACKGROUND_CHECK_DELAY_MS = 2_500;
 const BACKGROUND_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1_000;
@@ -56,13 +52,14 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
 }) => {
   const { t } = useTranslation();
   const { settings, isLoading } = useSettings();
-  const [updateInfo, setUpdateInfo] = useState<CustomUpdateResult | null>(null);
-  const [checking, setChecking] = useState(false);
+  const updateInfo = useUpdateStore((store) => store.updateInfo);
+  const checking = useUpdateStore((store) => store.isChecking);
+  const checkForUpdates = useUpdateStore((store) => store.checkForUpdates);
+  const clearUpdate = useUpdateStore((store) => store.clearUpdate);
   const [modalOpen, setModalOpen] = useState(false);
   const [phase, setPhase] = useState<InstallPhase>("idle");
   const [progress, setProgress] = useState<ProgressState>({ downloaded: 0 });
   const [installError, setInstallError] = useState<string | null>(null);
-  const checkingRef = useRef(false);
   const installStartedRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -73,14 +70,10 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
 
   const runCheck = useCallback(
     async (manual = false) => {
-      if (!updateChecksEnabled || checkingRef.current) return;
-      checkingRef.current = true;
-      setChecking(true);
+      if (!updateChecksEnabled) return;
 
       try {
-        const currentVersion = await getVersion();
-        const result = await checkForCustomUpdate(currentVersion);
-        setUpdateInfo(result.available ? result : null);
+        const result = await checkForUpdates();
         if (manual && !result.available) {
           toast.success(
             t("updates.noUpdateAvailable", {
@@ -100,17 +93,14 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
             },
           );
         }
-      } finally {
-        checkingRef.current = false;
-        setChecking(false);
       }
     },
-    [t, updateChecksEnabled],
+    [checkForUpdates, t, updateChecksEnabled],
   );
 
   useEffect(() => {
     if (!updateChecksEnabled) {
-      setUpdateInfo(null);
+      clearUpdate();
       return;
     }
 
@@ -130,7 +120,7 @@ const AppUpdateButton: React.FC<{ className?: string }> = ({
       window.clearInterval(interval);
       unlisten.then((fn) => fn());
     };
-  }, [runCheck, updateChecksEnabled]);
+  }, [clearUpdate, runCheck, updateChecksEnabled]);
 
   const percent = useMemo(() => progressPercent(progress), [progress]);
 

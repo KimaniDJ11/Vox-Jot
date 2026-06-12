@@ -1617,9 +1617,10 @@ input[type="range"]:disabled::-moz-range-thumb {
 
   .app-macos-titlebar-overlay {
     --macos-sidebar-strip-width: 240px;
+    --macos-leading-controls-width: 5rem;
     --macos-traffic-shim-width: min(
       calc(env(titlebar-area-x, 68px) + 20px),
-      calc(var(--macos-sidebar-strip-width) - 40px)
+      calc(var(--macos-sidebar-strip-width) - var(--macos-leading-controls-width))
     );
     position: fixed;
     top: 0;
@@ -1644,7 +1645,7 @@ input[type="range"]:disabled::-moz-range-thumb {
       120px
     );
     --macos-sidebar-strip-width: calc(
-      var(--macos-traffic-shim-width) + 2.75rem
+      var(--macos-traffic-shim-width) + var(--macos-leading-controls-width)
     );
     /* Match .main-content — no sidebar column, so titlebar reads as one with the editor */
     background: var(--collapsed-titlebar-background);
@@ -1686,7 +1687,7 @@ input[type="range"]:disabled::-moz-range-thumb {
   .shell.shell--sidebar-collapsed
     .app-macos-titlebar-overlay.app-macos-titlebar-overlay--fullscreen {
     --macos-traffic-shim-width: 0px;
-    --macos-sidebar-strip-width: 2.75rem;
+    --macos-sidebar-strip-width: var(--macos-leading-controls-width);
   }
 
   .shell.shell--sidebar-collapsed

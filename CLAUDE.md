@@ -99,29 +99,21 @@ All user-facing strings must use i18next translations. ESLint enforces this (no 
 1. Add key to `src/i18n/locales/en/translation.json`
 2. Use in component: `const { t } = useTranslation(); t('key.path')`
 
-**Product vocabulary (user-facing):** Use **Phrase keys** (sidebar + settings; not “Snippets”), **Write profiles** (sidebar + settings; app-aware tone; not “Flow Styles”), **Labs** (experimental settings), **Privacy & data** (data/privacy section). Tray menu labels are generated from `translation.json` at build time (`src-tauri/build.rs`). To re-sync non-English locales after large English copy changes, adjust and run `scripts/sync_differentiated_naming_i18n.py` as a starting point, then run `bun run check:translations`.
+**Product vocabulary (user-facing):** Use **Phrase keys** (sidebar + settings; not “Snippets”), **Dictation modes** (the Refine sidebar label for the write-rules/app-aware-tone feature; code still calls these write rules/profiles — never “Flow Styles”), **Labs** (experimental settings), **Privacy & data** (data/privacy section). Tray menu labels are generated from `translation.json` at build time (`src-tauri/build.rs`). To re-sync non-English locales after large English copy changes, adjust and run `scripts/sync_differentiated_naming_i18n.py` as a starting point, then run `bun run check:translations`.
 
-**UI navigation structure — use these labels in code names, not “General” or “Speech Output”:**
+**UI navigation structure (verified against the running app 2026-06-12) — section components live in `src/components/app-sections/`:**
 
-| Top Nav      | Sidebar Label                                                  | Code Component (AppSections.tsx)  | Panel (ListenSections.tsx)  |
-| ------------ | -------------------------------------------------------------- | --------------------------------- | --------------------------- |
-| **Dictate**  | Recent History, Corrections, File Transcription, Speech Models | `DictateHistorySection`, etc.     | —                           |
-| **Refine**   | Phrase Keys, Write Profiles, Translation, Refine Models        | `RefinePhraseKeysSection`, etc.   | —                           |
-| **Listen**   | My Voices                                                      | `ListenMyVoicesSection`           | `MyVoicesSection`           |
-| **Listen**   | Sound & Tuning                                                 | `ListenSoundTuningSection`        | `SoundAndTuningSection`     |
-| **Listen**   | Engine Library                                                 | `ListenEngineLibrarySection`      | `EngineLibrarySection`      |
-| **Listen**   | Voice Cloning                                                  | `ListenVoiceCloningSection`       | `ListenVoiceCloningSection` |
-| **Listen**   | Auto-Readback                                                  | `ListenAutoReadbackSection`       | `AutoReadbackSection`       |
-| **Listen**   | Output                                                         | `ListenOutputSection`             | `ListenOutputSection`       |
-| **Settings** | App & Dictation                                                | `GeneralAppSettingsSection`       | —                           |
-| **Settings** | Shortcuts                                                      | `ShortcutsSettingsSection`        | —                           |
-| **Settings** | Recording & Devices                                            | `RecordingDevicesSettingsSection` | —                           |
-| **Settings** | Output & Paste                                                 | `OutputPasteSettingsSection`      | —                           |
-| **Settings** | Models & AI                                                    | `AISetupSettingsSection`          | —                           |
-| **Settings** | Corrections                                                    | `CorrectionsSection`              | —                           |
-| **Settings** | Privacy & Storage                                              | `PrivacyStorageSettingsSection`   | —                           |
-| **Settings** | Diagnostics                                                    | `DiagnosticsSettingsSection`      | —                           |
-| **Settings** | About Vox Jot                                                  | `AboutSection`                    | —                           |
+| Top Nav      | Sidebar Label                                                | Code Component (`app-sections/`)                                                                          |
+| ------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **Dictate**  | Home, Dictionary, File Transcription, Reader, Enhance Audio  | `DictateHistorySection`, `CorrectionsSection`, `FileTranscriptionSection`, `ReaderSection`, `EnhanceAudioSection` (`dictate.tsx`) |
+| **Refine**   | Dictation Modes, Phrase Keys, Translation                    | `RefineProfilesSection`, `RefinePhraseKeysSection`, `RefineTranslationSection` (`refineCore.tsx`)            |
+| **Listen**   | Studio, Voice Design, Voice Cloning, Voice Changer, Generated Audio | `StoryStudioAppSection`, `ListenVoiceDesignSection`, `ListenVoiceCloningSection`, `ListenVoiceChangerSection`, `StoryAudioHistoryAppSection` (`listen.tsx`) |
+| **(bottom)** | Model Hub                                                    | Model Hub overlay (`src/components/model-hub/`) — all model categories (STT, Speech Analysis, LLM, TTS, Creative Audio, Audio Cleanup, Screen OCR) |
+| **Settings** | Basics: App & Dictation, Shortcuts, Recording & Devices, Output & Paste | `GeneralAppSettingsSection`, `ShortcutsSettingsSection`, `RecordingDevicesSettingsSection`, `OutputPasteSettingsSection` (`settings.tsx`) |
+| **Settings** | Intelligence: Corrections, Models & AI, Testing, Screen Context | `CorrectionsSettingsSection`, `AISetupSettingsSection`, Testing leaderboard (`app-sections/testing/`), Screen Context |
+| **Settings** | System: Privacy & Storage, Legal & Model Terms, Automation & Agents, Diagnostics, About Vox Jot | `PrivacyStorageSettingsSection`, `LegalModelTermsSection`, `AutomationAgentsSettingsSection`, `DiagnosticsSettingsSection`, `AboutSection` |
+
+When a label here disagrees with the running app or the exports in `src/components/app-sections/`, trust the code and update this table.
 
 **File structure:**
 

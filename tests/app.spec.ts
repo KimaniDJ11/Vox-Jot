@@ -427,9 +427,18 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return state.settings;
           case "check_custom_sounds":
             return { start: false, stop: false };
+          case "get_runtime_memory_status":
+            return {
+              app_rss_mb: 128,
+              sidecar_rss_mb: null,
+              sidecar_running: false,
+            };
           case "get_available_microphones":
+            return [];
           case "get_available_output_devices":
             return [];
+          case "get_transcription_model_status":
+            return (state.settings.selected_model as string) || null;
           case "get_model_platform_overview":
             return {
               stt: { providers: [], models: [] },
@@ -437,6 +446,42 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
               tts: { providers: [], models: [] },
               selection: {},
             };
+          case "get_refine_model_catalog":
+            return { providers: [], models: [] };
+          case "get_active_refine_installs":
+            return [];
+          case "get_ocr_model_catalog":
+            return { install_root: "/tmp/vox-jot-test-ocr", models: [] };
+          case "get_creative_audio_model_catalog":
+            return { install_root: "/tmp/vox-jot-test-audio", models: [] };
+          case "get_screen_context_diagnostics":
+            return {
+              status: "disabled",
+              has_screen_permission: true,
+              cache_size: 0,
+              latest_capture_at_ms: null,
+              latest_context_age_ms: null,
+              latest_display_id: null,
+              latest_source: null,
+              latest_preview_text: null,
+              last_error: null,
+            };
+          case "get_app_dir_path":
+            return "/tmp/vox-jot-app";
+          case "get_log_dir_path":
+            return "/tmp/vox-jot-logs";
+          case "get_http_api_status":
+            return {
+              enabled: false,
+              port: 8978,
+              token: "",
+              token_available: true,
+            };
+          case "list_story_audio":
+          case "list_story_render_jobs":
+            return [];
+          case "denoise_runtime_status":
+            return { installed: false };
           case "get_available_tts_voices":
           case "refresh_tts_voices":
           case "get_available_tts_packs":
@@ -634,6 +679,148 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
 };
 
 test.describe("Vox Jot app", () => {
+  test("renders every left sidebar section and the model hub launcher", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      settings: {
+        debug_mode: true,
+        experimental_enabled: true,
+      },
+    });
+
+    const main = page.locator("main");
+    const sidebar = page.getByRole("navigation", {
+      name: "Section navigation",
+    });
+    const modelHubCommandCount = () =>
+      page.evaluate(
+        () =>
+          (
+            (
+              window as Window & {
+                __voxJotCommandCalls?: Array<{
+                  args: Record<string, unknown>;
+                  cmd: string;
+                }>;
+              }
+            ).__voxJotCommandCalls ?? []
+          ).filter(
+            (call) =>
+              call.cmd === "show_detail_view" &&
+              call.args.section === "model-hub",
+          ).length,
+      );
+    const sectionGroups = [
+      {
+        root: "Dictate",
+        rootRole: "tab" as const,
+        sections: [
+          { label: "Home", evidence: "Words" },
+          { label: "Dictionary", evidence: "No dictionary entries yet." },
+          {
+            label: "File Transcription",
+            evidence: "Drop audio or video to transcribe",
+          },
+          { label: "Reader", evidence: "No documents yet." },
+          {
+            label: "Enhance Audio",
+            evidence: "Drop audio or video to remove background noise",
+          },
+        ],
+      },
+      {
+        root: "Refine",
+        rootRole: "tab" as const,
+        sections: [
+          { label: "Dictation Modes", evidence: "New mode" },
+          { label: "Phrase Keys", evidence: "No phrase keys yet." },
+          { label: "Translation", evidence: "Target Language" },
+        ],
+      },
+      {
+        root: "Listen",
+        rootRole: "tab" as const,
+        sections: [
+          { label: "Studio", evidence: "Save a voice before building a story" },
+          { label: "Voice Design", evidence: "Open Voice Models" },
+          { label: "Voice Cloning", evidence: "Choose a clone-capable model" },
+          { label: "Voice Changer", evidence: "Choose WAV" },
+          { label: "Generated Audio", evidence: "Generated Audio" },
+        ],
+      },
+      {
+        root: "Settings",
+        rootRole: "button" as const,
+        sections: [
+          { label: "App & Dictation", evidence: "Settings Coach" },
+          { label: "Shortcuts", evidence: "Quick keys" },
+          { label: "Recording & Devices", evidence: "Microphone input" },
+          { label: "Output & Paste", evidence: "Dictation readiness" },
+          { label: "Corrections", evidence: "Apply dictionary" },
+          { label: "Models & AI", evidence: "Provider routing" },
+          { label: "Testing", evidence: "Live STT" },
+          { label: "Screen Context", evidence: "Capture mode" },
+          { label: "Privacy & Storage", evidence: "Assistive access" },
+          { label: "Legal & Model Terms", evidence: "Use terms checklist" },
+          { label: "Automation & Agents", evidence: "Local API" },
+          { label: "Diagnostics", evidence: "Feature health" },
+          { label: "About Vox Jot", evidence: "Vox Jot vs. cloud dictation" },
+        ],
+      },
+    ];
+
+    for (const group of sectionGroups) {
+      await page
+        .getByRole(group.rootRole, { name: group.root, exact: true })
+        .click();
+
+      for (const section of group.sections) {
+        const navButton = sidebar.getByRole("button", {
+          name: section.label,
+          exact: true,
+        });
+        await expect(navButton).toBeVisible();
+        await navButton.click();
+        await expect(navButton).toHaveAttribute("aria-current", "page");
+        await expect(main).not.toContainText("could not load");
+        await expect(main).toContainText(section.evidence);
+
+        if (section.label === "Voice Design") {
+          const beforeVoiceModelsClick = await modelHubCommandCount();
+          await main
+            .getByRole("button", { name: "Open Voice Models", exact: true })
+            .click();
+          await expect
+            .poll(modelHubCommandCount)
+            .toBeGreaterThan(beforeVoiceModelsClick);
+          await expect
+            .poll(() =>
+              page.evaluate(() =>
+                window.localStorage.getItem("vox-jot-model-hub-tab"),
+              ),
+            )
+            .toBe("tts");
+        }
+      }
+    }
+
+    await page.getByRole("tab", { name: "Dictate", exact: true }).click();
+    const beforeFooterModelHubClick = await modelHubCommandCount();
+    await page.getByRole("button", { name: "Model Hub", exact: true }).click();
+
+    await expect
+      .poll(modelHubCommandCount)
+      .toBeGreaterThan(beforeFooterModelHubClick);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.localStorage.getItem("vox-jot-model-hub-tab"),
+        ),
+      )
+      .toBe(null);
+  });
+
   test("shows the lean onboarding steps and transitions into model setup", async ({
     page,
   }) => {

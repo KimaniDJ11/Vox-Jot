@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
+import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import {
   createTtsVoicePreset,
   type TtsVoicePreset,
@@ -543,7 +544,86 @@ export const VoiceArchitectSection: React.FC<{
         modelProviderRankById.get(model.provider_id),
     },
   );
-  if (!speech.settings || !speech.activePreset) return null;
+  const contentSpacingClassName = showTitle
+    ? "space-y-7 px-4 py-3"
+    : "space-y-7";
+  const sectionTitle = t("appSections.nav.listen.voiceDesign", {
+    defaultValue: "Voice Design",
+  });
+  const renderSection = (sectionContent: React.ReactNode) => {
+    if (!showTitle) {
+      return <>{sectionContent}</>;
+    }
+
+    return <SettingsGroup title={sectionTitle}>{sectionContent}</SettingsGroup>;
+  };
+
+  if (!speech.settings) return null;
+
+  if (!speech.activePreset || availableDraftModels.length === 0) {
+    const emptyStateTitle = speech.loadingPlatform
+      ? t("listen.voiceDesign.loadingSetupTitle", {
+          defaultValue: "Checking voice models",
+        })
+      : t("listen.voiceDesign.setupTitle", {
+          defaultValue: "Set up a voice model first",
+        });
+    const emptyStateDescription = speech.loadingPlatform
+      ? t("listen.voiceDesign.loadingSetupDetail", {
+          defaultValue:
+            "Vox Jot is loading the voice catalog and saved voices.",
+        })
+      : t("listen.voiceDesign.setupDetail", {
+          defaultValue:
+            "Voice Design needs a runnable TTS model and a saved voice before tuning, cloning, or previewing voices.",
+        });
+    const emptyContent = (
+      <div className={contentSpacingClassName}>
+        {speech.statusMessage ? (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
+            {speech.statusMessage}
+          </div>
+        ) : null}
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-sm font-semibold text-[var(--text)]">
+                {emptyStateTitle}
+              </h3>
+              <p className="max-w-[56ch] text-sm leading-6 text-[var(--muted)]">
+                {emptyStateDescription}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void speech.refreshAll()}
+                disabled={speech.loadingPlatform || speech.loadingPresets}
+              >
+                {t("common.refresh", { defaultValue: "Refresh" })}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => void openModelHub("tts")}
+              >
+                <Layers className="h-3.5 w-3.5" aria-hidden />
+                {t("listen.voiceDesign.openVoiceModels", {
+                  defaultValue: "Open Voice Models",
+                })}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    return renderSection(emptyContent);
+  }
+
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
     const providerOrModelChanged =
@@ -740,10 +820,6 @@ export const VoiceArchitectSection: React.FC<{
       </div>
     </>
   );
-
-  const contentSpacingClassName = showTitle
-    ? "space-y-7 px-4 py-3"
-    : "space-y-7";
 
   const saveTunedVoiceDialog = createPortal(
     <AnimatePresence>
@@ -1166,13 +1242,5 @@ export const VoiceArchitectSection: React.FC<{
     return content;
   }
 
-  return (
-    <SettingsGroup
-      title={t("appSections.nav.listen.voiceDesign", {
-        defaultValue: "Voice Design",
-      })}
-    >
-      {content}
-    </SettingsGroup>
-  );
+  return renderSection(content);
 };

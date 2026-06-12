@@ -665,6 +665,12 @@ fn is_metal_backend_load_failure(_error: &str) -> bool {
 
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
+    /// Bumped whenever `load_model`/`unload_model` install or clear the
+    /// engine. Partial workers capture it when they take the engine out and
+    /// drop a stale engine instead of restoring it when it has advanced —
+    /// otherwise a put-back after `unload_model` silently resurrects the
+    /// model that the user (or the idle watcher) just unloaded.
+    engine_epoch: Arc<AtomicU64>,
     transcribe_lock: Arc<Mutex<()>>,
     lifecycle_lock: Arc<Mutex<()>>,
     model_manager: Arc<ModelManager>,
@@ -688,6 +694,7 @@ impl Clone for TranscriptionManager {
     fn clone(&self) -> Self {
         Self {
             engine: Arc::clone(&self.engine),
+            engine_epoch: Arc::clone(&self.engine_epoch),
             transcribe_lock: Arc::clone(&self.transcribe_lock),
             lifecycle_lock: Arc::clone(&self.lifecycle_lock),
             model_manager: Arc::clone(&self.model_manager),
@@ -713,6 +720,7 @@ impl TranscriptionManager {
     pub fn new(app_handle: &AppHandle, model_manager: Arc<ModelManager>) -> Result<Self> {
         let manager = Self {
             engine: Arc::new(Mutex::new(None)),
+            engine_epoch: Arc::new(AtomicU64::new(0)),
             transcribe_lock: Arc::new(Mutex::new(())),
             lifecycle_lock: Arc::new(Mutex::new(())),
             model_manager,
@@ -898,12 +906,19 @@ impl TranscriptionManager {
 
     /// Return an engine a partial worker took out of the shared slot.
     ///
-    /// Partial inference runs without the lifecycle lock, so `load_model` on
-    /// another thread may have installed a replacement engine while the worker
-    /// held the old one. In that case the stale engine is dropped instead of
-    /// clobbering the replacement (which would both leak the new engine and
-    /// keep transcribing with a model the user switched away from).
-    fn restore_partial_engine(&self, engine: LoadedEngine) {
+    /// Partial inference runs without the lifecycle lock, so `load_model` or
+    /// `unload_model` on another thread may have replaced or cleared the
+    /// engine while the worker held the old one. The engine epoch captured at
+    /// take time detects both: restoring a stale engine would either clobber
+    /// a freshly loaded replacement or silently resurrect a model the user
+    /// (or the idle watcher) just unloaded.
+    fn restore_partial_engine(&self, engine: LoadedEngine, taken_at_epoch: u64) {
+        if self.engine_epoch.load(Ordering::SeqCst) != taken_at_epoch {
+            debug!(
+                "Discarding stale engine after partial inference; the engine was replaced or unloaded mid-flight"
+            );
+            return;
+        }
         let mut engine_guard = self.lock_engine();
         if engine_guard.is_none() {
             *engine_guard = Some(engine);
@@ -1373,17 +1388,18 @@ impl TranscriptionManager {
                     break;
                 };
                 drop(engine_guard);
+                let taken_at_epoch = self.engine_epoch.load(Ordering::SeqCst);
 
                 let inference_result =
                     self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings);
 
                 match inference_result {
                     PartialTranscriptionOutcome::Success(text) => {
-                        self.restore_partial_engine(engine);
+                        self.restore_partial_engine(engine, taken_at_epoch);
                         text
                     }
                     PartialTranscriptionOutcome::Error(err) => {
-                        self.restore_partial_engine(engine);
+                        self.restore_partial_engine(engine, taken_at_epoch);
                         warn!(
                             "Partial transcription failed for binding {}: {}",
                             binding_id, err
@@ -1548,6 +1564,7 @@ impl TranscriptionManager {
             let mut engine = self.lock_engine();
             *engine = None; // Drop the engine to free memory
         }
+        self.engine_epoch.fetch_add(1, Ordering::SeqCst);
         {
             let mut current_model = self
                 .current_model_id
@@ -1651,6 +1668,7 @@ impl TranscriptionManager {
             let mut engine = self.lock_engine();
             *engine = Some(loaded_engine);
         }
+        self.engine_epoch.fetch_add(1, Ordering::SeqCst);
         {
             let mut current_model = self
                 .current_model_id

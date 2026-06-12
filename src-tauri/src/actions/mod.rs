@@ -1673,7 +1673,41 @@ impl ShortcutAction for TranscribeAction {
                         }
                     }
                     Err(err) => {
-                        debug!("Global Shortcut Transcription error: {}", err);
+                        error!("Dictation transcription failed: {}", err);
+                        // A deliberate cancel also surfaces here; only treat
+                        // genuine failures as recoverable losses.
+                        if !dictation_run_cancelled(
+                            &tm,
+                            processing_generation,
+                            "after transcription failure",
+                        ) {
+                            // Silently discarding the user's speech is the worst
+                            // outcome for a dictation app: tell them what
+                            // happened and keep the captured audio recoverable
+                            // from Recent History.
+                            let _ = ah.emit(
+                                "recording-error",
+                                format!(
+                                    "Transcription failed: {err}. Your recording was saved to Recent History."
+                                ),
+                            );
+                            spawn_history_save(
+                                &ah,
+                                Arc::clone(&hm),
+                                DeferredHistorySave {
+                                    audio_samples: samples_for_history,
+                                    transcription_text: String::new(),
+                                    post_processed_text: None,
+                                    post_process_prompt: None,
+                                    dictionary_hits: Vec::new(),
+                                    pasted_text: None,
+                                    translation_context: TranslationHistoryContext::default(),
+                                    tts_context: TtsHistoryContext::default(),
+                                    screen_context_metadata: None,
+                                    field_snapshot_app_id: None,
+                                },
+                            );
+                        }
                         utils::hide_recording_overlay(&ah);
                         change_tray_icon(&ah, TrayIconState::Idle);
                     }

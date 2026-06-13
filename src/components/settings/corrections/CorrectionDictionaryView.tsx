@@ -773,7 +773,7 @@ export const CorrectionDictionaryView: React.FC<
           aria-label={searchAriaLabel}
         >
           <Search
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--accent-hover)]"
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 stroke-[2.75] text-[var(--accent-hover)]"
             aria-hidden
           />
           <input
@@ -797,7 +797,7 @@ export const CorrectionDictionaryView: React.FC<
           {searchQuery ? (
             <button
               type="button"
-              className="absolute right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              className="absolute right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--accent-hover)] transition-colors hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75]"
               onClick={() => setSearchQuery("")}
               aria-label={t("settings.corrections.dictionary.search.clear", {
                 defaultValue: "Clear search",
@@ -810,7 +810,7 @@ export const CorrectionDictionaryView: React.FC<
       ) : (
         <button
           type="button"
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
             searchQuery ? "bg-[var(--accent-soft)]" : "bg-transparent"
           }`}
           onClick={() => setSearchExpanded(true)}
@@ -860,7 +860,7 @@ export const CorrectionDictionaryView: React.FC<
         {viewMode === "dictionary" ? (
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60 [&>svg]:stroke-[2.75]"
             onClick={() => void handleImport()}
             disabled={importing}
             aria-label={t("settings.corrections.dictionary.import", {

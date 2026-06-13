@@ -80,7 +80,7 @@ export const SelectControl: React.FC<SelectControlProps> = ({
         ))}
       </select>
       <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center text-[var(--accent-hover)]"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center text-[var(--accent-hover)] [&_svg]:stroke-[2.75]"
         aria-hidden
       >
         {children}

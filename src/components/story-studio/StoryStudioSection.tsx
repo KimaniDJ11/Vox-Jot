@@ -462,7 +462,7 @@ export const StoryStudioSection: React.FC = () => {
     <div ref={soundAnchorRef} className="relative shrink-0">
       <button
         type="button"
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 [&>svg]:stroke-[2.75]"
         onClick={() => {
           if (soundPopoverOpen) {
             setSoundPopoverOpen(false);
@@ -724,7 +724,7 @@ export const StoryStudioSection: React.FC = () => {
         aria-label={t("storyStudio.expressionTags")}
       >
         <Sparkles
-          className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--accent-hover)]"
+          className="pointer-events-none absolute left-3 h-4 w-4 stroke-[2.75] text-[var(--accent-hover)]"
           aria-hidden
         />
         <Input
@@ -759,7 +759,7 @@ export const StoryStudioSection: React.FC = () => {
         {expressionQuery ? (
           <button
             type="button"
-            className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--accent-hover)] transition-colors hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75]"
             onClick={() => setExpressionQuery("")}
             aria-label={t("storyStudio.clearExpressionSearch")}
           >

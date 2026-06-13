@@ -40,9 +40,9 @@ export const Button: React.FC<ButtonProps> = ({
     primary:
       "border-[var(--accent)] bg-[var(--accent)] font-bold text-[var(--accent-foreground)] shadow-[var(--primary-control-highlight)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
-      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px",
+      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px [&>svg]:stroke-[2.75] [&>svg]:text-[var(--accent-hover)]",
     outline:
-      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px",
+      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px [&>svg]:stroke-[2.75] [&>svg]:text-[var(--accent-hover)]",
     secondary:
       "border-[var(--border)] bg-[var(--panel-bg)] font-medium text-[var(--text)] hover:bg-[var(--input)]",
     danger:

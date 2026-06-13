@@ -1046,7 +1046,7 @@ export const VoiceCloningSection: React.FC<{
                   })}
                 >
                   <Search
-                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--accent-hover)]"
+                    className="pointer-events-none absolute left-3 h-4 w-4 stroke-[2.75] text-[var(--accent-hover)]"
                     aria-hidden
                   />
                   <Input
@@ -1071,7 +1071,7 @@ export const VoiceCloningSection: React.FC<{
                   {modelSearchQuery ? (
                     <button
                       type="button"
-                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--accent-hover)] transition-colors hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--accent-hover)] transition-colors hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75]"
                       onClick={() => setModelSearchQuery("")}
                       aria-label={t("listen.createVoices.clearModelSearch", {
                         defaultValue: "Clear model search",

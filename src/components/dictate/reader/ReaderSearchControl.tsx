@@ -45,7 +45,7 @@ export const ReaderSearchControl: React.FC<{
           aria-label={label}
         >
           <Search
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--accent-hover)]"
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 stroke-[2.75] text-[var(--accent-hover)]"
             aria-hidden="true"
           />
           <input
@@ -85,7 +85,7 @@ export const ReaderSearchControl: React.FC<{
           onClick={() => setExpanded(true)}
           aria-label={label}
           title={label}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
             query ? "bg-[var(--accent-soft)]" : "bg-transparent"
           }`}
         >

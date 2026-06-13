@@ -810,8 +810,10 @@ export const CorrectionDictionaryView: React.FC<
       ) : (
         <button
           type="button"
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
-            searchQuery ? "bg-[var(--accent-soft)]" : "bg-transparent"
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
+            searchQuery
+              ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+              : "bg-[var(--panel-bg)] text-[var(--text)]"
           }`}
           onClick={() => setSearchExpanded(true)}
           aria-label={searchAriaLabel}
@@ -865,7 +867,7 @@ export const CorrectionDictionaryView: React.FC<
         {viewMode === "dictionary" ? (
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60 [&>svg]:stroke-[2.75]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] text-[var(--text)] shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60 [&>svg]:stroke-[2.75]"
             onClick={() => void handleImport()}
             disabled={importing}
             aria-label={t("settings.corrections.dictionary.import", {

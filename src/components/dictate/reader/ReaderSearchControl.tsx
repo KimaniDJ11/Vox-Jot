@@ -41,7 +41,7 @@ export const ReaderSearchControl: React.FC<{
     <div ref={containerRef} className="flex justify-end">
       {expanded ? (
         <label
-          className="relative flex h-9 w-[min(18rem,calc(100vw-3rem))] min-w-[11rem] items-center"
+          className="relative flex h-10 w-[min(18rem,calc(100vw-3rem))] min-w-[11rem] items-center"
           aria-label={label}
         >
           <Search
@@ -64,7 +64,7 @@ export const ReaderSearchControl: React.FC<{
               }
             }}
             placeholder={label}
-            className="h-9 w-full rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent py-1 pl-8 pr-8 text-xs font-bold text-[var(--accent-hover)] outline-none placeholder:text-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:border-[var(--accent-hover)] focus:ring-2 focus:ring-[var(--accent-glow)]"
+            className="h-10 w-full rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent py-1 pl-8 pr-8 text-xs font-bold text-[var(--accent-hover)] outline-none placeholder:text-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:border-[var(--accent-hover)] focus:ring-2 focus:ring-[var(--accent-glow)]"
           />
           {query ? (
             <button
@@ -85,8 +85,10 @@ export const ReaderSearchControl: React.FC<{
           onClick={() => setExpanded(true)}
           aria-label={label}
           title={label}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
-            query ? "bg-[var(--accent-soft)]" : "bg-transparent"
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] [&>svg]:stroke-[2.75] ${
+            query
+              ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+              : "bg-[var(--panel-bg)] text-[var(--text)]"
           }`}
         >
           <Search className="h-4 w-4" aria-hidden="true" />

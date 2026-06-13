@@ -1380,7 +1380,7 @@ export const VoiceChangerSection: React.FC<{
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="control"
               size="sm"
               onClick={() => setModelPickerOpen(true)}
               disabled={voiceChangerModels.length === 0 || isRecording}

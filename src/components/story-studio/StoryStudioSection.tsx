@@ -462,7 +462,7 @@ export const StoryStudioSection: React.FC = () => {
     <div ref={soundAnchorRef} className="relative shrink-0">
       <button
         type="button"
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 [&>svg]:stroke-[2.75]"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] text-[var(--accent-hover)] shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 [&>svg]:stroke-[2.75]"
         onClick={() => {
           if (soundPopoverOpen) {
             setSoundPopoverOpen(false);
@@ -897,7 +897,7 @@ export const StoryStudioSection: React.FC = () => {
             <div className="story-studio-toolbar__trailing ms-auto flex shrink-0 justify-end">
               <Button
                 type="button"
-                variant="outline"
+                variant="control"
                 size="sm"
                 onClick={() => void openCreativeAudioModels()}
               >

@@ -2165,7 +2165,7 @@ const WatchedFoldersToolbar: React.FC<{
             {kind !== "reader" ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="control"
                 size="sm"
                 onClick={() => {
                   if (view === "documents") {

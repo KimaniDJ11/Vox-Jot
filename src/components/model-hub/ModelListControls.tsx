@@ -61,10 +61,10 @@ export const SelectControl: React.FC<SelectControlProps> = ({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`h-full w-full appearance-none rounded-full border-[1.5px] px-0 py-1.5 text-xs font-bold text-transparent shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+        className={`h-full w-full appearance-none rounded-full border px-0 py-1.5 text-xs font-bold text-transparent shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
           active
-            ? "border-[var(--accent-hover)] bg-[var(--accent-soft)]"
-            : "border-[var(--accent-hover)] bg-transparent"
+            ? "border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--accent-soft)]"
+            : "border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)]"
         }`}
         aria-label={ariaLabel}
         title={title}

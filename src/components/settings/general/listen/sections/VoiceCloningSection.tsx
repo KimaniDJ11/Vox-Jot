@@ -1317,7 +1317,7 @@ export const VoiceCloningSection: React.FC<{
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="control"
                 size="sm"
                 onClick={() => setModelWindowOpen(true)}
               >

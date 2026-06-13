@@ -294,7 +294,7 @@ export const EnhanceAudioPanel: React.FC = () => {
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="control"
             onClick={openEnhancementModels}
           >
             <Layers className="h-3.5 w-3.5" aria-hidden="true" />

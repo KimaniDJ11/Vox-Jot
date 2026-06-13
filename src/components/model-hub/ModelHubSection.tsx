@@ -332,7 +332,7 @@ const ModelHubSection: React.FC = () => {
                           direction: document.dir === "rtl" ? "rtl" : "ltr",
                         })
                       }
-                      className="relative inline-flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5"
+                      className="relative inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] p-0.5 shadow-[var(--segmented-control-shadow)]"
                     >
                       {tabs.map((tab) => {
                         const isActive = visibleTab === tab.id;
@@ -348,10 +348,10 @@ const ModelHubSection: React.FC = () => {
                             whileTap={{ scale: 0.97 }}
                             transition={press}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`relative isolate whitespace-nowrap rounded-full border border-transparent px-3 py-1.5 text-xs font-medium ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+                            className={`relative isolate whitespace-nowrap rounded-full border border-transparent px-3 py-2 text-xs font-bold ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                               isActive
-                                ? "text-[var(--accent)]"
-                                : "text-[var(--muted)] hover:text-[var(--accent)]"
+                                ? "text-[var(--accent-foreground)]"
+                                : "text-[var(--text)] hover:text-[var(--accent)]"
                             }`}
                           >
                             {isActive && (
@@ -363,7 +363,7 @@ const ModelHubSection: React.FC = () => {
                                   damping: 32,
                                   mass: 0.9,
                                 }}
-                                className="absolute inset-0 rounded-full bg-[var(--accent-soft)]"
+                                className="absolute inset-0 rounded-full bg-[var(--accent)] shadow-[var(--primary-control-highlight)]"
                                 aria-hidden
                               />
                             )}

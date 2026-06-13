@@ -1194,7 +1194,7 @@ export const VoiceArchitectSection: React.FC<{
             ) : null}
             <Button
               type="button"
-              variant="outline"
+              variant="control"
               size="sm"
               onClick={() => setCloneProfileWindowOpen(true)}
               disabled={cloneProfileButtonDisabled}
@@ -1215,7 +1215,7 @@ export const VoiceArchitectSection: React.FC<{
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="control"
               size="sm"
               onClick={() => setModelWindowOpen(true)}
             >

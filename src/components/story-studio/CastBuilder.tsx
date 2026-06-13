@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
@@ -63,11 +63,12 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
           onClick={onAdd}
           disabled={voicePickerDisabled || !hasVoiceChoices}
         >
-          <Plus
-            className="h-4 w-4 text-[var(--accent-hover)]"
-            strokeWidth={3}
+          <span
+            className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
             aria-hidden
-          />
+          >
+            +
+          </span>
           {t("storyStudio.cast.addCharacter")}
         </Button>
       </div>

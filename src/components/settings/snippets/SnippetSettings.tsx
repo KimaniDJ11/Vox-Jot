@@ -16,7 +16,6 @@ import {
   WholeWord,
   Upload,
   FileJson,
-  Plus,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -306,11 +305,12 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           onClick={openAddDialog}
           aria-haspopup="dialog"
         >
-          <Plus
-            className="h-4 w-4 text-[var(--accent-hover)]"
-            strokeWidth={3}
+          <span
+            className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
             aria-hidden
-          />
+          >
+            +
+          </span>
           {t("settings.snippets.list.add")}
         </Button>
         <SegmentedControl
@@ -451,11 +451,12 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
               variant="outline"
               onClick={openAddDialog}
             >
-              <Plus
-                className="h-4 w-4 text-[var(--accent-hover)]"
-                strokeWidth={3}
+              <span
+                className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
                 aria-hidden
-              />
+              >
+                +
+              </span>
               {t("settings.snippets.list.add")}
             </Button>
           </div>

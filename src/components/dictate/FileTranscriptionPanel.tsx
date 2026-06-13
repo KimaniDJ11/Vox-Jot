@@ -33,7 +33,6 @@ import {
   LocateFixed,
   Pause,
   Play,
-  Plus,
   SlidersHorizontal,
   Trash2,
   Upload,
@@ -2049,11 +2048,12 @@ const WatchedFoldersToolbar: React.FC<{
         onClick={handlePrimaryAction}
         disabled={busy}
       >
-        <Plus
-          className="h-4 w-4 text-[var(--accent-hover)]"
-          strokeWidth={3}
+        <span
+          className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
           aria-hidden
-        />
+        >
+          +
+        </span>
         {view === "documents"
           ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
           : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
@@ -4220,11 +4220,12 @@ const WatchedFoldersGroup: React.FC<{
               }}
               disabled={busy}
             >
-              <Plus
-                className="h-4 w-4 text-[var(--accent-hover)]"
-                strokeWidth={3}
+              <span
+                className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
                 aria-hidden
-              />
+              >
+                +
+              </span>
               {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
             </Button>
           </div>

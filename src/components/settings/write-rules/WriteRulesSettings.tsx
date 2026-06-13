@@ -21,7 +21,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AppWindow,
   Palette,
-  Plus,
   SlidersHorizontal,
   WandSparkles,
   Zap,
@@ -654,11 +653,12 @@ export const WriteRulesSettings: React.FC = () => {
             variant="outline"
             onClick={openAddProfileWindow}
           >
-            <Plus
-              className="h-4 w-4 text-[var(--accent-hover)]"
-              strokeWidth={3}
+            <span
+              className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
               aria-hidden
-            />
+            >
+              +
+            </span>
             {t("refine.writeRules.newRule")}
           </Button>
           <SegmentedControl<ViewMode>
@@ -700,11 +700,12 @@ export const WriteRulesSettings: React.FC = () => {
               variant="primary-soft"
               onClick={openAddProfileWindow}
             >
-              <Plus
-                className="h-4 w-4 text-[var(--accent-hover)]"
-                strokeWidth={3}
+              <span
+                className="inline-flex h-4 w-4 items-center justify-center text-[1.15em] font-bold leading-none text-[var(--accent-hover)]"
                 aria-hidden
-              />
+              >
+                +
+              </span>
               {t("settings.styles.createFirstProfile", {
                 defaultValue: createFirstLabel,
               })}

@@ -283,7 +283,11 @@ export const EnhanceAudioPanel: React.FC = () => {
           onClick={pickFile}
           disabled={isRunning}
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          <Plus
+            className="h-4 w-4 text-[var(--accent-hover)]"
+            strokeWidth={3}
+            aria-hidden="true"
+          />
           {t("dictate.enhanceAudio.addFile", { defaultValue: "Add file" })}
         </Button>
         <div className="ml-auto flex items-center gap-2">

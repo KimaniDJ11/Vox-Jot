@@ -2049,7 +2049,11 @@ const WatchedFoldersToolbar: React.FC<{
         onClick={handlePrimaryAction}
         disabled={busy}
       >
-        <Plus className="h-3.5 w-3.5" aria-hidden />
+        <Plus
+          className="h-4 w-4 text-[var(--accent-hover)]"
+          strokeWidth={3}
+          aria-hidden
+        />
         {view === "documents"
           ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
           : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
@@ -4216,7 +4220,11 @@ const WatchedFoldersGroup: React.FC<{
               }}
               disabled={busy}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus
+                className="h-4 w-4 text-[var(--accent-hover)]"
+                strokeWidth={3}
+                aria-hidden
+              />
               {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
             </Button>
           </div>

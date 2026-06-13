@@ -63,7 +63,11 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
           onClick={onAdd}
           disabled={voicePickerDisabled || !hasVoiceChoices}
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
+          <Plus
+            className="h-4 w-4 text-[var(--accent-hover)]"
+            strokeWidth={3}
+            aria-hidden
+          />
           {t("storyStudio.cast.addCharacter")}
         </Button>
       </div>

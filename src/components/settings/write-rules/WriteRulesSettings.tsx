@@ -654,7 +654,11 @@ export const WriteRulesSettings: React.FC = () => {
             variant="outline"
             onClick={openAddProfileWindow}
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
+            <Plus
+              className="h-4 w-4 text-[var(--accent-hover)]"
+              strokeWidth={3}
+              aria-hidden
+            />
             {t("refine.writeRules.newRule")}
           </Button>
           <SegmentedControl<ViewMode>
@@ -696,7 +700,11 @@ export const WriteRulesSettings: React.FC = () => {
               variant="primary-soft"
               onClick={openAddProfileWindow}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus
+                className="h-4 w-4 text-[var(--accent-hover)]"
+                strokeWidth={3}
+                aria-hidden
+              />
               {t("settings.styles.createFirstProfile", {
                 defaultValue: createFirstLabel,
               })}

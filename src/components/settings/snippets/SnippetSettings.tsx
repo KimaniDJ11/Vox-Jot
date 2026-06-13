@@ -306,7 +306,11 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           onClick={openAddDialog}
           aria-haspopup="dialog"
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
+          <Plus
+            className="h-4 w-4 text-[var(--accent-hover)]"
+            strokeWidth={3}
+            aria-hidden
+          />
           {t("settings.snippets.list.add")}
         </Button>
         <SegmentedControl
@@ -447,7 +451,11 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
               variant="outline"
               onClick={openAddDialog}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus
+                className="h-4 w-4 text-[var(--accent-hover)]"
+                strokeWidth={3}
+                aria-hidden
+              />
               {t("settings.snippets.list.add")}
             </Button>
           </div>

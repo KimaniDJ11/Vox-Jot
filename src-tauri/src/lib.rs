@@ -134,6 +134,10 @@ use managers::history::HistoryManager;
 use managers::model::ModelManager;
 use managers::transcription::TranscriptionManager;
 use managers::watch_folders::WatchFolderManager;
+#[cfg(target_os = "macos")]
+use objc::runtime::Object;
+#[cfg(target_os = "macos")]
+use objc::{class, msg_send, sel, sel_impl};
 use post_processing::PreviewManager;
 #[cfg(unix)]
 use signal_hook::consts::{SIGUSR1, SIGUSR2};
@@ -159,6 +163,110 @@ use crate::tts::TtsManager;
 // We use u8 to store the log::LevelFilter as a number
 pub static FILE_LOG_LEVEL: AtomicU8 = AtomicU8::new(log::LevelFilter::Debug as u8);
 static APP_SHUTDOWN_STARTED: AtomicBool = AtomicBool::new(false);
+
+#[derive(Default)]
+struct MainWindowVisibilityIntent {
+    visible: AtomicBool,
+}
+
+fn set_main_window_visibility_intent(app: &AppHandle, visible: bool) {
+    if let Some(intent) = app.try_state::<MainWindowVisibilityIntent>() {
+        intent.visible.store(visible, Ordering::SeqCst);
+    }
+}
+
+fn main_window_visibility_intended(app: &AppHandle) -> bool {
+    app.try_state::<MainWindowVisibilityIntent>()
+        .map(|intent| intent.visible.load(Ordering::SeqCst))
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "macos")]
+fn activate_macos_application() {
+    unsafe {
+        let app: *mut Object = msg_send![class!(NSApplication), sharedApplication];
+        if app.is_null() {
+            log::error!("Failed to get NSApplication while showing main window");
+            return;
+        }
+
+        let _: () = msg_send![app, unhide: std::ptr::null_mut::<Object>()];
+        let _: () = msg_send![app, activateIgnoringOtherApps: true];
+
+        let running_app: *mut Object = msg_send![class!(NSRunningApplication), currentApplication];
+        if running_app.is_null() {
+            log::error!("Failed to get NSRunningApplication while showing main window");
+            return;
+        }
+
+        let _: bool = msg_send![running_app, unhide];
+        let activated: bool = msg_send![running_app, activateWithOptions: 3usize];
+        if !activated {
+            log::debug!("NSRunningApplication did not activate while showing main window");
+        }
+    }
+}
+
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
+fn reopen_macos_application_with_launch_services() {
+    unsafe {
+        let bundle: *mut Object = msg_send![class!(NSBundle), mainBundle];
+        if bundle.is_null() {
+            log::error!("Failed to get NSBundle while reopening main window");
+            return;
+        }
+
+        let bundle_path: *mut Object = msg_send![bundle, bundlePath];
+        if bundle_path.is_null() {
+            log::error!("Failed to get app bundle path while reopening main window");
+            return;
+        }
+
+        let workspace: *mut Object = msg_send![class!(NSWorkspace), sharedWorkspace];
+        if workspace.is_null() {
+            log::error!("Failed to get NSWorkspace while reopening main window");
+            return;
+        }
+
+        let launched: bool = msg_send![workspace, launchApplication: bundle_path];
+        if !launched {
+            log::warn!("LaunchServices did not reopen app while showing main window");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn show_main_window_if_intended_after(app: &AppHandle, delay: std::time::Duration) {
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        let app_for_main = app_handle.clone();
+        if let Err(error) = app_handle.run_on_main_thread(move || {
+            if main_window_visibility_intended(&app_for_main) {
+                show_main_window(&app_for_main);
+            }
+        }) {
+            log::error!("Failed to schedule main window show on main thread: {error}");
+        }
+    });
+}
+
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
+fn reopen_macos_application_if_intended_after(app: &AppHandle, delay: std::time::Duration) {
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        let app_for_main = app_handle.clone();
+        if let Err(error) = app_handle.run_on_main_thread(move || {
+            if main_window_visibility_intended(&app_for_main) {
+                activate_macos_application();
+                reopen_macos_application_with_launch_services();
+            }
+        }) {
+            log::error!("Failed to schedule LaunchServices main window reopen: {error}");
+        }
+    });
+}
 
 fn level_filter_from_u8(value: u8) -> log::LevelFilter {
     match value {
@@ -195,7 +303,21 @@ fn build_console_filter() -> env_filter::Filter {
 }
 
 pub(crate) fn show_main_window(app: &AppHandle) {
+    set_main_window_visibility_intent(app, true);
+
     if let Some(main_window) = app.get_webview_window("main") {
+        log::info!("Showing main window");
+
+        #[cfg(target_os = "macos")]
+        {
+            if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
+                log::error!("Failed to set activation policy to Regular: {}", e);
+            }
+            if let Err(e) = app.show() {
+                log::error!("Failed to show application: {}", e);
+            }
+            activate_macos_application();
+        }
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
         }
@@ -207,9 +329,7 @@ pub(crate) fn show_main_window(app: &AppHandle) {
         }
         #[cfg(target_os = "macos")]
         {
-            if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Regular) {
-                log::error!("Failed to set activation policy to Regular: {}", e);
-            }
+            activate_macos_application();
         }
         return;
     }
@@ -1242,14 +1362,46 @@ pub fn run(cli_args: CliArgs) {
             .plugin(tauri_plugin_updater::Builder::new().build());
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.on_web_content_process_terminate(|webview| {
+            let label = webview.label().to_string();
+            log::warn!("Web content process for webview '{label}' terminated; reloading");
+
+            if let Err(error) = webview.reload() {
+                log::error!(
+                    "Failed to reload webview '{label}' after content process termination: {error}"
+                );
+                return;
+            }
+
+            if label != "main" {
+                return;
+            }
+
+            let app_handle = webview.app_handle().clone();
+            if !main_window_visibility_intended(&app_handle) {
+                return;
+            }
+
+            show_main_window_if_intended_after(&app_handle, std::time::Duration::from_millis(250));
+        });
+    }
+
     builder = builder.manage(cli_args.clone());
 
     builder
         .setup(move |app| {
+            app.manage(MainWindowVisibilityIntent::default());
+
+            let mut settings = get_settings(app.handle());
+            let app_handle = app.handle().clone();
+            let should_hide = settings.start_hidden || cli_args.start_hidden;
+            let tray_available = settings.show_tray_icon && !cli_args.no_tray;
+            let main_window_initially_visible = !should_hide || !tray_available;
+
             // Activate the crash-reporting gate now that settings are reachable.
-            telemetry::set_crash_reporting_enabled(
-                settings::get_settings(app.handle()).enable_crash_reporting,
-            );
+            telemetry::set_crash_reporting_enabled(settings.enable_crash_reporting);
 
             // macOS release builds load every window from the loopback asset
             // server, so it must be running before any webview is created.
@@ -1274,7 +1426,16 @@ pub fn run(cli_args: CliArgs) {
                 .min_inner_size(MAIN_WINDOW_MIN_W, MAIN_WINDOW_MIN_H)
                 .resizable(true)
                 .maximizable(true)
-                .visible(false);
+                .visible({
+                    #[cfg(target_os = "macos")]
+                    {
+                        main_window_initially_visible
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        false
+                    }
+                });
 
             // Enable transparent + vibrancy-ready chrome on macOS and Windows.
             // Overlay lets the webview extend under the traffic lights so the in-app
@@ -1298,6 +1459,19 @@ pub fn run(cli_args: CliArgs) {
             }
 
             let main_window = win_builder.build()?;
+
+            #[cfg(target_os = "macos")]
+            if main_window_initially_visible {
+                set_main_window_visibility_intent(&app_handle, true);
+                if let Err(e) = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular)
+                {
+                    log::error!("Failed to set activation policy to Regular: {}", e);
+                }
+                if let Err(e) = app_handle.show() {
+                    log::error!("Failed to show application: {}", e);
+                }
+                activate_macos_application();
+            }
 
             // Apply OS-level translucency. macOS uses NSVisualEffectView with the
             // Sidebar material; Windows 11 uses Mica. We pass the corner radius to
@@ -1334,8 +1508,6 @@ pub fn run(cli_args: CliArgs) {
 
             let _ = main_window;
 
-            let mut settings = get_settings(app.handle());
-
             // CLI --debug flag overrides debug_mode and log level (runtime-only, not persisted)
             if cli_args.debug {
                 settings.debug_mode = true;
@@ -1346,7 +1518,6 @@ pub fn run(cli_args: CliArgs) {
             let file_log_level: log::Level = tauri_log_level.into();
             // Store the file log level in the atomic for the filter to use
             FILE_LOG_LEVEL.store(file_log_level.to_level_filter() as u8, Ordering::Relaxed);
-            let app_handle = app.handle().clone();
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
             app.manage(PreviewManager::default());
 
@@ -1384,13 +1555,27 @@ pub fn run(cli_args: CliArgs) {
             // Show main window only if not starting hidden.
             // CLI --start-hidden flag overrides the setting.
             // But if permission onboarding is required, always show the window.
-            let should_hide = settings.start_hidden || cli_args.start_hidden;
             let should_force_show = should_force_show_permissions_window(&app_handle);
 
             // If start_hidden but tray is disabled, we must show the window
             // anyway. Without a tray icon, the dock is the only way back in.
-            let tray_available = settings.show_tray_icon && !cli_args.no_tray;
+            log::info!(
+                "Startup main window decision: should_hide={}, should_force_show={}, tray_available={}, settings.start_hidden={}, cli.start_hidden={}, settings.show_tray_icon={}, cli.no_tray={}",
+                should_hide,
+                should_force_show,
+                tray_available,
+                settings.start_hidden,
+                cli_args.start_hidden,
+                settings.show_tray_icon,
+                cli_args.no_tray
+            );
             if should_force_show || !should_hide || !tray_available {
+                #[cfg(target_os = "macos")]
+                {
+                    set_main_window_visibility_intent(&app_handle, true);
+                }
+
+                #[cfg(not(target_os = "macos"))]
                 show_main_window(&app_handle);
             }
 
@@ -1423,6 +1608,7 @@ pub fn run(cli_args: CliArgs) {
                     return;
                 }
 
+                set_main_window_visibility_intent(window.app_handle(), false);
                 let _res = window.hide();
 
                 #[cfg(target_os = "macos")]
@@ -1453,6 +1639,20 @@ pub fn run(cli_args: CliArgs) {
                 tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
             ) {
                 shutdown_core_logic(app);
+            }
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Ready = &event {
+                if main_window_visibility_intended(app) {
+                    show_main_window_if_intended_after(
+                        app,
+                        std::time::Duration::from_millis(500),
+                    );
+                    #[cfg(not(debug_assertions))]
+                    reopen_macos_application_if_intended_after(
+                        app,
+                        std::time::Duration::from_millis(2000),
+                    );
+                }
             }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = &event {

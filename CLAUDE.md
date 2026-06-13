@@ -9,7 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 On macOS, the default path for validating any solid app change is to rebuild and update the existing `/Applications/Vox Jot.app` bundle in place.
 
-- Use `bun run mac:update-installed-app` (alias: `bun run mac:build-install`) when a change is ready to test as the real app.
+- Use `bun run mac:update-installed-app:notarized` when a change is ready to test as the real app. Short alias: `bun run mac:update:notarized`.
+- Plain update aliases are blocked for all agents: `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app`.
 - This preserves the app path that already has Accessibility and related approvals, so we do not keep re-authorizing new app instances.
 - Use `bun run tauri dev` only for fast iteration when installed-app validation is not required.
 - Treat this as the standard workflow for all future sessions and agents in this repo.
@@ -23,7 +24,7 @@ On macOS, the default path for validating any solid app change is to rebuild and
 bun install
 
 # Standard macOS validation flow for solid changes
-bun run mac:update-installed-app
+bun run mac:update-installed-app:notarized
 
 # Run in development mode for quick iteration only
 bun run tauri dev

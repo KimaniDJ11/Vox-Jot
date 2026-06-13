@@ -84,4 +84,4 @@ The goal is a layered test strategy:
 - Store-level tests around `settingsStore` side effects and command integration.
 - Component tests for history actions, model cards, and post-process forms.
 - More Playwright coverage for history interactions and multi-platform permission UX.
-- Installed-app smoke validation for macOS after major Tauri changes using `bun run mac:update-installed-app`.
+- Installed-app smoke validation for macOS after major Tauri changes using `bun run mac:update-installed-app:notarized`.

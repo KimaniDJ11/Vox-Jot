@@ -67,10 +67,10 @@ bun install
 On macOS, the standard validation workflow is to rebuild and update the installed app in `/Applications` so the same approved app bundle keeps its Accessibility-related permissions:
 
 ```bash
-bun run mac:update-installed-app
+bun run mac:update-installed-app:notarized
 ```
 
-This is the only correct path for syncing the installed/running macOS app to the latest build. It builds, Developer ID signs, submits to Apple notarization, staples, Gatekeeper-validates, replaces `/Applications/Vox Jot.app`, and opens the installed app.
+This is the canonical path for syncing the installed/running macOS app to the latest build. Short alias: `bun run mac:update:notarized`. It builds, Developer ID signs, submits to Apple notarization, staples, Gatekeeper-validates, replaces `/Applications/Vox Jot.app`, and opens the installed app. Plain aliases such as `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app` are intentionally blocked for all agents.
 
 The installed-app workflow requires a Developer ID signing identity and Apple notarization credentials. Set up the notarytool Keychain profile once with:
 
@@ -78,7 +78,7 @@ The installed-app workflow requires a Developer ID signing identity and Apple no
 bun run mac:setup-notary
 ```
 
-This stores the `voxjot-notary` profile in the macOS Keychain and verifies it before future builds. If the profile is missing, `bun run mac:update-installed-app` fails during preflight before starting the frontend or Rust build.
+This stores the `voxjot-notary` profile in the macOS Keychain and verifies it before future builds. If the profile is missing, `bun run mac:update-installed-app:notarized` fails during preflight before starting the frontend or Rust build.
 
 When checking the profile manually, use:
 

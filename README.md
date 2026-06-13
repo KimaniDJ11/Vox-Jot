@@ -51,9 +51,9 @@ For detailed build instructions including platform-specific requirements, see [B
 On macOS, the standard way to validate a solid app change is to update the installed app in place:
 
 ```bash
-bun run mac:update-installed-app
-# Same notarized installed-app workflow, named for dev-app testing
-bun run mac:dev-installed-app
+bun run mac:update-installed-app:notarized
+# Short alias for the same notarized installed-app workflow
+bun run mac:update:notarized
 
 # Open the already-installed, permission-preserving dev app
 bun run mac:open-installed-app
@@ -61,7 +61,7 @@ bun run mac:open-installed-app
 
 This rebuilds, Developer ID signs, notarizes, staples, Gatekeeper-validates, and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. `bun run tauri dev` is still available for quick iteration, but it is not notarized and is not the default path for solid macOS testing.
 
-For agents and automation, `bun run mac:update-installed-app` is the only correct path for syncing the installed/running macOS app to the latest build. If notarization credentials need to be checked manually, verify them with `xcrun notarytool history --keychain-profile voxjot-notary`; direct `security find-generic-password` checks are not authoritative for notarytool profiles.
+For agents and automation, `bun run mac:update-installed-app:notarized` is the only canonical path for syncing the installed/running macOS app to the latest build. `bun run mac:update:notarized` is the short alias. Plain aliases such as `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app` are intentionally blocked. If notarization credentials need to be checked manually, verify them with `xcrun notarytool history --keychain-profile voxjot-notary`; direct `security find-generic-password` checks are not authoritative for notarytool profiles.
 
 ## Architecture
 

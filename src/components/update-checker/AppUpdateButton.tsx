@@ -8,7 +8,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { listen } from "@tauri-apps/api/event";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
-import { Download, LoaderCircle, RotateCcw, X } from "lucide-react";
+import { Download, LoaderCircle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -45,6 +45,31 @@ const formatBytes = (bytes: number) => {
 const progressPercent = ({ downloaded, total }: ProgressState) => {
   if (!total || total <= 0) return undefined;
   return Math.min(100, Math.max(0, Math.round((downloaded / total) * 100)));
+};
+
+// Release manifests often set the body to nothing more than the version
+// (e.g. "Vox Jot 1.0.8"), which the dialog title already states. Strip that
+// redundant header so we only show real "What's new" copy — and nothing at all
+// when there is none.
+const cleanReleaseNotes = (notes?: string, version?: string) => {
+  const raw = notes?.replace(/\r\n/g, "\n").trim();
+  if (!raw) return "";
+
+  const redundantForms = new Set(
+    [version, version && `vox jot ${version}`, version && `v${version}`]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.toLowerCase()),
+  );
+
+  const lines = raw.split("\n");
+  while (lines.length > 0 && redundantForms.has(lines[0].trim().toLowerCase())) {
+    lines.shift();
+  }
+  while (lines.length > 0 && lines[0].trim() === "") {
+    lines.shift();
+  }
+
+  return lines.join("\n").trim();
 };
 
 interface AppUpdateButtonProps {
@@ -129,6 +154,12 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
   }, [clearUpdate, runCheck, updateChecksEnabled]);
 
   const percent = useMemo(() => progressPercent(progress), [progress]);
+
+  const releaseNotes = useMemo(
+    () => cleanReleaseNotes(updateInfo?.notes, updateInfo?.latestVersion),
+    [updateInfo?.notes, updateInfo?.latestVersion],
+  );
+  const hasNotes = releaseNotes.length > 0;
 
   const updateTitle = updateInfo?.latestVersion
     ? t("updates.availableWithVersion", {
@@ -219,7 +250,7 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className={`app-no-drag app-update-button ${buttonClassName} border-transparent bg-[var(--update-accent)] text-[var(--update-accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--update-accent),transparent_72%)] hover:bg-[var(--update-accent-hover)] hover:text-[var(--update-accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
+          className={`app-no-drag app-update-button ${buttonClassName} border-transparent bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--accent),transparent_72%)] hover:bg-[var(--accent-hover)] hover:text-[var(--accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
           onClick={() => {
             setModalOpen(true);
             if (phase === "idle" || phase === "error") {
@@ -251,7 +282,7 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                 aria-labelledby="app-update-title"
                 data-update-dialog-focus
                 tabIndex={0}
-                className="app-no-drag w-full max-w-[360px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-4 text-[var(--text)] shadow-[var(--floating-panel-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                className="app-no-drag w-full max-w-[380px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 text-[var(--text)] shadow-[var(--floating-panel-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                 onKeyDown={(event) =>
                   handleDialogKeyDown(
                     event,
@@ -263,157 +294,139 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                   )
                 }
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--update-accent)] text-[var(--update-accent-foreground)]">
-                      {phase === "error" ? (
-                        <RotateCcw className="h-4 w-4" aria-hidden />
-                      ) : phase === "restarting" ? (
-                        <LoaderCircle
-                          className="h-4 w-4 animate-spin"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Download className="h-4 w-4" aria-hidden />
-                      )}
-                    </div>
-                    <div>
-                      <h2
-                        id="app-update-title"
-                        className="text-sm font-semibold"
-                      >
-                        {updateTitle}
-                      </h2>
-                      <p className="mt-0.5 text-xs text-[var(--muted)]">
-                        {statusLabel}
-                      </p>
-                    </div>
-                  </div>
-                  {canClose ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      className="h-8 min-h-8 w-8"
-                      onClick={() => setModalOpen(false)}
-                      aria-label={t("common.close")}
-                      title={t("common.close")}
-                    >
-                      <X aria-hidden />
-                    </Button>
-                  ) : null}
-                </div>
-
-                {isInstalling ? (
-                  <div className="mt-4">
-                    <div className="h-2 overflow-hidden rounded-full bg-[var(--input)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--update-accent)] transition-[width] duration-200"
-                        style={{
-                          width:
-                            percent === undefined
-                              ? phase === "installing" || phase === "restarting"
-                                ? "100%"
-                                : "18%"
-                              : `${percent}%`,
-                        }}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_6px_16px_color-mix(in_srgb,var(--accent),transparent_70%)]">
+                    {phase === "error" ? (
+                      <RotateCcw className="h-[18px] w-[18px]" aria-hidden />
+                    ) : isInstalling ? (
+                      <LoaderCircle
+                        className="h-[18px] w-[18px] animate-spin"
+                        aria-hidden
                       />
-                    </div>
-                    <div className="mt-2 flex justify-between text-xs text-[var(--muted)]">
-                      <span>
-                        {percent === undefined
-                          ? t("updates.preparing", {
-                              defaultValue: "Preparing",
-                            })
-                          : t("updates.percent", {
-                              defaultValue: "{{percent}}%",
-                              percent,
-                            })}
-                      </span>
-                      {progress.total ? (
-                        <span>
-                          {formatBytes(progress.downloaded)} /{" "}
-                          {formatBytes(progress.total)}
-                        </span>
-                      ) : null}
-                    </div>
+                    ) : (
+                      <Download className="h-[18px] w-[18px]" aria-hidden />
+                    )}
                   </div>
-                ) : null}
-
-                {installError ? (
-                  <p className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--text)]">
-                    {installError}
-                  </p>
-                ) : phase === "idle" ? (
-                  <div className="mt-3 space-y-2">
-                    {updateInfo?.notes ? (
-                      <p className="max-h-24 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
-                        {updateInfo.notes}
-                      </p>
-                    ) : null}
-                    <p className="text-xs leading-5 text-[var(--muted)]">
-                      {t("updates.installPrompt", {
-                        defaultValue:
-                          "Install now to close Vox Jot, apply the update, and restart.",
-                      })}
+                  <div className="min-w-0">
+                    <h2
+                      id="app-update-title"
+                      className="truncate text-sm font-semibold"
+                    >
+                      {updateTitle}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-[var(--muted)]">
+                      {statusLabel}
                     </p>
                   </div>
-                ) : (
-                  <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                    {t("updates.restartNotice", {
-                      defaultValue:
-                        "Vox Jot will close, install the update, and restart when installation finishes.",
-                    })}
-                  </p>
-                )}
+                </div>
 
                 {phase === "error" ? (
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setModalOpen(false)}
-                    >
-                      {t("common.close")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setPhase("idle");
-                        installStartedRef.current = false;
-                        void startInstall();
-                      }}
-                    >
-                      {t("updates.retry", { defaultValue: "Retry" })}
-                    </Button>
+                  <>
+                    {installError ? (
+                      <p className="mt-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-xs leading-5 text-[var(--text)]">
+                        {installError}
+                      </p>
+                    ) : null}
+                    <div className="mt-4 flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setModalOpen(false)}
+                      >
+                        {t("common.close")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setPhase("idle");
+                          installStartedRef.current = false;
+                          void startInstall();
+                        }}
+                      >
+                        {t("updates.retry", { defaultValue: "Retry" })}
+                      </Button>
+                    </div>
+                  </>
+                ) : isInstalling ? (
+                  <div className="mt-4">
+                    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--input)]">
+                      {percent === undefined ? (
+                        <div className="absolute inset-y-0 left-0 w-1/3 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite] rounded-full bg-[var(--accent)]" />
+                      ) : (
+                        <div
+                          className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
+                          style={{ width: `${percent}%` }}
+                        />
+                      )}
+                    </div>
+                    {phase === "downloading" ? (
+                      <div className="mt-2 flex items-center justify-between text-xs tabular-nums text-[var(--muted)]">
+                        <span>
+                          {percent === undefined
+                            ? t("updates.preparing", {
+                                defaultValue: "Preparing…",
+                              })
+                            : `${percent}%`}
+                        </span>
+                        {progress.total ? (
+                          <span>
+                            {formatBytes(progress.downloaded)} /{" "}
+                            {formatBytes(progress.total)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                        {t("updates.restartNotice", {
+                          defaultValue:
+                            "Vox Jot will restart automatically when the update is ready.",
+                        })}
+                      </p>
+                    )}
                   </div>
-                ) : null}
-
-                {phase === "idle" ? (
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setModalOpen(false)}
-                    >
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={() => void startInstall()}
-                    >
-                      {t("updates.installUpdate", {
-                        defaultValue: "Install update",
+                ) : (
+                  <>
+                    {hasNotes ? (
+                      <div className="mt-4 border-t border-[var(--ring-hairline)] pt-3">
+                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          {t("updates.whatsNew", { defaultValue: "What's new" })}
+                        </p>
+                        <div className="max-h-28 overflow-auto whitespace-pre-line text-xs leading-5 text-[var(--text)]">
+                          {releaseNotes}
+                        </div>
+                      </div>
+                    ) : null}
+                    <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                      {t("updates.installPrompt", {
+                        defaultValue:
+                          "Vox Jot will close, install the update, and restart automatically.",
                       })}
-                    </Button>
-                  </div>
-                ) : null}
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setModalOpen(false)}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void startInstall()}
+                      >
+                        {t("updates.installUpdate", {
+                          defaultValue: "Install update",
+                        })}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>,
             document.body,

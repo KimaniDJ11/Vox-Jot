@@ -42,7 +42,7 @@ done
 
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "Installed app not found at ${APP_PATH}." >&2
-  echo "Please build it first with: bun run mac:update-installed-app" >&2
+  echo "Please build it first with: bun run mac:update-installed-app:notarized" >&2
   exit 1
 fi
 

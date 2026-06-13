@@ -44,7 +44,7 @@ Whenever the user asks an agent or AI coding tool to commit and push, or the age
 - Run available build, typecheck, lint, test, and Rust checks before committing. For this repo that usually means `bun run build`, `bun run lint`, `cargo check --manifest-path src-tauri/Cargo.toml`, and relevant `cargo test --manifest-path src-tauri/Cargo.toml` coverage unless the user explicitly narrows validation.
 - Run dependency/security and secret/leak checks when tooling is available, and report when a tool is missing rather than silently skipping it.
 - Inspect `git diff` / `git diff --check` and stage only intentional files. Do not stage unrelated user changes.
-- Do not run the macOS installed-app build path (`bun run mac:update-installed-app` / `mac:build-install`) unless explicitly requested.
+- Do not run the macOS installed-app build path (`bun run mac:update-installed-app:notarized` / `bun run mac:update:notarized`) unless explicitly requested.
 - Include the validation summary in the final response after commit and push.
 
 ## Latency Policy
@@ -117,9 +117,10 @@ Adjust tokens in **`src/App.css`** if a theme’s **`--muted`** / **`--text-subt
 On macOS, the standard validation path for any solid app change is to update the already-installed `/Applications/Vox Jot.app` in place instead of relying on a fresh `tauri dev` app instance.
 
 - App Store review branch note: if a new work branch changes App Store metadata, bundle IDs, signing, entitlements, version numbers, or release workflow files, keep those changes deliberate so they do not accidentally affect the reviewed `1.0` path.
-- Use `bun run mac:update-installed-app` (aliases: `bun run mac:build-install`, `bun run mac:dev-installed-app`) whenever a macOS change is ready for real app testing. This is the only correct path for syncing the running installed macOS app to the latest build.
+- Use `bun run mac:update-installed-app:notarized` whenever a macOS change is ready for real app testing. Short alias: `bun run mac:update:notarized`. These are the only correct paths for syncing the running installed macOS app to the latest build.
+- Plain macOS update aliases are intentionally blocked for all agents: `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app`. Do not re-enable, bypass, or document them as working installed-app update commands.
 - The installed-app workflow must be Developer ID signed, submitted to Apple notarization, stapled, and Gatekeeper-validated every time. It should fail instead of silently falling back to Apple Development signing, ad-hoc signing, or skipped notarization.
-- Do not use direct Keychain probing such as `security find-generic-password -s voxjot-notary` to decide whether notarization credentials exist. The required preflight is `xcrun notarytool history --keychain-profile voxjot-notary`, or simply running `bun run mac:update-installed-app`, which performs the same notarytool credential validation.
+- Do not use direct Keychain probing such as `security find-generic-password -s voxjot-notary` to decide whether notarization credentials exist. The required preflight is `xcrun notarytool history --keychain-profile voxjot-notary`, or simply running `bun run mac:update-installed-app:notarized`, which performs the same notarytool credential validation.
 - If the first installed-app attempt reports missing notarization credentials, verify with `xcrun notarytool history --keychain-profile voxjot-notary` before declaring the workflow blocked. A direct `security` lookup can report a false negative for a valid notarytool profile.
 - Use `bun run mac:open-installed-app` (alias: `bun run mac:open-dev-app`) to launch the already-installed dev app without rebuilding. This preserves the same `/Applications/Vox Jot.app` path, bundle identity, and macOS permissions.
 - This rebuilds the signed app bundle and replaces the contents of `/Applications/Vox Jot.app`, which preserves the existing system approval path so Accessibility and related permissions do not need to be re-granted for each solid change.
@@ -140,7 +141,7 @@ On macOS, the standard validation path for any solid app change is to update the
 bun install
 
 # Standard macOS validation flow for solid changes
-bun run mac:update-installed-app
+bun run mac:update-installed-app:notarized
 
 # Run in development mode for quick iteration only
 bun run tauri dev

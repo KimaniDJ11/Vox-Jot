@@ -914,7 +914,7 @@ fn spawn_child(
         "Could not locate a Python 3 interpreter for the OCR runtime. Set OCR_RUNTIME_PYTHON or install python3.".to_string()
     })?;
     let runtime_root = locate_runtime_root().ok_or_else(|| {
-        "Could not locate the ocr-runtime package. Run `bun run mac:update-installed-app` from a checkout that includes ocr-runtime/.".to_string()
+        "Could not locate the ocr-runtime package. Run `bun run mac:update-installed-app:notarized` from a checkout that includes ocr-runtime/.".to_string()
     })?;
 
     let backend_str = match backend {

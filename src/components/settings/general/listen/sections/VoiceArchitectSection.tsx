@@ -606,7 +606,7 @@ export const VoiceArchitectSection: React.FC<{
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant="outline"
                 size="sm"
                 onClick={() => void openModelHub("tts")}
               >
@@ -1178,7 +1178,7 @@ export const VoiceArchitectSection: React.FC<{
             {hasTunedVoiceChanges ? (
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => setSaveTunedVoiceWindowOpen(true)}
                 disabled={
@@ -1194,7 +1194,7 @@ export const VoiceArchitectSection: React.FC<{
             ) : null}
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setCloneProfileWindowOpen(true)}
               disabled={cloneProfileButtonDisabled}
@@ -1215,7 +1215,7 @@ export const VoiceArchitectSection: React.FC<{
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setModelWindowOpen(true)}
             >

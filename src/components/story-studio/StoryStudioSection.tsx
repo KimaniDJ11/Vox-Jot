@@ -462,7 +462,7 @@ export const StoryStudioSection: React.FC = () => {
     <div ref={soundAnchorRef} className="relative shrink-0">
       <button
         type="button"
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
         onClick={() => {
           if (soundPopoverOpen) {
             setSoundPopoverOpen(false);
@@ -475,7 +475,7 @@ export const StoryStudioSection: React.FC = () => {
         aria-haspopup="dialog"
         aria-expanded={soundPopoverOpen}
       >
-        <Music2 className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+        <Music2 className="h-4 w-4" aria-hidden />
       </button>
       {soundPopoverOpen && soundPopoverPosition ? (
         <SoundTagPopover
@@ -724,7 +724,7 @@ export const StoryStudioSection: React.FC = () => {
         aria-label={t("storyStudio.expressionTags")}
       >
         <Sparkles
-          className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+          className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--accent-hover)]"
           aria-hidden
         />
         <Input
@@ -754,7 +754,7 @@ export const StoryStudioSection: React.FC = () => {
           disabled={!expressionEnabled}
           aria-haspopup="listbox"
           aria-expanded={expressionPopoverOpen}
-          className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+          className="h-10 w-full border-[1.5px] border-[var(--accent-hover)] bg-transparent pl-9 pr-9 text-sm font-bold text-[var(--accent-hover)] placeholder:text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:border-[var(--accent-hover)] focus:ring-2 focus:ring-[var(--accent-glow)]"
         />
         {expressionQuery ? (
           <button
@@ -897,7 +897,7 @@ export const StoryStudioSection: React.FC = () => {
             <div className="story-studio-toolbar__trailing ms-auto flex shrink-0 justify-end">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => void openCreativeAudioModels()}
               >

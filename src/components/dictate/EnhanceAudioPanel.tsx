@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Layers,
   Loader2,
+  Plus,
   RotateCcw,
   Sparkles,
   Upload,
@@ -282,13 +283,14 @@ export const EnhanceAudioPanel: React.FC = () => {
           onClick={pickFile}
           disabled={isRunning}
         >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           {t("dictate.enhanceAudio.addFile", { defaultValue: "Add file" })}
         </Button>
         <div className="ml-auto flex items-center gap-2">
           <Button
             type="button"
             size="sm"
-            variant="secondary"
+            variant="outline"
             onClick={openEnhancementModels}
           >
             <Layers className="h-3.5 w-3.5" aria-hidden="true" />

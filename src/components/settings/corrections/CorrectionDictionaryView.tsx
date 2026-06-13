@@ -773,7 +773,7 @@ export const CorrectionDictionaryView: React.FC<
           aria-label={searchAriaLabel}
         >
           <Search
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--muted)]"
+            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--accent-hover)]"
             aria-hidden
           />
           <input
@@ -792,7 +792,7 @@ export const CorrectionDictionaryView: React.FC<
               }
             }}
             placeholder={searchPlaceholder}
-            className="h-9 w-full rounded-full border border-[var(--border-strong)] bg-[var(--input)] py-1 pl-8 pr-8 text-start text-xs font-semibold text-[var(--text)] transition-all duration-150 placeholder:text-[var(--muted)] hover:border-logo-primary hover:bg-logo-primary/10 focus:border-logo-primary focus:bg-logo-primary/20 focus:outline-none"
+            className="h-9 w-full rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent py-1 pl-8 pr-8 text-start text-xs font-bold text-[var(--accent-hover)] transition-all duration-150 placeholder:text-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:border-[var(--accent-hover)] focus:bg-[var(--accent-soft)] focus:outline-none"
           />
           {searchQuery ? (
             <button
@@ -810,8 +810,8 @@ export const CorrectionDictionaryView: React.FC<
       ) : (
         <button
           type="button"
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
-            searchQuery ? "text-[var(--accent)]" : "text-[var(--muted)]"
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+            searchQuery ? "bg-[var(--accent-soft)]" : "bg-transparent"
           }`}
           onClick={() => setSearchExpanded(true)}
           aria-label={searchAriaLabel}
@@ -836,10 +836,11 @@ export const CorrectionDictionaryView: React.FC<
         <Button
           type="button"
           size="sm"
-          variant="primary-soft"
+          variant="outline"
           onClick={openManualEditor}
           aria-haspopup="dialog"
         >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.postProcessing.dictionary.add", {
             defaultValue: "Add new",
           })}
@@ -859,7 +860,7 @@ export const CorrectionDictionaryView: React.FC<
         {viewMode === "dictionary" ? (
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--input)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] bg-transparent text-[var(--accent-hover)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
             onClick={() => void handleImport()}
             disabled={importing}
             aria-label={t("settings.corrections.dictionary.import", {
@@ -1088,7 +1089,7 @@ export const CorrectionDictionaryView: React.FC<
             <Button
               type="button"
               size="sm"
-              variant="primary-soft"
+              variant="outline"
               onClick={
                 viewMode === "dictionary" ? handleImport : openManualEditor
               }

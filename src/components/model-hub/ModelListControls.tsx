@@ -61,10 +61,10 @@ export const SelectControl: React.FC<SelectControlProps> = ({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`h-full w-full appearance-none rounded-full border px-0 py-1.5 text-xs font-semibold text-transparent shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+        className={`h-full w-full appearance-none rounded-full border-[1.5px] px-0 py-1.5 text-xs font-bold text-transparent shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
           active
-            ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-            : "border-[var(--border)] bg-[var(--card)]"
+            ? "border-[var(--accent-hover)] bg-[var(--accent-soft)]"
+            : "border-[var(--accent-hover)] bg-transparent"
         }`}
         aria-label={ariaLabel}
         title={title}
@@ -80,7 +80,7 @@ export const SelectControl: React.FC<SelectControlProps> = ({
         ))}
       </select>
       <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center text-[var(--accent-hover)]"
         aria-hidden
       >
         {children}
@@ -116,7 +116,7 @@ export const ModelListControls: React.FC<ModelListControlsProps> = ({
           selectedLabel={provider.label}
           active={provider.value !== "all"}
         >
-          <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
+          <SlidersHorizontal className="h-4 w-4" />
         </SelectControl>
       ) : null}
 
@@ -130,7 +130,7 @@ export const ModelListControls: React.FC<ModelListControlsProps> = ({
           selectedLabel={language.label}
           active={language.value !== "all"}
         >
-          <Languages className="h-4 w-4 text-[var(--text)]" />
+          <Languages className="h-4 w-4" />
         </SelectControl>
       ) : null}
 
@@ -143,7 +143,7 @@ export const ModelListControls: React.FC<ModelListControlsProps> = ({
         selectedLabel={sort.label}
         active={sort.value !== "best_match"}
       >
-        <ArrowUpDown className="h-4 w-4 text-[var(--text)]" />
+        <ArrowUpDown className="h-4 w-4" />
       </SelectControl>
     </div>
   );

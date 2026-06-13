@@ -115,10 +115,10 @@ const VoiceFilterSelect: React.FC<{
   return (
     <label
       className={[
-        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold shadow-[var(--shadow-sm)] transition-colors",
+        "relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-sm font-bold text-[var(--accent-hover)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--accent-soft)]",
         active
-          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-          : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--accent)]",
+          ? "bg-[var(--accent-soft)]"
+          : "bg-transparent",
       ].join(" ")}
       aria-label={ariaLabel}
       title={label}
@@ -915,7 +915,7 @@ export const CreateVoiceModelHubPicker: React.FC<
                   }
                 >
                   <Search
-                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--accent-hover)]"
                     aria-hidden
                   />
                   <Input
@@ -945,12 +945,12 @@ export const CreateVoiceModelHubPicker: React.FC<
                               defaultValue: "Search TTS models",
                             })
                     }
-                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                    className="h-10 w-full border-[1.5px] border-[var(--accent-hover)] bg-transparent pl-9 pr-9 text-sm font-bold text-[var(--accent-hover)] placeholder:text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] focus:border-[var(--accent-hover)] focus:ring-2 focus:ring-[var(--accent-glow)]"
                   />
                   {searchQuery ? (
                     <button
                       type="button"
-                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--accent-hover)] transition-colors hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                       onClick={() => onSearchQueryChange("")}
                       aria-label={
                         view === "voices"

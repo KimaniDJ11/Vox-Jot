@@ -446,9 +446,11 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
           </p>
         </div>
         {selectedModel ? (
-          <button
+          <Button
             type="button"
-            className="inline-flex max-w-full shrink-0 items-center gap-2 px-1 py-1 text-left text-sm font-semibold text-[var(--text)] transition-colors hover:text-[var(--accent)] focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            variant="outline"
+            size="sm"
+            className="max-w-full shrink-0"
             onClick={() => void openCreativeAudioModels()}
             title={`${selectedModel.provider} - ${selectedModel.label}`}
             aria-label={t("storyStudio.sound.selectedModelAriaLabel", {
@@ -458,7 +460,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
           >
             <ProviderIcon providerId={selectedModel.provider_id} size="sm" />
             <span className="min-w-0 truncate">{selectedModel.label}</span>
-          </button>
+          </Button>
         ) : null}
       </div>
 

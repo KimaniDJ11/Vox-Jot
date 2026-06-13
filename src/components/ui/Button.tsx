@@ -11,6 +11,7 @@ interface ButtonProps extends HTMLMotionProps<"button"> {
   variant?:
     | "primary"
     | "primary-soft"
+    | "outline"
     | "secondary"
     | "danger"
     | "danger-ghost"
@@ -29,7 +30,7 @@ export const Button: React.FC<ButtonProps> = ({
     size === "icon" || size === "icon-sm" || size === "icon-xs";
 
   const baseClasses = [
-    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border font-medium",
+    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border",
     "transition-[background-color,border-color,color,transform] duration-150",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-[0.6]",
     interactiveFocusRingClass,
@@ -37,19 +38,21 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[var(--primary-control-highlight)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
+      "border-[var(--accent)] bg-[var(--accent)] font-bold text-[var(--accent-foreground)] shadow-[var(--primary-control-highlight)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
-      "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_85%)]",
+      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px",
+    outline:
+      "border-[1.5px] border-[var(--accent-hover)] bg-transparent font-bold text-[var(--accent-hover)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-soft)] active:translate-y-px",
     secondary:
-      "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] hover:bg-[var(--input)]",
+      "border-[var(--border)] bg-[var(--panel-bg)] font-medium text-[var(--text)] hover:bg-[var(--input)]",
     danger:
-      "border-[var(--danger)] bg-[var(--danger)] text-[var(--danger-foreground)] hover:border-[color-mix(in_srgb,var(--danger),var(--text)_12%)] hover:bg-[color-mix(in_srgb,var(--danger),var(--text)_12%)]",
+      "border-[var(--danger)] bg-[var(--danger)] font-medium text-[var(--danger-foreground)] hover:border-[color-mix(in_srgb,var(--danger),var(--text)_12%)] hover:bg-[color-mix(in_srgb,var(--danger),var(--text)_12%)]",
     "danger-ghost": isIconButtonSize
-      ? "border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
-      : "border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
+      ? "border-transparent bg-transparent font-medium text-[var(--muted)] hover:border-transparent hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+      : "border-[var(--border)] font-medium text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
     ghost: isIconButtonSize
-      ? "border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-      : "border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
+      ? "border-transparent bg-transparent font-medium text-[var(--muted)] hover:border-transparent hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+      : "border-[var(--border)] font-medium text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
   };
 
   const sizeClasses = {

@@ -33,6 +33,7 @@ import {
   LocateFixed,
   Pause,
   Play,
+  Plus,
   SlidersHorizontal,
   Trash2,
   Upload,
@@ -1107,7 +1108,7 @@ const FileTranscriptionPanelShell: React.FC<{
           Transform/Sections stay reachable while reading a long document. It
           must be a direct child of this tall root (not nested in SettingsGroup,
           whose short box would give `sticky` no room to hold). */}
-      <div className="sticky top-0 z-30 -mt-3 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg),transparent_8%)] py-3 backdrop-blur-md">
+      <div className="sticky top-0 z-30 -mt-3 py-3 backdrop-blur-md">
         <WatchedFoldersToolbar
           kind={kind}
           view={view}
@@ -2044,10 +2045,11 @@ const WatchedFoldersToolbar: React.FC<{
       <Button
         type="button"
         size="sm"
-        variant="primary-soft"
+        variant="outline"
         onClick={handlePrimaryAction}
         disabled={busy}
       >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
         {view === "documents"
           ? t("dictate.reader.addDocument", { defaultValue: "Add document" })
           : t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
@@ -2099,7 +2101,7 @@ const WatchedFoldersToolbar: React.FC<{
             <>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 aria-pressed={readerTransformOpen}
                 onClick={() => {
@@ -2114,7 +2116,7 @@ const WatchedFoldersToolbar: React.FC<{
               </Button>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 aria-pressed={readerSectionsOpen}
                 onClick={() => {
@@ -2153,13 +2155,13 @@ const WatchedFoldersToolbar: React.FC<{
                 selectedLabel={selectedReaderSortLabel}
                 active={readerSort !== "recent"}
               >
-                <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
+                <SlidersHorizontal className="h-4 w-4" />
               </SelectControl>
             ) : null}
             {kind !== "reader" ? (
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   if (view === "documents") {
@@ -3639,7 +3641,7 @@ const ReaderDocumentsPanel: React.FC<{
                       selectedLabel={selectedReaderLanguageLabel}
                       active={documentLanguage !== "auto"}
                     >
-                      <Languages className="h-4 w-4 text-[var(--text)]" />
+                      <Languages className="h-4 w-4" />
                     </SelectControl>
                   </div>
                 </div>
@@ -4199,7 +4201,7 @@ const WatchedFoldersGroup: React.FC<{
             <Button
               type="button"
               size="sm"
-              variant="secondary"
+              variant="outline"
               onClick={async () => {
                 setBusy(true);
                 try {
@@ -4214,6 +4216,7 @@ const WatchedFoldersGroup: React.FC<{
               }}
               disabled={busy}
             >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
               {t("dictate.watchFolders.add", { defaultValue: "Add folder" })}
             </Button>
           </div>

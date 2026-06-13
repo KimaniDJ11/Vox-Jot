@@ -651,9 +651,10 @@ export const WriteRulesSettings: React.FC = () => {
           <Button
             type="button"
             size="sm"
-            variant="primary-soft"
+            variant="outline"
             onClick={openAddProfileWindow}
           >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
             {t("refine.writeRules.newRule")}
           </Button>
           <SegmentedControl<ViewMode>

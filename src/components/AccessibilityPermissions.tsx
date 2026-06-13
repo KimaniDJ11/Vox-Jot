@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ChevronDown } from "lucide-react";
 import { type } from "@tauri-apps/plugin-os";
 
 import {
@@ -175,7 +175,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     return null;
   }
 
-  const buttonClassName = `inline-flex items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`;
+  const buttonClassName = `inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`;
   const permissionCardClassName =
     "flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center";
 
@@ -206,7 +206,8 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             className={buttonClassName}
             disabled={busyPermission !== null}
           >
-            {t("onboarding.permissions.grant")}
+            {t("accessibility.openSettings")}
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -231,6 +232,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             disabled={busyPermission !== null}
           >
             {t("accessibility.openSettings")}
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -246,7 +248,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             <p className="mt-1 text-sm text-[var(--text)]">
               {t("onboarding.permissions.screenRecording.cardDescription", {
                 defaultValue:
-                  "Vox Jot uses periodic local OCR from the active display to improve names, jargon, and phrase-key accuracy during dictation.",
+                  "Lets Vox Jot read on-screen text locally so names, jargon, and phrase keys stay accurate.",
               })}
             </p>
           </div>
@@ -257,6 +259,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             disabled={busyPermission !== null}
           >
             {t("accessibility.openSettings")}
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}

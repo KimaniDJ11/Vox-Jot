@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 On macOS, the default path for validating any solid app change is to rebuild and update the existing `/Applications/Vox Jot.app` bundle in place.
 
-- Use `bun run mac:update-installed-app:notarized` when a change is ready to test as the real app. Short alias: `bun run mac:update:notarized`.
-- Plain update aliases are blocked for all agents: `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app`.
-- This preserves the app path that already has Accessibility and related approvals, so we do not keep re-authorizing new app instances.
-- Use `bun run tauri dev` only for fast iteration when installed-app validation is not required.
+- Use `bun run mac:update-installed-app:notarized` when a change is ready to test as the real app. Short alias: `bun run mac:update:notarized`. Both run `scripts/build-and-install-macos-app.sh`, which Developer ID signs → Apple-notarizes → staples → Gatekeeper-validates → replaces `/Applications/Vox Jot.app` → opens the installed app. This preserves the app path that already has Accessibility and related approvals, so we do not keep re-authorizing new app instances.
+- This requires notary credentials: a stored `voxjot-notary` notarytool keychain profile, or `APPLE_ID` + `APPLE_PASSWORD` + `APPLE_TEAM_ID`, or `APPLE_API_KEY` + `APPLE_API_ISSUER` + `APPLE_API_KEY_PATH`. Run `bun run mac:setup-notary` once to configure the keychain profile; without valid credentials the command fails during preflight before building.
+- Plain update aliases are blocked for all agents: `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app`. Running any of them executes `scripts/block-plain-macos-update.sh`, which exits 1 and directs you to the notarized flow.
+- Use `bun run tauri dev` only for fast iteration when installed-app validation is not required. Dev (debug) builds skip single-instance **and** the release-only macOS startup paths, so any window or startup behavior must be validated with a release build (`mac:update-installed-app:notarized`), not dev.
 - Treat this as the standard workflow for all future sessions and agents in this repo.
 
 ## Development Commands
@@ -31,7 +31,8 @@ bun run tauri dev
 # If cmake error on macOS:
 CMAKE_POLICY_VERSION_MINIMUM=3.5 bun run tauri dev
 
-# Debug builds skip single-instance so dev can run while the installed app is open.
+# Debug builds skip single-instance and the release-only macOS startup paths, so dev can run
+# alongside the installed app — but validate window/startup behavior on a release build, not dev.
 
 # Build for production
 bun run tauri build

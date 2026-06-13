@@ -46,7 +46,7 @@ export function SegmentedControl<Value extends string>({
           })
         }
         className={[
-          "relative inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5",
+          "relative inline-flex rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] p-0.5 shadow-[var(--segmented-control-shadow)]",
           className,
         ].join(" ")}
       >
@@ -69,11 +69,11 @@ export function SegmentedControl<Value extends string>({
                 onChange(item.value);
               }}
               className={[
-                "relative isolate inline-flex items-center justify-center rounded-full border border-transparent px-3 py-2 text-xs font-medium",
+                "relative isolate inline-flex items-center justify-center rounded-full border border-transparent px-3 py-2 text-xs font-bold",
                 minTapTargetHeightClass,
                 interactiveFocusRingClass,
                 selected
-                  ? "text-[var(--accent)]"
+                  ? "text-[var(--accent-foreground)]"
                   : disabled
                     ? "cursor-not-allowed text-[var(--muted)] opacity-45"
                     : "text-[var(--text)] hover:text-[var(--accent)]",
@@ -83,7 +83,7 @@ export function SegmentedControl<Value extends string>({
                 <motion.span
                   layoutId={`${indicatorId}-indicator`}
                   transition={track}
-                  className="absolute inset-0 rounded-full bg-[var(--accent-soft)]"
+                  className="absolute inset-0 rounded-full bg-[var(--accent)] shadow-[var(--primary-control-highlight)]"
                   aria-hidden="true"
                 />
               ) : null}

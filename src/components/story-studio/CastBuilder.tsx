@@ -58,7 +58,7 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
         </div>
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           size="sm"
           onClick={onAdd}
           disabled={voicePickerDisabled || !hasVoiceChoices}

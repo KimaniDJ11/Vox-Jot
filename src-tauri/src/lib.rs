@@ -207,34 +207,6 @@ fn activate_macos_application() {
     }
 }
 
-#[cfg(all(target_os = "macos", not(debug_assertions)))]
-fn reopen_macos_application_with_launch_services() {
-    unsafe {
-        let bundle: *mut Object = msg_send![class!(NSBundle), mainBundle];
-        if bundle.is_null() {
-            log::error!("Failed to get NSBundle while reopening main window");
-            return;
-        }
-
-        let bundle_path: *mut Object = msg_send![bundle, bundlePath];
-        if bundle_path.is_null() {
-            log::error!("Failed to get app bundle path while reopening main window");
-            return;
-        }
-
-        let workspace: *mut Object = msg_send![class!(NSWorkspace), sharedWorkspace];
-        if workspace.is_null() {
-            log::error!("Failed to get NSWorkspace while reopening main window");
-            return;
-        }
-
-        let launched: bool = msg_send![workspace, launchApplication: bundle_path];
-        if !launched {
-            log::warn!("LaunchServices did not reopen app while showing main window");
-        }
-    }
-}
-
 #[cfg(target_os = "macos")]
 fn show_main_window_if_intended_after(app: &AppHandle, delay: std::time::Duration) {
     let app_handle = app.clone();
@@ -247,23 +219,6 @@ fn show_main_window_if_intended_after(app: &AppHandle, delay: std::time::Duratio
             }
         }) {
             log::error!("Failed to schedule main window show on main thread: {error}");
-        }
-    });
-}
-
-#[cfg(all(target_os = "macos", not(debug_assertions)))]
-fn reopen_macos_application_if_intended_after(app: &AppHandle, delay: std::time::Duration) {
-    let app_handle = app.clone();
-    std::thread::spawn(move || {
-        std::thread::sleep(delay);
-        let app_for_main = app_handle.clone();
-        if let Err(error) = app_handle.run_on_main_thread(move || {
-            if main_window_visibility_intended(&app_for_main) {
-                activate_macos_application();
-                reopen_macos_application_with_launch_services();
-            }
-        }) {
-            log::error!("Failed to schedule LaunchServices main window reopen: {error}");
         }
     });
 }
@@ -1642,16 +1597,14 @@ pub fn run(cli_args: CliArgs) {
             }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Ready = &event {
+                // Show the main window once the event loop is ready — the reliable
+                // moment on macOS for a transparent/overlay window. We intentionally
+                // do NOT relaunch the app via LaunchServices here: that spawned a
+                // second single-instance process a couple seconds after launch, and
+                // the boot/teardown churn fought the primary window and made it
+                // disappear shortly after it first appeared.
                 if main_window_visibility_intended(app) {
-                    show_main_window_if_intended_after(
-                        app,
-                        std::time::Duration::from_millis(500),
-                    );
-                    #[cfg(not(debug_assertions))]
-                    reopen_macos_application_if_intended_after(
-                        app,
-                        std::time::Duration::from_millis(2000),
-                    );
+                    show_main_window(app);
                 }
             }
             #[cfg(target_os = "macos")]

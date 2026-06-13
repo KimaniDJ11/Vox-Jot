@@ -88,7 +88,7 @@ xcrun notarytool history --keychain-profile voxjot-notary
 
 Do not use `security find-generic-password -s voxjot-notary` as the credential check; it can report a false negative for a valid notarytool profile.
 
-Use `bun run tauri dev` only for explicitly requested quick iteration when you do not need to validate through the installed app bundle. It is not an installed-app sync path.
+Use `bun run tauri dev` only for explicitly requested quick iteration when you do not need to validate through the installed app bundle. It is not an installed-app sync path. Dev (debug) builds also skip single-instance and the release-only macOS startup paths, so any window or startup behavior must be validated with a release build (`bun run mac:update-installed-app:notarized`), not `tauri dev`.
 
 ### 4. Start Dev Server
 

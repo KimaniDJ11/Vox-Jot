@@ -16,6 +16,7 @@ import {
   WholeWord,
   Upload,
   FileJson,
+  Plus,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -301,10 +302,11 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
         <Button
           type="button"
           size="sm"
-          variant="primary-soft"
+          variant="outline"
           onClick={openAddDialog}
           aria-haspopup="dialog"
         >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.snippets.list.add")}
         </Button>
         <SegmentedControl
@@ -442,9 +444,10 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
             <Button
               type="button"
               size="sm"
-              variant="secondary"
+              variant="outline"
               onClick={openAddDialog}
             >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
               {t("settings.snippets.list.add")}
             </Button>
           </div>
@@ -784,10 +787,11 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
         <Button
           type="button"
           size="sm"
-          variant="secondary"
+          variant="outline"
           onClick={handleImport}
           disabled={snippetsUpdating}
         >
+          <Upload className="h-3.5 w-3.5" aria-hidden />
           {t("settings.snippets.list.pickImportFile", {
             defaultValue: "Pick JSON file",
           })}

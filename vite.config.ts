@@ -9,6 +9,32 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= "true";
 process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= "true";
 
 const host = process.env.TAURI_DEV_HOST;
+const manualChunkGroups = [
+  {
+    name: "vendor-tauri",
+    packages: [
+      "/node_modules/@tauri-apps/api/",
+      "/node_modules/@tauri-apps/plugin-os/",
+      "/node_modules/@tauri-apps/plugin-fs/",
+    ],
+  },
+  {
+    name: "vendor-ui",
+    packages: [
+      "/node_modules/lucide-react/",
+      "/node_modules/react-i18next/",
+      "/node_modules/i18next/",
+      "/node_modules/sonner/",
+    ],
+  },
+] as const;
+
+const manualChunks = (id: string): string | undefined => {
+  const normalizedId = id.replaceAll("\\", "/");
+  return manualChunkGroups.find((group) =>
+    group.packages.some((packagePath) => normalizedId.includes(packagePath)),
+  )?.name;
+};
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
@@ -31,14 +57,7 @@ export default defineConfig(async () => ({
         detail: resolve(__dirname, "src/detail/index.html"),
       },
       output: {
-        manualChunks: {
-          "vendor-tauri": [
-            "@tauri-apps/api",
-            "@tauri-apps/plugin-os",
-            "@tauri-apps/plugin-fs",
-          ],
-          "vendor-ui": ["lucide-react", "react-i18next", "i18next", "sonner"],
-        },
+        manualChunks,
       },
     },
   },

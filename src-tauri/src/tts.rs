@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashMap;
 use std::fs;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -98,6 +99,8 @@ const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
 const HIDDEN_RUNTIME_MODEL_IDS: &[&str] = &[];
 const APP_PATH_BLOCKED_TTS_MODEL_ISSUES: &[(&str, &str)] = &[];
+pub(crate) const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+const TTS_COMMAND_MAX_CONCURRENCY: usize = 6;
 const TTS_RENDER_STACK_BYTES: usize = 64 * 1024 * 1024;
 const LFM_AUDIO_GGUF_HF_REPO_ID: &str = "IrieDinamik/LiquidAI-LFM2.5-Audio-1.5B-GGUF";
 const LFM_AUDIO_GGUF_HF_FILES: &[(&str, &str)] = &[
@@ -276,6 +279,59 @@ pub struct TtsManager {
     active_model_uses: Arc<Mutex<HashMap<String, usize>>>,
 }
 
+fn tts_command_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SEM.get_or_init(|| tokio::sync::Semaphore::new(TTS_COMMAND_MAX_CONCURRENCY))
+}
+
+pub(crate) async fn run_tts_async_on_dedicated_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    // TTS futures can grow large as model/runtime setup branches are added.
+    // Run them on a bounded pool of large-stack OS threads instead of the
+    // default macOS Tokio worker stack.
+    let _permit = tts_command_semaphore()
+        .acquire()
+        .await
+        .map_err(|_| "TTS command queue is unavailable.".to_string())?;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(TTS_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start TTS command runtime: {err}"))?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
+}
+
+pub(crate) async fn speak_on_dedicated_thread(
+    manager: Arc<TtsManager>,
+    request: SpeakRequest,
+    thread_name: &'static str,
+) -> Result<(), String> {
+    run_tts_async_on_dedicated_stack(
+        thread_name,
+        move || async move { manager.speak(request).await },
+    )
+    .await
+}
+
 pub(crate) struct TtsModelUseGuard {
     active_model_uses: Arc<Mutex<HashMap<String, usize>>>,
     model_id: Option<String>,
@@ -443,17 +499,47 @@ impl TtsManager {
                 }
 
                 if candidate.is_dir() && candidate.join("config.json").exists() {
-                    return Some(candidate);
+                    if Self::mlx_audio_model_root_has_weights(&candidate) {
+                        return Some(candidate);
+                    }
+                    warn!(
+                        "Ignoring incomplete MLX audio model directory '{}': config.json exists but no root weight file was found",
+                        candidate.display()
+                    );
+                    return None;
                 }
 
                 resolve_extracted_root(&candidate).and_then(|root| {
-                    if root.join("config.json").exists() {
+                    if root.join("config.json").exists()
+                        && Self::mlx_audio_model_root_has_weights(&root)
+                    {
                         Some(root)
                     } else {
+                        if root.join("config.json").exists() {
+                            warn!(
+                                "Ignoring incomplete MLX audio model directory '{}': config.json exists but no root weight file was found",
+                                root.display()
+                            );
+                        }
                         None
                     }
                 })
             })
+    }
+
+    fn mlx_audio_model_root_has_weights(root: &Path) -> bool {
+        let Ok(entries) = fs::read_dir(root) else {
+            return false;
+        };
+
+        entries.filter_map(Result::ok).any(|entry| {
+            let path = entry.path();
+            path.is_file()
+                && path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| ext == "safetensors" || ext == "npz")
+        })
     }
 
     fn mlx_audio_model_install_dir(&self, definition: &MlxAudioTtsModelDefinition) -> PathBuf {

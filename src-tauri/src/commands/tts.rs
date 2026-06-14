@@ -5,6 +5,9 @@ use crate::settings::{
     TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
+use crate::tts::{
+    run_tts_async_on_dedicated_stack, speak_on_dedicated_thread, TTS_COMMAND_STACK_BYTES,
+};
 use crate::tts_profiles::{
     clear_collected_data, create_voice_profile, delete_voice_profile, get_profile_progress,
     import_profile_reference_audio, list_voice_profiles, maybe_backfill_profile_transcript,
@@ -19,7 +22,6 @@ use sha2::{Digest, Sha256};
 use specta::Type;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
-use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
@@ -28,11 +30,6 @@ use std::thread;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
-const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
-// Each TTS command runs on its own 64 MB-stack OS thread; bound how many run at
-// once so rapid frontend calls (e.g. Reader preloading) can't spawn an unbounded
-// number of large-stack threads. Excess calls queue on the semaphore.
-const TTS_COMMAND_MAX_CONCURRENCY: usize = 6;
 // Reader synthesis/export input caps so a hostile or runaway request can't
 // exhaust memory/disk/time.
 const READER_MAX_UNITS: usize = 20_000;
@@ -297,7 +294,7 @@ pub async fn tts_speak(
     remember_last_output: Option<bool>,
 ) -> Result<(), String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_command_thread(
+    speak_on_dedicated_thread(
         manager,
         SpeakRequest {
             text,
@@ -329,7 +326,7 @@ pub async fn tts_speak_with_preset(
     }
 
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_command_thread(
+    speak_on_dedicated_thread(
         manager,
         SpeakRequest {
             text,
@@ -361,7 +358,7 @@ pub async fn tts_speak_reader(
     let settings = get_settings(&app);
     let preset = reader_preset_for_request(&settings, preset_id.as_deref(), normalized_rate)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_command_thread(
+    speak_on_dedicated_thread(
         manager,
         SpeakRequest {
             text,
@@ -387,7 +384,7 @@ pub async fn export_reader_audio(
 ) -> Result<ReaderAudioExportResult, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-reader-export", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-reader-export", move || async move {
         export_reader_audio_inner(app, manager, units, output_path, normalized_rate).await
     })
     .await
@@ -414,7 +411,7 @@ pub async fn export_reader_audiobook(
 ) -> Result<ReaderAudiobookResult, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-reader-audiobook", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-reader-audiobook", move || async move {
         export_reader_audiobook_inner(
             app,
             manager,
@@ -466,7 +463,7 @@ pub async fn prepare_reader_audio_cache(
 ) -> Result<ReaderAudioCachePrepareResult, String> {
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-reader-cache-prepare", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-reader-cache-prepare", move || async move {
         prepare_reader_audio_cache_inner(
             app,
             manager,
@@ -492,7 +489,7 @@ pub async fn play_reader_audio_unit(
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
     ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-reader-cache-play", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-reader-cache-play", move || async move {
         let settings = get_settings(&app);
         let (cache_path, cache_hit) = ensure_reader_audio_cache_unit(
             &app,
@@ -529,7 +526,7 @@ pub async fn synthesize_reader_audio_unit(
     let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
     ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-reader-cache-synth", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-reader-cache-synth", move || async move {
         let settings = get_settings(&app);
         let (cache_path, cache_hit) = ensure_reader_audio_cache_unit(
             &app,
@@ -566,7 +563,7 @@ pub fn tts_stop(app: AppHandle) -> Result<(), String> {
 #[specta::specta]
 pub async fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-list-voices", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-list-voices", move || async move {
         let settings = get_settings(&app);
         let provider_id = manager.selected_provider_id(&settings);
         manager
@@ -585,7 +582,7 @@ pub async fn get_tts_voices_for_selection(
     model_id: Option<String>,
 ) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-selection-voices", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-selection-voices", move || async move {
         manager
             .ensure_managed_speech_runtime_available(&provider_id)
             .await?;
@@ -598,7 +595,7 @@ pub async fn get_tts_voices_for_selection(
 #[specta::specta]
 pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-refresh-voices", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-refresh-voices", move || async move {
         let settings = get_settings(&app);
         let provider_id = manager.selected_provider_id(&settings);
         manager
@@ -618,7 +615,7 @@ pub async fn preview_tts_voice(
     preview_text: Option<String>,
 ) -> Result<(), String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_command_thread(
+    speak_on_dedicated_thread(
         manager,
         default_preview_request(voice_id, normalize_optional_string(preview_text)),
         "tts-command-preview-voice",
@@ -637,7 +634,7 @@ pub async fn preview_tts_voice_preset(
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset".to_string());
     request.preset_id = Some(preset_id);
-    speak_on_command_thread(manager, request, "tts-command-preview-preset").await
+    speak_on_dedicated_thread(manager, request, "tts-command-preview-preset").await
 }
 
 #[tauri::command]
@@ -651,23 +648,17 @@ pub async fn preview_tts_voice_preset_draft(
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset_draft".to_string());
     request.inline_preset = Some(preset_from_input(input, None)?);
-    speak_on_command_thread(manager, request, "tts-command-preview-draft").await
+    speak_on_dedicated_thread(manager, request, "tts-command-preview-draft").await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Result<(), String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_command_on_stack("tts-command-prepare-sidecar", move || async move {
+    run_tts_async_on_dedicated_stack("tts-command-prepare-sidecar", move || async move {
         manager.prepare_sidecar_provider(&provider_id, None).await
     })
     .await
-}
-
-/// Bounds concurrent TTS command threads (each carries a 64 MB stack).
-fn tts_command_semaphore() -> &'static tokio::sync::Semaphore {
-    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
-    SEM.get_or_init(|| tokio::sync::Semaphore::new(TTS_COMMAND_MAX_CONCURRENCY))
 }
 
 /// Validate Reader unit input against the synthesis caps (count, per-unit
@@ -697,53 +688,6 @@ fn ensure_reader_units_within_limits<'a>(
         }
     }
     Ok(())
-}
-
-async fn run_tts_async_command_on_stack<T, F, Fut>(
-    thread_name: &'static str,
-    task: F,
-) -> Result<T, String>
-where
-    T: Send + 'static,
-    F: FnOnce() -> Fut + Send + 'static,
-    Fut: Future<Output = Result<T, String>> + 'static,
-{
-    // Hold a permit for the lifetime of the command so concurrent large-stack
-    // threads stay bounded; excess callers queue here.
-    let _permit = tts_command_semaphore()
-        .acquire()
-        .await
-        .map_err(|_| "TTS command queue is unavailable.".to_string())?;
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    thread::Builder::new()
-        .name(thread_name.to_string())
-        .stack_size(TTS_COMMAND_STACK_BYTES)
-        .spawn(move || {
-            let result = (|| {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|err| format!("Failed to start TTS command runtime: {err}"))?;
-                runtime.block_on(task())
-            })();
-            let _ = tx.send(result);
-        })
-        .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
-
-    rx.await
-        .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
-}
-
-async fn speak_on_command_thread(
-    manager: Arc<TtsManager>,
-    request: SpeakRequest,
-    thread_name: &'static str,
-) -> Result<(), String> {
-    run_tts_async_command_on_stack(
-        thread_name,
-        move || async move { manager.speak(request).await },
-    )
-    .await
 }
 
 fn validate_reader_document_id(document_id: &str) -> Result<&str, String> {

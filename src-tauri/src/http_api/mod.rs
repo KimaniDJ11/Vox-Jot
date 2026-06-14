@@ -38,7 +38,7 @@ use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::TtsVoicePresetInput;
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
-use crate::tts::{SpeakRequest, TtsManager, VoiceInfo};
+use crate::tts::{speak_on_dedicated_thread, SpeakRequest, TtsManager, VoiceInfo};
 use crate::tts_profiles::{list_voice_profiles, TtsVoiceProfileDescriptor};
 use axum::{
     extract::{DefaultBodyLimit, Multipart, State as AxumState},
@@ -514,8 +514,9 @@ async fn handle_speak(
             .into_response();
     };
     let manager = manager.inner().clone();
-    match manager
-        .speak(SpeakRequest {
+    match speak_on_dedicated_thread(
+        manager,
+        SpeakRequest {
             text: text.to_string(),
             locale: request.locale,
             preferred_voice_id: request.preferred_voice_id,
@@ -523,8 +524,10 @@ async fn handle_speak(
             inline_preset: None,
             trigger: Some("local_api".to_string()),
             remember_last_output: request.remember_last_output.unwrap_or(false),
-        })
-        .await
+        },
+        "http-api-speak",
+    )
+    .await
     {
         Ok(()) => Json(SpeakApiResponse { status: "ok" }).into_response(),
         Err(error) => (

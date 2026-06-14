@@ -35,8 +35,8 @@ use crate::translation::{
 };
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::tts::{
-    build_auto_speak_plan, choose_readback_locale, normalize_locale, SpeakRequest,
-    TtsHistoryContext, TtsManager,
+    build_auto_speak_plan, choose_readback_locale, normalize_locale, speak_on_dedicated_thread,
+    SpeakRequest, TtsHistoryContext, TtsManager,
 };
 use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
@@ -645,7 +645,8 @@ fn spawn_tts_playback(app: &AppHandle, request: SpeakRequest, history_entry_id: 
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
         let result = if let Some(tts_manager) = app_handle.try_state::<Arc<TtsManager>>() {
-            tts_manager.speak(request).await
+            speak_on_dedicated_thread(Arc::clone(&*tts_manager), request, "tts-shortcut-playback")
+                .await
         } else {
             Err("TTS manager is unavailable.".to_string())
         };

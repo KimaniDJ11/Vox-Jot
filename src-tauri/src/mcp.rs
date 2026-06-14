@@ -2,7 +2,7 @@ use crate::helpers::subtitles::TimedSegment;
 use crate::http_api::{decode_wav_bytes, require_api_token, ApiState};
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{TtsVoicePreset, TtsVoiceTuningSettings};
-use crate::tts::{SpeakRequest, TtsManager};
+use crate::tts::{speak_on_dedicated_thread, SpeakRequest, TtsManager};
 use crate::tts_profiles::list_voice_profiles;
 use axum::{
     extract::{Json, State as AxumState},
@@ -274,8 +274,9 @@ async fn call_speak(state: &ApiState, arguments: Value) -> Result<Value, String>
         _ => None,
     };
 
-    manager
-        .speak(SpeakRequest {
+    speak_on_dedicated_thread(
+        manager,
+        SpeakRequest {
             text: text.to_string(),
             locale: args.locale,
             preferred_voice_id: args.voice_id,
@@ -283,8 +284,10 @@ async fn call_speak(state: &ApiState, arguments: Value) -> Result<Value, String>
             inline_preset,
             trigger: Some("mcp".to_string()),
             remember_last_output: false,
-        })
-        .await?;
+        },
+        "mcp-speak",
+    )
+    .await?;
 
     Ok(json!({ "content": [{ "type": "text", "text": "Speech queued." }] }))
 }

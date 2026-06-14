@@ -204,6 +204,27 @@ fn managed_runtime_current_check_accepts_full_runtime_catalog() {
 }
 
 #[test]
+fn mlx_audio_model_root_requires_root_weight_file() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    std::fs::write(dir.path().join("config.json"), "{}").expect("config");
+    std::fs::create_dir_all(dir.path().join("embeddings")).expect("embeddings dir");
+    std::fs::write(
+        dir.path().join("embeddings").join("speaker.safetensors"),
+        b"not model weights",
+    )
+    .expect("embedding");
+
+    assert!(!super::TtsManager::mlx_audio_model_root_has_weights(
+        dir.path()
+    ));
+
+    std::fs::write(dir.path().join("model.safetensors"), b"model weights").expect("weights");
+    assert!(super::TtsManager::mlx_audio_model_root_has_weights(
+        dir.path()
+    ));
+}
+
+#[test]
 fn hf_repo_lookup_prefers_native_tts_catalog_entries() {
     assert_eq!(
         tts_model_id_for_hf_repo("Supertone/supertonic-3"),

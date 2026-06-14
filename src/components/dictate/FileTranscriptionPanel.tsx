@@ -25,14 +25,11 @@ import {
   FileText,
   Folder,
   FolderPlus,
-  Headphones,
-  Languages,
   Layers,
   List,
   Loader2,
   LocateFixed,
   Pause,
-  Play,
   SlidersHorizontal,
   Trash2,
   Upload,
@@ -845,6 +842,8 @@ const FileTranscriptionPanelShell: React.FC<{
   const [readerSectionsOpen, setReaderSectionsOpen] = useState(false);
   const [readerTransformOpen, setReaderTransformOpen] = useState(false);
   const [readerHasDocument, setReaderHasDocument] = useState(false);
+  const [readerViewMode, setReaderViewMode] = useState<"text" | "page">("text");
+  const [readerCanUsePageView, setReaderCanUsePageView] = useState(false);
   const selectedAsrModel = useSelectedSpeechAnalysisAsrModel();
   const isRunningRef = useRef(false);
 
@@ -1124,6 +1123,9 @@ const FileTranscriptionPanelShell: React.FC<{
           readerTransformOpen={readerTransformOpen}
           onReaderTransformOpenChange={setReaderTransformOpen}
           readerHasDocument={readerHasDocument}
+          readerViewMode={readerViewMode}
+          onReaderViewModeChange={setReaderViewMode}
+          canUseReaderPageView={readerCanUsePageView}
         />
       </div>
 
@@ -1401,6 +1403,9 @@ const FileTranscriptionPanelShell: React.FC<{
           transformOpen={readerTransformOpen}
           onTransformOpenChange={setReaderTransformOpen}
           onHasDocumentChange={setReaderHasDocument}
+          viewMode={readerViewMode}
+          onViewModeChange={setReaderViewMode}
+          onCanUsePageViewChange={setReaderCanUsePageView}
         />
       ) : (
         <WatchedFoldersGroup selectedAsrModel={selectedAsrModel} />
@@ -1939,6 +1944,9 @@ const WatchedFoldersToolbar: React.FC<{
   readerTransformOpen: boolean;
   onReaderTransformOpenChange: (open: boolean) => void;
   readerHasDocument: boolean;
+  readerViewMode: "text" | "page";
+  onReaderViewModeChange: (mode: "text" | "page") => void;
+  canUseReaderPageView: boolean;
 }> = ({
   kind,
   view,
@@ -1955,6 +1963,9 @@ const WatchedFoldersToolbar: React.FC<{
   readerTransformOpen,
   onReaderTransformOpenChange,
   readerHasDocument,
+  readerViewMode,
+  onReaderViewModeChange,
+  canUseReaderPageView,
 }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -2105,7 +2116,7 @@ const WatchedFoldersToolbar: React.FC<{
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="control"
                 size="sm"
                 aria-pressed={readerTransformOpen}
                 onClick={() => {
@@ -2120,7 +2131,7 @@ const WatchedFoldersToolbar: React.FC<{
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="control"
                 size="sm"
                 aria-pressed={readerSectionsOpen}
                 onClick={() => {
@@ -2133,6 +2144,30 @@ const WatchedFoldersToolbar: React.FC<{
                   defaultValue: "Sections",
                 })}
               </Button>
+              {canUseReaderPageView ? (
+                <SegmentedControl<"text" | "page">
+                  value={readerViewMode}
+                  onChange={onReaderViewModeChange}
+                  layoutId="reader-page-view-toggle"
+                  ariaLabel={t("dictate.reader.pageView.ariaLabel", {
+                    defaultValue: "Reader layout",
+                  })}
+                  items={[
+                    {
+                      value: "text",
+                      label: t("dictate.reader.pageView.text", {
+                        defaultValue: "Text",
+                      }),
+                    },
+                    {
+                      value: "page",
+                      label: t("dictate.reader.pageView.page", {
+                        defaultValue: "Page",
+                      }),
+                    },
+                  ]}
+                />
+              ) : null}
             </>
           ) : null
         ) : (
@@ -2356,6 +2391,9 @@ const ReaderDocumentsPanel: React.FC<{
   transformOpen: boolean;
   onTransformOpenChange: (open: boolean) => void;
   onHasDocumentChange: (hasDocument: boolean) => void;
+  viewMode: "text" | "page";
+  onViewModeChange: (mode: "text" | "page") => void;
+  onCanUsePageViewChange: (canUse: boolean) => void;
 }> = ({
   query,
   sort,
@@ -2366,6 +2404,9 @@ const ReaderDocumentsPanel: React.FC<{
   transformOpen,
   onTransformOpenChange,
   onHasDocumentChange,
+  viewMode: readerViewMode,
+  onViewModeChange,
+  onCanUsePageViewChange,
 }) => {
   const { t } = useTranslation();
   const { tts_active_preset_id: activeTtsPresetId } = useSettingsSlice([
@@ -2398,7 +2439,6 @@ const ReaderDocumentsPanel: React.FC<{
   );
   const [playbackRate, setPlaybackRate] = useState(1);
   const [documentLanguage, setDocumentLanguage] = useState<string>("auto");
-  const [readerViewMode, setReaderViewMode] = useState<"text" | "page">("text");
   const [audioCacheStatus, setAudioCacheStatus] =
     useState<ReaderAudioCacheStatus | null>(null);
   const [isPreparingReaderAudio, setIsPreparingReaderAudio] = useState(false);
@@ -2406,7 +2446,6 @@ const ReaderDocumentsPanel: React.FC<{
     null,
   );
   const [readerRestorePositionMs, setReaderRestorePositionMs] = useState(0);
-  const [showResume, setShowResume] = useState(false);
   // Audiobook export dialog (gap: m4b/mp3 + chapters).
   const [audiobookFormat, setAudiobookFormat] =
     useState<ReaderAudiobookFormat>("m4b");
@@ -2556,8 +2595,7 @@ const ReaderDocumentsPanel: React.FC<{
         setActiveSectionIndex(nextSectionIndex);
         setReaderRestoreIndex(restoreIndex);
         setReaderRestorePositionMs(restorePositionMs);
-        setShowResume(restoreIndex > 0 || restorePositionMs > 1500);
-        setReaderViewMode("text");
+        onViewModeChange("text");
         renderedPagesRef.current = new Map();
         setRenderedPages(renderedPagesRef.current);
         setRenderedPageErrors(new Map());
@@ -2601,6 +2639,7 @@ const ReaderDocumentsPanel: React.FC<{
     [
       library,
       onSplitViewChange,
+      onViewModeChange,
       persistLibrary,
       resolveDocumentVoicePresetId,
       t,
@@ -2855,6 +2894,7 @@ const ReaderDocumentsPanel: React.FC<{
   }, [
     activeDocument,
     isPreparingReaderAudio,
+    normalizedLanguage,
     playbackRate,
     readerAudioUnits,
     refreshReaderAudioCacheStatus,
@@ -2977,6 +3017,15 @@ const ReaderDocumentsPanel: React.FC<{
   const currentReadingUnit = readingUnits[player.index] ?? null;
   const canUseReaderPageView =
     activeDocument?.kind === "pdf" && (activeDocument.page_count ?? 0) > 0;
+  // The Text/Page toggle lives in the sticky toolbar (a sibling component), so
+  // report whether page view is available up to the shell that renders it.
+  useEffect(() => {
+    onCanUsePageViewChange(canUseReaderPageView);
+  }, [canUseReaderPageView, onCanUsePageViewChange]);
+  // Switching layout re-enables auto-follow so the view tracks playback again.
+  useEffect(() => {
+    setAutoFollow(true);
+  }, [readerViewMode]);
   const activeReaderUnitWords = currentReadingUnit
     ? splitReaderWords(currentReadingUnit.text)
     : null;
@@ -2997,13 +3046,6 @@ const ReaderDocumentsPanel: React.FC<{
   // changes identity (the controller object is recreated every render).
   const playerRef = useRef(player);
   playerRef.current = player;
-  const resumeReaderPlayback = useCallback(() => {
-    setError("");
-    setAutoFollow(true);
-    setShowResume(false);
-    playerRef.current.playAt(readerRestoreIndex, readerRestorePositionMs);
-  }, [readerRestoreIndex, readerRestorePositionMs]);
-
   // Center a unit by id. Works regardless of play state (so scrubbing/seeking
   // moves the view too), and marks the scroll as programmatic so the hand-scroll
   // listener below doesn't mistake it for the reader scrolling.
@@ -3041,7 +3083,6 @@ const ReaderDocumentsPanel: React.FC<{
   const seekToReadingUnit = useCallback((unitIndex: number) => {
     setError("");
     setAutoFollow(true);
-    setShowResume(false);
     playerRef.current.playAt(unitIndex);
   }, []);
 
@@ -3565,91 +3606,6 @@ const ReaderDocumentsPanel: React.FC<{
           {activeDocument && currentSection ? (
             <>
               <div className="space-y-4 px-1">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Headphones
-                      size={15}
-                      className="shrink-0 text-[var(--accent)]"
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold text-[var(--text)]">
-                        {activeDocument.name}
-                      </div>
-                      <div className="text-[11px] text-[var(--muted)]">
-                        {t("dictate.reader.viewerStatus", {
-                          defaultValue: "{{parts}} parts · {{language}}",
-                          parts: readingUnits.length,
-                          language: selectedReaderLanguageLabel,
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {showResume ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="primary-soft"
-                        onClick={resumeReaderPlayback}
-                        className="gap-1.5 text-[11px]"
-                      >
-                        <Play size={13} aria-hidden="true" />
-                        {t("dictate.reader.resume", {
-                          defaultValue: "Resume",
-                        })}
-                      </Button>
-                    ) : null}
-                    {canUseReaderPageView ? (
-                      <SegmentedControl<"text" | "page">
-                        value={readerViewMode}
-                        onChange={(value) => {
-                          setReaderViewMode(value);
-                          setAutoFollow(true);
-                        }}
-                        layoutId="reader-page-view-toggle"
-                        ariaLabel={t("dictate.reader.pageView.ariaLabel", {
-                          defaultValue: "Reader layout",
-                        })}
-                        className="bg-[var(--card)]"
-                        items={[
-                          {
-                            value: "text",
-                            label: t("dictate.reader.pageView.text", {
-                              defaultValue: "Text",
-                            }),
-                          },
-                          {
-                            value: "page",
-                            label: t("dictate.reader.pageView.page", {
-                              defaultValue: "Page",
-                            }),
-                          },
-                        ]}
-                      />
-                    ) : null}
-                    <SelectControl
-                      value={documentLanguage}
-                      options={readerLanguageOptions}
-                      onChange={(value) => {
-                        setDocumentLanguage(value);
-                        setAudioCacheStatus(null);
-                      }}
-                      ariaLabel={t("dictate.reader.language.ariaLabel", {
-                        defaultValue: "Reader language",
-                      })}
-                      title={t("dictate.reader.language.title", {
-                        defaultValue: "Language: {{language}}",
-                        language: selectedReaderLanguageLabel,
-                      })}
-                      selectedLabel={selectedReaderLanguageLabel}
-                      active={documentLanguage !== "auto"}
-                    >
-                      <Languages className="h-4 w-4" />
-                    </SelectControl>
-                  </div>
-                </div>
-
                 {sectionsOpen
                   ? createPortal(
                       <div
@@ -3947,17 +3903,14 @@ const ReaderDocumentsPanel: React.FC<{
                 onToggle={() => {
                   setError("");
                   setAutoFollow(true);
-                  setShowResume(false);
                   player.toggle();
                 }}
                 onStop={() => {
-                  setShowResume(false);
                   player.stop();
                 }}
                 onPrev={() => {
                   const target = Math.max(player.index - 1, 0);
                   setAutoFollow(true);
-                  setShowResume(false);
                   player.prev();
                   if (readerViewMode === "text") {
                     scrollToUnitId(readingUnits[target]?.id, "smooth");
@@ -3969,7 +3922,6 @@ const ReaderDocumentsPanel: React.FC<{
                     Math.max(readingUnits.length - 1, 0),
                   );
                   setAutoFollow(true);
-                  setShowResume(false);
                   player.next();
                   if (readerViewMode === "text") {
                     scrollToUnitId(readingUnits[target]?.id, "smooth");
@@ -3977,7 +3929,6 @@ const ReaderDocumentsPanel: React.FC<{
                 }}
                 onSeek={(target) => {
                   setAutoFollow(true);
-                  setShowResume(false);
                   player.seek(target);
                   // Instant so the view tracks the scrubber thumb as it drags.
                   if (readerViewMode === "text") {
@@ -4000,6 +3951,13 @@ const ReaderDocumentsPanel: React.FC<{
                 exportDisabled={readingUnits.length === 0}
                 onCopySection={copyDocumentText}
                 copyFeedback={copyFeedback}
+                documentLanguage={documentLanguage}
+                readerLanguageOptions={readerLanguageOptions}
+                onDocumentLanguageChange={(value) => {
+                  setDocumentLanguage(value);
+                  setAudioCacheStatus(null);
+                }}
+                selectedReaderLanguageLabel={selectedReaderLanguageLabel}
               />
               {player.status !== "idle" && !autoFollow ? (
                 <button

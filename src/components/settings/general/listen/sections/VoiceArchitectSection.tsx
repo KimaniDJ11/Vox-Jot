@@ -443,16 +443,23 @@ export const VoiceArchitectSection: React.FC<{
   const bestMatchLabel = t("listen.createVoices.bestMatchSort", {
     defaultValue: "Best Match",
   });
-  const modelProviderOptions = useMemo(
-    () => [
+  const modelProviderOptions = useMemo(() => {
+    // Only offer providers that actually have an available voice model, so the
+    // filter can't dead-end on "no voices". This matches the language/gender/
+    // accent filters, which are derived from the voices that are present.
+    const availableProviderIds = new Set(
+      availableDraftModels.map((model) => model.provider_id),
+    );
+    return [
       { value: "all", label: providerFilterLabel },
-      ...speech.visibleProviders.map((provider) => ({
-        value: provider.id,
-        label: provider.label,
-      })),
-    ],
-    [providerFilterLabel, speech.visibleProviders],
-  );
+      ...speech.visibleProviders
+        .filter((provider) => availableProviderIds.has(provider.id))
+        .map((provider) => ({
+          value: provider.id,
+          label: provider.label,
+        })),
+    ];
+  }, [availableDraftModels, providerFilterLabel, speech.visibleProviders]);
   const selectedModelProviderLabel = useMemo(
     () =>
       modelProviderOptions.find(
@@ -460,6 +467,18 @@ export const VoiceArchitectSection: React.FC<{
       )?.label ?? providerFilterLabel,
     [modelProviderFilter, modelProviderOptions, providerFilterLabel],
   );
+  // If the selected provider drops out of the available set (e.g. its model is
+  // removed), fall back to "all" so the voice list can't strand on empty.
+  useEffect(() => {
+    if (
+      modelProviderFilter !== "all" &&
+      !modelProviderOptions.some(
+        (option) => option.value === modelProviderFilter,
+      )
+    ) {
+      setModelProviderFilter("all");
+    }
+  }, [modelProviderFilter, modelProviderOptions]);
   const modelLanguageOptions = useMemo(
     () => [
       { value: "all", label: languageFilterLabel },

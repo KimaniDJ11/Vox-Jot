@@ -2,8 +2,10 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
+  ChevronsUpDown,
   ClipboardCopy,
   Download,
+  Languages,
   Loader2,
   Pause,
   Play,
@@ -14,6 +16,10 @@ import {
 
 import { ActionIconButton } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
+import {
+  SelectControl,
+  type ModelListControlOption,
+} from "@/components/model-hub/ModelListControls";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import type { CreateVoiceHubVoiceRow } from "@/components/settings/general/listen/createVoiceVoiceHub";
@@ -57,6 +63,10 @@ export type ReaderPlaybackBarProps = {
   exportDisabled: boolean;
   onCopySection: () => void;
   copyFeedback: boolean;
+  documentLanguage: string;
+  readerLanguageOptions: ModelListControlOption[];
+  onDocumentLanguageChange: (value: string) => void;
+  selectedReaderLanguageLabel: string;
 };
 
 const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -98,6 +108,10 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
   exportDisabled,
   onCopySection,
   copyFeedback,
+  documentLanguage,
+  readerLanguageOptions,
+  onDocumentLanguageChange,
+  selectedReaderLanguageLabel,
 }) => {
   const { t } = useTranslation();
   const hasUnits = total > 0;
@@ -123,6 +137,15 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
     defaultValue: "Export format",
   });
   const exportFormatLabel = audiobookFormat.toUpperCase();
+  const exportAudioLabel = isExportingAudio
+    ? t("dictate.reader.exportingAudio", { defaultValue: "Exporting" })
+    : t("dictate.reader.exportAudio", {
+        defaultValue: "Export {{format}}",
+        format: exportFormatLabel,
+      });
+  const copySectionLabel = copyFeedback
+    ? t("dictate.reader.copied", { defaultValue: "Copied" })
+    : t("dictate.reader.copySection", { defaultValue: "Copy section" });
   const playLabel = isPlaying
     ? t("dictate.reader.player.pause", { defaultValue: "Pause" })
     : status === "paused"
@@ -168,47 +191,63 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
         <label className="sr-only" htmlFor="reader-playback-speed">
           {speedLabel}
         </label>
-        <select
-          id="reader-playback-speed"
-          value={String(playbackRate)}
-          onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
-          className="h-9 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
-          aria-label={speedLabel}
-        >
-          {readerPlaybackRateOptions.map((rate) => (
-            <option key={rate} value={rate}>
-              {t("dictate.reader.player.speedOption", {
-                defaultValue: "{{rate}}x",
-                rate,
-              })}
-            </option>
-          ))}
-        </select>
+        <div className="relative inline-flex">
+          <select
+            id="reader-playback-speed"
+            value={String(playbackRate)}
+            onChange={(event) =>
+              onPlaybackRateChange(Number(event.target.value))
+            }
+            className="h-9 appearance-none rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] py-1 pl-3 pr-7 text-xs font-medium text-[var(--text)] shadow-[var(--segmented-control-shadow)] outline-none transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] focus:ring-2 focus:ring-[var(--accent-glow)]"
+            aria-label={speedLabel}
+          >
+            {readerPlaybackRateOptions.map((rate) => (
+              <option key={rate} value={rate}>
+                {t("dictate.reader.player.speedOption", {
+                  defaultValue: "{{rate}}x",
+                  rate,
+                })}
+              </option>
+            ))}
+          </select>
+          <ChevronsUpDown
+            className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]"
+            aria-hidden="true"
+          />
+        </div>
 
         <label className="sr-only" htmlFor="reader-audiobook-format">
           {formatLabel}
         </label>
-        <select
-          id="reader-audiobook-format"
-          value={audiobookFormat}
-          onChange={(event) =>
-            onAudiobookFormatChange(event.target.value as "m4b" | "mp3" | "wav")
-          }
-          className="h-9 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 text-xs font-medium text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)]"
-          aria-label={formatLabel}
-          title={`${formatLabel}: ${exportFormatLabel}`}
-        >
-          {readerAudiobookFormatOptions.map((format) => (
-            <option key={format} value={format}>
-              {format.toUpperCase()}
-            </option>
-          ))}
-        </select>
+        <div className="relative inline-flex">
+          <select
+            id="reader-audiobook-format"
+            value={audiobookFormat}
+            onChange={(event) =>
+              onAudiobookFormatChange(
+                event.target.value as "m4b" | "mp3" | "wav",
+              )
+            }
+            className="h-9 appearance-none rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[var(--panel-bg)] py-1 pl-3 pr-7 text-xs font-medium text-[var(--text)] shadow-[var(--segmented-control-shadow)] outline-none transition-colors hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] focus:ring-2 focus:ring-[var(--accent-glow)]"
+            aria-label={formatLabel}
+            title={`${formatLabel}: ${exportFormatLabel}`}
+          >
+            {readerAudiobookFormatOptions.map((format) => (
+              <option key={format} value={format}>
+                {format.toUpperCase()}
+              </option>
+            ))}
+          </select>
+          <ChevronsUpDown
+            className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]"
+            aria-hidden="true"
+          />
+        </div>
 
         <Button
           type="button"
           size="sm"
-          variant={audioReady ? "primary-soft" : "secondary"}
+          variant={audioReady ? "control" : "secondary"}
           disabled={!hasUnits || isPreparingAudio || audioReady}
           onClick={onPrepareAudio}
           className={prepareAudioButtonClassName}
@@ -231,42 +270,52 @@ export const ReaderPlaybackBar: React.FC<ReaderPlaybackBarProps> = ({
                 })}
         </Button>
 
+        <SelectControl
+          value={documentLanguage}
+          options={readerLanguageOptions}
+          onChange={onDocumentLanguageChange}
+          ariaLabel={t("dictate.reader.language.ariaLabel", {
+            defaultValue: "Reader language",
+          })}
+          title={t("dictate.reader.language.title", {
+            defaultValue: "Language: {{language}}",
+            language: selectedReaderLanguageLabel,
+          })}
+          selectedLabel={selectedReaderLanguageLabel}
+          active={documentLanguage !== "auto"}
+        >
+          <Languages className="h-4 w-4" />
+        </SelectControl>
+
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="secondary"
           onClick={onExportAudio}
           disabled={isExportingAudio || exportDisabled}
-          className="gap-1.5 text-[11px]"
+          title={exportAudioLabel}
+          aria-label={exportAudioLabel}
         >
           {isExportingAudio ? (
-            <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+            <Loader2 className="animate-spin" aria-hidden="true" />
           ) : (
-            <Download size={13} aria-hidden="true" />
+            <Download aria-hidden="true" />
           )}
-          {isExportingAudio
-            ? t("dictate.reader.exportingAudio", { defaultValue: "Exporting" })
-            : t("dictate.reader.exportAudio", {
-                defaultValue: "Export {{format}}",
-                format: exportFormatLabel,
-              })}
         </Button>
 
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="secondary"
           onClick={onCopySection}
-          className="gap-1.5 text-[11px]"
+          title={copySectionLabel}
+          aria-label={copySectionLabel}
         >
           {copyFeedback ? (
-            <Check size={13} aria-hidden="true" />
+            <Check aria-hidden="true" />
           ) : (
-            <ClipboardCopy size={13} aria-hidden="true" />
+            <ClipboardCopy aria-hidden="true" />
           )}
-          {copyFeedback
-            ? t("dictate.reader.copied", { defaultValue: "Copied" })
-            : t("dictate.reader.copySection", { defaultValue: "Copy section" })}
         </Button>
       </div>
 

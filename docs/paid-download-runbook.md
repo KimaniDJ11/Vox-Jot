@@ -50,6 +50,7 @@ This is the current path.
 - Link the website purchase button to checkout.
 - Link the post-payment success page to the R2 DMG.
 - Use the Tauri updater manifest on Hugging Face for installed-app updates.
+- Do not use GitHub Releases for Vox Jot app distribution.
 - License keys are allowed in this path if we decide to add them later.
 
 Recommended first version:
@@ -186,14 +187,14 @@ One-time $2 beta download for Apple Silicon Macs. Vox Jot is signed and notarize
 8. Create or update the `$2` checkout link.
 9. Update `https://www.iriedinamik.org/voxjot/` so the primary CTA points to checkout.
 10. Verify purchase success page and public download URL in a browser.
-11. For updater-capable releases, run the Release workflow so Hugging Face `latest.json` points at the new signed updater artifacts.
+11. For updater-capable releases, use the local distributor to create the signed updater archive and upload the updater artifacts plus `latest.json` to Hugging Face.
 
-## Local release without GitHub Actions
+## Required local release path
 
-When GitHub Actions is unavailable because of billing or spending limits, use the local distributor instead of the `Release macOS` workflow:
+Always use the local distributor for public website/Gumroad releases. GitHub Releases and the GitHub `Release` / `Release macOS` workflows are blocked for Vox Jot app distribution.
 
 ```sh
-VOX_JOT_R2_BUCKET="YOUR_R2_BUCKET" \
+VOX_JOT_R2_BUCKET="vox-jot-downloads" \
 TAURI_SIGNING_PRIVATE_KEY_PATH="/path/to/tauri-updater-private-key" \
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..." \
 bun run release:local-mac -- 1.0.7
@@ -214,3 +215,5 @@ The script:
 Use `--skip-hf` only after already-shipped installed apps point at a non-Hugging-Face updater endpoint. Current installed builds still read the Hugging Face updater manifest, so skipping Hugging Face would prevent in-app updates for those users.
 
 Use `--skip-r2`, `--skip-gumroad`, or `--skip-website-check` only for a dry run or a deliberately partial release. A public paid release is not complete until R2, Gumroad, the website path, and the updater feed are all verified.
+
+If the local distributor is blocked by missing notary credentials, Cloudflare R2 auth, updater signing key/password, Hugging Face auth, Gumroad auth, website verification, or public download verification, fix that blocker and rerun the local distributor. Do not use GitHub Releases as a fallback.

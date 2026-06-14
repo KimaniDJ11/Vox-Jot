@@ -15,6 +15,21 @@ On macOS, the default path for validating any solid app change is to rebuild and
 - Use `bun run tauri dev` only for fast iteration when installed-app validation is not required. Dev (debug) builds skip single-instance **and** the release-only macOS startup paths, so any window or startup behavior must be validated with a release build (`mac:update-installed-app:notarized`), not dev.
 - Treat this as the standard workflow for all future sessions and agents in this repo.
 
+## Production Distribution Policy
+
+GitHub Releases are blocked for Vox Jot app distribution. Do not create GitHub releases, upload app release assets to GitHub releases, or run the GitHub `Release` / `Release macOS` workflows as a distribution fallback.
+
+Use the local Cloudflare R2 + Gumroad + updater feed distributor for public releases:
+
+```bash
+VOX_JOT_R2_BUCKET="vox-jot-downloads" \
+TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/voxjot-updater.key" \
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..." \
+bun run release:local-mac -- <version>
+```
+
+If notarization, R2, updater signing, Hugging Face, Gumroad, website, or public-download verification is blocked, report that exact blocker and stop. Do not use GitHub Releases or GitHub Actions release workflows instead.
+
 ## Development Commands
 
 **Prerequisites:** [Rust](https://rustup.rs/) (latest stable), [Bun](https://bun.sh/)
@@ -105,15 +120,15 @@ All user-facing strings must use i18next translations. ESLint enforces this (no 
 
 **UI navigation structure (verified against the running app 2026-06-12) — section components live in `src/components/app-sections/`:**
 
-| Top Nav      | Sidebar Label                                                | Code Component (`app-sections/`)                                                                          |
-| ------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **Dictate**  | Home, Dictionary, File Transcription, Reader, Enhance Audio  | `DictateHistorySection`, `CorrectionsSection`, `FileTranscriptionSection`, `ReaderSection`, `EnhanceAudioSection` (`dictate.tsx`) |
-| **Refine**   | Dictation Modes, Phrase Keys, Translation                    | `RefineProfilesSection`, `RefinePhraseKeysSection`, `RefineTranslationSection` (`refineCore.tsx`)            |
-| **Listen**   | Studio, Voice Design, Voice Cloning, Voice Changer, Generated Audio | `StoryStudioAppSection`, `ListenVoiceDesignSection`, `ListenVoiceCloningSection`, `ListenVoiceChangerSection`, `StoryAudioHistoryAppSection` (`listen.tsx`) |
-| **(bottom)** | Model Hub                                                    | Model Hub overlay (`src/components/model-hub/`) — all model categories (STT, Speech Analysis, LLM, TTS, Creative Audio, Audio Cleanup, Screen OCR) |
-| **Settings** | Basics: App & Dictation, Shortcuts, Recording & Devices, Output & Paste | `GeneralAppSettingsSection`, `ShortcutsSettingsSection`, `RecordingDevicesSettingsSection`, `OutputPasteSettingsSection` (`settings.tsx`) |
-| **Settings** | Intelligence: Corrections, Models & AI, Testing, Screen Context | `CorrectionsSettingsSection`, `AISetupSettingsSection`, Testing leaderboard (`app-sections/testing/`), Screen Context |
-| **Settings** | System: Privacy & Storage, Legal & Model Terms, Automation & Agents, Diagnostics, About Vox Jot | `PrivacyStorageSettingsSection`, `LegalModelTermsSection`, `AutomationAgentsSettingsSection`, `DiagnosticsSettingsSection`, `AboutSection` |
+| Top Nav      | Sidebar Label                                                                                   | Code Component (`app-sections/`)                                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dictate**  | Home, Dictionary, File Transcription, Reader, Enhance Audio                                     | `DictateHistorySection`, `CorrectionsSection`, `FileTranscriptionSection`, `ReaderSection`, `EnhanceAudioSection` (`dictate.tsx`)                           |
+| **Refine**   | Dictation Modes, Phrase Keys, Translation                                                       | `RefineProfilesSection`, `RefinePhraseKeysSection`, `RefineTranslationSection` (`refineCore.tsx`)                                                           |
+| **Listen**   | Studio, Voice Design, Voice Cloning, Voice Changer, Generated Audio                             | `StoryStudioAppSection`, `ListenVoiceDesignSection`, `ListenVoiceCloningSection`, `ListenVoiceChangerSection`, `StoryAudioHistoryAppSection` (`listen.tsx`) |
+| **(bottom)** | Model Hub                                                                                       | Model Hub overlay (`src/components/model-hub/`) — all model categories (STT, Speech Analysis, LLM, TTS, Creative Audio, Audio Cleanup, Screen OCR)          |
+| **Settings** | Basics: App & Dictation, Shortcuts, Recording & Devices, Output & Paste                         | `GeneralAppSettingsSection`, `ShortcutsSettingsSection`, `RecordingDevicesSettingsSection`, `OutputPasteSettingsSection` (`settings.tsx`)                   |
+| **Settings** | Intelligence: Corrections, Models & AI, Testing, Screen Context                                 | `CorrectionsSettingsSection`, `AISetupSettingsSection`, Testing leaderboard (`app-sections/testing/`), Screen Context                                       |
+| **Settings** | System: Privacy & Storage, Legal & Model Terms, Automation & Agents, Diagnostics, About Vox Jot | `PrivacyStorageSettingsSection`, `LegalModelTermsSection`, `AutomationAgentsSettingsSection`, `DiagnosticsSettingsSection`, `AboutSection`                  |
 
 When a label here disagrees with the running app or the exports in `src/components/app-sections/`, trust the code and update this table.
 

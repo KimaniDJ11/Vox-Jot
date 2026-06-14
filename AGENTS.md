@@ -94,6 +94,23 @@ Use the `gumroad` CLI for Gumroad product, sales, file, license, and content ins
 - Use `--dry-run` before mutating product metadata, custom pages, attachments, refunds, offer codes, or customer-visible content.
 - Browser testing is still required for checkout, receipt, CAPTCHA/payment behavior, and full download/install flow validation.
 
+## Production Distribution Policy
+
+GitHub Releases are blocked for Vox Jot app distribution. Do not create GitHub releases, upload app release assets to GitHub releases, or run the GitHub `Release` / `Release macOS` workflows as a substitute for distribution.
+
+The correct production distribution path is the local Cloudflare R2 + Gumroad + updater feed flow:
+
+```bash
+VOX_JOT_R2_BUCKET="vox-jot-downloads" \
+TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/voxjot-updater.key" \
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..." \
+bun run release:local-mac -- <version>
+```
+
+That path must Developer ID sign, notarize, staple, and Gatekeeper-validate the app/DMG; upload the versioned and `latest/` DMG/checksum to Cloudflare R2; create and sign the Tauri updater archive; upload updater artifacts and `latest.json` to the configured Hugging Face updater repo; verify Gumroad contains the latest DMG URL; and verify the website-to-Gumroad path.
+
+If the local distributor is blocked by missing notarization credentials, missing R2 credentials, a missing updater signing key/password, Hugging Face auth, Gumroad auth, or website/download verification, stop and report the exact blocker. Do not fall back to GitHub Releases or GitHub Actions release workflows.
+
 ## Text color visibility (contrast)
 
 Body copy and interactive labels must remain readable on real surfaces (`--panel-bg`, `--card`, `--bg`, overlays). Targets follow **WCAG 2.x**: **≥ 4.5:1** contrast for normal-sized text, **≥ 3:1** for large or bold UI text. Semi-transparent shells and backdrop blur effectively lighten or darken backgrounds; avoid stacking extra faintness.

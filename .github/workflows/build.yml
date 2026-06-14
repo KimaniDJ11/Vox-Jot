@@ -57,6 +57,16 @@ jobs:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
+      - name: Block GitHub Release publishing
+        if: ${{ inputs.release-id != '' }}
+        shell: bash
+        run: |
+          echo "::error::GitHub Releases are blocked for Vox Jot app distribution."
+          echo "Do not pass release-id to the reusable build workflow."
+          echo "Use the local Cloudflare R2 + Gumroad + updater-feed distributor instead:"
+          echo "  bun run release:local-mac -- <version>"
+          exit 1
+
       - name: Get version from tauri.conf.json
         id: get-version
         shell: bash

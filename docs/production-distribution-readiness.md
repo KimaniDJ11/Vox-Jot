@@ -1,6 +1,6 @@
 # Vox Jot Production Distribution Readiness
 
-Last updated: 2026-05-13
+Last updated: 2026-06-14
 
 ## Current Priority
 
@@ -69,9 +69,10 @@ feature.
 
 Before a broad beta:
 
-- Keep signed Tauri updater artifacts enabled and confirm each GitHub Release
-  contains `latest.json` plus signed updater archives before promoting it beyond
-  beta.
+- Keep signed Tauri updater artifacts enabled and confirm the local distributor
+  uploads signed updater archives plus `latest.json` to the configured updater
+  feed before promoting a build beyond beta. GitHub Releases are blocked for Vox
+  Jot app distribution.
 - Do not treat bundle/download size as the deciding factor. Bundle required
   runtimes when that gives the most reliable first-run experience; otherwise
   download heavy OCR, TTS, speech-analysis, and optional STT assets through
@@ -128,8 +129,9 @@ Those are proof points, not the buyer's first problem.
 Use Cloudflare Pages for the marketing/download site if the source is separated
 or moved into this repository. Connect the GitHub repo to Pages for automatic
 deploys, keep preview deployments enabled for branches, and use `_redirects` for
-canonical download URLs. Put large release assets on GitHub Releases or R2 with
-custom-domain caching only after the app update/download flow is stable.
+canonical download URLs. Put Vox Jot app release assets on Cloudflare R2 with
+custom-domain caching only after the app update/download flow is stable; do not
+use GitHub Releases for app distribution.
 
 Use Hugging Face this way:
 

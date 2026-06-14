@@ -1,107 +1,32 @@
 name: "Release macOS"
 
+# GitHub Releases are BLOCKED for Vox Jot app distribution.
+#
+# This workflow is intentionally neutered. Do NOT restore the previous
+# create-release / build / publish-to-Hugging-Face logic (it lives in git
+# history). The GitHub-release distribution path is off-policy; use the local
+# Cloudflare R2 + Gumroad + updater-feed distributor instead:
+#
+#   bun run release:local-mac -- <version>
+#
+# See CLAUDE.md / AGENTS.md "Production Distribution Policy".
+
 on: workflow_dispatch
 
+permissions: {}
+
 jobs:
-  create-release:
-    permissions:
-      contents: write
+  blocked:
+    name: GitHub release path is blocked
     runs-on: ubuntu-latest
-    outputs:
-      release-id: ${{ steps.create-release.outputs.result }}
-      version: ${{ steps.get-version.outputs.version }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Audit distribution readiness
-        run: bun scripts/audit-distribution-readiness.ts
-
-      - name: Get version from tauri.conf.json
-        id: get-version
-        shell: bash
+      - name: Fail with distribution policy
         run: |
-          VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | cut -d'"' -f4)
-          echo "Application version from tauri.conf.json: $VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Create Draft Release
-        id: create-release
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const tagName = `v${{ steps.get-version.outputs.version }}`
-            const { data: releases } = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100
-            })
-            const sameTag = releases.filter((release) => release.tag_name === tagName)
-            const published = sameTag.find((release) => !release.draft)
-            if (published) {
-              throw new Error(`Release ${tagName} already exists and is not a draft.`)
-            }
-            const existingDraft = sameTag
-              .filter((release) => release.draft)
-              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-            if (existingDraft) {
-              return existingDraft.id
-            }
-            const { data } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tagName,
-              name: tagName,
-              draft: true,
-              prerelease: false,
-              generate_release_notes: true
-            })
-            return data.id
-
-  publish-tauri-macos:
-    permissions:
-      contents: write
-    needs: create-release
-    uses: ./.github/workflows/build.yml
-    with:
-      platform: "macos-26"
-      target: "aarch64-apple-darwin"
-      build-args: "--target aarch64-apple-darwin"
-      sign-binaries: true
-      asset-prefix: "vox-jot"
-      upload-artifacts: false
-      release-id: ${{ needs.create-release.outputs.release-id }}
-    secrets: inherit
-
-  publish-hf-mirror:
-    name: Mirror signed macOS artifacts to Hugging Face
-    needs: [create-release, publish-tauri-macos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install Hugging Face CLI
-        run: pip install --quiet "huggingface_hub[cli]>=0.24"
-
-      - name: Publish macOS release to Hugging Face
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_RELEASE_ID: ${{ needs.create-release.outputs.release-id }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          HF_REPO: IrieDinamik/vox-jot-releases
-        run: bun scripts/publish-release-to-hf.ts ${{ needs.create-release.outputs.version }}
+          echo "::error::GitHub Releases are blocked for Vox Jot app distribution."
+          echo "The 'Release macOS' GitHub Actions release path is intentionally disabled."
+          echo ""
+          echo "Use the local distributor instead:"
+          echo "  bun run release:local-mac -- <version>"
+          echo ""
+          echo "See CLAUDE.md / AGENTS.md \"Production Distribution Policy\"."
+          exit 1

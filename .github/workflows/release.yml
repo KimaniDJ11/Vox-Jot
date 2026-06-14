@@ -1,129 +1,32 @@
 name: "Release"
 
+# GitHub Releases are BLOCKED for Vox Jot app distribution.
+#
+# This workflow is intentionally neutered. Do NOT restore the previous
+# create-release / multi-platform build / publish-to-Hugging-Face logic (it
+# lives in git history). The GitHub-release distribution path is off-policy; use
+# the local Cloudflare R2 + Gumroad + updater-feed distributor instead:
+#
+#   bun run release:local-mac -- <version>
+#
+# See CLAUDE.md / AGENTS.md "Production Distribution Policy".
+
 on: workflow_dispatch
 
+permissions: {}
+
 jobs:
-  create-release:
-    permissions:
-      contents: write
+  blocked:
+    name: GitHub release path is blocked
     runs-on: ubuntu-latest
-    outputs:
-      release-id: ${{ steps.create-release.outputs.result }}
-      version: ${{ steps.get-version.outputs.version }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Audit distribution readiness
-        run: bun scripts/audit-distribution-readiness.ts
-
-      - name: Get version from tauri.conf.json
-        id: get-version
-        shell: bash
+      - name: Fail with distribution policy
         run: |
-          VERSION=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | cut -d'"' -f4)
-          echo "Application version from tauri.conf.json: $VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Create Draft Release
-        id: create-release
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const tagName = `v${{ steps.get-version.outputs.version }}`
-            try {
-              const { data: existing } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tagName
-              })
-              if (!existing.draft) {
-                throw new Error(`Release ${tagName} already exists and is not a draft.`)
-              }
-              return existing.id
-            } catch (error) {
-              if (error.status !== 404) {
-                throw error
-              }
-            }
-            const { data } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tagName,
-              name: tagName,
-              draft: true,
-              prerelease: false,
-              generate_release_notes: true
-            })
-            return data.id
-
-  publish-tauri:
-    permissions:
-      contents: write
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: "macos-26" # for Arm based macs (M1 and above). Uses macOS 26 for Apple Intelligence SDK.
-            args: "--target aarch64-apple-darwin"
-            target: "aarch64-apple-darwin"
-            sign-binaries: true
-          - platform: "ubuntu-24.04" # Build Linux x64 packages on 24.04
-            args: "--bundles appimage,deb,rpm"
-            target: "x86_64-unknown-linux-gnu"
-            sign-binaries: true
-          - platform: "ubuntu-24.04-arm" # Build for ARM64 Linux
-            args: "--bundles appimage,deb,rpm"
-            target: "aarch64-unknown-linux-gnu"
-            sign-binaries: true
-          # Windows ships unsigned until Azure Trusted Signing secrets are
-          # available. The updater artifacts are still signed with the Tauri
-          # updater key.
-          - platform: "windows-latest"
-            args: ""
-            target: "x86_64-pc-windows-msvc"
-            sign-binaries: false
-
-    uses: ./.github/workflows/build.yml
-    with:
-      platform: ${{ matrix.platform }}
-      target: ${{ matrix.target }}
-      build-args: ${{ matrix.args }}
-      sign-binaries: ${{ matrix.sign-binaries }}
-      asset-prefix: "vox-jot"
-      upload-artifacts: false
-      release-id: ${{ needs.create-release.outputs.release-id }}
-    secrets: inherit
-
-  publish-hf-mirror:
-    name: Mirror signed artifacts to Hugging Face
-    needs: [create-release, publish-tauri]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install Hugging Face CLI
-        run: pip install --quiet "huggingface_hub[cli]>=0.24"
-
-      - name: Publish release to Hugging Face
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          HF_REPO: IrieDinamik/vox-jot-releases
-        run: bun scripts/publish-release-to-hf.ts ${{ needs.create-release.outputs.version }}
+          echo "::error::GitHub Releases are blocked for Vox Jot app distribution."
+          echo "The 'Release' GitHub Actions release path is intentionally disabled."
+          echo ""
+          echo "Use the local distributor instead:"
+          echo "  bun run release:local-mac -- <version>"
+          echo ""
+          echo "See CLAUDE.md / AGENTS.md \"Production Distribution Policy\"."
+          exit 1

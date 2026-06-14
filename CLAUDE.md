@@ -17,7 +17,7 @@ On macOS, the default path for validating any solid app change is to rebuild and
 
 ## Production Distribution Policy
 
-GitHub Releases are blocked for Vox Jot app distribution. Do not create GitHub releases, upload app release assets to GitHub releases, or run the GitHub `Release` / `Release macOS` workflows as a distribution fallback.
+GitHub Releases are blocked for Vox Jot app distribution. Do not create GitHub releases, upload app release assets to GitHub releases, or run the GitHub `Release` / `Release macOS` workflows as a distribution fallback. This block is enforced technically, not just by policy: `.github/workflows/release.yml` and `release-macos.yml` are neutered to fail-fast guard jobs (any dispatch exits 1 with a redirect), `.github/workflows/build.yml` rejects release publishing when `release-id` is passed, and `scripts/publish-release-to-hf.ts` is a block stub. Do not restore their release/`createRelease` logic — it lives in git history only.
 
 Use the local Cloudflare R2 + Gumroad + updater feed distributor for public releases:
 

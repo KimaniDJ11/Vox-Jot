@@ -4,10 +4,10 @@
 # It covers file-transcription ASR, speaker diarization, ONNX, and CoreML.
 # MLX-Audio and Gemma audio use separate app-managed venvs.
 
-torch==2.8.0
-torchaudio==2.8.0
-torchvision==0.23.0
-torchcodec==0.7.0
+torch==2.11.0
+torchaudio==2.11.0
+torchvision==0.26.0
+torchcodec==0.14.0
 
 transformers==5.0.0
 huggingface-hub==1.18.0

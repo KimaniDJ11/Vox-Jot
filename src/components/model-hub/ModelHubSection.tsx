@@ -193,13 +193,14 @@ const ModelHubSection: React.FC = () => {
       />
     </label>
   );
+  // The `#model-hub-section-actions` portal target lives in the detail-view
+  // title bar (DetailApp) so it exists from first paint and is never torn down.
+  // Keeping it here would relocate it when this toolbar moves from its inline
+  // fallback into the search slot, leaving section filter controls portaled
+  // into a detached node until the user switched category tabs.
   const modelHubToolbar = (
     <div className="app-no-drag flex w-full min-w-0 items-center gap-2">
       {searchField}
-      <div
-        id="model-hub-section-actions"
-        className="flex shrink-0 items-center justify-end gap-2"
-      />
     </div>
   );
 

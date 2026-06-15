@@ -184,6 +184,10 @@ const DetailApp: React.FC = () => {
               id="model-hub-search-slot"
               className="app-no-drag min-w-0 flex-1"
             />
+            <div
+              id="model-hub-section-actions"
+              className="app-no-drag flex shrink-0 items-center justify-end gap-2"
+            />
           </div>
         ) : (
           <div

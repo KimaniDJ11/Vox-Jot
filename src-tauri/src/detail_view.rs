@@ -14,6 +14,9 @@ const DETAIL_WIDTH: f64 = 800.0;
 const DETAIL_HEIGHT: f64 = 900.0;
 const DETAIL_MIN_WIDTH: f64 = 560.0;
 const DETAIL_MIN_HEIGHT: f64 = 640.0;
+/// Model Hub opens wider than the standard detail view so all seven category
+/// tabs fit on one row without horizontal scrolling on first open.
+const MODEL_HUB_WIDTH: f64 = 1000.0;
 
 #[derive(Default)]
 pub struct DetailViewRoutingState {
@@ -241,7 +244,7 @@ fn create_model_hub_window(app: &AppHandle) {
     ));
     builder = builder
         .title("Vox Jot")
-        .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
+        .inner_size(MODEL_HUB_WIDTH, DETAIL_HEIGHT)
         .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
         .resizable(true)
         .decorations(false)

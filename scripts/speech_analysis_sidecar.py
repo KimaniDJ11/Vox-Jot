@@ -93,8 +93,37 @@ def fail(message: str, code: int = 1) -> None:
     raise SystemExit(code)
 
 
-def device_name() -> str:
+def disable_torch_jit_script(torch_module: Any) -> None:
+    """Disable PyTorch's vulnerable JIT script entrypoint in this sidecar.
+
+    GitHub advisory GHSA-rrmf-rvhw-rf47 / CVE-2025-3000 has no patched
+    PyTorch release as of the runtime pin used here. Vox Jot does not use
+    torch.jit.script, so fail closed if a dependency tries to enter that path.
+    """
+
+    jit_module = getattr(torch_module, "jit", None)
+    if jit_module is None or getattr(jit_module, "_vox_jot_script_disabled", False):
+        return
+
+    def _blocked_torch_jit_script(*_args: Any, **_kwargs: Any) -> None:
+        raise RuntimeError(
+            "torch.jit.script is disabled in Vox Jot's speech-analysis sidecar "
+            "because PyTorch has no patched release for CVE-2025-3000."
+        )
+
+    setattr(jit_module, "script", _blocked_torch_jit_script)
+    setattr(jit_module, "_vox_jot_script_disabled", True)
+
+
+def import_guarded_torch() -> Any:
     import torch
+
+    disable_torch_jit_script(torch)
+    return torch
+
+
+def device_name() -> str:
+    torch = import_guarded_torch()
 
     if torch.cuda.is_available():
         return "cuda"
@@ -245,7 +274,7 @@ def read_audio_16k(audio_path: str) -> tuple[Any, int]:
 
 
 def pyannote_waveform_input(audio_path: str) -> dict[str, Any]:
-    import torch
+    torch = import_guarded_torch()
 
     data, sample_rate = read_audio_16k(audio_path)
     if getattr(data, "ndim", 1) > 1:
@@ -294,7 +323,7 @@ def coerce_timestamp_ms(timestamp: Any) -> tuple[int, int] | None:
 
 
 def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
-    import torch
+    torch = import_guarded_torch()
     import transformers.pipelines.automatic_speech_recognition as asr_pipeline
     from transformers import pipeline
 
@@ -332,7 +361,7 @@ def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[S
 
 
 def transcribe_gemma4_audio(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
-    import torch
+    torch = import_guarded_torch()
     from transformers import AutoModelForMultimodalLM, AutoProcessor
 
     model_name = repo_or_local(model_id, GEMMA4_AUDIO_REPOS[model_id])
@@ -454,7 +483,7 @@ def transcribe_mlx_audio(audio_path: str, model_id: str) -> tuple[str, list[Segm
 
 
 def transcribe_cohere(audio_path: str) -> tuple[str, list[Segment]]:
-    import torch
+    torch = import_guarded_torch()
     from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
     audio, sample_rate = read_audio_16k(audio_path)
@@ -490,7 +519,7 @@ def transcribe_cohere(audio_path: str) -> tuple[str, list[Segment]]:
 
 
 def transcribe_granite(audio_path: str) -> tuple[str, list[Segment]]:
-    import torch
+    torch = import_guarded_torch()
     import torchaudio
     from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
@@ -531,7 +560,7 @@ def transcribe_granite(audio_path: str) -> tuple[str, list[Segment]]:
 
 
 def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
-    import torch
+    torch = import_guarded_torch()
     from pyannote.audio import Pipeline
 
     token = hf_token()

@@ -8,7 +8,14 @@ import React, {
 import { createPortal } from "react-dom";
 import { listen } from "@tauri-apps/api/event";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
-import { Download, LoaderCircle, RotateCcw } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  LoaderCircle,
+  RotateCcw,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -22,6 +29,35 @@ import { useUpdateStore } from "@/stores/updateStore";
 
 const BACKGROUND_CHECK_DELAY_MS = 2_500;
 const BACKGROUND_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1_000;
+
+// "Skip this version" persists per-webview so it survives restarts without a
+// round-trip through Rust settings. A newer release clears the suppression
+// automatically because its version string no longer matches the skipped one.
+const SKIPPED_VERSION_KEY = "voxjot.skippedUpdateVersion";
+
+const readSkippedVersion = (): string | null => {
+  try {
+    return window.localStorage.getItem(SKIPPED_VERSION_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const writeSkippedVersion = (version: string) => {
+  try {
+    window.localStorage.setItem(SKIPPED_VERSION_KEY, version);
+  } catch {
+    // Skipping is a convenience, not critical state — ignore storage failures.
+  }
+};
+
+const clearSkippedVersion = () => {
+  try {
+    window.localStorage.removeItem(SKIPPED_VERSION_KEY);
+  } catch {
+    // No-op: see writeSkippedVersion.
+  }
+};
 
 type InstallPhase =
   | "idle"
@@ -45,6 +81,22 @@ const formatBytes = (bytes: number) => {
 const progressPercent = ({ downloaded, total }: ProgressState) => {
   if (!total || total <= 0) return undefined;
   return Math.min(100, Math.max(0, Math.round((downloaded / total) * 100)));
+};
+
+// Best-effort release date from the update manifest. Returns null when the
+// field is absent or unparseable so the chip simply doesn't render.
+const formatReleaseDate = (raw?: string) => {
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+    }).format(parsed);
+  } catch {
+    return null;
+  }
 };
 
 // Release manifests often set the body to nothing more than the version
@@ -91,6 +143,9 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
   const [phase, setPhase] = useState<InstallPhase>("idle");
   const [progress, setProgress] = useState<ProgressState>({ downloaded: 0 });
   const [installError, setInstallError] = useState<string | null>(null);
+  const [skippedVersion, setSkippedVersion] = useState<string | null>(() =>
+    readSkippedVersion(),
+  );
   const installStartedRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +160,19 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
 
       try {
         const result = await checkForUpdates();
+
+        // A manual check is an explicit request to see the update, so undo any
+        // earlier "Skip this version" for the release we just found.
+        if (
+          manual &&
+          result.available &&
+          result.latestVersion &&
+          result.latestVersion === readSkippedVersion()
+        ) {
+          clearSkippedVersion();
+          setSkippedVersion(null);
+        }
+
         if (manual && !result.available) {
           toast.success(
             t("updates.noUpdateAvailable", {
@@ -160,6 +228,10 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
     [updateInfo?.notes, updateInfo?.latestVersion],
   );
   const hasNotes = releaseNotes.length > 0;
+  const releaseDate = useMemo(
+    () => formatReleaseDate(updateInfo?.update?.date),
+    [updateInfo?.update?.date],
+  );
 
   const updateTitle = updateInfo?.latestVersion
     ? t("updates.availableWithVersion", {
@@ -167,6 +239,9 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
         version: updateInfo.latestVersion,
       })
     : t("updates.available", { defaultValue: "Update available" });
+
+  const isSkipped =
+    !!updateInfo?.latestVersion && updateInfo.latestVersion === skippedVersion;
 
   const startInstall = useCallback(async () => {
     if (!updateInfo?.update || installStartedRef.current) return;
@@ -212,13 +287,22 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
     }
   }, [updateInfo]);
 
+  const skipVersion = useCallback(() => {
+    const version = updateInfo?.latestVersion;
+    if (version) {
+      writeSkippedVersion(version);
+      setSkippedVersion(version);
+    }
+    setModalOpen(false);
+  }, [updateInfo?.latestVersion]);
+
   useDialogFocusTrap({
     enabled: modalOpen,
     containerRef: dialogRef,
     initialFocusSelector: "[data-update-dialog-focus]",
   });
 
-  if (!updateInfo?.available && !modalOpen) {
+  if ((!updateInfo?.available || isSkipped) && !modalOpen) {
     return null;
   }
 
@@ -238,19 +322,26 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                 defaultValue: "Ready to install.",
               });
 
+  const headingText =
+    phase === "error"
+      ? t("updates.failed", { defaultValue: "Update failed" })
+      : isInstalling
+        ? t("updates.updating", { defaultValue: "Updating Vox Jot" })
+        : t("updates.available", { defaultValue: "Update available" });
+
   const shouldShowLabel = showLabel && !isInstalling;
   const buttonClassName = shouldShowLabel
-    ? "h-8 min-h-8 w-auto min-w-[5.5rem] px-4 text-sm font-bold"
+    ? "h-8 min-h-8 w-auto px-3 text-sm font-bold"
     : "h-8 min-h-8 w-8 px-0";
 
   return (
     <>
-      {updateInfo?.available ? (
+      {updateInfo?.available && !isSkipped ? (
         <Button
           type="button"
-          variant="ghost"
+          variant="primary"
           size="icon-sm"
-          className={`app-no-drag app-update-button ${buttonClassName} border-transparent bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_4px_14px_color-mix(in_srgb,var(--accent),transparent_72%)] hover:bg-[var(--accent-hover)] hover:text-[var(--accent-foreground)] ${titleBarOverlayButtonFocusClass} ${className}`}
+          className={`app-no-drag app-update-button ${buttonClassName} ${titleBarOverlayButtonFocusClass} ${className}`}
           onClick={() => {
             setModalOpen(true);
             if (phase === "idle" || phase === "error") {
@@ -282,7 +373,7 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                 aria-labelledby="app-update-title"
                 data-update-dialog-focus
                 tabIndex={0}
-                className="app-no-drag w-full max-w-[380px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 text-[var(--text)] shadow-[var(--floating-panel-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                className="app-no-drag w-full max-w-[400px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 text-[var(--text)] shadow-[var(--floating-panel-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                 onKeyDown={(event) =>
                   handleDialogKeyDown(
                     event,
@@ -294,8 +385,8 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                   )
                 }
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_6px_16px_color-mix(in_srgb,var(--accent),transparent_70%)]">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_4px_12px_color-mix(in_srgb,var(--accent),transparent_78%)]">
                     {phase === "error" ? (
                       <RotateCcw className="h-[18px] w-[18px]" aria-hidden />
                     ) : isInstalling ? (
@@ -307,17 +398,27 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                       <Download className="h-[18px] w-[18px]" aria-hidden />
                     )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h2
                       id="app-update-title"
-                      className="truncate text-sm font-semibold"
+                      className="truncate text-base font-semibold leading-tight"
                     >
-                      {updateTitle}
+                      {headingText}
                     </h2>
                     <p className="mt-0.5 text-xs text-[var(--muted)]">
                       {statusLabel}
                     </p>
                   </div>
+                  {canClose ? (
+                    <button
+                      type="button"
+                      onClick={() => setModalOpen(false)}
+                      aria-label={t("common.close")}
+                      className="app-no-drag -mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--input)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  ) : null}
                 </div>
 
                 {phase === "error" ? (
@@ -389,30 +490,70 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                   </div>
                 ) : (
                   <>
+                    <div className="mt-4 flex items-center gap-2.5">
+                      {updateInfo?.currentVersion ? (
+                        <span className="text-xs tabular-nums text-[var(--muted)]">
+                          {updateInfo.currentVersion}
+                        </span>
+                      ) : null}
+                      <ArrowRight
+                        className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]"
+                        aria-hidden
+                      />
+                      <span className="inline-flex items-center rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--accent)]">
+                        {updateInfo?.latestVersion}
+                      </span>
+                      <span className="flex-1" />
+                      {releaseDate ? (
+                        <span className="text-xs text-[var(--muted)]">
+                          {releaseDate}
+                        </span>
+                      ) : null}
+                    </div>
+
                     {hasNotes ? (
                       <div className="mt-4 border-t border-[var(--ring-hairline)] pt-3">
                         <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                           {t("updates.whatsNew", { defaultValue: "What's new" })}
                         </p>
-                        <div className="max-h-28 overflow-auto whitespace-pre-line text-xs leading-5 text-[var(--text)]">
+                        <div className="max-h-32 overflow-auto whitespace-pre-line text-xs leading-5 text-[var(--text)]">
                           {releaseNotes}
                         </div>
                       </div>
                     ) : null}
-                    <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                      {t("updates.installPrompt", {
-                        defaultValue:
-                          "Vox Jot will close, install the update, and restart automatically.",
-                      })}
-                    </p>
-                    <div className="mt-4 flex justify-end gap-2">
+
+                    <div className="mt-4 flex items-start gap-1.5 text-[11px] leading-4 text-[var(--muted)]">
+                      <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span>
+                        {t("updates.signedVerified", {
+                          defaultValue: "Signed & verified",
+                        })}{" "}
+                        ·{" "}
+                        {t("updates.installPrompt", {
+                          defaultValue:
+                            "Vox Jot will close, install, and reopen automatically.",
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={skipVersion}
+                        className="rounded-md text-xs text-[var(--muted)] underline-offset-2 transition-colors hover:text-[var(--text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      >
+                        {t("updates.skipThisVersion", {
+                          defaultValue: "Skip this version",
+                        })}
+                      </button>
+                      <span className="flex-1" />
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
                         onClick={() => setModalOpen(false)}
                       >
-                        {t("common.cancel")}
+                        {t("updates.later", { defaultValue: "Later" })}
                       </Button>
                       <Button
                         type="button"
@@ -420,8 +561,8 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                         size="sm"
                         onClick={() => void startInstall()}
                       >
-                        {t("updates.installUpdate", {
-                          defaultValue: "Install update",
+                        {t("updates.installAndRestart", {
+                          defaultValue: "Install & restart",
                         })}
                       </Button>
                     </div>

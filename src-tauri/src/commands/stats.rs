@@ -47,6 +47,12 @@ pub async fn get_dictation_stats(
     _app: AppHandle,
     history_manager: State<'_, Arc<HistoryManager>>,
 ) -> Result<DictationStats, String> {
+    get_dictation_stats_impl(history_manager.inner().clone()).await
+}
+
+pub(crate) async fn get_dictation_stats_impl(
+    history_manager: Arc<HistoryManager>,
+) -> Result<DictationStats, String> {
     let entries = history_manager
         .get_history_entries()
         .await

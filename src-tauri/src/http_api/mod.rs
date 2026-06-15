@@ -34,7 +34,11 @@ use crate::commands::story_studio::{
     StoryAudioItem, StorySoundMode,
 };
 use crate::commands::tts::preset_from_input;
+use crate::commands::{self, audio::AudioDevice};
 use crate::helpers::subtitles::TimedSegment;
+use crate::managers::audio::AudioRecordingManager;
+use crate::managers::history::{HistoryEntriesPage, HistoryEntry, HistoryManager};
+use crate::managers::model::ModelManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::TtsVoicePresetInput;
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
@@ -52,6 +56,7 @@ use axum::{
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -134,6 +139,99 @@ struct CreativeAudioGenerateApiRequest {
     render_id: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct AppShowApiRequest {
+    section: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ShortcutBindingApiRequest {
+    id: String,
+    binding: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SettingsCommandApiRequest {
+    key: String,
+    value: Value,
+}
+
+#[derive(Deserialize)]
+struct DictationControlApiRequest {
+    binding_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SttSelectApiRequest {
+    model_id: String,
+    provider_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SttDownloadApiRequest {
+    model_id: String,
+}
+
+#[derive(Deserialize)]
+struct TtsSelectApiRequest {
+    provider_id: String,
+    model_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct TtsDownloadApiRequest {
+    model_id: Option<String>,
+    repo_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ArtifactCancelApiRequest {
+    domain: String,
+    artifact_id: String,
+}
+
+#[derive(Deserialize)]
+struct OcrModelApiRequest {
+    catalog_id: String,
+}
+
+#[derive(Deserialize)]
+struct OcrSelectApiRequest {
+    neural_model_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct AudioDeviceSelectionApiRequest {
+    device_name: String,
+}
+
+#[derive(Deserialize)]
+struct HistoryPageApiQuery {
+    offset: Option<usize>,
+    limit: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct RefinePreviewApiRequest {
+    text: String,
+    app_bundle_id_override: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SettingFieldDescriptor {
+    key: String,
+    value_type: &'static str,
+    patchable: bool,
+    route: Option<&'static str>,
+    note: Option<&'static str>,
+}
+
+#[derive(Serialize)]
+struct SettingsSchemaResponse {
+    fields: Vec<SettingFieldDescriptor>,
+    protected_fields: Vec<String>,
+}
+
 #[derive(Serialize)]
 struct SpeakApiResponse {
     status: &'static str,
@@ -143,6 +241,48 @@ struct SpeakApiResponse {
 struct TtsSynthesizeApiResponse {
     status: &'static str,
     output_paths: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct StatusResponse {
+    status: &'static str,
+}
+
+#[derive(Serialize)]
+struct DictationStatusResponse {
+    recording: bool,
+    current_model: Option<String>,
+}
+
+#[derive(Serialize)]
+struct DictationControlResponse {
+    status: &'static str,
+    binding_id: String,
+    recording: bool,
+}
+
+#[derive(Serialize)]
+struct AudioDevicesResponse {
+    microphones: Vec<AudioDevice>,
+    selected_microphone: String,
+    output_devices: Vec<AudioDevice>,
+    selected_output_device: String,
+    clamshell_microphone: String,
+    always_on_microphone: bool,
+    recording: bool,
+}
+
+#[derive(Serialize)]
+struct DownloadResponse {
+    status: &'static str,
+    path: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SettingsPatchResponse {
+    status: &'static str,
+    updated_keys: Vec<String>,
+    settings: crate::settings::AppSettings,
 }
 
 #[derive(Serialize)]
@@ -191,6 +331,51 @@ impl HttpApiManager {
         let router = Router::new()
             .route("/v1/health", get(handle_health))
             .route("/v1/readiness", get(handle_readiness))
+            .route("/v1/app/settings", get(handle_app_settings))
+            .route(
+                "/v1/settings",
+                get(handle_app_settings).post(handle_settings_patch),
+            )
+            .route("/v1/settings/schema", get(handle_settings_schema))
+            .route("/v1/settings/patch", post(handle_settings_patch))
+            .route("/v1/settings/command", post(handle_settings_command))
+            .route("/v1/settings/shortcut", post(handle_shortcut_binding))
+            .route("/v1/settings/shortcut/reset", post(handle_shortcut_reset))
+            .route("/v1/app/show", post(handle_app_show))
+            .route("/v1/app/cancel", post(handle_app_cancel))
+            .route("/v1/dictation/status", get(handle_dictation_status))
+            .route("/v1/dictation/start", post(handle_dictation_start))
+            .route("/v1/dictation/stop", post(handle_dictation_stop))
+            .route("/v1/dictation/toggle", post(handle_dictation_toggle))
+            .route("/v1/model-platform", get(handle_model_platform))
+            .route("/v1/models/stt/select", post(handle_stt_select))
+            .route("/v1/models/stt/download", post(handle_stt_download))
+            .route("/v1/models/tts/select", post(handle_tts_select))
+            .route("/v1/models/tts/download", post(handle_tts_download))
+            .route("/v1/models/downloads/cancel", post(handle_cancel_download))
+            .route("/v1/ocr/models", get(handle_ocr_models))
+            .route("/v1/ocr/download", post(handle_ocr_download))
+            .route("/v1/ocr/prepare", post(handle_ocr_prepare))
+            .route("/v1/ocr/select", post(handle_ocr_select))
+            .route("/v1/ocr/downloads", get(handle_ocr_downloads))
+            .route("/v1/audio/devices", get(handle_audio_devices))
+            .route("/v1/audio/microphone", post(handle_set_microphone))
+            .route("/v1/audio/output", post(handle_set_output_device))
+            .route(
+                "/v1/audio/clamshell-microphone",
+                post(handle_set_clamshell_microphone),
+            )
+            .route(
+                "/v1/history",
+                get(handle_history_page_default).post(handle_history_page),
+            )
+            .route("/v1/history/latest", get(handle_latest_history))
+            .route("/v1/stats/dictation", get(handle_dictation_stats))
+            .route(
+                "/v1/screen-context/diagnostics",
+                get(handle_screen_context_diagnostics),
+            )
+            .route("/v1/refine/preview", post(handle_refine_preview))
             .route("/v1/models", get(handle_models))
             .route("/v1/voices", get(handle_voices))
             .route("/v1/speak", post(handle_speak))
@@ -293,6 +478,1393 @@ async fn handle_health() -> Json<HealthResponse> {
         status: "ok",
         version: env!("CARGO_PKG_VERSION"),
     })
+}
+
+fn require_authorized(
+    app: &AppHandle,
+    headers: &HeaderMap,
+) -> Result<(), Box<axum::response::Response>> {
+    require_api_token(app, headers)
+}
+
+fn api_error(status: StatusCode, error: impl Into<String>) -> axum::response::Response {
+    (
+        status,
+        Json(ErrorResponse {
+            error: error.into(),
+        }),
+    )
+        .into_response()
+}
+
+fn ok_response() -> axum::response::Response {
+    Json(StatusResponse { status: "ok" }).into_response()
+}
+
+async fn handle_app_settings(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    Json(get_settings_without_secrets(&state.app)).into_response()
+}
+
+async fn handle_settings_schema(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match settings_schema_for_app(&state.app) {
+        Ok(schema) => Json(schema).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_settings_patch(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let updates = match extract_settings_updates(body) {
+        Ok(updates) => updates,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+
+    match apply_settings_patch(&state.app, updates) {
+        Ok((updated_keys, settings)) => Json(SettingsPatchResponse {
+            status: "ok",
+            updated_keys,
+            settings,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_settings_command(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<SettingsCommandApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match apply_settings_command(&state.app, request.key, request.value) {
+        Ok(updated_keys) => Json(SettingsPatchResponse {
+            status: "ok",
+            updated_keys,
+            settings: get_settings_without_secrets(&state.app),
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_shortcut_binding(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ShortcutBindingApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(binding) = request
+        .binding
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return api_error(StatusCode::BAD_REQUEST, "binding is required.");
+    };
+
+    match crate::shortcut::change_binding(state.app.clone(), request.id, binding.to_string()) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_shortcut_reset(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ShortcutBindingApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::shortcut::reset_binding(state.app.clone(), request.id) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
+    match key {
+        "http_api_token" => Some(("protected", "Local API token lives in the OS credential store.")),
+        "post_process_api_keys" => {
+            Some(("protected", "Provider API keys live in the OS credential store."))
+        }
+        "post_process_api_key_status" => Some((
+            "protected",
+            "API key status is derived from the credential store; update keys through provider-specific commands.",
+        )),
+        "bindings" => Some((
+            "/v1/settings/shortcut",
+            "Shortcut bindings require registration side effects.",
+        )),
+        "selected_model" | "selected_stt_provider_id" | "selected_stt_model_id" => Some((
+            "/v1/models/stt/select",
+            "STT selection requires model load side effects.",
+        )),
+        "selected_tts_provider_id" | "selected_tts_model_id" | "selected_tts_voice_id"
+        | "selected_tts_profile_id" => Some((
+            "/v1/models/tts/select",
+            "TTS selection should stay synchronized with the runtime catalog.",
+        )),
+        "selected_creative_audio_model_id" => Some((
+            "/v1/settings/command",
+            "Creative Audio model selection validates install/runtime readiness.",
+        )),
+        "tts_engine_preference" | "tts_default_voice_id" | "tts_rate" | "tts_volume" => Some((
+            "/v1/settings/command",
+            "TTS preference settings synchronize related voice/provider fields or clamp values.",
+        )),
+        "speech_runtime_path" | "tts_model_store_path" => Some((
+            "/v1/settings/command",
+            "Runtime path settings are trimmed and normalized before saving.",
+        )),
+        "audio_enhancement_enabled" | "audio_enhancement_model" => Some((
+            "/v1/settings/command",
+            "Audio enhancement changes refresh the active audio pipeline.",
+        )),
+        "screen_context_ocr_neural_model_id" => Some((
+            "/v1/ocr/select",
+            "OCR model selection validates install/runtime readiness.",
+        )),
+        "autostart_enabled" | "update_checks_enabled" | "enable_crash_reporting"
+        | "keyboard_implementation" => Some((
+            "/v1/settings/command",
+            "This setting applies runtime platform side effects.",
+        )),
+        "post_process_enabled" | "local_privacy_mode" | "post_process_provider_id"
+        | "post_process_models" | "selected_llm_provider_id" | "selected_llm_model_id"
+        | "post_process_cleanup_level" | "max_rewrite_strength" | "post_process_providers" => {
+            Some((
+                "/v1/settings/command",
+                "Post-processing settings validate providers and synchronize related LLM fields.",
+            ))
+        },
+        "translate_to_english"
+        | "translation_route_preference"
+        | "translation_provider_id"
+        | "translation_model_ids" => Some((
+            "/v1/settings/command",
+            "Translation settings validate providers and local privacy constraints.",
+        )),
+        "overlay_position" | "recording_overlay_style" => Some((
+            "/v1/settings/command",
+            "Overlay settings apply to live windows immediately.",
+        )),
+        "debug_mode" | "show_technical_features" | "start_hidden" => Some((
+            "/v1/settings/command",
+            "This setting emits runtime state updates after saving.",
+        )),
+        "screen_context_enabled"
+        | "screen_context_excluded_bundle_ids"
+        | "screen_context_pause_on_idle"
+        | "screen_context_idle_threshold_ms"
+        | "context_capture_mode"
+        | "screen_context_ocr_quality"
+        | "screen_context_ocr_engine"
+        | "screen_context_ocr_timeout_ms"
+        | "screen_context_token_budget"
+        | "screen_context_stale_threshold_ms" => Some((
+            "/v1/settings/command",
+            "Screen-context settings use command validation, clamping, or UI notification side effects.",
+        )),
+        "app_theme" | "app_font_scale" => Some((
+            "/v1/settings/command",
+            "Appearance settings are validated or clamped before saving.",
+        )),
+        "external_script_path" => Some((
+            "/v1/settings/command",
+            "External paste scripts must be absolute executable paths.",
+        )),
+        "app_language" => Some((
+            "/v1/settings/command",
+            "Changing app language refreshes the tray menu.",
+        )),
+        "selected_microphone" => Some((
+            "/v1/audio/microphone",
+            "Microphone selection updates the active audio manager.",
+        )),
+        "selected_output_device" => Some((
+            "/v1/audio/output",
+            "Output-device selection has a dedicated audio route.",
+        )),
+        "clamshell_microphone" => Some((
+            "/v1/audio/clamshell-microphone",
+            "Clamshell microphone selection has a dedicated audio route.",
+        )),
+        "http_api_enabled" | "http_api_port" => Some((
+            "Settings > Diagnostics",
+            "Changing the running API server from inside its own request is intentionally blocked.",
+        )),
+        _ => None,
+    }
+}
+
+fn is_patchable_setting(key: &str) -> bool {
+    protected_settings_route(key).is_none()
+}
+
+fn settings_schema_for_app(app: &AppHandle) -> Result<SettingsSchemaResponse, String> {
+    let settings = get_settings_without_secrets(app);
+    let value = serde_json::to_value(settings)
+        .map_err(|err| format!("Failed to serialize settings: {err}"))?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "Settings did not serialize to an object.".to_string())?;
+
+    let mut fields = object
+        .iter()
+        .map(|(key, value)| {
+            let route = protected_settings_route(key);
+            SettingFieldDescriptor {
+                key: key.clone(),
+                value_type: json_value_type(value),
+                patchable: is_patchable_setting(key),
+                route: route.map(|(route, _)| route),
+                note: route.map(|(_, note)| note),
+            }
+        })
+        .collect::<Vec<_>>();
+    fields.sort_by(|a, b| a.key.cmp(&b.key));
+
+    let protected_fields = fields
+        .iter()
+        .filter(|field| !field.patchable)
+        .map(|field| field.key.clone())
+        .collect();
+
+    Ok(SettingsSchemaResponse {
+        fields,
+        protected_fields,
+    })
+}
+
+fn json_value_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(number) if number.is_i64() || number.is_u64() => "integer",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
+
+fn extract_settings_updates(body: Value) -> Result<Map<String, Value>, String> {
+    let object = body
+        .as_object()
+        .ok_or_else(|| "Expected a JSON object or { \"updates\": { ... } }.".to_string())?;
+    if let Some(updates) = object.get("updates") {
+        return updates
+            .as_object()
+            .cloned()
+            .ok_or_else(|| "updates must be a JSON object.".to_string());
+    }
+    Ok(object.clone())
+}
+
+fn apply_settings_patch(
+    app: &AppHandle,
+    updates: Map<String, Value>,
+) -> Result<(Vec<String>, crate::settings::AppSettings), String> {
+    if updates.is_empty() {
+        return Err("At least one setting update is required.".to_string());
+    }
+
+    let current = get_settings_without_secrets(app);
+    let mut value = serde_json::to_value(current)
+        .map_err(|err| format!("Failed to serialize current settings: {err}"))?;
+    let object = value
+        .as_object_mut()
+        .ok_or_else(|| "Settings did not serialize to an object.".to_string())?;
+
+    let mut updated_keys = Vec::new();
+    for (key, next_value) in updates {
+        if let Some((route, note)) = protected_settings_route(&key) {
+            return Err(format!(
+                "'{key}' is not patchable through /v1/settings/patch. Use {route}. {note}"
+            ));
+        }
+        if !object.contains_key(&key) {
+            return Err(format!("Unknown setting field: '{key}'."));
+        }
+        object.insert(key.clone(), next_value);
+        updated_keys.push(key);
+    }
+
+    let next_settings = serde_json::from_value::<crate::settings::AppSettings>(value)
+        .map_err(|err| format!("Invalid settings patch: {err}"))?;
+    apply_settings_patch_side_effects(app, &updated_keys, &next_settings)?;
+    write_settings(app, next_settings);
+    Ok((updated_keys, get_settings_without_secrets(app)))
+}
+
+fn apply_settings_command(
+    app: &AppHandle,
+    key: String,
+    value: Value,
+) -> Result<Vec<String>, String> {
+    let key = key.trim();
+    if key.is_empty() {
+        return Err("key is required.".to_string());
+    }
+
+    match key {
+        "keyboard_implementation" => crate::shortcut::change_keyboard_implementation_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string(), "bindings".to_string()]),
+        "autostart_enabled" => {
+            crate::shortcut::change_autostart_setting(app.clone(), setting_bool(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        }
+        "update_checks_enabled" => {
+            crate::shortcut::change_update_checks_setting(app.clone(), setting_bool(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        }
+        "enable_crash_reporting" => crate::shortcut::change_crash_reporting_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "audio_enhancement_enabled" => crate::shortcut::change_audio_enhancement_enabled_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "audio_enhancement_model" => crate::shortcut::change_audio_enhancement_model_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "app_theme" => crate::shortcut::change_app_theme_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "app_font_scale" => {
+            crate::shortcut::change_app_font_scale_setting(app.clone(), setting_f32(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        },
+        "translate_to_english" => crate::shortcut::change_translate_to_english_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| {
+            vec![
+                key.to_string(),
+                "translation_output_mode".to_string(),
+                "translation_target_language".to_string(),
+                "translation_route_preference".to_string(),
+            ]
+        }),
+        "translation_route_preference" => crate::shortcut::change_translation_route_preference_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "overlay_position" => crate::shortcut::change_overlay_position_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "recording_overlay_style" => crate::shortcut::change_recording_overlay_style_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "debug_mode" => crate::shortcut::change_debug_mode_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string(), "log_level".to_string()]),
+        "show_technical_features" => crate::shortcut::change_show_technical_features_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "start_hidden" => crate::shortcut::change_start_hidden_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "screen_context_enabled" => crate::shortcut::change_screen_context_enabled_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "screen_context_excluded_bundle_ids" => {
+            crate::shortcut::change_screen_context_excluded_bundle_ids_setting(
+                app.clone(),
+                setting_string_vec(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "screen_context_pause_on_idle" => {
+            crate::shortcut::change_screen_context_pause_on_idle_setting(
+                app.clone(),
+                setting_bool(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "screen_context_idle_threshold_ms" => {
+            crate::shortcut::change_screen_context_idle_threshold_ms_setting(
+                app.clone(),
+                setting_u32(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "context_capture_mode" => crate::shortcut::change_context_capture_mode_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "screen_context_ocr_quality" => crate::shortcut::change_screen_context_ocr_quality_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "screen_context_ocr_engine" => crate::shortcut::change_screen_context_ocr_engine_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "screen_context_ocr_timeout_ms" => {
+            crate::shortcut::change_screen_context_ocr_timeout_ms_setting(
+                app.clone(),
+                setting_u32(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "screen_context_token_budget" => {
+            crate::shortcut::change_screen_context_token_budget_setting(
+                app.clone(),
+                setting_u32(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "screen_context_stale_threshold_ms" => {
+            crate::shortcut::change_screen_context_stale_threshold_ms_setting(
+                app.clone(),
+                setting_u32(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "speech_runtime_path" => crate::shortcut::change_speech_runtime_path_setting(
+            app.clone(),
+            setting_optional_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "tts_model_store_path" => crate::shortcut::change_tts_model_store_path_setting(
+            app.clone(),
+            setting_optional_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "tts_engine_preference" => crate::shortcut::change_tts_engine_preference_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| {
+            vec![
+                key.to_string(),
+                "selected_tts_provider_id".to_string(),
+                "selected_tts_model_id".to_string(),
+            ]
+        }),
+        "tts_default_voice_id" => crate::shortcut::change_tts_default_voice_id_setting(
+            app.clone(),
+            setting_optional_string(&value, key)?,
+        )
+        .map(|_| {
+            vec![
+                key.to_string(),
+                "selected_tts_voice_id".to_string(),
+                "selected_tts_model_id".to_string(),
+            ]
+        }),
+        "tts_rate" => {
+            crate::shortcut::change_tts_rate_setting(app.clone(), setting_f32(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        }
+        "tts_volume" => {
+            crate::shortcut::change_tts_volume_setting(app.clone(), setting_f32(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        }
+        "selected_creative_audio_model_id" => {
+            commands::story_studio::set_creative_audio_model_selection(
+                app.clone(),
+                setting_string(&value, key)?,
+            )?;
+            Ok(vec![key.to_string()])
+        }
+        "post_process_enabled" => crate::shortcut::change_post_process_enabled_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "local_privacy_mode" => crate::shortcut::change_local_privacy_mode_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| {
+            vec![
+                key.to_string(),
+                "post_process_provider_id".to_string(),
+                "translation_provider_id".to_string(),
+            ]
+        }),
+        "post_process_provider_id" | "selected_llm_provider_id" => {
+            crate::shortcut::set_post_process_provider(app.clone(), setting_string(&value, key)?)?;
+            Ok(vec![
+                "post_process_provider_id".to_string(),
+                "selected_llm_provider_id".to_string(),
+                "selected_llm_model_id".to_string(),
+            ])
+        },
+        "post_process_models" => {
+            let (provider_id, model) = provider_model_from_value(&value, key)?;
+            crate::shortcut::change_post_process_model_setting(app.clone(), provider_id, model)?;
+            Ok(vec![
+                "post_process_models".to_string(),
+                "selected_llm_model_id".to_string(),
+            ])
+        },
+        "selected_llm_model_id" => {
+            let settings = get_settings_without_secrets(app);
+            crate::shortcut::change_post_process_model_setting(
+                app.clone(),
+                settings.post_process_provider_id,
+                setting_string(&value, key)?,
+            )?;
+            Ok(vec![
+                "post_process_models".to_string(),
+                "selected_llm_model_id".to_string(),
+            ])
+        }
+        "post_process_cleanup_level" => crate::shortcut::change_post_process_cleanup_level_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| {
+            vec![
+                key.to_string(),
+                "post_process_mode".to_string(),
+                "max_rewrite_strength".to_string(),
+            ]
+        }),
+        "max_rewrite_strength" => crate::shortcut::change_max_rewrite_strength_setting(
+            app.clone(),
+            setting_u8(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "post_process_providers" => {
+            let (provider_id, base_url) = provider_base_url_from_value(&value, key)?;
+            crate::shortcut::change_post_process_base_url_setting(
+                app.clone(),
+                provider_id,
+                base_url,
+            )?;
+            Ok(vec![key.to_string()])
+        },
+        "translation_provider_id" => {
+            crate::shortcut::set_translation_provider(app.clone(), setting_string(&value, key)?)?;
+            Ok(vec![key.to_string()])
+        },
+        "translation_model_ids" => {
+            let (provider_id, model) = provider_model_from_value(&value, key)?;
+            crate::shortcut::change_translation_model_setting(app.clone(), provider_id, model)?;
+            Ok(vec![key.to_string()])
+        },
+        "external_script_path" => crate::shortcut::change_external_script_path_setting(
+            app.clone(),
+            setting_optional_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "app_language" => crate::shortcut::change_app_language_setting(
+            app.clone(),
+            setting_string(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        _ => Err(format!(
+            "'{key}' is not a command-backed setting. Use /v1/settings/patch for patchable fields or /v1/settings/schema for routing."
+        )),
+    }
+}
+
+fn setting_bool(value: &Value, key: &str) -> Result<bool, String> {
+    value
+        .as_bool()
+        .ok_or_else(|| format!("'{key}' expects a boolean value."))
+}
+
+fn setting_string(value: &Value, key: &str) -> Result<String, String> {
+    value
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| format!("'{key}' expects a non-empty string value."))
+}
+
+fn setting_optional_string(value: &Value, key: &str) -> Result<Option<String>, String> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value
+        .as_str()
+        .map(|raw| {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .ok_or_else(|| format!("'{key}' expects a string or null value."))
+}
+
+fn setting_f32(value: &Value, key: &str) -> Result<f32, String> {
+    value
+        .as_f64()
+        .map(|value| value as f32)
+        .ok_or_else(|| format!("'{key}' expects a numeric value."))
+}
+
+fn setting_u8(value: &Value, key: &str) -> Result<u8, String> {
+    let number = value
+        .as_u64()
+        .ok_or_else(|| format!("'{key}' expects an unsigned integer value."))?;
+    u8::try_from(number).map_err(|_| format!("'{key}' is too large."))
+}
+
+fn setting_u32(value: &Value, key: &str) -> Result<u32, String> {
+    let number = value
+        .as_u64()
+        .ok_or_else(|| format!("'{key}' expects an unsigned integer value."))?;
+    u32::try_from(number).map_err(|_| format!("'{key}' is too large."))
+}
+
+fn setting_string_vec(value: &Value, key: &str) -> Result<Vec<String>, String> {
+    let values = value
+        .as_array()
+        .ok_or_else(|| format!("'{key}' expects an array of strings."))?;
+    values
+        .iter()
+        .map(|value| setting_string(value, key))
+        .collect()
+}
+
+fn provider_model_from_value(value: &Value, key: &str) -> Result<(String, String), String> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| format!("'{key}' expects an object value."))?;
+
+    if let (Some(provider_id), Some(model)) = (object.get("provider_id"), object.get("model")) {
+        return Ok((
+            setting_string(provider_id, "provider_id")?,
+            setting_string(model, "model")?,
+        ));
+    }
+
+    if object.len() == 1 {
+        let (provider_id, model) = object.iter().next().expect("object has one entry");
+        return Ok((provider_id.clone(), setting_string(model, provider_id)?));
+    }
+
+    Err(format!(
+        "'{key}' expects {{ \"provider_id\": string, \"model\": string }} or a one-entry provider map."
+    ))
+}
+
+fn provider_base_url_from_value(value: &Value, key: &str) -> Result<(String, String), String> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| format!("'{key}' expects an object value."))?;
+    let provider_id = object
+        .get("provider_id")
+        .ok_or_else(|| format!("'{key}' requires provider_id."))?;
+    let base_url = object
+        .get("base_url")
+        .ok_or_else(|| format!("'{key}' requires base_url."))?;
+    Ok((
+        setting_string(provider_id, "provider_id")?,
+        setting_string(base_url, "base_url")?,
+    ))
+}
+
+fn apply_settings_patch_side_effects(
+    app: &AppHandle,
+    updated_keys: &[String],
+    settings: &crate::settings::AppSettings,
+) -> Result<(), String> {
+    if updated_keys.iter().any(|key| key == "always_on_microphone") {
+        let Some(audio_manager) = app.try_state::<Arc<AudioRecordingManager>>() else {
+            return Err("AudioRecordingManager is unavailable.".to_string());
+        };
+        let mode = if settings.always_on_microphone {
+            crate::managers::audio::MicrophoneMode::AlwaysOn
+        } else {
+            crate::managers::audio::MicrophoneMode::OnDemand
+        };
+        audio_manager
+            .update_mode(mode)
+            .map_err(|err| format!("Failed to update microphone mode: {err}"))?;
+    }
+
+    if updated_keys.iter().any(|key| key == "show_tray_icon") {
+        crate::tray::set_tray_visibility(app, settings.show_tray_icon);
+    }
+
+    if updated_keys.iter().any(|key| key == "log_level") {
+        let tauri_log_level: tauri_plugin_log::LogLevel = settings.log_level.into();
+        let log_level: log::Level = tauri_log_level.into();
+        crate::FILE_LOG_LEVEL.store(
+            log_level.to_level_filter() as u8,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
+
+    Ok(())
+}
+
+async fn handle_app_show(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AppShowApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    if let Some(section) = request.section.filter(|section| !section.trim().is_empty()) {
+        crate::detail_view::show_detail_view(&state.app, section.trim());
+    } else {
+        crate::show_main_window(&state.app);
+    }
+    ok_response()
+}
+
+async fn handle_app_cancel(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    crate::utils::cancel_current_operation(&state.app);
+    ok_response()
+}
+
+async fn handle_dictation_status(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let recording = state
+        .app
+        .try_state::<Arc<AudioRecordingManager>>()
+        .is_some_and(|manager| manager.is_recording());
+    let current_model = state
+        .app
+        .try_state::<Arc<TranscriptionManager>>()
+        .and_then(|manager| manager.get_current_model());
+
+    Json(DictationStatusResponse {
+        recording,
+        current_model,
+    })
+    .into_response()
+}
+
+async fn handle_dictation_start(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<DictationControlApiRequest>,
+) -> axum::response::Response {
+    handle_dictation_control(state, headers, request, DictationControlVerb::Start)
+}
+
+async fn handle_dictation_stop(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<DictationControlApiRequest>,
+) -> axum::response::Response {
+    handle_dictation_control(state, headers, request, DictationControlVerb::Stop)
+}
+
+async fn handle_dictation_toggle(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<DictationControlApiRequest>,
+) -> axum::response::Response {
+    handle_dictation_control(state, headers, request, DictationControlVerb::Toggle)
+}
+
+enum DictationControlVerb {
+    Start,
+    Stop,
+    Toggle,
+}
+
+fn handle_dictation_control(
+    state: ApiState,
+    headers: HeaderMap,
+    request: DictationControlApiRequest,
+    verb: DictationControlVerb,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let binding_id = match normalize_api_binding_id(request.binding_id.as_deref()) {
+        Ok(binding_id) => binding_id,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+
+    let recording = state
+        .app
+        .try_state::<Arc<AudioRecordingManager>>()
+        .is_some_and(|manager| manager.is_recording());
+
+    let Some(coordinator) = state.app.try_state::<crate::TranscriptionCoordinator>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TranscriptionCoordinator is unavailable.",
+        );
+    };
+
+    let status = match verb {
+        DictationControlVerb::Start if recording => "already_recording",
+        DictationControlVerb::Start => {
+            coordinator.send_input(&binding_id, "Local API", true, false);
+            "started"
+        }
+        DictationControlVerb::Stop if !recording => "idle",
+        DictationControlVerb::Stop => {
+            coordinator.send_input(&binding_id, "Local API", true, false);
+            "stopping"
+        }
+        DictationControlVerb::Toggle => {
+            coordinator.send_input(&binding_id, "Local API", true, false);
+            if recording {
+                "stopping"
+            } else {
+                "started"
+            }
+        }
+    };
+
+    Json(DictationControlResponse {
+        status,
+        binding_id,
+        recording,
+    })
+    .into_response()
+}
+
+fn normalize_api_binding_id(binding_id: Option<&str>) -> Result<String, String> {
+    let binding_id = binding_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("transcribe");
+    if crate::transcription_coordinator::is_transcribe_binding(binding_id) {
+        Ok(binding_id.to_string())
+    } else {
+        Err(format!(
+            "Unsupported dictation binding '{}'. Use transcribe, transcribe_with_post_process, or rewrite_selection.",
+            binding_id
+        ))
+    }
+}
+
+async fn handle_model_platform(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::models::get_model_platform_overview(state.app.clone()).await {
+        Ok(overview) => Json(overview).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_stt_select(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<SttSelectApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(model_manager) = state.app.try_state::<Arc<ModelManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "ModelManager not ready.");
+    };
+    let Some(transcription_manager) = state.app.try_state::<Arc<TranscriptionManager>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TranscriptionManager not ready.",
+        );
+    };
+
+    let model_manager = model_manager.inner().clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    let result = if let Some(provider_id) = request
+        .provider_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|provider_id| !provider_id.is_empty())
+    {
+        commands::models::set_stt_platform_selection_impl(
+            state.app.clone(),
+            model_manager,
+            transcription_manager,
+            provider_id.to_string(),
+            request.model_id,
+        )
+        .await
+    } else {
+        commands::models::set_active_model_impl(
+            state.app.clone(),
+            model_manager,
+            transcription_manager,
+            request.model_id,
+        )
+        .await
+    };
+
+    match result {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_stt_download(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<SttDownloadApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(model_manager) = state.app.try_state::<Arc<ModelManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "ModelManager not ready.");
+    };
+    match model_manager
+        .inner()
+        .clone()
+        .download_model(&request.model_id)
+        .await
+    {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+    }
+}
+
+async fn handle_tts_select(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<TtsSelectApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::models::set_tts_platform_selection(
+        state.app.clone(),
+        request.provider_id,
+        request.model_id,
+    )
+    .await
+    {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_tts_download(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<TtsDownloadApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    if let Some(repo_id) = request
+        .repo_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|repo_id| !repo_id.is_empty())
+    {
+        return match commands::models::download_hf_tts_repo_impl(&state.app, repo_id).await {
+            Ok(path) => Json(DownloadResponse {
+                status: "ok",
+                path: Some(path.display().to_string()),
+            })
+            .into_response(),
+            Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+        };
+    }
+
+    let Some(model_id) = request
+        .model_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|model_id| !model_id.is_empty())
+    else {
+        return api_error(
+            StatusCode::BAD_REQUEST,
+            "Either model_id or repo_id is required.",
+        );
+    };
+
+    let Some(manager) = state.app.try_state::<Arc<TtsManager>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TTS manager is unavailable.",
+        );
+    };
+    match manager.inner().download_pack(model_id, None).await {
+        Ok(()) => Json(DownloadResponse {
+            status: "ok",
+            path: None,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_cancel_download(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ArtifactCancelApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::models::cancel_artifact_download(request.domain, request.artifact_id) {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::NOT_FOUND, error),
+    }
+}
+
+async fn handle_ocr_models(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::ocr_models::get_ocr_model_catalog_impl(&state.app) {
+        Ok(catalog) => Json(catalog).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_ocr_download(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<OcrModelApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::ocr_models::download_ocr_model_impl(&state.app, request.catalog_id).await {
+        Ok(model) => Json(model).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_ocr_prepare(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<OcrModelApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::ocr_models::prepare_ocr_runtime_impl(&state.app, request.catalog_id).await {
+        Ok(model) => Json(model).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_ocr_select(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<OcrSelectApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::ocr_models::set_ocr_model_selection_impl(&state.app, request.neural_model_id) {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_ocr_downloads(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    Json(crate::ocr_models::get_active_ocr_downloads_impl().await).into_response()
+}
+
+async fn handle_audio_devices(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let microphones = match commands::audio::get_available_microphones() {
+        Ok(devices) => devices,
+        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    let output_devices = match commands::audio::get_available_output_devices() {
+        Ok(devices) => devices,
+        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    let selected_microphone = match commands::audio::get_selected_microphone(state.app.clone()) {
+        Ok(device) => device,
+        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    let selected_output_device =
+        match commands::audio::get_selected_output_device(state.app.clone()) {
+            Ok(device) => device,
+            Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+        };
+    let clamshell_microphone = match commands::audio::get_clamshell_microphone(state.app.clone()) {
+        Ok(device) => device,
+        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    let always_on_microphone = match commands::audio::get_microphone_mode(state.app.clone()) {
+        Ok(mode) => mode,
+        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    let recording = commands::audio::is_recording(state.app.clone());
+
+    Json(AudioDevicesResponse {
+        microphones,
+        selected_microphone,
+        output_devices,
+        selected_output_device,
+        clamshell_microphone,
+        always_on_microphone,
+        recording,
+    })
+    .into_response()
+}
+
+async fn handle_set_microphone(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioDeviceSelectionApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::audio::set_selected_microphone(state.app.clone(), request.device_name) {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_set_output_device(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioDeviceSelectionApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::audio::set_selected_output_device(state.app.clone(), request.device_name) {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_set_clamshell_microphone(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioDeviceSelectionApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::audio::set_clamshell_microphone(state.app.clone(), request.device_name) {
+        Ok(()) => ok_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_history_page(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(query): Json<HistoryPageApiQuery>,
+) -> axum::response::Response {
+    history_page_response(state, headers, query.offset, query.limit).await
+}
+
+async fn handle_history_page_default(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    history_page_response(state, headers, None, None).await
+}
+
+async fn history_page_response(
+    state: ApiState,
+    headers: HeaderMap,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(history_manager) = state.app.try_state::<Arc<HistoryManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "HistoryManager not ready.");
+    };
+    let offset = offset.unwrap_or(0);
+    let limit = limit.unwrap_or(50).clamp(1, 200);
+    match history_manager
+        .inner()
+        .get_history_entries_page(offset, limit)
+        .await
+    {
+        Ok(page) => Json::<HistoryEntriesPage>(page).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+    }
+}
+
+async fn handle_latest_history(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(history_manager) = state.app.try_state::<Arc<HistoryManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "HistoryManager not ready.");
+    };
+    match history_manager.inner().get_latest_entry() {
+        Ok(entry) => Json::<Option<HistoryEntry>>(entry).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+    }
+}
+
+async fn handle_dictation_stats(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let Some(history_manager) = state.app.try_state::<Arc<HistoryManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "HistoryManager not ready.");
+    };
+    match commands::stats::get_dictation_stats_impl(history_manager.inner().clone()).await {
+        Ok(stats) => Json(stats).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_screen_context_diagnostics(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::get_screen_context_diagnostics(state.app.clone()) {
+        Ok(diagnostics) => Json(diagnostics).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_refine_preview(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<RefinePreviewApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let text = request.text.trim();
+    if text.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Text is required.");
+    }
+    if text.chars().count() > 40_000 {
+        return api_error(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Text is too large for refine preview.",
+        );
+    }
+
+    match crate::actions::preview_post_process(
+        &state.app,
+        text,
+        request.app_bundle_id_override.as_deref(),
+    )
+    .await
+    {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
 }
 
 async fn handle_models(
@@ -961,5 +2533,76 @@ mod tests {
             "secret",
             &headers(&[(axum::http::header::AUTHORIZATION.as_str(), "Basic secret")])
         ));
+    }
+
+    #[test]
+    fn api_dictation_binding_defaults_and_rejects_unknown_values() {
+        assert_eq!(
+            normalize_api_binding_id(None).unwrap(),
+            "transcribe".to_string()
+        );
+        assert_eq!(
+            normalize_api_binding_id(Some(" transcribe_with_post_process ")).unwrap(),
+            "transcribe_with_post_process".to_string()
+        );
+        assert!(normalize_api_binding_id(Some("delete_history")).is_err());
+    }
+
+    #[test]
+    fn api_settings_patch_accepts_raw_or_wrapped_update_objects() {
+        let raw = serde_json::json!({ "app_theme": "dark" });
+        assert_eq!(
+            extract_settings_updates(raw)
+                .unwrap()
+                .get("app_theme")
+                .and_then(Value::as_str),
+            Some("dark")
+        );
+
+        let wrapped = serde_json::json!({ "updates": { "debug_mode": true } });
+        assert_eq!(
+            extract_settings_updates(wrapped)
+                .unwrap()
+                .get("debug_mode")
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn api_settings_patch_marks_side_effect_fields_unpatchable() {
+        assert!(is_patchable_setting("audio_feedback"));
+        assert!(!is_patchable_setting("bindings"));
+        assert!(!is_patchable_setting("app_theme"));
+        assert!(!is_patchable_setting("selected_model"));
+        assert!(!is_patchable_setting("post_process_provider_id"));
+        assert!(!is_patchable_setting("translation_model_ids"));
+        assert!(!is_patchable_setting("translate_to_english"));
+        assert!(!is_patchable_setting("tts_volume"));
+        assert!(!is_patchable_setting("audio_enhancement_enabled"));
+        assert!(!is_patchable_setting("overlay_position"));
+        assert!(!is_patchable_setting("debug_mode"));
+        assert!(!is_patchable_setting("post_process_api_keys"));
+    }
+
+    #[test]
+    fn api_settings_command_parses_provider_model_shapes() {
+        assert_eq!(
+            provider_model_from_value(
+                &serde_json::json!({ "provider_id": "openai", "model": "gpt-4.1-mini" }),
+                "post_process_models",
+            )
+            .unwrap(),
+            ("openai".to_string(), "gpt-4.1-mini".to_string())
+        );
+        assert_eq!(
+            provider_model_from_value(
+                &serde_json::json!({ "anthropic": "claude-sonnet-4" }),
+                "post_process_models",
+            )
+            .unwrap(),
+            ("anthropic".to_string(), "claude-sonnet-4".to_string())
+        );
+        assert!(provider_model_from_value(&serde_json::json!({}), "post_process_models").is_err());
     }
 }

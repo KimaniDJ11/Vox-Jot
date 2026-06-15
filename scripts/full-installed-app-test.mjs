@@ -236,6 +236,8 @@ function exerciseNavigation() {
         ["History", sectionPoint(58)],
         ["Dictionary", sectionPoint(98)],
         ["File Transcription", sectionPoint(138)],
+        ["Reader", sectionPoint(178)],
+        ["Enhance Audio", sectionPoint(218)],
       ],
     },
     {
@@ -463,6 +465,14 @@ function authHeaders(token) {
   return { "x-vox-jot-api-token": token };
 }
 
+function isExpectedRefinePreviewUnavailable(response) {
+  const error = String(response.body?.error ?? "");
+  return (
+    response.status === 500 &&
+    error.includes("Post-processing did not produce a result")
+  );
+}
+
 async function exerciseApi() {
   let health;
   try {
@@ -524,6 +534,91 @@ async function exerciseApi() {
     models.ok
       ? `${models.body?.available?.length ?? 0} available, current=${models.body?.current ?? "none"}`
       : `HTTP ${models.status}`,
+  );
+
+  const settingsSchema = await fetchJson("/v1/settings/schema", { headers });
+  const schemaFields = Array.isArray(settingsSchema.body?.fields)
+    ? settingsSchema.body.fields.length
+    : 0;
+  record(
+    "Local API settings schema",
+    settingsSchema.ok && schemaFields > 20 ? "pass" : "fail",
+    settingsSchema.ok ? `${schemaFields} fields` : `HTTP ${settingsSchema.status}`,
+  );
+
+  const settingsSnapshot = await fetchJson("/v1/app/settings", { headers });
+  const audioFeedback = Boolean(settingsSnapshot.body?.audio_feedback);
+  const settingsPatch = await fetchJson("/v1/settings/patch", {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ updates: { audio_feedback: audioFeedback } }),
+  });
+  record(
+    "Local API settings patch",
+    settingsPatch.ok &&
+      Array.isArray(settingsPatch.body?.updated_keys) &&
+      settingsPatch.body.updated_keys.includes("audio_feedback")
+      ? "pass"
+      : "fail",
+    settingsPatch.ok
+      ? "validated no-op audio_feedback patch"
+      : (settingsPatch.body?.error ?? `HTTP ${settingsPatch.status}`),
+  );
+
+  const ttsVolume =
+    typeof settingsSnapshot.body?.tts_volume === "number"
+      ? settingsSnapshot.body.tts_volume
+      : 1;
+  const settingsCommand = await fetchJson("/v1/settings/command", {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ key: "tts_volume", value: ttsVolume }),
+  });
+  record(
+    "Local API settings command",
+    settingsCommand.ok &&
+      Array.isArray(settingsCommand.body?.updated_keys) &&
+      settingsCommand.body.updated_keys.includes("tts_volume")
+      ? "pass"
+      : "fail",
+    settingsCommand.ok
+      ? "validated no-op command-backed tts_volume update"
+      : (settingsCommand.body?.error ?? `HTTP ${settingsCommand.status}`),
+  );
+
+  const protectedPatch = await fetchJson("/v1/settings/patch", {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ updates: { bindings: {} } }),
+  });
+  record(
+    "Local API settings patch guard",
+    protectedPatch.status === 400 ? "pass" : "fail",
+    `protected bindings patch returned HTTP ${protectedPatch.status}`,
+  );
+
+  const refinePreview = await timed("api_refine_preview_ms", () =>
+    fetchJson("/v1/refine/preview", {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      timeoutMs: 45000,
+      body: JSON.stringify({
+        text: "please clean this up into a short update for the team after lunch tomorrow",
+      }),
+    }),
+  );
+  const refinePreviewHasText =
+    refinePreview.ok && typeof refinePreview.body?.final_text === "string";
+  record(
+    "Local API refine preview",
+    refinePreviewHasText
+      ? "pass"
+      : isExpectedRefinePreviewUnavailable(refinePreview)
+        ? "skip"
+        : "fail",
+    refinePreviewHasText
+      ? "preview returned final_text"
+      : (refinePreview.body?.error ?? `HTTP ${refinePreview.status}`),
   );
 
   const voices = await fetchJson("/v1/voices", { headers, timeoutMs: 15000 });

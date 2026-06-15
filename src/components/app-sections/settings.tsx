@@ -2216,8 +2216,19 @@ export const AutomationAgentsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   const routeSnippets = [
     "GET /v1/health",
-    "GET /v1/models",
+    "GET /v1/model-platform",
+    "GET /v1/settings/schema",
+    "POST /v1/settings/patch",
+    "POST /v1/settings/command",
+    "POST /v1/settings/shortcut",
+    "GET /v1/audio/devices",
+    "POST /v1/audio/microphone",
+    "POST /v1/dictation/start",
+    "POST /v1/dictation/stop",
     "POST /v1/transcribe",
+    "POST /v1/tts/synthesize",
+    "GET /v1/ocr/models",
+    "POST /v1/refine/preview",
   ];
 
   return (

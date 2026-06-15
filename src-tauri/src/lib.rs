@@ -215,7 +215,9 @@ fn show_main_window_if_intended_after(app: &AppHandle, delay: std::time::Duratio
         let app_for_main = app_handle.clone();
         if let Err(error) = app_handle.run_on_main_thread(move || {
             if main_window_visibility_intended(&app_for_main) {
-                show_main_window(&app_for_main);
+                // Already on the main thread here; call the worker directly to
+                // avoid a redundant re-dispatch through show_main_window.
+                show_main_window_on_main_thread(&app_for_main);
             }
         }) {
             log::error!("Failed to schedule main window show on main thread: {error}");
@@ -260,6 +262,21 @@ fn build_console_filter() -> env_filter::Filter {
 pub(crate) fn show_main_window(app: &AppHandle) {
     set_main_window_visibility_intent(app, true);
 
+    // AppKit window operations (activation policy, NSApp activation, window
+    // show/focus) must run on the main thread. show_main_window is called from
+    // many contexts — the macOS run loop, tray handlers, single-instance, and
+    // the loopback HTTP API handlers (Tokio worker threads) — so always marshal
+    // the work onto the main thread. run_on_main_thread is safe to call from the
+    // main thread too: it schedules the closure on the next event-loop tick.
+    let app_handle = app.clone();
+    if let Err(error) = app.run_on_main_thread(move || {
+        show_main_window_on_main_thread(&app_handle);
+    }) {
+        log::error!("Failed to dispatch show_main_window to the main thread: {error}");
+    }
+}
+
+fn show_main_window_on_main_thread(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
         log::info!("Showing main window");
 
@@ -1394,6 +1411,25 @@ pub fn run(cli_args: CliArgs) {
                         false
                     }
                 });
+
+            // macOS orders the transparent/overlay window out during launch
+            // settling, so the early setup/Ready shows can make the window
+            // "vanish" shortly after it first appears. Re-assert the intended
+            // visibility once the webview finishes its first paint — the reliable
+            // moment that the detail-view windows already rely on.
+            #[cfg(target_os = "macos")]
+            {
+                win_builder = win_builder.on_page_load(|window, payload| {
+                    if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
+                        && main_window_visibility_intended(window.app_handle())
+                    {
+                        show_main_window_if_intended_after(
+                            window.app_handle(),
+                            std::time::Duration::from_millis(50),
+                        );
+                    }
+                });
+            }
 
             // Enable transparent + vibrancy-ready chrome on macOS and Windows.
             // Overlay lets the webview extend under the traffic lights so the in-app

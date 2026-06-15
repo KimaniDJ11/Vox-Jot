@@ -1467,7 +1467,7 @@ pub async fn set_stt_platform_selection(
     .await
 }
 
-async fn set_stt_platform_selection_impl(
+pub(crate) async fn set_stt_platform_selection_impl(
     app_handle: AppHandle,
     model_manager: Arc<ModelManager>,
     transcription_manager: Arc<TranscriptionManager>,
@@ -1544,7 +1544,7 @@ pub async fn set_active_model(
     .await
 }
 
-async fn set_active_model_impl(
+pub(crate) async fn set_active_model_impl(
     app_handle: AppHandle,
     model_manager: Arc<ModelManager>,
     transcription_manager: Arc<TranscriptionManager>,

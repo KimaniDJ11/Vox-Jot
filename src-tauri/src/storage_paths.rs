@@ -54,6 +54,28 @@ const VIBEVOICE_FILES: &[&str] = &[
     "preprocessor_config.json",
 ];
 
+fn is_reserved_top_level_model_dir(name: &str) -> bool {
+    matches!(
+        name,
+        STT_MODELS_DIR
+            | TTS_MODELS_DIR
+            | TTS_STORE_DIR
+            | TTS_PACKS_DIR
+            | TTS_RUNTIME_DIR
+            | LLM_MODELS_DIR
+            | QWEN3_CACHE_DIR
+            | PERSONAPLEX_DIR
+            | LFM2_TOOL_DIR
+            | OCR_MODELS_DIR
+            | OCR_RUNTIME_DIR
+            | READER_RUNTIME_DIR
+            | DENOISE_RUNTIME_DIR
+            | SPEECH_ANALYSIS_MODELS_DIR
+            | CREATIVE_AUDIO_MODELS_DIR
+            | AUDIO_CLEANUP_MODELS_DIR
+    )
+}
+
 fn ensure_dir(path: &Path) -> Result<(), String> {
     fs::create_dir_all(path).map_err(|err| format!("Failed to create '{}': {err}", path.display()))
 }
@@ -282,10 +304,7 @@ fn migrate_legacy_stt_layout(app: &AppHandle) -> Result<(), String> {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
 
-        if matches!(
-            name_str.as_ref(),
-            STT_MODELS_DIR | TTS_MODELS_DIR | LLM_MODELS_DIR
-        ) {
+        if is_reserved_top_level_model_dir(name_str.as_ref()) {
             continue;
         }
 
@@ -313,6 +332,34 @@ fn migrate_legacy_stt_layout(app: &AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_stt_migration_skips_managed_model_roots() {
+        for name in [
+            STT_MODELS_DIR,
+            TTS_MODELS_DIR,
+            LLM_MODELS_DIR,
+            OCR_MODELS_DIR,
+            OCR_RUNTIME_DIR,
+            READER_RUNTIME_DIR,
+            DENOISE_RUNTIME_DIR,
+            SPEECH_ANALYSIS_MODELS_DIR,
+            CREATIVE_AUDIO_MODELS_DIR,
+            AUDIO_CLEANUP_MODELS_DIR,
+        ] {
+            assert!(
+                is_reserved_top_level_model_dir(name),
+                "{name} should never be moved into the STT directory"
+            );
+        }
+
+        assert!(!is_reserved_top_level_model_dir("legacy-whisper-model"));
+    }
 }
 
 fn migrate_legacy_llm_layout(app: &AppHandle) -> Result<(), String> {

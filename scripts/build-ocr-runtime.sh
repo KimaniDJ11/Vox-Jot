@@ -201,7 +201,7 @@ rm -rf "$BUILD_DIR/build" "$BUILD_DIR/ocr_runtime.egg-info"
 cat > "$BUILD_DIR/voxjot-ocr-runtime.json" <<EOF
 {
   "name": "vox-jot-ocr-runtime",
-  "version": "2026-05-13",
+  "version": "2026-06-15",
   "platform": "$PLATFORM",
   "arch": "$ARCH_ID",
   "profile": "$PROFILE",

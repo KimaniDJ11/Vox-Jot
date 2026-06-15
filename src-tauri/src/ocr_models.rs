@@ -794,13 +794,41 @@ pub async fn import_ocr_model_from_disk_impl(
     import_from_dir(app, entry, &PathBuf::from(trimmed))?;
     if !matches!(entry.backend, OcrBackendKind::TessdataPack) {
         crate::ocr_runtime::ensure_managed_ocr_runtime_installed(app, Some(entry.id)).await?;
+        crate::ocr_runtime::shared().shutdown();
+    }
+    let settings = get_settings(app);
+    if settings.screen_context_ocr_neural_model_id.as_deref() == Some(entry.id) {
+        refresh_neural_route_cache(app, &settings);
     }
     Ok(descriptor_for(
         app,
         entry,
-        get_settings(app)
-            .screen_context_ocr_neural_model_id
-            .as_deref(),
+        settings.screen_context_ocr_neural_model_id.as_deref(),
+    ))
+}
+
+pub async fn prepare_ocr_runtime_impl(
+    app: &AppHandle,
+    catalog_id: String,
+) -> Result<OcrModelDescriptor, String> {
+    let entry = CATALOG
+        .iter()
+        .find(|entry| entry.id == catalog_id)
+        .ok_or_else(|| format!("Unknown OCR catalog id: '{}'.", catalog_id))?;
+
+    if !matches!(entry.backend, OcrBackendKind::TessdataPack) {
+        crate::ocr_runtime::ensure_managed_ocr_runtime_installed(app, Some(entry.id)).await?;
+        crate::ocr_runtime::shared().shutdown();
+    }
+
+    let settings = get_settings(app);
+    if settings.screen_context_ocr_neural_model_id.as_deref() == Some(entry.id) {
+        refresh_neural_route_cache(app, &settings);
+    }
+    Ok(descriptor_for(
+        app,
+        entry,
+        settings.screen_context_ocr_neural_model_id.as_deref(),
     ))
 }
 
@@ -829,6 +857,7 @@ pub fn delete_ocr_model_impl(
     let mut settings = get_settings(app);
     let mut selected_id = settings.screen_context_ocr_neural_model_id.clone();
     if selected_id.as_deref() == Some(entry.id) {
+        crate::ocr_runtime::shared().shutdown();
         settings.screen_context_ocr_neural_model_id = None;
         selected_id = None;
         write_settings(app, settings.clone());
@@ -1010,6 +1039,7 @@ async fn download_ocr_model_inner(
 
     if !matches!(entry.backend, OcrBackendKind::TessdataPack) {
         crate::ocr_runtime::ensure_managed_ocr_runtime_installed(app, Some(entry.id)).await?;
+        crate::ocr_runtime::shared().shutdown();
     }
 
     emit_progress(
@@ -1054,6 +1084,18 @@ pub async fn import_ocr_model_from_disk(
 ) -> Result<OcrModelDescriptor, String> {
     run_ocr_command_on_stack("import-ocr-model-from-disk", move || async move {
         import_ocr_model_from_disk_impl(&app, catalog_id, source_dir).await
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_ocr_runtime(
+    app: AppHandle,
+    catalog_id: String,
+) -> Result<OcrModelDescriptor, String> {
+    run_ocr_command_on_stack("prepare-ocr-runtime", move || async move {
+        prepare_ocr_runtime_impl(&app, catalog_id).await
     })
     .await
 }

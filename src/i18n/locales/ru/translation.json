@@ -2495,6 +2495,7 @@
         "remove": "Удалить {{modelName}}",
         "pickFolderTitle": "Выберите папку, содержащую {{modelName}}.",
         "downloadFromHub": "Скачать {{modelName}} с Hugging Face ({{repoId}})",
+        "setUpRuntime": "Настроить среду выполнения OCR для {{modelName}}",
         "importFromDisk": "Импортировать из папки"
       },
       "confirmRemove": "Удалить {{modelName}}? Файлы будут удалены из кэша OCR приложения.",

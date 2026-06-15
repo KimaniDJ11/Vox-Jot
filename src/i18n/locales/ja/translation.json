@@ -2495,6 +2495,7 @@
         "remove": "{{modelName}} を削除",
         "pickFolderTitle": "{{modelName}} が含まれるフォルダーを選択します",
         "downloadFromHub": "Hugging Face ({{repoId}}) から {{modelName}} をダウンロード",
+        "setUpRuntime": "{{modelName}} の OCR ランタイムをセットアップ",
         "importFromDisk": "フォルダーからインポート"
       },
       "confirmRemove": "{{modelName}} を削除しますか?ファイルはアプリの OCR キャッシュから削除されます。",

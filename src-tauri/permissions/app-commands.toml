@@ -263,6 +263,7 @@ commands.allow = [
   "get_active_refine_installs",
   "get_ocr_model_catalog",
   "import_ocr_model_from_disk",
+  "prepare_ocr_runtime",
   "delete_ocr_model",
   "set_ocr_model_selection",
   "download_ocr_model",

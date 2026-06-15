@@ -2495,6 +2495,7 @@
         "remove": "{{modelName}}'yu kaldırın",
         "pickFolderTitle": "{{modelName}} içeren klasörü seçin",
         "downloadFromHub": "{{modelName}}'yu Hugging Face'dan ({{repoId}}) indirin",
+        "setUpRuntime": "{{modelName}} için OCR çalışma zamanını kur",
         "importFromDisk": "Klasörden içe aktar"
       },
       "confirmRemove": "{{modelName}} kaldırılsın mı? Dosyalar uygulamanın OCR önbelleğinden silinecek.",

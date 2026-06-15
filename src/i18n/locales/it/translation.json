@@ -2495,6 +2495,7 @@
         "remove": "Rimuovere {{modelName}}",
         "pickFolderTitle": "Scegli la cartella che contiene {{modelName}}",
         "downloadFromHub": "Scarica {{modelName}} da Hugging Face ({{repoId}})",
+        "setUpRuntime": "Configura il runtime OCR per {{modelName}}",
         "importFromDisk": "Importa dalla cartella"
       },
       "confirmRemove": "Rimuovere {{modelName}}? I file verranno eliminati dalla cache OCR dell'app.",

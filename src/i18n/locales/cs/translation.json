@@ -2495,6 +2495,7 @@
         "remove": "Odebrat {{modelName}}",
         "pickFolderTitle": "Vyberte složku, která obsahuje {{modelName}}",
         "downloadFromHub": "Stáhnout {{modelName}} z Hugging Face ({{repoId}})",
+        "setUpRuntime": "Nastavit běhové prostředí OCR pro {{modelName}}",
         "importFromDisk": "Importovat ze složky"
       },
       "confirmRemove": "Odebrat {{modelName}}? Soubory budou smazány z mezipaměti aplikace OCR.",

@@ -46,7 +46,18 @@ if not entrypoint.is_file():
     raise SystemExit("missing ocr_runtime/__main__.py")
 
 metadata = json.loads(manifest.read_text())
-required = ["PIL", "torch", "transformers", "paddleocr"]
+profile = metadata.get("profile")
+required = ["PIL"]
+if profile in {"all", "transformers-vl"}:
+    required.extend(["torch", "transformers"])
+if profile in {"all", "paddle"}:
+    required.append("paddleocr")
+if profile == "mlx-vl" or (
+    profile == "all"
+    and metadata.get("platform") == "macos"
+    and metadata.get("arch") == "aarch64"
+):
+    required.extend(["mlx", "mlx_vlm"])
 missing = [name for name in required if importlib.util.find_spec(name) is None]
 if missing:
     raise SystemExit(f"missing modules: {', '.join(missing)}")

@@ -1147,6 +1147,7 @@ pub fn run(cli_args: CliArgs) {
         refine_models::cancel_refine_model_install,
         ocr_models::get_ocr_model_catalog,
         ocr_models::import_ocr_model_from_disk,
+        ocr_models::prepare_ocr_runtime,
         ocr_models::delete_ocr_model,
         ocr_models::set_ocr_model_selection,
         ocr_models::download_ocr_model,

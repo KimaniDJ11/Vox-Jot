@@ -2495,6 +2495,7 @@
         "remove": "Xóa {{modelName}}",
         "pickFolderTitle": "Chọn thư mục chứa {{modelName}}",
         "downloadFromHub": "Tải xuống {{modelName}} từ Hugging Face ({{repoId}})",
+        "setUpRuntime": "Thiết lập runtime OCR cho {{modelName}}",
         "importFromDisk": "Nhập từ thư mục"
       },
       "confirmRemove": "Xóa {{modelName}}? Các tệp sẽ bị xóa khỏi bộ đệm OCR của ứng dụng.",

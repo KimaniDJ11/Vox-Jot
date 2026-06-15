@@ -2125,6 +2125,7 @@
         "pickFolderTitle": "Pick the folder that contains {{modelName}}",
         "remove": "Remove {{modelName}}",
         "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "setUpRuntime": "Set up OCR runtime for {{modelName}}",
         "importFromDisk": "Import from folder"
       },
       "download": {

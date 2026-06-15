@@ -2169,6 +2169,14 @@ async importOcrModelFromDisk(catalogId: string, sourceDir: string) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
+async prepareOcrRuntime(catalogId: string) : Promise<Result<OcrModelDescriptor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_ocr_runtime", { catalogId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async deleteOcrModel(catalogId: string) : Promise<Result<OcrModelDescriptor, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_ocr_model", { catalogId }) };

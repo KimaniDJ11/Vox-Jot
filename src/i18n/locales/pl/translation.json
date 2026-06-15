@@ -2495,6 +2495,7 @@
         "remove": "Usuń {{modelName}}",
         "pickFolderTitle": "Wybierz folder zawierający {{modelName}}",
         "downloadFromHub": "Pobierz {{modelName}} z Hugging Face ({{repoId}})",
+        "setUpRuntime": "Skonfiguruj środowisko OCR dla {{modelName}}",
         "importFromDisk": "Importuj z folderu"
       },
       "confirmRemove": "Usunąć {{modelName}}? Pliki zostaną usunięte z pamięci podręcznej aplikacji OCR.",

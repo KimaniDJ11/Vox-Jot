@@ -425,6 +425,44 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     }
   };
 
+  const prepareOcrRuntime = async (model: OcrModelDescriptor) => {
+    setBusyId(model.id);
+    setCatalogError(null);
+    setDownloadProgress((prev) => ({
+      ...prev,
+      [model.id]: {
+        stage: "runtime-installing",
+        percentage: 0,
+        file: model.hf_repo_id,
+      },
+    }));
+    try {
+      const res = await commands.prepareOcrRuntime(model.id);
+      if (res.status === "error") {
+        setCatalogError(res.error);
+        setDownloadProgress((prev) => ({
+          ...prev,
+          [model.id]: {
+            stage: "failed",
+            percentage: 0,
+            file: model.hf_repo_id,
+            error: res.error,
+          },
+        }));
+        return;
+      }
+      setCatalogError(null);
+      await refreshCatalog();
+      setDownloadProgress((prev) => {
+        const next = { ...prev };
+        delete next[model.id];
+        return next;
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const clearOcrDownloadProgress = useCallback((modelId: string) => {
     setDownloadProgress((prev) => {
       const next = { ...prev };
@@ -950,6 +988,8 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     const downloadCancelled = isDownloadCancelled(dl);
     const downloadFailed = isDownloadFailed(dl);
     const downloadRecoverable = downloadFailed || downloadCancelled;
+    const needsRuntimeSetup = model.installed && !model.runnable;
+    const runtimeStage = dl?.stage?.startsWith("runtime-") ?? false;
 
     if (!model.installed && !downloadActive && !downloadRecoverable) {
       trailing = {
@@ -963,6 +1003,17 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         disabled: isBusy && busyId === model.id,
         busy: isBusy && busyId === model.id,
         onClick: () => void onDownloadNeuralHf(model),
+      };
+    } else if (needsRuntimeSetup && !downloadActive && !downloadRecoverable) {
+      trailing = {
+        kind: "acquire",
+        label: t("modelHub.ocr.actions.setUpRuntime", {
+          modelName: model.title,
+          defaultValue: "Set up OCR runtime for {{modelName}}",
+        }),
+        disabled: isBusy && busyId === model.id,
+        busy: isBusy && busyId === model.id,
+        onClick: () => void prepareOcrRuntime(model),
       };
     } else if (!isConfirmingDelete) {
       trailing = {
@@ -1005,11 +1056,14 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         dl?.stage === "preparing" ||
         dl?.stage === "runtime-installing",
       cancelling: cancellingDownloads.has(model.id),
-      onCancel: downloadActive
+      onCancel: downloadActive && !runtimeStage
         ? () => void cancelOcrDownload(model.id)
         : undefined,
       onRetry: downloadRecoverable
-        ? () => void onDownloadNeuralHf(model)
+        ? () =>
+            void (needsRuntimeSetup
+              ? prepareOcrRuntime(model)
+              : onDownloadNeuralHf(model))
         : undefined,
       onDismiss: downloadRecoverable
         ? () => clearOcrDownloadProgress(model.id)
@@ -1073,6 +1127,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       if (isBusy || dl) return;
       if (!model.installed) {
         void onDownloadNeuralHf(model);
+        return;
+      }
+      if (!model.runnable) {
+        void prepareOcrRuntime(model);
         return;
       }
       void onSelectNeural(model);

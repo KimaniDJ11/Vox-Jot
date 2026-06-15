@@ -2491,6 +2491,7 @@
         "remove": "刪除{{modelName}}",
         "pickFolderTitle": "選擇包含 {{modelName}} 的資料夾",
         "downloadFromHub": "從 Hugging Face 下載 {{modelName}} ({{repoId}})",
+        "setUpRuntime": "為 {{modelName}} 設定 OCR 執行環境",
         "importFromDisk": "從資料夾匯入"
       },
       "confirmRemove": "刪除{{modelName}}？檔案將從應用程式的 OCR 快取中刪除。",

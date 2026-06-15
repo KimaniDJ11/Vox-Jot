@@ -24,6 +24,7 @@ const clickToolPath =
 
 const results = [];
 const timings = {};
+let axWindowUnavailable = false;
 
 function readStoredApiPort() {
   const settingsPath = join(
@@ -51,6 +52,16 @@ function run(command, args, options = {}) {
   return execFileSync(command, args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: options.timeout ?? 15000,
+    ...options,
+  }).trim();
+}
+
+function runWithInput(command, args, input, options = {}) {
+  return execFileSync(command, args, {
+    encoding: "utf8",
+    input,
+    stdio: ["pipe", "pipe", "pipe"],
     timeout: options.timeout ?? 15000,
     ...options,
   }).trim();
@@ -99,7 +110,23 @@ function openApp() {
   run("/usr/bin/open", ["-a", appPath]);
   osa(`tell application "${escapeAppleScript(appName)}" to activate`);
   osa(`tell application "${escapeAppleScript(appName)}" to reopen`);
+  try {
+    osa(`
+tell application "System Events"
+  set candidateProcesses to every process whose name is "Vox Jot" or name is "vox_jot"
+  if (count of candidateProcesses) > 0 then set visible of item 1 of candidateProcesses to true
+end tell
+`);
+  } catch {
+    // Some production Tauri windows are visible in WindowServer but not fully
+    // represented in AX. Coordinate fallback below still covers them.
+  }
   sleep(1400);
+  try {
+    windowFrame();
+  } catch {
+    // Individual UI checks will report the actionable failure.
+  }
 }
 
 function appProcessScript() {
@@ -116,7 +143,7 @@ if (count of windows of appProcess) is 0 then error "Vox Jot has no accessible w
 `;
 }
 
-function windowFrame() {
+function windowFrameFromAx() {
   const raw = osa(`
 tell application "System Events"
   ${appProcessScript()}
@@ -133,6 +160,71 @@ end tell
   return { x, y, width, height };
 }
 
+function windowFrameFromWindowServer() {
+  const ownerName = JSON.stringify(appName);
+  const raw = runWithInput(
+    "/usr/bin/swift",
+    ["-"],
+    `
+import CoreGraphics
+import Foundation
+
+let ownerName = ${ownerName}
+let options = CGWindowListOption(arrayLiteral: .optionOnScreenOnly, .excludeDesktopElements)
+let windows = CGWindowListCopyWindowInfo(options, CGWindowID(0)) as? [[String: Any]] ?? []
+
+func number(_ value: Any?) -> Double? {
+  if let value = value as? NSNumber { return value.doubleValue }
+  if let value = value as? Double { return value }
+  if let value = value as? Int { return Double(value) }
+  return nil
+}
+
+for window in windows {
+  let owner = window[kCGWindowOwnerName as String] as? String ?? ""
+  let name = window[kCGWindowName as String] as? String ?? ""
+  let layer = number(window[kCGWindowLayer as String]) ?? -1
+  guard owner == ownerName, layer == 0 else { continue }
+  guard let bounds = window[kCGWindowBounds as String] as? [String: Any],
+        let x = number(bounds["X"]),
+        let y = number(bounds["Y"]),
+        let width = number(bounds["Width"]),
+        let height = number(bounds["Height"]) else { continue }
+  if name == ownerName || (width >= 700 && height >= 500) {
+    print("\\(Int(x.rounded())),\\(Int(y.rounded())),\\(Int(width.rounded())),\\(Int(height.rounded()))")
+    exit(0)
+  }
+}
+
+fputs("No visible WindowServer window for \\(ownerName)\\n", stderr)
+exit(1)
+`,
+    { timeout: 5000 },
+  );
+  const [x, y, width, height] = raw
+    .split(",")
+    .map((value) => Number(value.trim()));
+  return { x, y, width, height };
+}
+
+function windowFrame() {
+  if (!axWindowUnavailable) {
+    try {
+      return windowFrameFromAx();
+    } catch (error) {
+      axWindowUnavailable = true;
+      try {
+        return windowFrameFromWindowServer();
+      } catch (windowServerError) {
+        throw new Error(
+          `${error.message}; WindowServer fallback failed: ${windowServerError.message}`,
+        );
+      }
+    }
+  }
+  return windowFrameFromWindowServer();
+}
+
 function clickWindowPoint(name, relativeX, relativeY) {
   const frame = windowFrame();
   const x = Math.round(frame.x + relativeX(frame.width));
@@ -147,6 +239,9 @@ function clickWindowPoint(name, relativeX, relativeY) {
 }
 
 function clickAny(labels, requiredName) {
+  if (axWindowUnavailable) {
+    throw new Error("AX window unavailable; coordinate fallback required");
+  }
   const quotedLabels = labels
     .map((label) => `"${escapeAppleScript(label)}"`)
     .join(", ");
@@ -188,12 +283,17 @@ error "Missing native UI target for ${escapeAppleScript(requiredName)}"
 }
 
 function clickStep(name, labels, coordinateFallback) {
-  try {
-    return `${name}: ${clickAny(labels, name)}`;
-  } catch (error) {
-    if (!coordinateFallback) throw error;
-    return clickWindowPoint(name, coordinateFallback.x, coordinateFallback.y);
+  if (!axWindowUnavailable) {
+    try {
+      return `${name}: ${clickAny(labels, name)}`;
+    } catch (error) {
+      if (!coordinateFallback) throw error;
+    }
   }
+  if (!coordinateFallback) {
+    throw new Error("AX window unavailable and no coordinate fallback exists");
+  }
+  return clickWindowPoint(name, coordinateFallback.x, coordinateFallback.y);
 }
 
 function navigateRoot(rootName) {
@@ -543,7 +643,9 @@ async function exerciseApi() {
   record(
     "Local API settings schema",
     settingsSchema.ok && schemaFields > 20 ? "pass" : "fail",
-    settingsSchema.ok ? `${schemaFields} fields` : `HTTP ${settingsSchema.status}`,
+    settingsSchema.ok
+      ? `${schemaFields} fields`
+      : `HTTP ${settingsSchema.status}`,
   );
 
   const settingsSnapshot = await fetchJson("/v1/app/settings", { headers });

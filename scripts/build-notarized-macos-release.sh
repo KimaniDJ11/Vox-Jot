@@ -309,6 +309,20 @@ sign_nested_macho_files() {
   echo "Signed nested Mach-O files: ${signed_count}"
 }
 
+fix_generated_macos_info_plist() {
+  local info_plist="${APP_PATH}/Contents/Info.plist"
+
+  if [[ ! -f "${info_plist}" ]]; then
+    echo "Info.plist not found at ${info_plist}" >&2
+    exit 1
+  fi
+
+  if /usr/libexec/PlistBuddy -c "Print :LSRequiresCarbon" "${info_plist}" >/dev/null 2>&1; then
+    echo "Removing generated LSRequiresCarbon from ${info_plist}..."
+    /usr/libexec/PlistBuddy -c "Delete :LSRequiresCarbon" "${info_plist}"
+  fi
+}
+
 create_signed_dmg() {
   local mount_output mount_dir
 
@@ -402,13 +416,23 @@ echo "Building notarized macOS release for ${APP_NAME}..."
 echo "Using cargo target dir: ${CARGO_TARGET_DIR}"
 
 cd "${REPO_ROOT}"
-bun run tauri build --bundles app
+env \
+  -u APPLE_API_KEY \
+  -u APPLE_API_KEY_ID \
+  -u APPLE_API_ISSUER \
+  -u APPLE_API_KEY_PATH \
+  -u APPLE_ID \
+  -u APPLE_PASSWORD \
+  -u APPLE_ID_PASSWORD \
+  -u APPLE_TEAM_ID \
+  bun run tauri build --bundles app
 
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "Expected app bundle not found at ${APP_PATH}" >&2
   exit 1
 fi
 
+fix_generated_macos_info_plist
 sign_nested_macho_files
 /usr/bin/codesign \
   --force \

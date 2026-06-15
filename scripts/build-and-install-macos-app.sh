@@ -311,6 +311,21 @@ sign_macho_files_in_tar_gz_archives() {
   echo "Signed Mach-O files inside archives: ${signed_count} across ${archive_count} archives"
 }
 
+fix_generated_macos_info_plist() {
+  local app_bundle_path="$1"
+  local info_plist="${app_bundle_path}/Contents/Info.plist"
+
+  if [[ ! -f "${info_plist}" ]]; then
+    echo "Info.plist not found at ${info_plist}" >&2
+    exit 1
+  fi
+
+  if /usr/libexec/PlistBuddy -c "Print :LSRequiresCarbon" "${info_plist}" >/dev/null 2>&1; then
+    echo "Removing generated LSRequiresCarbon from ${info_plist}..."
+    /usr/libexec/PlistBuddy -c "Delete :LSRequiresCarbon" "${info_plist}"
+  fi
+}
+
 notarize_built_app() {
   echo "Creating notarization archive..."
   /bin/rm -f "${NOTARY_ZIP_PATH}"
@@ -463,12 +478,23 @@ fi
 echo "Building signed macOS bundle..."
 export CARGO_TARGET_DIR="${TARGET_DIR}"
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
-bun run tauri build --bundles app --config "${TAURI_CONFIG_OVERRIDE}"
+env \
+  -u APPLE_API_KEY \
+  -u APPLE_API_KEY_ID \
+  -u APPLE_API_ISSUER \
+  -u APPLE_API_KEY_PATH \
+  -u APPLE_ID \
+  -u APPLE_PASSWORD \
+  -u APPLE_ID_PASSWORD \
+  -u APPLE_TEAM_ID \
+  bun run tauri build --bundles app --config "${TAURI_CONFIG_OVERRIDE}"
 
 if [[ ! -d "${BUILT_APP_PATH}" ]]; then
   echo "Built app bundle not found at ${BUILT_APP_PATH}" >&2
   exit 1
 fi
+
+fix_generated_macos_info_plist "${BUILT_APP_PATH}"
 
 echo "Signing built bundle..."
 sign_nested_macho_files "${BUILT_APP_PATH}"

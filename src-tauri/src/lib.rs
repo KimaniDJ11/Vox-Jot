@@ -208,6 +208,23 @@ fn activate_macos_application() {
 }
 
 #[cfg(target_os = "macos")]
+fn order_macos_window_front(window: &tauri::WebviewWindow) {
+    match window.ns_window() {
+        Ok(ns_window) if !ns_window.is_null() => unsafe {
+            let ns_window = ns_window as *mut Object;
+            let _: () = msg_send![ns_window, makeKeyAndOrderFront: std::ptr::null_mut::<Object>()];
+            let _: () = msg_send![ns_window, orderFrontRegardless];
+        },
+        Ok(_) => {
+            log::error!("Failed to get NSWindow while showing main window: null pointer");
+        }
+        Err(error) => {
+            log::error!("Failed to get NSWindow while showing main window: {error}");
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
 fn show_main_window_if_intended_after(app: &AppHandle, delay: std::time::Duration) {
     let app_handle = app.clone();
     std::thread::spawn(move || {
@@ -295,6 +312,10 @@ fn show_main_window_on_main_thread(app: &AppHandle) {
         }
         if let Err(e) = main_window.show() {
             log::error!("Failed to show webview window: {}", e);
+        }
+        #[cfg(target_os = "macos")]
+        {
+            order_macos_window_front(&main_window);
         }
         if let Err(e) = main_window.set_focus() {
             log::error!("Failed to focus webview window: {}", e);
@@ -1401,6 +1422,16 @@ pub fn run(cli_args: CliArgs) {
                 .min_inner_size(MAIN_WINDOW_MIN_W, MAIN_WINDOW_MIN_H)
                 .resizable(true)
                 .maximizable(true)
+                .focused({
+                    #[cfg(target_os = "macos")]
+                    {
+                        main_window_initially_visible
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        false
+                    }
+                })
                 .visible({
                     #[cfg(target_os = "macos")]
                     {

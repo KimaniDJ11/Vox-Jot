@@ -181,7 +181,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       latencyMs: 31727,
       device: "cpu",
       notes:
-        "WhisperX ASR ran, but diarization matched the one-speaker pyannote behavior and was the slowest tested option. Runtime uses whisperx==3.4.2 with patched Transformers 5 / Hugging Face Hub 1.x pins.",
+        "WhisperX ASR ran, but diarization matched the one-speaker pyannote behavior and was the slowest tested option. Runtime uses whisperx==3.4.2 with patched NeMo 2.6.2 plus resolver-compatible Transformers 4.53 / Hugging Face Hub 0.36 pins.",
     },
     {
       modelId: "reverb-diarization-v2",

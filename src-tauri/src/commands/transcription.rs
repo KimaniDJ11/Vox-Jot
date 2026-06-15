@@ -1126,37 +1126,62 @@ fn legacy_speech_analysis_python_path() -> PathBuf {
         .join("python")
 }
 
-fn speech_analysis_python_path(
-    sidecar_manager: &Arc<SidecarManager>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SpeechAnalysisPythonRuntime {
+    GemmaAudio,
+    MlxAudio,
+    SpeechAnalysis,
+    Legacy,
+}
+
+fn speech_analysis_python_runtime(
     asr_model_id: &str,
     diarization_model_id: &str,
     emotion_model_id: &str,
-) -> Result<PathBuf, String> {
+) -> SpeechAnalysisPythonRuntime {
     if speech_analysis::model_uses_gemma_audio_runtime(asr_model_id) {
-        return sidecar_manager.ensure_gemma_audio_environment();
+        return SpeechAnalysisPythonRuntime::GemmaAudio;
+    }
+
+    if speech_analysis::model_uses_mlx_native(asr_model_id)
+        || speech_analysis::model_uses_mlx_native(diarization_model_id)
+    {
+        return SpeechAnalysisPythonRuntime::MlxAudio;
     }
 
     if speech_analysis::model_uses_managed_python_runtime(asr_model_id)
         || speech_analysis::model_uses_managed_python_runtime(diarization_model_id)
         || speech_analysis::model_uses_managed_python_runtime(emotion_model_id)
     {
-        return sidecar_manager.ensure_speech_analysis_environment();
+        return SpeechAnalysisPythonRuntime::SpeechAnalysis;
     }
 
-    if speech_analysis::model_uses_mlx_native(asr_model_id)
-        || speech_analysis::model_uses_mlx_native(diarization_model_id)
-    {
-        return sidecar_manager.ensure_mlx_audio_environment();
-    }
+    SpeechAnalysisPythonRuntime::Legacy
+}
 
-    let python = legacy_speech_analysis_python_path();
-    if python.exists() {
-        Ok(python)
-    } else {
-        Err(format!(
-            "Speech-analysis Python runtime not found at {}. Vox Jot will normally install the managed runtime automatically; set VOX_JOT_SPEECH_ANALYSIS_PYTHON only for local experiments.",
-            python.display()
-        ))
+fn speech_analysis_python_path(
+    sidecar_manager: &Arc<SidecarManager>,
+    asr_model_id: &str,
+    diarization_model_id: &str,
+    emotion_model_id: &str,
+) -> Result<PathBuf, String> {
+    match speech_analysis_python_runtime(asr_model_id, diarization_model_id, emotion_model_id) {
+        SpeechAnalysisPythonRuntime::GemmaAudio => sidecar_manager.ensure_gemma_audio_environment(),
+        SpeechAnalysisPythonRuntime::MlxAudio => sidecar_manager.ensure_mlx_audio_environment(),
+        SpeechAnalysisPythonRuntime::SpeechAnalysis => {
+            sidecar_manager.ensure_speech_analysis_environment()
+        }
+        SpeechAnalysisPythonRuntime::Legacy => {
+            let python = legacy_speech_analysis_python_path();
+            if python.exists() {
+                Ok(python)
+            } else {
+                Err(format!(
+                    "Speech-analysis Python runtime not found at {}. Vox Jot will normally install the managed runtime automatically; set VOX_JOT_SPEECH_ANALYSIS_PYTHON only for local experiments.",
+                    python.display()
+                ))
+            }
+        }
     }
 }
 
@@ -1375,7 +1400,23 @@ pub async fn transcribe_file(
     correction_store: State<'_, Arc<CorrectionStore>>,
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
-    let manager = transcription_manager.inner().clone();
+    transcribe_file_impl(
+        app,
+        Arc::clone(transcription_manager.inner()),
+        Arc::clone(sidecar_manager.inner()),
+        Arc::clone(correction_store.inner()),
+        path,
+    )
+    .await
+}
+
+pub(crate) async fn transcribe_file_impl(
+    app: AppHandle,
+    manager: Arc<TranscriptionManager>,
+    speech_sidecar_manager: Arc<SidecarManager>,
+    correction_store: Arc<CorrectionStore>,
+    path: String,
+) -> Result<TranscriptionFileResult, String> {
     let selection = speech_analysis::selection_from_settings(&app);
     let asr_model_id = selection.asr_model_id.clone();
     let diarization_model_id = selection.diarization_model_id.clone();
@@ -1395,7 +1436,6 @@ pub async fn transcribe_file(
     }
     let speech_analysis_model_guard =
         speech_analysis::mark_models_in_use(active_speech_analysis_models);
-    let speech_sidecar_manager = sidecar_manager.inner().clone();
     let is_wav = path.to_ascii_lowercase().ends_with(".wav");
     let sidecar_app = app.clone();
     let ffmpeg_exe = if is_wav {
@@ -1479,7 +1519,7 @@ pub async fn transcribe_file(
     if settings.file_transcription_apply_dictionary {
         let dict_entries = crate::correction_tracker::store::build_effective_personal_dictionary(
             &settings,
-            correction_store.inner().as_ref(),
+            correction_store.as_ref(),
             None,
         );
         if !dict_entries.is_empty() {
@@ -1650,6 +1690,7 @@ mod tests {
     use super::*;
     use crate::speech_analysis::{
         align_segments_to_speakers, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment,
+        NO_EMOTION_ID,
     };
 
     fn labeled(speaker: &str, start_ms: u64, end_ms: u64, text: &str) -> SpeakerLabeledSegment {
@@ -1702,6 +1743,18 @@ mod tests {
         assert_eq!(segments[0].start_ms, 0);
         assert_eq!(segments[0].end_ms, 1_500);
         assert_eq!(segments[0].text, "hello world");
+    }
+
+    #[test]
+    fn speech_analysis_python_runtime_prefers_mlx_for_mlx_asr_with_polyvoice() {
+        assert_eq!(
+            speech_analysis_python_runtime(
+                "mlx-mega-asr",
+                "onnx-polyvoice-diarization",
+                NO_EMOTION_ID,
+            ),
+            SpeechAnalysisPythonRuntime::MlxAudio,
+        );
     }
 
     #[test]

@@ -1954,6 +1954,22 @@ pub fn import_tts_voice_profile_sample(
     source_path: String,
     transcript: Option<String>,
 ) -> Result<TtsVoiceProfileDescriptor, String> {
+    import_tts_voice_profile_sample_impl(
+        app,
+        Arc::clone(transcription_manager.inner()),
+        profile_id,
+        source_path,
+        transcript,
+    )
+}
+
+pub(crate) fn import_tts_voice_profile_sample_impl(
+    app: AppHandle,
+    transcription_manager: Arc<TranscriptionManager>,
+    profile_id: String,
+    source_path: String,
+    transcript: Option<String>,
+) -> Result<TtsVoiceProfileDescriptor, String> {
     let descriptor = import_profile_reference_audio(&app, &profile_id, &source_path, transcript)?;
     let has_transcript = descriptor
         .transcript
@@ -1963,14 +1979,13 @@ pub fn import_tts_voice_profile_sample(
         return Ok(descriptor);
     }
 
-    let manager = Arc::clone(&*transcription_manager);
     match maybe_backfill_profile_transcript(&app, &profile_id, |reference_audio_path| {
-        manager.initiate_model_load();
+        transcription_manager.initiate_model_load();
         let audio_16k = read_wav_as_mono_16k(reference_audio_path)?;
         if audio_16k.is_empty() {
             return Ok(None);
         }
-        let transcript = manager
+        let transcript = transcription_manager
             .transcribe(Arc::new(audio_16k))
             .map_err(|err| format!("Failed to auto-transcribe voice reference audio: {err}"))?;
         let trimmed = transcript.trim();

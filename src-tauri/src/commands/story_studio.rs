@@ -595,6 +595,17 @@ pub async fn render_story_audio(
     })
 }
 
+pub async fn render_story_audio_now(
+    app: AppHandle,
+    request: StoryRenderRequest,
+) -> Result<StoryRenderResult, String> {
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    run_creative_audio_command_on_stack("http-api-story-render", move || async move {
+        render_story_audio_inner(app, request, stop_flag).await
+    })
+    .await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn cancel_story_render(app: AppHandle, render_id: String) -> Result<(), String> {

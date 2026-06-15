@@ -30,18 +30,29 @@
 
 use crate::commands::story_studio::{
     download_creative_audio_model, generate_story_sound, get_creative_audio_model_catalog,
-    CreativeAudioModelCatalog, CreativeAudioModelDescriptor, GenerateStorySoundRequest,
-    StoryAudioItem, StorySoundMode,
+    render_story_audio, render_story_audio_now, CreativeAudioModelCatalog,
+    CreativeAudioModelDescriptor, GenerateStorySoundRequest, StoryAudioItem,
+    StoryRenderEnqueueResult, StoryRenderRequest, StoryRenderResult, StorySoundMode,
 };
-use crate::commands::tts::preset_from_input;
+use crate::commands::transcription::{
+    CleanAudioFileResult, EnhanceAudioFileResult, EnhanceAudioOptions, TranscriptionFileResult,
+};
+use crate::commands::tts::{
+    preset_from_input, ReaderAudioCacheUnit, ReaderAudioUnitRender, ReaderAudiobookChapter,
+    VoiceChangerResult,
+};
 use crate::commands::{self, audio::AudioDevice};
+use crate::correction_tracker::store::CorrectionStore;
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::{HistoryEntriesPage, HistoryEntry, HistoryManager};
 use crate::managers::model::ModelManager;
 use crate::managers::transcription::TranscriptionManager;
-use crate::settings::TtsVoicePresetInput;
+use crate::settings::{
+    build_tts_preset_from_legacy, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
+};
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
+use crate::sidecar::SidecarManager;
 use crate::tts::{
     run_tts_async_on_dedicated_stack, speak_on_dedicated_thread, SpeakRequest, TtsManager,
     VoiceInfo,
@@ -57,6 +68,8 @@ use axum::{
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -217,6 +230,110 @@ struct RefinePreviewApiRequest {
     app_bundle_id_override: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct AudioFileApiRequest {
+    path: String,
+    output_path: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct AudioEnhanceApiRequest {
+    path: String,
+    output_path: Option<String>,
+    options: Option<EnhanceAudioOptions>,
+}
+
+#[derive(Deserialize)]
+struct ReaderDocumentApiRequest {
+    source_path: String,
+}
+
+#[derive(Deserialize)]
+struct ReaderSectionVoiceApiRequest {
+    section_index: usize,
+    preset_id: Option<String>,
+    enabled: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct ReaderExportAudioApiRequest {
+    source_path: String,
+    output_path: Option<String>,
+    format: Option<String>,
+    playback_rate: Option<f32>,
+    language: Option<String>,
+    title: Option<String>,
+    author: Option<String>,
+    default_preset_id: Option<String>,
+    section_voices: Option<Vec<ReaderSectionVoiceApiRequest>>,
+    max_units: Option<usize>,
+}
+
+#[derive(Serialize)]
+struct ReaderExportAudioApiResponse {
+    document_id: String,
+    document_name: String,
+    section_count: usize,
+    unit_count: usize,
+    output_path: String,
+    duration_ms: u32,
+    format: String,
+}
+
+#[derive(Deserialize)]
+struct ReaderSynthesizeUnitApiRequest {
+    document_id: String,
+    unit: ReaderAudioCacheUnit,
+    playback_rate: Option<f32>,
+    language: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ReaderTransformApiRequest {
+    text: String,
+    task: String,
+}
+
+#[derive(Deserialize)]
+struct VoiceProfileCreateApiRequest {
+    label: String,
+    description: Option<String>,
+    transcript: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct VoiceProfileImportApiRequest {
+    profile_id: String,
+    source_path: String,
+    transcript: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct TtsPresetActiveApiRequest {
+    preset_id: String,
+}
+
+#[derive(Deserialize)]
+struct VoiceCloneSynthesizeApiRequest {
+    text: String,
+    profile_id: String,
+    provider_id: Option<String>,
+    model_id: Option<String>,
+    voice_id: Option<String>,
+    label: Option<String>,
+    locale: Option<String>,
+    tuning: Option<TtsVoiceTuningSettings>,
+}
+
+#[derive(Deserialize)]
+struct VoiceChangerConvertApiRequest {
+    source_path: String,
+    profile_id: String,
+    tau: Option<f32>,
+    provider_id: Option<String>,
+    model_id: Option<String>,
+}
+
 #[derive(Serialize)]
 struct SettingFieldDescriptor {
     key: String,
@@ -361,6 +478,9 @@ impl HttpApiManager {
             .route("/v1/audio/devices", get(handle_audio_devices))
             .route("/v1/audio/microphone", post(handle_set_microphone))
             .route("/v1/audio/output", post(handle_set_output_device))
+            .route("/v1/audio/transcribe-file", post(handle_transcribe_file))
+            .route("/v1/audio/clean", post(handle_audio_clean))
+            .route("/v1/audio/enhance", post(handle_audio_enhance))
             .route(
                 "/v1/audio/clamshell-microphone",
                 post(handle_set_clamshell_microphone),
@@ -380,7 +500,43 @@ impl HttpApiManager {
             .route("/v1/voices", get(handle_voices))
             .route("/v1/speak", post(handle_speak))
             .route("/v1/tts/synthesize", post(handle_tts_synthesize))
-            .route("/v1/tts/profiles", get(handle_tts_profiles))
+            .route(
+                "/v1/tts/presets",
+                get(handle_tts_presets).post(handle_tts_preset_create),
+            )
+            .route("/v1/tts/presets/active", post(handle_tts_preset_active))
+            .route(
+                "/v1/tts/profiles",
+                get(handle_tts_profiles).post(handle_voice_profile_create),
+            )
+            .route(
+                "/v1/tts/profiles/import-sample",
+                post(handle_voice_profile_import_sample),
+            )
+            .route(
+                "/v1/voice-clone/profiles",
+                get(handle_tts_profiles).post(handle_voice_profile_create),
+            )
+            .route(
+                "/v1/voice-clone/import-sample",
+                post(handle_voice_profile_import_sample),
+            )
+            .route(
+                "/v1/voice-clone/synthesize",
+                post(handle_voice_clone_synthesize),
+            )
+            .route(
+                "/v1/voice-changer/convert",
+                post(handle_voice_changer_convert),
+            )
+            .route("/v1/reader/documents", get(handle_reader_documents))
+            .route("/v1/reader/document", post(handle_reader_document))
+            .route("/v1/reader/export-audio", post(handle_reader_export_audio))
+            .route(
+                "/v1/reader/synthesize-unit",
+                post(handle_reader_synthesize_unit),
+            )
+            .route("/v1/reader/transform", post(handle_reader_transform))
             .route(
                 "/v1/creative-audio/models",
                 get(handle_creative_audio_models),
@@ -393,6 +549,10 @@ impl HttpApiManager {
                 "/v1/creative-audio/generate",
                 post(handle_creative_audio_generate),
             )
+            .route("/v1/story/audio", get(handle_story_audio))
+            .route("/v1/story/jobs", get(handle_story_jobs))
+            .route("/v1/story/render", post(handle_story_render))
+            .route("/v1/story/render-sync", post(handle_story_render_sync))
             .route("/v1/transcribe", post(handle_transcribe))
             .route("/mcp", post(crate::mcp::handle_mcp))
             .layer(DefaultBodyLimit::max(MAX_TRANSCRIBE_UPLOAD_BYTES))
@@ -1703,6 +1863,98 @@ async fn handle_audio_devices(
     .into_response()
 }
 
+async fn handle_transcribe_file(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioFileApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let path = request.path.trim();
+    if path.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Audio file path is required.");
+    }
+    let Some(transcription_manager) = state.app.try_state::<Arc<TranscriptionManager>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TranscriptionManager not ready.",
+        );
+    };
+    let Some(sidecar_manager) = state.app.try_state::<Arc<SidecarManager>>() else {
+        return api_error(StatusCode::SERVICE_UNAVAILABLE, "SidecarManager not ready.");
+    };
+    let Some(correction_store) = state.app.try_state::<Arc<CorrectionStore>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "CorrectionStore not ready.",
+        );
+    };
+    let app = state.app.clone();
+    let transcription_manager = Arc::clone(&*transcription_manager);
+    let sidecar_manager = Arc::clone(&*sidecar_manager);
+    let correction_store = Arc::clone(&*correction_store);
+
+    match commands::transcription::transcribe_file_impl(
+        app,
+        transcription_manager,
+        sidecar_manager,
+        correction_store,
+        path.to_string(),
+    )
+    .await
+    {
+        Ok(result) => Json::<TranscriptionFileResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_audio_clean(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioFileApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let path = request.path.trim();
+    if path.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Audio file path is required.");
+    }
+
+    match commands::transcription::clean_audio_file(path.to_string(), request.output_path).await {
+        Ok(result) => Json::<CleanAudioFileResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_audio_enhance(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AudioEnhanceApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let path = request.path.trim();
+    if path.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Audio file path is required.");
+    }
+
+    match commands::transcription::enhance_audio_file(
+        state.app,
+        path.to_string(),
+        request.output_path,
+        request.options,
+    )
+    .await
+    {
+        Ok(result) => Json::<EnhanceAudioFileResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
 async fn handle_set_microphone(
     AxumState(state): AxumState<ApiState>,
     headers: HeaderMap,
@@ -1863,6 +2115,151 @@ async fn handle_refine_preview(
     .await
     {
         Ok(result) => Json(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_reader_documents(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::reader::list_reader_documents(state.app).await {
+        Ok(documents) => Json(documents).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_reader_document(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ReaderDocumentApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let source_path = request.source_path.trim();
+    if source_path.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Reader source_path is required.");
+    }
+
+    match commands::reader::read_reader_document(state.app, source_path.to_string()).await {
+        Ok(document) => Json(document).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_reader_export_audio(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ReaderExportAudioApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let source_path = request.source_path.trim();
+    if source_path.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Reader source_path is required.");
+    }
+
+    let format = normalize_reader_export_format(request.format.as_deref());
+    let output_path = match request
+        .output_path
+        .clone()
+        .filter(|path| !path.trim().is_empty())
+    {
+        Some(path) => path,
+        None => match default_reader_export_path(&state.app, source_path, &format) {
+            Ok(path) => path,
+            Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+        },
+    };
+
+    let document =
+        match commands::reader::read_reader_document(state.app.clone(), source_path.to_string())
+            .await
+        {
+            Ok(document) => document,
+            Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+        };
+    let chapters = match build_reader_api_chapters(&document, &request) {
+        Ok(chapters) => chapters,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    let unit_count = chapters.iter().map(|chapter| chapter.units.len()).sum();
+    let title = request
+        .title
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| Some(strip_file_extension(&document.name)));
+
+    match commands::tts::export_reader_audiobook(
+        state.app,
+        document.id.clone(),
+        chapters,
+        output_path,
+        format.clone(),
+        request.playback_rate,
+        request.language,
+        title,
+        request.author,
+        None,
+    )
+    .await
+    {
+        Ok(result) => {
+            let response = ReaderExportAudioApiResponse {
+                document_id: document.id,
+                document_name: document.name,
+                section_count: document.sections.len(),
+                unit_count,
+                output_path: result.output_path,
+                duration_ms: result.duration_ms,
+                format,
+            };
+            Json(response).into_response()
+        }
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_reader_synthesize_unit(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ReaderSynthesizeUnitApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::synthesize_reader_audio_unit(
+        state.app,
+        request.document_id,
+        request.unit,
+        request.playback_rate,
+        request.language,
+    )
+    .await
+    {
+        Ok(result) => Json::<ReaderAudioUnitRender>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_reader_transform(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<ReaderTransformApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::reader::reader_transform_text(state.app, request.text, request.task).await {
+        Ok(result) => Json(serde_json::json!({ "text": result })).into_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
 }
@@ -2049,6 +2446,258 @@ async fn handle_tts_profiles(
             Json(ErrorResponse { error }),
         )
             .into_response(),
+    }
+}
+
+async fn handle_tts_presets(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::list_tts_voice_presets(state.app) {
+        Ok(presets) => Json::<Vec<TtsVoicePreset>>(presets).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_tts_preset_create(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(input): Json<TtsVoicePresetInput>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::create_tts_voice_preset(state.app, input) {
+        Ok(preset) => Json::<TtsVoicePreset>(preset).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_tts_preset_active(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<TtsPresetActiveApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::set_active_tts_voice_preset(state.app, request.preset_id) {
+        Ok(preset) => Json::<TtsVoicePreset>(preset).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_voice_profile_create(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<VoiceProfileCreateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::create_tts_voice_profile(
+        state.app,
+        request.label,
+        request.description,
+        request.transcript,
+    ) {
+        Ok(profile) => Json::<TtsVoiceProfileDescriptor>(profile).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_voice_profile_import_sample(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<VoiceProfileImportApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let Some(transcription_manager) = state.app.try_state::<Arc<TranscriptionManager>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TranscriptionManager not ready.",
+        );
+    };
+    let app = state.app.clone();
+    let transcription_manager = Arc::clone(&*transcription_manager);
+
+    match commands::tts::import_tts_voice_profile_sample_impl(
+        app,
+        transcription_manager,
+        request.profile_id,
+        request.source_path,
+        request.transcript,
+    ) {
+        Ok(profile) => Json::<TtsVoiceProfileDescriptor>(profile).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_voice_clone_synthesize(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<VoiceCloneSynthesizeApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    let text = request.text.trim();
+    if text.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "Text is required.");
+    }
+    if text.chars().count() > 20_000 {
+        return api_error(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Text is too large for voice clone synthesis.",
+        );
+    }
+    let profile_id = request.profile_id.trim();
+    if profile_id.is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "profile_id is required.");
+    }
+    let profile = match list_voice_profiles(&state.app).and_then(|profiles| {
+        profiles
+            .into_iter()
+            .find(|profile| profile.id == profile_id)
+            .ok_or_else(|| format!("Unknown voice profile '{profile_id}'."))
+    }) {
+        Ok(profile) => profile,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    let Some(manager) = state.app.try_state::<Arc<TtsManager>>() else {
+        return api_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TTS manager is unavailable.",
+        );
+    };
+
+    let settings = get_settings(&state.app);
+    let mut preset = if request.provider_id.is_some() || request.model_id.is_some() {
+        TtsVoicePreset {
+            id: format!("local-api-clone-{}", Uuid::new_v4()),
+            label: request
+                .label
+                .clone()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| profile.label.clone()),
+            provider_id: request
+                .provider_id
+                .clone()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| {
+                    non_empty_or_default(&settings.selected_tts_provider_id, "mlx_kitten_tts")
+                }),
+            model_id: request
+                .model_id
+                .clone()
+                .filter(|value| !value.trim().is_empty())
+                .or_else(|| settings.selected_tts_model_id.clone())
+                .unwrap_or_else(|| "kitten-tts-nano-0.8".to_string()),
+            voice_id: request
+                .voice_id
+                .clone()
+                .filter(|value| !value.trim().is_empty()),
+            voice_profile_id: Some(profile.id.clone()),
+            voice_label_snapshot: Some(profile.label.clone()),
+            locale_snapshot: request
+                .locale
+                .clone()
+                .filter(|value| !value.trim().is_empty()),
+            tuning: request.tuning.unwrap_or_else(default_tts_tuning),
+        }
+    } else {
+        let mut preset = settings
+            .active_tts_preset()
+            .cloned()
+            .unwrap_or_else(|| build_tts_preset_from_legacy(&settings, None));
+        preset.id = format!("local-api-clone-{}", Uuid::new_v4());
+        preset.label = request
+            .label
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| profile.label.clone());
+        preset.voice_profile_id = Some(profile.id.clone());
+        preset.voice_label_snapshot = Some(profile.label.clone());
+        if let Some(voice_id) = request
+            .voice_id
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+        {
+            preset.voice_id = Some(voice_id);
+        }
+        if let Some(locale) = request
+            .locale
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+        {
+            preset.locale_snapshot = Some(locale);
+        }
+        if let Some(tuning) = request.tuning {
+            preset.tuning = tuning;
+        }
+        preset
+    };
+    sanitize_tts_preset_for_api(&mut preset);
+
+    let render_request = SpeakRequest {
+        text: text.to_string(),
+        locale: preset.locale_snapshot.clone(),
+        preferred_voice_id: preset.voice_id.clone(),
+        preset_id: None,
+        inline_preset: Some(preset),
+        trigger: Some("local_api_voice_clone".to_string()),
+        remember_last_output: false,
+    };
+    let manager = Arc::clone(&*manager);
+    match run_tts_async_on_dedicated_stack("http-api-voice-clone-synthesize", move || async move {
+        manager
+            .synthesize_to_temp_files(render_request, Arc::new(AtomicBool::new(false)))
+            .await
+    })
+    .await
+    {
+        Ok(paths) => Json(TtsSynthesizeApiResponse {
+            status: "ok",
+            output_paths: paths
+                .into_iter()
+                .map(|path| path.display().to_string())
+                .collect(),
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_voice_changer_convert(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<VoiceChangerConvertApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::tts::convert_voice_sample(
+        state.app,
+        request.source_path,
+        request.profile_id,
+        request.tau,
+        request.provider_id,
+        request.model_id,
+    )
+    .await
+    {
+        Ok(result) => Json::<VoiceChangerResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
 }
 
@@ -2285,6 +2934,70 @@ async fn handle_creative_audio_generate(
     }
 }
 
+async fn handle_story_audio(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::story_studio::list_story_audio(state.app) {
+        Ok(items) => Json::<Vec<StoryAudioItem>>(items).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_story_jobs(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::story_studio::list_story_render_jobs() {
+        Ok(jobs) => Json(jobs).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_story_render(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(mut request): Json<StoryRenderRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    if request.render_id.trim().is_empty() {
+        request.render_id = Uuid::new_v4().to_string();
+    }
+
+    match render_story_audio(state.app, request).await {
+        Ok(result) => Json::<StoryRenderEnqueueResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_story_render_sync(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(mut request): Json<StoryRenderRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+    if request.render_id.trim().is_empty() {
+        request.render_id = Uuid::new_v4().to_string();
+    }
+
+    match render_story_audio_now(state.app, request).await {
+        Ok(result) => Json::<StoryRenderResult>(result).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
 async fn handle_transcribe(
     AxumState(state): AxumState<ApiState>,
     headers: HeaderMap,
@@ -2394,6 +3107,315 @@ async fn handle_transcribe(
         )
             .into_response(),
     }
+}
+
+const READER_API_MAX_UNIT_CHARS: usize = 480;
+
+fn normalize_reader_export_format(format: Option<&str>) -> String {
+    match format
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("wav")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "mp3" => "mp3".to_string(),
+        "m4b" => "m4b".to_string(),
+        _ => "wav".to_string(),
+    }
+}
+
+fn default_reader_export_path(
+    app: &AppHandle,
+    source_path: &str,
+    format: &str,
+) -> Result<String, String> {
+    let app_data_dir = crate::portable::app_data_dir(app)
+        .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
+    let dir = app_data_dir.join("local-api").join("reader-exports");
+    std::fs::create_dir_all(&dir)
+        .map_err(|err| format!("Failed to create Reader API export directory: {err}"))?;
+    let stem = Path::new(source_path)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .map(sanitize_api_file_stem)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "reader-export".to_string());
+    Ok(dir
+        .join(format!("{stem}-{}.{}", Uuid::new_v4(), format))
+        .to_string_lossy()
+        .to_string())
+}
+
+fn sanitize_api_file_stem(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+fn strip_file_extension(name: &str) -> String {
+    Path::new(name)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(name)
+        .to_string()
+}
+
+fn build_reader_api_chapters(
+    document: &commands::reader::ReaderDocument,
+    request: &ReaderExportAudioApiRequest,
+) -> Result<Vec<ReaderAudiobookChapter>, String> {
+    let default_preset_id = normalize_optional_api_string(request.default_preset_id.clone());
+    let mut disabled_sections = HashSet::new();
+    let mut preset_by_section: HashMap<usize, Option<String>> = HashMap::new();
+    for voice in request.section_voices.as_deref().unwrap_or(&[]) {
+        if voice.enabled == Some(false) {
+            disabled_sections.insert(voice.section_index);
+            continue;
+        }
+        preset_by_section.insert(
+            voice.section_index,
+            normalize_optional_api_string(voice.preset_id.clone()),
+        );
+    }
+
+    let mut chapters = Vec::new();
+    let max_units = request.max_units.unwrap_or(usize::MAX);
+    if max_units == 0 {
+        return Err("max_units must be greater than zero.".to_string());
+    }
+    let mut total_units = 0usize;
+    for section in &document.sections {
+        if disabled_sections.contains(&section.index) {
+            continue;
+        }
+        let preset_id = preset_by_section
+            .get(&section.index)
+            .cloned()
+            .flatten()
+            .or_else(|| default_preset_id.clone());
+        let mut units = Vec::new();
+        for chunk in reader_section_chunks(&section.text) {
+            if total_units >= max_units {
+                break;
+            }
+            units.push(ReaderAudioCacheUnit {
+                id: format!(
+                    "s{}-p{}-c{}",
+                    section.index, chunk.paragraph_index, chunk.chunk_index
+                ),
+                text: chunk.text,
+                preset_id: preset_id.clone(),
+            });
+            total_units += 1;
+        }
+        if !units.is_empty() {
+            chapters.push(ReaderAudiobookChapter {
+                title: if section.title.trim().is_empty() {
+                    format!("Section {}", section.index + 1)
+                } else {
+                    section.title.clone()
+                },
+                units,
+            });
+        }
+        if total_units >= max_units {
+            break;
+        }
+    }
+
+    if chapters.is_empty() {
+        return Err("Reader document produced no speakable sections.".to_string());
+    }
+    Ok(chapters)
+}
+
+struct ReaderApiChunk {
+    paragraph_index: usize,
+    chunk_index: usize,
+    text: String,
+}
+
+fn reader_section_chunks(text: &str) -> Vec<ReaderApiChunk> {
+    let mut out = Vec::new();
+    let mut paragraph_index = 0usize;
+    let mut paragraph = String::new();
+    let mut flush_paragraph = |paragraph: &mut String, paragraph_index: &mut usize| {
+        let chunks = reader_chunk_text(paragraph, READER_API_MAX_UNIT_CHARS);
+        if !chunks.is_empty() {
+            for (chunk_index, chunk) in chunks.into_iter().enumerate() {
+                out.push(ReaderApiChunk {
+                    paragraph_index: *paragraph_index,
+                    chunk_index,
+                    text: chunk,
+                });
+            }
+            *paragraph_index += 1;
+        }
+        paragraph.clear();
+    };
+
+    for line in text.replace("\r\n", "\n").replace('\r', "\n").lines() {
+        if line.trim().is_empty() {
+            flush_paragraph(&mut paragraph, &mut paragraph_index);
+            continue;
+        }
+        if !paragraph.is_empty() {
+            paragraph.push(' ');
+        }
+        paragraph.push_str(line.trim());
+    }
+    flush_paragraph(&mut paragraph, &mut paragraph_index);
+    out
+}
+
+fn reader_chunk_text(text: &str, max_len: usize) -> Vec<String> {
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() {
+        return Vec::new();
+    }
+    if normalized.chars().count() <= max_len {
+        return vec![normalized];
+    }
+
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    for sentence in reader_split_sentences(&normalized) {
+        if sentence.chars().count() > max_len {
+            if !current.is_empty() {
+                chunks.push(std::mem::take(&mut current));
+            }
+            chunks.extend(reader_hard_split(&sentence, max_len));
+            continue;
+        }
+        let next_len = current.chars().count()
+            + if current.is_empty() { 0 } else { 1 }
+            + sentence.chars().count();
+        if !current.is_empty() && next_len > max_len {
+            chunks.push(std::mem::take(&mut current));
+        }
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(&sentence);
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+}
+
+fn reader_split_sentences(text: &str) -> Vec<String> {
+    let mut sentences = Vec::new();
+    let mut start = 0usize;
+    for (index, ch) in text.char_indices() {
+        if matches!(ch, '.' | '!' | '?' | '…') {
+            let end = index + ch.len_utf8();
+            let sentence = text[start..end].trim();
+            if !sentence.is_empty() {
+                sentences.push(sentence.to_string());
+            }
+            start = end;
+        }
+    }
+    let tail = text[start..].trim();
+    if !tail.is_empty() {
+        sentences.push(tail.to_string());
+    }
+    if sentences.is_empty() {
+        sentences.push(text.trim().to_string());
+    }
+    sentences
+}
+
+fn reader_hard_split(text: &str, max_len: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        if word.chars().count() > max_len {
+            if !current.is_empty() {
+                out.push(std::mem::take(&mut current));
+            }
+            let chars = word.chars().collect::<Vec<_>>();
+            for chunk in chars.chunks(max_len) {
+                out.push(chunk.iter().collect());
+            }
+            continue;
+        }
+        let next_len =
+            current.chars().count() + if current.is_empty() { 0 } else { 1 } + word.chars().count();
+        if !current.is_empty() && next_len > max_len {
+            out.push(std::mem::take(&mut current));
+        }
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(word);
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
+}
+
+fn normalize_optional_api_string(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn non_empty_or_default(value: &str, fallback: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        fallback.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn default_tts_tuning() -> TtsVoiceTuningSettings {
+    TtsVoiceTuningSettings {
+        tempo_rate: 1.0,
+        expressiveness: 0.5,
+        exaggeration: 0.5,
+        randomness: 0.7,
+        guidance: 0.5,
+        stability: 0.5,
+        repetition_penalty: 1.2,
+        style_instructions: None,
+        advanced_overrides: HashMap::new(),
+    }
+}
+
+fn sanitize_tts_preset_for_api(preset: &mut TtsVoicePreset) {
+    preset.provider_id = preset.provider_id.trim().to_string();
+    preset.model_id = preset.model_id.trim().to_string();
+    preset.voice_id = normalize_optional_api_string(preset.voice_id.clone());
+    preset.voice_profile_id = normalize_optional_api_string(preset.voice_profile_id.clone());
+    preset.voice_label_snapshot =
+        normalize_optional_api_string(preset.voice_label_snapshot.clone());
+    preset.locale_snapshot = normalize_optional_api_string(preset.locale_snapshot.clone());
+    preset.tuning.tempo_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
+    preset.tuning.expressiveness = preset.tuning.expressiveness.clamp(0.0, 1.0);
+    preset.tuning.exaggeration = preset.tuning.exaggeration.clamp(0.0, 2.0);
+    preset.tuning.randomness = preset.tuning.randomness.clamp(0.0, 1.0);
+    preset.tuning.guidance = preset.tuning.guidance.clamp(0.0, 1.0);
+    preset.tuning.stability = preset.tuning.stability.clamp(0.0, 1.0);
+    preset.tuning.repetition_penalty = preset.tuning.repetition_penalty.clamp(0.5, 3.0);
+    preset.tuning.style_instructions =
+        normalize_optional_api_string(preset.tuning.style_instructions.clone());
 }
 
 pub(crate) fn require_api_token(
@@ -2604,5 +3626,80 @@ mod tests {
             ("anthropic".to_string(), "claude-sonnet-4".to_string())
         );
         assert!(provider_model_from_value(&serde_json::json!({}), "post_process_models").is_err());
+    }
+
+    #[test]
+    fn reader_api_builds_section_chapters_with_voice_overrides() {
+        let document = commands::reader::ReaderDocument {
+            id: "doc-1".to_string(),
+            path: "/tmp/example.pdf".to_string(),
+            name: "example.pdf".to_string(),
+            kind: commands::reader::ReaderDocumentKind::Pdf,
+            size_bytes: 42,
+            source_modified_ms: None,
+            word_count: 10,
+            page_count: 1,
+            extraction_engine: "test".to_string(),
+            thumbnail_data_url: None,
+            text: String::new(),
+            pages: Vec::new(),
+            sections: vec![
+                commands::reader::ReaderDocumentSection {
+                    index: 0,
+                    title: "Narrator".to_string(),
+                    text: "First sentence. Second sentence.".to_string(),
+                },
+                commands::reader::ReaderDocumentSection {
+                    index: 1,
+                    title: "Skipped".to_string(),
+                    text: "This should not be included.".to_string(),
+                },
+            ],
+        };
+        let request = ReaderExportAudioApiRequest {
+            source_path: document.path.clone(),
+            output_path: None,
+            format: Some("mp3".to_string()),
+            playback_rate: None,
+            language: None,
+            title: None,
+            author: None,
+            default_preset_id: Some("default-preset".to_string()),
+            section_voices: Some(vec![
+                ReaderSectionVoiceApiRequest {
+                    section_index: 0,
+                    preset_id: Some("narrator-preset".to_string()),
+                    enabled: None,
+                },
+                ReaderSectionVoiceApiRequest {
+                    section_index: 1,
+                    preset_id: None,
+                    enabled: Some(false),
+                },
+            ]),
+            max_units: None,
+        };
+
+        let chapters = build_reader_api_chapters(&document, &request).unwrap();
+
+        assert_eq!(chapters.len(), 1);
+        assert_eq!(chapters[0].title, "Narrator");
+        assert_eq!(chapters[0].units.len(), 1);
+        assert_eq!(
+            chapters[0].units[0].preset_id.as_deref(),
+            Some("narrator-preset")
+        );
+        assert_eq!(chapters[0].units[0].id, "s0-p0-c0");
+    }
+
+    #[test]
+    fn reader_api_chunks_long_text_to_bounded_units() {
+        let text = format!("{}.", "word ".repeat(140));
+        let chunks = reader_chunk_text(&text, READER_API_MAX_UNIT_CHARS);
+
+        assert!(chunks.len() > 1);
+        assert!(chunks
+            .iter()
+            .all(|chunk| chunk.chars().count() <= READER_API_MAX_UNIT_CHARS));
     }
 }

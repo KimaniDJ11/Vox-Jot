@@ -170,7 +170,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     realTimeFactor: 3,
     device: "cpu",
     notes:
-      "Full five-format local suite completed through the WhisperX runtime. Runtime now uses whisperx==3.4.2 with patched Transformers 5 / Hugging Face Hub 1.x pins.",
+      "Full five-format local suite completed through the WhisperX runtime. Runtime now uses whisperx==3.4.2 with patched NeMo 2.6.2 plus resolver-compatible Transformers 4.53 / Hugging Face Hub 0.36 pins.",
   },
   {
     modelId: "gemma4-e2b-audio",

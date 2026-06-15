@@ -473,6 +473,8 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("kitten-tts-mini-0.8", "MLX KittenTTS Mini 0.8", "mlx", "mlx_kitten_tts", ("MLX/kitten-tts-mini-0.8", "MLX/mlx-community/kitten-tts-mini-0.8"), "mlx-community/kitten-tts-mini-0.8"),
     ModelSpec("miso-tts-8bit", "MLX MisoTTS 8-bit", "mlx", "mlx_miso_tts", ("MLX/MisoLabs-MisoTTS-8bit", "MLX/mlx-community/MisoLabs-MisoTTS-8bit"), "mlx-community/MisoLabs-MisoTTS-8bit", supports_voice_cloning=True),
     ModelSpec("miso-tts-bf16", "MLX MisoTTS bf16", "mlx", "mlx_miso_tts", ("MLX/MisoLabs-MisoTTS-bf16", "MLX/mlx-community/MisoLabs-MisoTTS-bf16"), "mlx-community/MisoLabs-MisoTTS-bf16", supports_voice_cloning=True),
+    ModelSpec("orpheus-3b-0.1-ft-4bit", "MLX Orpheus 3B 4-bit", "mlx", "mlx_orpheus", ("MLX/orpheus-3b-0.1-ft-4bit", "MLX/mlx-community/orpheus-3b-0.1-ft-4bit"), "mlx-community/orpheus-3b-0.1-ft-4bit", voice="tara"),
+    ModelSpec("zonos2", "MLX ZONOS2", "mlx", "mlx_zonos2", ("MLX/Zyphra-ZONOS2", "MLX/mlx-community/Zyphra-ZONOS2"), "mlx-community/Zyphra-ZONOS2", supports_voice_cloning=True),
 )
 
 

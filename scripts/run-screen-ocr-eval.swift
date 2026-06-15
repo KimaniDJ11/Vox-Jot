@@ -63,6 +63,7 @@ struct CatalogEntry {
     let id: String
     let label: String
     let backend: String
+    let relativeInstallPath: String?
 }
 
 let repoRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -82,12 +83,15 @@ let appDataOcrRuntimeRoot = FileManager.default
 let installedAppPath = URL(fileURLWithPath: "/Applications/Vox Jot.app", isDirectory: true)
 
 let catalog: [CatalogEntry] = [
-    CatalogEntry(id: "pp-ocrv5", label: "PP-OCRv5", backend: "paddle_det_rec"),
-    CatalogEntry(id: "lighton-ocr-2-1b", label: "LightOnOCR-2 1B", backend: "transformers_vl"),
-    CatalogEntry(id: "chandra-ocr-2", label: "Chandra OCR 2", backend: "transformers_vl"),
-    CatalogEntry(id: "olmocr-2-7b", label: "olmOCR-2 7B", backend: "transformers_vl"),
-    CatalogEntry(id: "glm-ocr", label: "GLM-OCR", backend: "transformers_vl"),
-    CatalogEntry(id: "qwen2.5-vl-3b", label: "Qwen2.5-VL 3B Instruct", backend: "transformers_vl"),
+    CatalogEntry(id: "pp-ocrv5", label: "PP-OCRv5", backend: "paddle_det_rec", relativeInstallPath: nil),
+    CatalogEntry(id: "lighton-ocr-2-1b", label: "LightOnOCR-2 1B", backend: "transformers_vl", relativeInstallPath: nil),
+    CatalogEntry(id: "chandra-ocr-2", label: "Chandra OCR 2", backend: "transformers_vl", relativeInstallPath: nil),
+    CatalogEntry(id: "olmocr-2-7b", label: "olmOCR-2 7B", backend: "transformers_vl", relativeInstallPath: nil),
+    CatalogEntry(id: "glm-ocr", label: "GLM-OCR", backend: "transformers_vl", relativeInstallPath: nil),
+    CatalogEntry(id: "qwen2.5-vl-3b", label: "Qwen2.5-VL 3B Instruct", backend: "transformers_vl", relativeInstallPath: nil),
+    CatalogEntry(id: "dots-ocr-mlx", label: "dots.ocr (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/dots.ocr-4bit"),
+    CatalogEntry(id: "dots-mocr-mlx", label: "dots.mocr (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/dots.mocr-4bit"),
+    CatalogEntry(id: "nanonets-ocr2-3b-mlx", label: "Nanonets-OCR2 3B (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/Nanonets-OCR2-3B-4bit"),
 ]
 
 func font(_ name: String, _ size: CGFloat) -> NSFont {
@@ -815,7 +819,7 @@ func evaluateTesseract(assets: [CaseAsset]) -> EngineResult {
 }
 
 func modelRoot(for entry: CatalogEntry) -> URL {
-    appDataOcrRoot.appendingPathComponent(entry.id, isDirectory: true)
+    appDataOcrRoot.appendingPathComponent(entry.relativeInstallPath ?? entry.id, isDirectory: true)
 }
 
 func hasDirectoryContents(_ url: URL) -> Bool {

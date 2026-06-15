@@ -291,6 +291,16 @@ describe("resolveModelProviderId", () => {
         expected: "mlx_miso_tts",
       },
       {
+        title: "MLX Orpheus 3B 4-bit orpheus-3b-0.1-ft-4bit",
+        runtimeProviderId: "mlx_orpheus",
+        expected: "mlx_orpheus",
+      },
+      {
+        title: "MLX ZONOS2 zonos2",
+        runtimeProviderId: "mlx_zonos2",
+        expected: "mlx_zonos2",
+      },
+      {
         title: "System Voices",
         runtimeProviderId: "system_builtin",
         expected: "system_builtin",
@@ -326,6 +336,16 @@ describe("resolveModelProviderId", () => {
         title: "Dots Dots.OCR",
         runtimeProviderId: "generic",
         expected: "dots",
+      },
+      {
+        title: "rednote-hilab dots.mocr (MLX) dots-mocr-mlx",
+        runtimeProviderId: "generic",
+        expected: "dots",
+      },
+      {
+        title: "Nanonets Nanonets-OCR2 3B (MLX) nanonets-ocr2-3b-mlx",
+        runtimeProviderId: "generic",
+        expected: "nanonets",
       },
       {
         title: "Allen AI olmOCR-2 7B",

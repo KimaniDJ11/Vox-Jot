@@ -1212,6 +1212,80 @@ function DotsMark({ size }: { size: number; color: string }) {
   );
 }
 
+function NanonetsMark({ size }: { size: number; color: string }) {
+  // Connected-node graph (nano + nets) for the Nanonets OCR family.
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6.5 7.5 12 12l5.5-4.5M6.5 16.5 12 12l5.5 4.5"
+        fill="none"
+        stroke="#93C5FD"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={6.5} cy={7.5} r={1.9} fill="#FFFFFF" />
+      <circle cx={6.5} cy={16.5} r={1.9} fill="#FFFFFF" />
+      <circle cx={17.5} cy={7.5} r={1.9} fill="#FFFFFF" />
+      <circle cx={17.5} cy={16.5} r={1.9} fill="#FFFFFF" />
+      <circle cx={12} cy={12} r={2.4} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function OrpheusMark({ size }: { size: number; color: string }) {
+  // Lyre glyph — the mythic musician Orpheus.
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M7 4.5c-2.3 1.3-3.5 3.6-3.5 6.9 0 3.4 1.6 6.4 3.9 8.6M17 4.5c2.3 1.3 3.5 3.6 3.5 6.9 0 3.4-1.6 6.4-3.9 8.6"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.4 7.6h11.2"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.3 8.2v8.4M12 8.2v9.2M14.7 8.2v8.4"
+        stroke="#FDE68A"
+        strokeWidth={1.4}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ZonosMark({ size }: { size: number; color: string }) {
+  // Bold "Z" with a voice wave for Zyphra ZONOS2.
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6.5 6.2h11L7 17.8h11"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.6 12c1.1-1.8 2.3-1.8 3.4 0s2.3 1.8 3.4 0"
+        fill="none"
+        stroke="#C7D2FE"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function K2FsaMark({ size }: { size: number; color: string }) {
   const s = size * 0.7;
   return (
@@ -1672,6 +1746,7 @@ const BRANDS: Record<string, BrandConfig> = {
   lighton: { bg: "#111827", fg: "#FFFFFF", letter: "L", mark: LightOnMark },
   datalab: { bg: "#7C3AED", fg: "#FFFFFF", letter: "D", mark: DatalabMark },
   dots: { bg: "#111827", fg: "#FFFFFF", letter: "D", mark: DotsMark },
+  nanonets: { bg: "#1D4ED8", fg: "#FFFFFF", letter: "N", mark: NanonetsMark },
   tesseract: {
     bg: "#4B5563",
     fg: "#FFFFFF",
@@ -1724,6 +1799,8 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: SparkAudioMark,
   },
   outetts: { bg: "#14B8A6", fg: "#FFFFFF", letter: "O", mark: OuteTTSMark },
+  orpheus: { bg: "#B45309", fg: "#FFFFFF", letter: "O", mark: OrpheusMark },
+  zonos: { bg: "#4F46E5", fg: "#FFFFFF", letter: "Z", mark: ZonosMark },
   inclusion_ai: {
     bg: "#0F172A",
     fg: "#FFFFFF",
@@ -1847,6 +1924,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   lighton: "lighton",
   datalab: "datalab",
   dots: "dots",
+  nanonets: "nanonets",
   allen_ai: "ai2",
   ai2: "ai2",
   tesseract: "tesseract",
@@ -1891,6 +1969,8 @@ const PROVIDER_BRAND: Record<string, string> = {
   mlx_pocket_tts: "kyutai",
   mlx_voxcpm: "openbmb",
   mlx_voxtral_tts: "mistral",
+  mlx_orpheus: "orpheus",
+  mlx_zonos2: "zonos",
   lfm_audio_gguf: "liquid_ai",
   vibevoice: "microsoft",
   // LLM providers
@@ -2127,6 +2207,9 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "pocket tts", providerId: "mlx_pocket_tts" },
   { keyword: "pocket-tts", providerId: "mlx_pocket_tts" },
   { keyword: "voxcpm", providerId: "mlx_voxcpm" },
+  { keyword: "orpheus", providerId: "mlx_orpheus" },
+  { keyword: "zonos", providerId: "mlx_zonos2" },
+  { keyword: "zyphra", providerId: "mlx_zonos2" },
   { keyword: "paddleocr", providerId: "paddlepaddle" },
   { keyword: "paddlepaddle", providerId: "paddlepaddle" },
   { keyword: "pp-ocr", providerId: "paddlepaddle" },
@@ -2134,6 +2217,8 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "lighton", providerId: "lighton" },
   { keyword: "chandra", providerId: "datalab" },
   { keyword: "dots.ocr", providerId: "dots" },
+  { keyword: "dots.mocr", providerId: "dots" },
+  { keyword: "nanonets", providerId: "nanonets" },
   { keyword: "olmocr", providerId: "ai2" },
   { keyword: "allen ai", providerId: "ai2" },
   { keyword: "deepseek", providerId: "deepseek" },
@@ -2240,6 +2325,9 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   mlx_kitten_tts: "KittenTTS",
   mlx_miso_tts: "MisoTTS",
   mlx_vibevoice: "Microsoft VibeVoice",
+  mlx_orpheus: "Orpheus",
+  mlx_zonos2: "Zyphra ZONOS2",
+  nanonets: "Nanonets",
   qwen: "Alibaba Qwen",
   apple: "Apple",
   meta: "Meta Llama",

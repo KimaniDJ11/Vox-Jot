@@ -1077,6 +1077,8 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::unload_model_manually,
         commands::transcription::clean_audio_file,
         commands::transcription::enhance_audio_file,
+        commands::transcription::demucs_runtime_status,
+        commands::transcription::prepare_demucs_runtime,
         commands::transcription::reveal_enhanced_audio,
         commands::denoise::denoise_runtime_status,
         commands::denoise::prepare_denoise_runtime,

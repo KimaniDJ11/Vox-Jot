@@ -40,6 +40,7 @@ import {
 import type {
   ReaderAudioCacheStatus,
   ReaderAudioCacheUnit,
+  EmotionResult,
   SpeechAnalysisModelDescriptor,
   TimedSegment,
   WatchFolderConfig,
@@ -826,6 +827,7 @@ const FileTranscriptionPanelShell: React.FC<{
   const [cleanedPath, setCleanedPath] = useState<string>("");
   const [transcription, setTranscription] = useState<string>("");
   const [segments, setSegments] = useState<TimedSegment[]>([]);
+  const [emotion, setEmotion] = useState<EmotionResult | null>(null);
   const [error, setError] = useState<string>("");
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -868,6 +870,7 @@ const FileTranscriptionPanelShell: React.FC<{
       setCleanedPath("");
       setTranscription("");
       setSegments([]);
+      setEmotion(null);
       try {
         let transcriptionPath = filePath;
         if (processingMode === "clean_transcribe") {
@@ -898,6 +901,7 @@ const FileTranscriptionPanelShell: React.FC<{
 
         setTranscription(result.data.text);
         setSegments(result.data.segments);
+        setEmotion(result.data.emotion);
       } catch (e) {
         setError(
           e instanceof Error
@@ -1301,6 +1305,50 @@ const FileTranscriptionPanelShell: React.FC<{
                 className="min-h-[110px] resize-none rounded-none border-none bg-transparent px-0 py-0 text-sm font-normal shadow-none placeholder:italic placeholder:text-[var(--muted)] hover:bg-transparent focus:ring-0"
               />
             </div>
+
+            {emotion ? (
+              <div className="space-y-2 pt-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {t("dictate.fileTranscription.emotionLabel", {
+                      defaultValue: "Emotion",
+                    })}
+                  </span>
+                  <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-0.5 text-xs font-semibold capitalize text-[var(--text)]">
+                    {emotion.top_label}
+                  </span>
+                  <span className="text-xs tabular-nums text-[var(--muted)]">
+                    {Math.round(emotion.top_score * 100)}%
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {[...emotion.scores]
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5)
+                    .map((entry) => (
+                      <div
+                        key={entry.label}
+                        className="flex items-center gap-2"
+                      >
+                        <span className="w-20 shrink-0 text-[11px] capitalize text-[var(--muted)]">
+                          {entry.label}
+                        </span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
+                          <div
+                            className="h-full rounded-full bg-[var(--accent)]"
+                            style={{
+                              width: `${Math.max(2, Math.round(entry.score * 100))}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-[var(--muted)]">
+                          {Math.round(entry.score * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
               <div className="flex items-center gap-0 text-xs">

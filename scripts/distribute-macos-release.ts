@@ -2,13 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import {
-  copyFile,
-  mkdir,
-  readFile,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,8 +59,12 @@ function run(
     const stderrChunks: Buffer[] = [];
 
     if (options.capture) {
-      child.stdout?.on("data", (chunk) => stdoutChunks.push(Buffer.from(chunk)));
-      child.stderr?.on("data", (chunk) => stderrChunks.push(Buffer.from(chunk)));
+      child.stdout?.on("data", (chunk) =>
+        stdoutChunks.push(Buffer.from(chunk)),
+      );
+      child.stderr?.on("data", (chunk) =>
+        stderrChunks.push(Buffer.from(chunk)),
+      );
     }
 
     child.on("error", reject);
@@ -232,31 +230,36 @@ async function createUpdaterArchive(
   );
 
   const signature = (
-    await runText("bun", [
-      "run",
-      "tauri",
-      "signer",
-      "sign",
-      archivePath,
-    ])
+    await runText("bun", ["run", "tauri", "signer", "sign", archivePath])
   ).trim();
   const isValid =
     signature.includes("signature from tauri secret key") ||
-    signature.includes("dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkK") ||
-    signature.includes("dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXk");
+    signature.includes(
+      "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkK",
+    ) ||
+    signature.includes(
+      "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXk",
+    );
   if (!isValid) {
-    throw new Error("Tauri signer did not return the expected updater signature.");
+    throw new Error(
+      "Tauri signer did not return the expected updater signature.",
+    );
   }
-  
+
   let cleanSignature = signature.trim();
   if (signature.includes("Public signature:")) {
-    const match = signature.match(/Public signature:\s*\n\s*([A-Za-z0-9+/=\s\n\r]+)/);
+    const match = signature.match(
+      /Public signature:\s*\n\s*([A-Za-z0-9+/=\s\n\r]+)/,
+    );
     if (match) {
       cleanSignature = match[1].trim();
     }
   }
-  cleanSignature = cleanSignature.split(/\n\s*\n/)[0].trim().replace(/[\r\n\s]+/g, "");
-  
+  cleanSignature = cleanSignature
+    .split(/\n\s*\n/)[0]
+    .trim()
+    .replace(/[\r\n\s]+/g, "");
+
   await writeFile(`${archivePath}.sig`, `${cleanSignature}\n`);
   return cleanSignature;
 }
@@ -299,7 +302,9 @@ async function verifyWebsitePointsToGumroad(): Promise<void> {
   }
 }
 
-async function verifyGumroadContainsLatestUrl(latestDmgUrl: string): Promise<void> {
+async function verifyGumroadContainsLatestUrl(
+  latestDmgUrl: string,
+): Promise<void> {
   const output = await runText("gumroad", [
     "products",
     "view",
@@ -339,7 +344,8 @@ async function main(): Promise<void> {
   const tag = `v${version}`;
   const arch = archName();
   const targetRoot =
-    process.env.CARGO_TARGET_DIR ?? path.join(repoRoot, ".local-targets", "vox-jot");
+    process.env.CARGO_TARGET_DIR ??
+    path.join(repoRoot, ".local-targets", "vox-jot");
   const bundleRoot = path.join(targetRoot, "release", "bundle");
   const appPath = path.join(bundleRoot, "macos", APP_BUNDLE_NAME);
   const localDmgPath = path.join(
@@ -351,9 +357,10 @@ async function main(): Promise<void> {
   const downloadsBaseUrl =
     process.env.VOX_JOT_DOWNLOADS_BASE_URL?.replace(/\/+$/, "") ??
     DEFAULT_DOWNLOADS_BASE_URL;
-  const r2Prefix = (
-    process.env.VOX_JOT_R2_PREFIX ?? DEFAULT_R2_PREFIX
-  ).replace(/^\/+|\/+$/g, "");
+  const r2Prefix = (process.env.VOX_JOT_R2_PREFIX ?? DEFAULT_R2_PREFIX).replace(
+    /^\/+|\/+$/g,
+    "",
+  );
   const r2Bucket = process.env.VOX_JOT_R2_BUCKET;
   const hfRepo = process.env.HF_REPO ?? DEFAULT_HF_REPO;
 

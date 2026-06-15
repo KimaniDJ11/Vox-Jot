@@ -17,6 +17,7 @@ timeout.
 
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 from typing import Iterable, Optional
@@ -275,6 +276,131 @@ class TransformersVlLoader(OcrLoader):
             backend=self._backend,
             loaded=loaded,
             detail=self._load_error or "transformers loader ready",
+            model_root=str(self._model_root),
+        ).to_json()
+
+
+class MlxVlLoader(OcrLoader):
+    """MLX-VLM loader for Apple Silicon OCR VLMs (dots.ocr, Nanonets-OCR2).
+
+    These ship MLX-quantized weights that the ``transformers`` loader cannot
+    read (its AutoProcessor/quantization config is MLX-specific), so they run
+    through ``mlx_vlm`` instead. Returns one full-screen snippet with the
+    generated OCR text, matching ``TransformersVlLoader``'s output shape.
+    """
+
+    catalog_id: str
+
+    def __init__(self, *, model_root: Path | str, catalog_id: str, backend: str) -> None:
+        self.catalog_id = catalog_id
+        self._backend = backend
+        self._model_root = Path(model_root)
+        self._model = None
+        self._processor = None
+        self._config = None
+        self._generate = None
+        self._apply_chat_template = None
+        self._load_error: Optional[str] = None
+
+    def _ensure_loaded(self) -> bool:
+        if self._model is not None:
+            return True
+        if self._load_error is not None:
+            return False
+        try:
+            from mlx_vlm.generate import generate
+            from mlx_vlm.prompt_utils import apply_chat_template
+            from mlx_vlm.utils import load
+
+            self._model, self._processor = load(str(self._model_root), trust_remote_code=True)
+            self._config = self._model.config
+            self._generate = generate
+            self._apply_chat_template = apply_chat_template
+            return True
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return False
+
+    def run(
+        self,
+        bgra: bytes,
+        width: int,
+        height: int,
+        stride: int,
+        max_words: int,
+        pixel_format: str = "bgra8",
+    ) -> Iterable[Snippet]:
+        image = _image_from_pixels(
+            bgra=bgra,
+            width=width,
+            height=height,
+            stride=stride,
+            pixel_format=pixel_format,
+        )
+        if image is None or not self._ensure_loaded():
+            return ()
+
+        tmp_path: Optional[str] = None
+        try:
+            # mlx-vlm's generate takes image file paths, so spill the captured
+            # frame to a short-lived PNG.
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                image.save(tmp.name)
+                tmp_path = tmp.name
+            try:
+                prompt = self._apply_chat_template(
+                    self._processor,
+                    self._config,
+                    OCR_PROMPT,
+                    num_images=1,
+                    enable_thinking=False,
+                )
+            except TypeError:
+                prompt = self._apply_chat_template(
+                    self._processor,
+                    self._config,
+                    OCR_PROMPT,
+                    num_images=1,
+                )
+            result = self._generate(
+                self._model,
+                self._processor,
+                prompt,
+                image=[tmp_path],
+                max_tokens=1024,
+                verbose=False,
+            )
+            text = getattr(result, "text", result)
+            text = _word_clip(str(text).replace(OCR_PROMPT, "").strip(), max_words)
+            if not text:
+                return ()
+            return (
+                Snippet(
+                    text=text,
+                    confidence=0.7,
+                    x=0.0,
+                    y=0.0,
+                    width=1.0,
+                    height=1.0,
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return ()
+        finally:
+            if tmp_path is not None:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+
+    def info(self) -> dict:
+        loaded = self._ensure_loaded()
+        return LoaderInfo(
+            catalog_id=self.catalog_id,
+            backend=self._backend,
+            loaded=loaded,
+            detail=self._load_error or "mlx-vlm loader ready",
             model_root=str(self._model_root),
         ).to_json()
 

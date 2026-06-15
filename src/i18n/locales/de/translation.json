@@ -2228,6 +2228,7 @@
       "placeholder": "Das Transkript erscheint hier nach der Verarbeitung.",
       "selectedLabel": "Ausgewählt:",
       "outputLabel": "Transkript",
+      "emotionLabel": "Emotionen",
       "fileDialogLabel": "Audio/Video",
       "errors": {
         "heading": "Die Transkription ist fehlgeschlagen",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Spektrale Subtraktion - regelbare Stärke, am besten für konstantes Rauschen, Brummen und Lüftergeräusche.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - moderner neuronaler Entrauscher mit voller Bandbreite bei 48 kHz. Beim ersten Einsatz wird einmalig eine Laufzeitumgebung geladen."
+        "deepfilternetHint": "DeepFilterNet - moderner neuronaler Entrauscher mit voller Bandbreite bei 48 kHz. Beim ersten Einsatz wird einmalig eine Laufzeitumgebung geladen.",
+        "demucs": "Demucs (Stimmenisolierung)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — trennt Sprache von Musik und Hintergrund und behält nur die Stimmspur. Apple Silicon. Lädt einmalig ein Modell herunter."
       },
       "quality": {
         "label": "Ausgabequalität",

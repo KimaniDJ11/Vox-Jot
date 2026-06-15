@@ -8,7 +8,9 @@ export type HubDownloadProgressLike = {
   percentage?: number | null;
 };
 
-function progressState(progress?: HubDownloadProgressLike | null): string | null {
+function progressState(
+  progress?: HubDownloadProgressLike | null,
+): string | null {
   return progress?.stage ?? progress?.phase ?? null;
 }
 
@@ -75,7 +77,9 @@ export function buildHubDownloadState(args: {
   const active = isDownloadActive(args.progress, args.localBusy);
   if (!active && !failed && !cancelled) return undefined;
 
-  const error = failed ? (args.progress?.error ?? args.localError ?? null) : null;
+  const error = failed
+    ? (args.progress?.error ?? args.localError ?? null)
+    : null;
   return {
     label: cancelled
       ? (args.cancelledLabel ??

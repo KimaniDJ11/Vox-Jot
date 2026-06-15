@@ -2228,6 +2228,7 @@
       "placeholder": "La trascrizione appare qui dopo l'elaborazione.",
       "selectedLabel": "Selezionato:",
       "outputLabel": "Trascrizione",
+      "emotionLabel": "Emozione",
       "fileDialogLabel": "Audio/Video",
       "errors": {
         "heading": "La trascrizione non è riuscita",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Sottrazione spettrale - intensità regolabile, ideale per fruscii, ronzii e rumore costante di ventole.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - denoiser neurale all’avanguardia, banda completa a 48 kHz. Il primo uso scarica un runtime una sola volta."
+        "deepfilternetHint": "DeepFilterNet - denoiser neurale all’avanguardia, banda completa a 48 kHz. Il primo uso scarica un runtime una sola volta.",
+        "demucs": "Demucs (isolamento voce)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — separa il parlato da musica e sottofondo, mantenendo solo la traccia vocale. Apple Silicon. Scarica un modello una tantum."
       },
       "quality": {
         "label": "Qualità di uscita",

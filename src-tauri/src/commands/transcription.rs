@@ -11,14 +11,19 @@ use crate::settings::{
 };
 use crate::sidecar::SidecarManager;
 use crate::speech_analysis::{
-    self, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment, CURRENT_DICTATION_ASR_ID,
+    self, EmotionResult, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment,
+    CURRENT_DICTATION_ASR_ID,
 };
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use specta::Type;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, State};
 
 const SPEECH_ANALYSIS_SIDECAR_SOURCE: &str =
@@ -441,6 +446,462 @@ fn requested_model_is_deepfilternet(model: Option<&str>) -> bool {
     )
 }
 
+fn requested_model_is_demucs(model: Option<&str>) -> bool {
+    matches!(
+        model
+            .map(|value| value.trim().to_ascii_lowercase())
+            .as_deref(),
+        Some("demucs" | "htdemucs")
+    )
+}
+
+const DEMUCS_DOWNLOAD_DOMAIN: &str = "audio_cleanup";
+const DEMUCS_DOWNLOAD_ARTIFACT_ID: &str = "demucs";
+const DEMUCS_RUNTIME_REPO_ID: &str = "IrieDinamik/vox-jot-models";
+const DEMUCS_RUNTIME_REPO_PREFIX: &str = "audio-cleanup/demucs-mlx-swift-runtime/macos-arm64";
+const DEMUCS_RUNTIME_BINARY: &str = "demucs-mlx-swift";
+const DEMUCS_RUNTIME_BINARY_SHA256: &str =
+    "9422ed9baee16f3af3c969b8055935c72b4d281e73494699da7b129e66e6f517";
+const DEMUCS_RUNTIME_BINARY_BYTES: u64 = 55_348_832;
+const DEMUCS_RUNTIME_METALLIB: &str = "mlx.metallib";
+const DEMUCS_RUNTIME_METALLIB_SHA256: &str =
+    "4b11cd850e3e6ad24898ba7a24745c057d7807b28193ab11beaa284475edf2bb";
+const DEMUCS_RUNTIME_METALLIB_BYTES: u64 = 107_017_438;
+const DEMUCS_MODEL_REPO_ID: &str = "mlx-community/demucs-mlx-fp16";
+const DEMUCS_MODEL_REQUIRED_FILES: &[&str] = &["htdemucs.safetensors", "htdemucs_config.json"];
+static ACTIVE_DEMUCS_SETUP: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
+struct DemucsSetupGuard;
+
+impl Drop for DemucsSetupGuard {
+    fn drop(&mut self) {
+        crate::artifact_download::clear_download_cancel_flag(
+            DEMUCS_DOWNLOAD_DOMAIN,
+            DEMUCS_DOWNLOAD_ARTIFACT_ID,
+        );
+        let mut active = ACTIVE_DEMUCS_SETUP
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        *active = false;
+    }
+}
+
+fn begin_demucs_setup() -> Result<(Arc<AtomicBool>, DemucsSetupGuard), String> {
+    let mut active = ACTIVE_DEMUCS_SETUP
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    if *active {
+        return Err("Demucs setup is already running.".to_string());
+    }
+    *active = true;
+    let cancel_flag = crate::artifact_download::register_download_cancel_flag(
+        DEMUCS_DOWNLOAD_DOMAIN,
+        DEMUCS_DOWNLOAD_ARTIFACT_ID,
+    );
+    Ok((cancel_flag, DemucsSetupGuard))
+}
+
+fn emit_demucs_download_progress(
+    app: &AppHandle,
+    phase: &str,
+    percentage: Option<f64>,
+    error: Option<&str>,
+) {
+    let total = if percentage.is_some() { 100 } else { 0 };
+    let downloaded = percentage
+        .map(|value| value.clamp(0.0, 100.0).round() as u64)
+        .unwrap_or(0);
+    crate::artifact_download::emit_artifact_progress(
+        app,
+        crate::artifact_download::progress(
+            DEMUCS_DOWNLOAD_DOMAIN,
+            DEMUCS_DOWNLOAD_ARTIFACT_ID,
+            phase,
+            None,
+            None,
+            None,
+            downloaded,
+            total,
+            error,
+        ),
+    );
+}
+
+fn demucs_runtime_dir(app: &AppHandle) -> Option<PathBuf> {
+    crate::storage_paths::audio_cleanup_models_dir(app)
+        .ok()
+        .map(|root| root.join("runtime"))
+}
+
+fn demucs_weights_root(app: &AppHandle) -> Option<PathBuf> {
+    crate::storage_paths::audio_cleanup_models_dir(app)
+        .ok()
+        .map(|root| {
+            root.join("MLX")
+                .join("mlx-community")
+                .join("demucs-mlx-fp16")
+        })
+}
+
+fn demucs_runtime_ready(runtime_dir: &Path) -> bool {
+    runtime_dir.join(DEMUCS_RUNTIME_BINARY).is_file()
+        && runtime_dir.join(DEMUCS_RUNTIME_METALLIB).is_file()
+}
+
+fn demucs_weights_ready(weights_dir: &Path) -> bool {
+    DEMUCS_MODEL_REQUIRED_FILES
+        .iter()
+        .all(|rel_path| weights_dir.join(rel_path).is_file())
+}
+
+/// Resolve the Demucs (MLX, Swift) separation binary. It ships as a downloaded
+/// runtime under `<app data>/models/audio-cleanup/runtime/` (binary +
+/// co-located `mlx.metallib`), mirroring the OCR/creative-audio runtimes — the
+/// 160 MB+ binary + Metal library are too large to bundle in-tree. Apple
+/// Silicon only.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn demucs_runtime_binary(app: &AppHandle) -> Option<PathBuf> {
+    let runtime_dir = demucs_runtime_dir(app)?;
+    demucs_runtime_ready(&runtime_dir).then_some(runtime_dir.join(DEMUCS_RUNTIME_BINARY))
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+fn demucs_runtime_binary(_app: &AppHandle) -> Option<PathBuf> {
+    None
+}
+
+/// Resolve the Demucs MLX weights directory. The Swift binary loads the
+/// `htdemucs` variant from `<dir>/htdemucs.safetensors` + `htdemucs_config.json`.
+fn demucs_weights_dir(app: &AppHandle) -> Option<PathBuf> {
+    let dir = demucs_weights_root(app)?;
+    demucs_weights_ready(&dir).then_some(dir)
+}
+
+/// Run Demucs stem separation on `input`, writing only the isolated `vocals`
+/// stem (speech, music/background removed) to `output`. The binary decodes the
+/// source itself (AVFoundation) and writes 44.1 kHz stereo stems to a temp dir.
+fn run_demucs(app: &AppHandle, input: &Path, output: &Path) -> Result<(), String> {
+    let bin = demucs_runtime_binary(app).ok_or_else(|| {
+        "Demucs runtime is not installed. Install it from Model Hub → Audio Cleanup.".to_string()
+    })?;
+    let weights = demucs_weights_dir(app).ok_or_else(|| {
+        "Demucs model is not installed. Download it from Model Hub → Audio Cleanup.".to_string()
+    })?;
+
+    let out_dir = std::env::temp_dir().join(format!("vox-jot-demucs-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&out_dir)
+        .map_err(|err| format!("Failed to create Demucs temp dir: {err}"))?;
+
+    let result = Command::new(&bin)
+        .arg(input)
+        .arg("-n")
+        .arg("htdemucs")
+        .arg("--model-dir")
+        .arg(&weights)
+        .arg("--two-stems")
+        .arg("vocals")
+        .arg("-o")
+        .arg(&out_dir)
+        .arg("--float32")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output();
+
+    let command_output = match result {
+        Ok(value) => value,
+        Err(err) => {
+            let _ = fs::remove_dir_all(&out_dir);
+            return Err(format!("Failed to run Demucs: {err}"));
+        }
+    };
+    if !command_output.status.success() {
+        let stderr = String::from_utf8_lossy(&command_output.stderr);
+        let _ = fs::remove_dir_all(&out_dir);
+        return Err(format!("Demucs separation failed: {}", stderr.trim()));
+    }
+
+    // The CLI writes stems to `<out_dir>/<input file stem>/vocals.wav`.
+    let track = input
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("audio");
+    let vocals = out_dir.join(track).join("vocals.wav");
+    if !vocals.is_file() {
+        let _ = fs::remove_dir_all(&out_dir);
+        return Err("Demucs produced no vocals stem.".to_string());
+    }
+    let copy = fs::copy(&vocals, output);
+    let _ = fs::remove_dir_all(&out_dir);
+    copy.map_err(|err| format!("Failed to save the isolated vocals stem: {err}"))?;
+    Ok(())
+}
+
+#[derive(Serialize, Type)]
+pub struct DemucsRuntimeStatus {
+    /// The Swift+MLX separation binary (+ co-located metallib) is present.
+    pub runtime_installed: bool,
+    /// The `demucs-mlx-fp16` weights (htdemucs variant) are present.
+    pub model_installed: bool,
+}
+
+/// Whether Demucs vocal isolation can run: both the Swift runtime binary and
+/// the MLX weights must be installed. Apple Silicon only.
+#[tauri::command]
+#[specta::specta]
+pub fn demucs_runtime_status(app: AppHandle) -> Result<DemucsRuntimeStatus, String> {
+    Ok(DemucsRuntimeStatus {
+        runtime_installed: demucs_runtime_binary(&app).is_some(),
+        model_installed: demucs_weights_dir(&app).is_some(),
+    })
+}
+
+fn demucs_runtime_url(filename: &str) -> String {
+    let rel_path = format!("{DEMUCS_RUNTIME_REPO_PREFIX}/{filename}");
+    format!(
+        "https://huggingface.co/{DEMUCS_RUNTIME_REPO_ID}/resolve/main/{}",
+        crate::artifact_download::encode_hf_path(&rel_path)
+    )
+}
+
+fn file_sha256_matches(path: &Path, expected_sha256: &str) -> Result<bool, String> {
+    let mut file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(err) => return Err(format!("Failed to open {}: {err}", path.display())),
+    };
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|err| format!("Failed to read {}: {err}", path.display()))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(expected_sha256))
+}
+
+#[cfg(unix)]
+fn ensure_executable(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata =
+        fs::metadata(path).map_err(|err| format!("Failed to inspect {}: {err}", path.display()))?;
+    let mut permissions = metadata.permissions();
+    permissions.set_mode(permissions.mode() | 0o755);
+    fs::set_permissions(path, permissions)
+        .map_err(|err| format!("Failed to mark {} executable: {err}", path.display()))
+}
+
+#[cfg(not(unix))]
+fn ensure_executable(_path: &Path) -> Result<(), String> {
+    Ok(())
+}
+
+async fn download_demucs_runtime_file(
+    app: &AppHandle,
+    filename: &'static str,
+    expected_sha256: &'static str,
+    expected_size: u64,
+    cancel_flag: Arc<AtomicBool>,
+) -> Result<(), String> {
+    let root = crate::storage_paths::audio_cleanup_models_dir(app)
+        .map_err(|err| format!("Failed to resolve audio cleanup model dir: {err}"))?;
+    let runtime_dir = root.join("runtime");
+    fs::create_dir_all(&runtime_dir).map_err(|err| {
+        format!(
+            "Failed to create Demucs runtime dir '{}': {err}",
+            runtime_dir.display()
+        )
+    })?;
+
+    let final_path = runtime_dir.join(filename);
+    if final_path.is_file() && file_sha256_matches(&final_path, expected_sha256)? {
+        if filename == DEMUCS_RUNTIME_BINARY {
+            ensure_executable(&final_path)?;
+        }
+        return Ok(());
+    }
+    if final_path.exists() {
+        fs::remove_file(&final_path).map_err(|err| {
+            format!(
+                "Failed to clear invalid Demucs runtime file '{}': {err}",
+                final_path.display()
+            )
+        })?;
+    }
+
+    let downloads_dir = root.join("downloads");
+    fs::create_dir_all(&downloads_dir).map_err(|err| {
+        format!(
+            "Failed to create Demucs download dir '{}': {err}",
+            downloads_dir.display()
+        )
+    })?;
+    let partial_path = downloads_dir.join(format!("{filename}.partial"));
+    let progress_app = app.clone();
+    let progress = Arc::new(
+        move |mut progress: crate::artifact_download::ArtifactProgress| {
+            progress.phase = if progress.phase == "complete" {
+                "installing-runtime".to_string()
+            } else {
+                "downloading-runtime".to_string()
+            };
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress);
+        },
+    );
+
+    crate::artifact_download::download_file(crate::artifact_download::FileDownloadOptions {
+        domain: DEMUCS_DOWNLOAD_DOMAIN.to_string(),
+        artifact_id: DEMUCS_DOWNLOAD_ARTIFACT_ID.to_string(),
+        url: demucs_runtime_url(filename),
+        partial_path,
+        final_path: final_path.clone(),
+        expected_sha256: Some(expected_sha256.to_string()),
+        expected_size: Some(expected_size),
+        bearer_token: crate::speech_analysis::hugging_face_token_for_runtime(),
+        cancel_flag: Some(cancel_flag),
+        progress: Some(progress),
+    })
+    .await?;
+
+    if !file_sha256_matches(&final_path, expected_sha256)? {
+        return Err(format!(
+            "Demucs runtime file '{}' failed checksum validation after download.",
+            filename
+        ));
+    }
+    if filename == DEMUCS_RUNTIME_BINARY {
+        ensure_executable(&final_path)?;
+    }
+    Ok(())
+}
+
+async fn download_demucs_weights(
+    app: &AppHandle,
+    cancel_flag: Arc<AtomicBool>,
+) -> Result<(), String> {
+    let weights_dir = demucs_weights_root(app)
+        .ok_or_else(|| "Failed to resolve Demucs weights dir.".to_string())?;
+    if demucs_weights_ready(&weights_dir) {
+        return Ok(());
+    }
+
+    let staging_dir = weights_dir.with_file_name(".staging-demucs-mlx-fp16");
+    let progress_app = app.clone();
+    let progress = Arc::new(
+        move |mut progress: crate::artifact_download::ArtifactProgress| {
+            progress.phase = match progress.phase.as_str() {
+                "preparing" => "preparing-model".to_string(),
+                "recovering" | "downloading" => "downloading-model".to_string(),
+                "installing" | "complete" => "installing-model".to_string(),
+                other => other.to_string(),
+            };
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress);
+        },
+    );
+    let file_filter: crate::artifact_download::HfFileFilter =
+        Arc::new(|path: &str| DEMUCS_MODEL_REQUIRED_FILES.contains(&path) || path == "README.md");
+
+    crate::artifact_download::download_hf_repo(crate::artifact_download::HfRepoDownloadOptions {
+        domain: DEMUCS_DOWNLOAD_DOMAIN.to_string(),
+        artifact_id: DEMUCS_DOWNLOAD_ARTIFACT_ID.to_string(),
+        repo_id: DEMUCS_MODEL_REPO_ID.to_string(),
+        staging_dir,
+        final_dir: weights_dir.clone(),
+        token: crate::speech_analysis::hugging_face_token_for_runtime(),
+        gated: false,
+        resume_existing_staging: true,
+        cancel_flag: Some(cancel_flag),
+        file_filter: Some(file_filter),
+        progress: Some(progress),
+    })
+    .await?;
+
+    if demucs_weights_ready(&weights_dir) {
+        Ok(())
+    } else {
+        Err(
+            "Demucs model download completed, but required HTDemucs weights are missing."
+                .to_string(),
+        )
+    }
+}
+
+/// Install (or repair) Demucs vocal-isolation assets. This downloads the
+/// app-managed Swift+MLX runtime from the Vox Jot artifact repo and only the
+/// `htdemucs` files from the public MLX weights repo.
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_demucs_runtime(app: AppHandle) -> Result<DemucsRuntimeStatus, String> {
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    {
+        let _ = app;
+        return Err(
+            "Demucs MLX vocal isolation is available only on Apple Silicon Macs.".to_string(),
+        );
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        if demucs_runtime_binary(&app).is_some() && demucs_weights_dir(&app).is_some() {
+            return demucs_runtime_status(app);
+        }
+
+        let (cancel_flag, _guard) = begin_demucs_setup()?;
+        emit_demucs_download_progress(&app, "preparing", Some(0.0), None);
+        let result = async {
+            crate::artifact_download::ensure_download_not_cancelled(Some(&cancel_flag))?;
+            download_demucs_runtime_file(
+                &app,
+                DEMUCS_RUNTIME_BINARY,
+                DEMUCS_RUNTIME_BINARY_SHA256,
+                DEMUCS_RUNTIME_BINARY_BYTES,
+                Arc::clone(&cancel_flag),
+            )
+            .await?;
+            crate::artifact_download::ensure_download_not_cancelled(Some(&cancel_flag))?;
+            download_demucs_runtime_file(
+                &app,
+                DEMUCS_RUNTIME_METALLIB,
+                DEMUCS_RUNTIME_METALLIB_SHA256,
+                DEMUCS_RUNTIME_METALLIB_BYTES,
+                Arc::clone(&cancel_flag),
+            )
+            .await?;
+            crate::artifact_download::ensure_download_not_cancelled(Some(&cancel_flag))?;
+            download_demucs_weights(&app, Arc::clone(&cancel_flag)).await?;
+            crate::artifact_download::ensure_download_not_cancelled(Some(&cancel_flag))
+        }
+        .await;
+
+        match result {
+            Ok(()) => {
+                if demucs_runtime_binary(&app).is_none() || demucs_weights_dir(&app).is_none() {
+                    let error =
+                        "Demucs setup finished, but the runtime or model files are incomplete.";
+                    emit_demucs_download_progress(&app, "failed", None, Some(error));
+                    return Err(error.to_string());
+                }
+                emit_demucs_download_progress(&app, "complete", Some(100.0), None);
+                demucs_runtime_status(app)
+            }
+            Err(error) => {
+                let phase = if crate::artifact_download::is_cancelled_error(&error) {
+                    "cancelled"
+                } else {
+                    "failed"
+                };
+                emit_demucs_download_progress(&app, phase, None, Some(&error));
+                Err(error)
+            }
+        }
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn enhance_audio_file(
@@ -461,6 +922,7 @@ pub async fn enhance_audio_file(
             strength: None,
         });
         let use_deepfilternet = requested_model_is_deepfilternet(options.model.as_deref());
+        let use_demucs = requested_model_is_demucs(options.model.as_deref());
         let strength = options
             .strength
             .unwrap_or(DEFAULT_ENHANCEMENT_STRENGTH)
@@ -482,6 +944,29 @@ pub async fn enhance_audio_file(
                     )
                 })?;
             }
+        }
+
+        if use_demucs {
+            // Demucs (MLX, Swift binary) is source separation, not denoising: it
+            // splits the mix and we keep only the vocal/speech stem. The binary
+            // decodes the source itself and writes 44.1 kHz stereo; we read the
+            // vocals stem back as mono for the saved output.
+            let temp_out = std::env::temp_dir()
+                .join(format!("vox-jot-demucs-out-{}.wav", uuid::Uuid::new_v4()));
+            run_demucs(&app, &source_path, &temp_out)?;
+            let (enhanced, out_rate) = read_wav_as_mono_f32(&temp_out.to_string_lossy())?;
+            let _ = fs::remove_file(&temp_out);
+            if enhanced.is_empty() {
+                return Err("Demucs produced no audio.".to_string());
+            }
+            write_wav(&output_path, &enhanced, out_rate)?;
+
+            return Ok(EnhanceAudioFileResult {
+                output_path: output_path.to_string_lossy().to_string(),
+                sample_rate: out_rate,
+                duration_ms: ((enhanced.len() as f64 / out_rate as f64) * 1000.0).round() as u64,
+                model: "demucs".to_string(),
+            });
         }
 
         if use_deepfilternet {
@@ -603,6 +1088,7 @@ struct SpeechAnalysisSidecarOutput {
     text: Option<String>,
     segments: Option<Vec<TimedSegment>>,
     speaker_turns: Option<Vec<SpeakerTurn>>,
+    emotion: Option<EmotionResult>,
     error: Option<String>,
 }
 
@@ -621,6 +1107,7 @@ fn speech_analysis_python_path(
     sidecar_manager: &Arc<SidecarManager>,
     asr_model_id: &str,
     diarization_model_id: &str,
+    emotion_model_id: &str,
 ) -> Result<PathBuf, String> {
     if speech_analysis::model_uses_gemma_audio_runtime(asr_model_id) {
         return sidecar_manager.ensure_gemma_audio_environment();
@@ -628,6 +1115,7 @@ fn speech_analysis_python_path(
 
     if speech_analysis::model_uses_managed_python_runtime(asr_model_id)
         || speech_analysis::model_uses_managed_python_runtime(diarization_model_id)
+        || speech_analysis::model_uses_managed_python_runtime(emotion_model_id)
     {
         return sidecar_manager.ensure_speech_analysis_environment();
     }
@@ -719,14 +1207,29 @@ fn parse_speech_analysis_sidecar_output(
     })
 }
 
+#[allow(clippy::type_complexity)]
 fn run_speech_analysis_sidecar(
     app: &AppHandle,
     sidecar_manager: &Arc<SidecarManager>,
     audio_16k: &[f32],
     asr_model_id: &str,
     diarization_model_id: &str,
-) -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
-    let python = speech_analysis_python_path(sidecar_manager, asr_model_id, diarization_model_id)?;
+    emotion_model_id: &str,
+) -> Result<
+    (
+        String,
+        Vec<TimedSegment>,
+        Vec<SpeakerTurn>,
+        Option<EmotionResult>,
+    ),
+    String,
+> {
+    let python = speech_analysis_python_path(
+        sidecar_manager,
+        asr_model_id,
+        diarization_model_id,
+        emotion_model_id,
+    )?;
     let sidecar = speech_analysis_sidecar_path(app)?;
 
     let wav = write_temp_wav_16k(audio_16k)?;
@@ -754,6 +1257,8 @@ fn run_speech_analysis_sidecar(
         .arg(asr_model_id)
         .arg("--diarization-model")
         .arg(diarization_model_id)
+        .arg("--emotion-model")
+        .arg(emotion_model_id)
         .output();
     let _ = std::fs::remove_file(&wav);
     let output =
@@ -784,6 +1289,7 @@ fn run_speech_analysis_sidecar(
         payload.text.unwrap_or_default(),
         payload.segments.unwrap_or_default(),
         payload.speaker_turns.unwrap_or_default(),
+        payload.emotion,
     ))
 }
 
@@ -834,6 +1340,7 @@ pub struct TranscriptionFileResult {
     pub text: String,
     pub segments: Vec<TimedSegment>,
     pub speaker_segments: Vec<SpeakerLabeledSegment>,
+    pub emotion: Option<EmotionResult>,
 }
 
 #[tauri::command]
@@ -849,14 +1356,19 @@ pub async fn transcribe_file(
     let selection = speech_analysis::selection_from_settings(&app);
     let asr_model_id = selection.asr_model_id.clone();
     let diarization_model_id = selection.diarization_model_id.clone();
+    let emotion_model_id = selection.emotion_model_id.clone();
     let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
     let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
+    let use_emotion = speech_analysis::should_run_emotion(&emotion_model_id);
     let mut active_speech_analysis_models = Vec::new();
     if use_sidecar_asr {
         active_speech_analysis_models.push(asr_model_id.clone());
     }
     if use_diarization {
         active_speech_analysis_models.push(diarization_model_id.clone());
+    }
+    if use_emotion {
+        active_speech_analysis_models.push(emotion_model_id.clone());
     }
     let speech_analysis_model_guard =
         speech_analysis::mark_models_in_use(active_speech_analysis_models);
@@ -869,8 +1381,16 @@ pub async fn transcribe_file(
         Some(resolve_ffmpeg_exe())
     };
 
-    let (raw_text, raw_segments, raw_speaker_turns) = tokio::task::spawn_blocking(
-        move || -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
+    let (raw_text, raw_segments, raw_speaker_turns, raw_emotion) = tokio::task::spawn_blocking(
+        move || -> Result<
+            (
+                String,
+                Vec<TimedSegment>,
+                Vec<SpeakerTurn>,
+                Option<EmotionResult>,
+            ),
+            String,
+        > {
             let _speech_analysis_model_guard = speech_analysis_model_guard;
             let audio_16k = if is_wav {
                 let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
@@ -881,18 +1401,19 @@ pub async fn transcribe_file(
             };
 
             if use_sidecar_asr {
-                let (sidecar_text, mut sidecar_segments, speaker_turns) =
+                let (sidecar_text, mut sidecar_segments, speaker_turns, emotion) =
                     run_speech_analysis_sidecar(
                         &sidecar_app,
                         &speech_sidecar_manager,
                         &audio_16k,
                         &asr_model_id,
                         &diarization_model_id,
+                        &emotion_model_id,
                     )?;
                 if sidecar_segments.is_empty() {
                     sidecar_segments = whole_file_segment(&audio_16k, &sidecar_text);
                 }
-                return Ok((sidecar_text, sidecar_segments, speaker_turns));
+                return Ok((sidecar_text, sidecar_segments, speaker_turns, emotion));
             }
 
             let (current_text, mut current_segments) = manager
@@ -902,20 +1423,25 @@ pub async fn transcribe_file(
                 current_segments = whole_file_segment(&audio_16k, &current_text);
             }
 
-            let speaker_turns = if use_diarization {
-                let (_, _, speaker_turns) = run_speech_analysis_sidecar(
+            // The current-dictation ASR runs in-process, but diarization and
+            // emotion still need the sidecar. Invoke it once for whichever of the
+            // two is requested; passing the "no_*" ids makes the sidecar skip the
+            // unwanted stage.
+            let (speaker_turns, emotion) = if use_diarization || use_emotion {
+                let (_, _, speaker_turns, emotion) = run_speech_analysis_sidecar(
                     &sidecar_app,
                     &speech_sidecar_manager,
                     &audio_16k,
                     CURRENT_DICTATION_ASR_ID,
                     &diarization_model_id,
+                    &emotion_model_id,
                 )?;
-                speaker_turns
+                (speaker_turns, emotion)
             } else {
-                Vec::new()
+                (Vec::new(), None)
             };
 
-            Ok((current_text, current_segments, speaker_turns))
+            Ok((current_text, current_segments, speaker_turns, emotion))
         },
     )
     .await
@@ -956,6 +1482,7 @@ pub async fn transcribe_file(
         text,
         segments: raw_segments,
         speaker_segments,
+        emotion: raw_emotion,
     })
 }
 

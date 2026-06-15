@@ -1313,6 +1313,36 @@ impl ModelManager {
                 0.74,
                 &["en", "zh"],
             );
+            insert_mlx_audio_stt(
+                "mlx-parakeet-tdt-ctc-110m",
+                "Parakeet TDT/CTC 110M (MLX)",
+                "Lightweight English Parakeet checkpoint for low-footprint Apple Silicon transcription.",
+                "mlx-community/parakeet-tdt_ctc-110m",
+                440,
+                0.0,
+                0.0,
+                &["en"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-parakeet-tdt-1.1b",
+                "Parakeet TDT 1.1B (MLX)",
+                "Larger English Parakeet checkpoint for accuracy-oriented Apple Silicon transcription.",
+                "mlx-community/parakeet-tdt-1.1b",
+                4100,
+                0.0,
+                0.0,
+                &["en"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-parakeet-tdt-ctc-0.6b-ja",
+                "Parakeet TDT/CTC 0.6B Japanese (MLX)",
+                "Japanese Parakeet checkpoint served through the shared mlx-audio runtime.",
+                "mlx-community/parakeet-tdt_ctc-0.6b-ja",
+                2400,
+                0.0,
+                0.0,
+                &["ja"],
+            );
 
             let mut insert_gemma_audio_stt =
                 |id: &str,

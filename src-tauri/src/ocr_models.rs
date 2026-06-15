@@ -104,6 +104,9 @@ pub enum OcrBackendKind {
     /// Generic transformers VL stack (LightOnOCR, Chandra, Qwen2.5-VL,
     /// GLM-OCR, olmOCR-2).
     TransformersVl,
+    /// MLX-VLM stack for Apple Silicon OCR VLMs whose MLX-quantized weights
+    /// the transformers loader cannot read (dots.ocr, Nanonets-OCR2).
+    MlxVl,
     /// Tesseract `tessdata_best` traineddata packs — feeds the existing
     /// backup engine, not a "neural" backend.
     TessdataPack,
@@ -158,7 +161,7 @@ const CATALOG: &[OcrCatalogEntry] = &[
         source_kind: OcrCatalogSourceKind::LocalDirectory,
         backend: OcrBackendKind::TransformersVl,
         conventional_subdir: "LightOnOCR-2-1B",
-        required_files: &["config.json"],
+        required_files: &["config.json", "model.safetensors"],
         size_hint_label: "~2 GB",
         languages_label: "Multilingual",
         license_label: "Apache-2.0",
@@ -173,7 +176,7 @@ const CATALOG: &[OcrCatalogEntry] = &[
         source_kind: OcrCatalogSourceKind::LocalDirectory,
         backend: OcrBackendKind::TransformersVl,
         conventional_subdir: "chandra-ocr-2",
-        required_files: &["config.json"],
+        required_files: &["config.json", "model.safetensors"],
         size_hint_label: "~3 GB",
         languages_label: "Multilingual",
         license_label: "OpenRAIL",
@@ -188,7 +191,7 @@ const CATALOG: &[OcrCatalogEntry] = &[
         source_kind: OcrCatalogSourceKind::LocalDirectory,
         backend: OcrBackendKind::TransformersVl,
         conventional_subdir: "olmOCR-2-7B-1025",
-        required_files: &["config.json"],
+        required_files: &["config.json", "model.safetensors"],
         size_hint_label: "~14 GB",
         languages_label: "English-first",
         license_label: "Apache-2.0",
@@ -224,6 +227,51 @@ const CATALOG: &[OcrCatalogEntry] = &[
         license_label: "Qwen Research License",
         upstream_url: "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct",
         hf_repo_id: "IrieDinamik/ocr-qwen2-5-vl-3b",
+    },
+    OcrCatalogEntry {
+        id: "dots-ocr-mlx",
+        title: "dots.ocr (MLX)",
+        vendor: "rednote-hilab",
+        description: "Compact document OCR VLM with strong layout and dense-text accuracy. MLX 4-bit runs natively on Apple Silicon through mlx-vlm.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::MlxVl,
+        conventional_subdir: "dots.ocr-4bit",
+        required_files: &["config.json"],
+        size_hint_label: "~3.3 GB",
+        languages_label: "Multilingual",
+        license_label: "MIT",
+        upstream_url: "https://huggingface.co/rednote-hilab/dots.ocr",
+        hf_repo_id: "mlx-community/dots.ocr-4bit",
+    },
+    OcrCatalogEntry {
+        id: "dots-mocr-mlx",
+        title: "dots.mocr (MLX)",
+        vendor: "rednote-hilab",
+        description: "Multilingual sibling of dots.ocr tuned for mixed-script screen text. MLX 4-bit runs natively on Apple Silicon through mlx-vlm.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::MlxVl,
+        conventional_subdir: "dots.mocr-4bit",
+        required_files: &["config.json"],
+        size_hint_label: "~3.3 GB",
+        languages_label: "Multilingual",
+        license_label: "MIT",
+        upstream_url: "https://huggingface.co/rednote-hilab/dots.mocr",
+        hf_repo_id: "mlx-community/dots.mocr-4bit",
+    },
+    OcrCatalogEntry {
+        id: "nanonets-ocr2-3b-mlx",
+        title: "Nanonets-OCR2 3B (MLX)",
+        vendor: "Nanonets",
+        description: "Qwen2.5-VL-based document OCR with markdown and table-structure output. MLX 4-bit runs natively on Apple Silicon through mlx-vlm.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::MlxVl,
+        conventional_subdir: "Nanonets-OCR2-3B-4bit",
+        required_files: &["config.json"],
+        size_hint_label: "~2.9 GB",
+        languages_label: "Multilingual",
+        license_label: "Qwen Research License",
+        upstream_url: "https://huggingface.co/nanonets/Nanonets-OCR2-3B",
+        hf_repo_id: "mlx-community/Nanonets-OCR2-3B-4bit",
     },
     OcrCatalogEntry {
         id: "tessdata-best",
@@ -284,9 +332,19 @@ fn dev_staging_root() -> Option<PathBuf> {
 }
 
 fn entry_install_dir(app: &AppHandle, entry: &OcrCatalogEntry) -> Result<PathBuf, String> {
-    Ok(storage_paths::ocr_models_dir(app)
-        .map_err(|err| format!("Failed to resolve OCR model dir: {err}"))?
-        .join(entry.id))
+    let root = storage_paths::ocr_models_dir(app)
+        .map_err(|err| format!("Failed to resolve OCR model dir: {err}"))?;
+    if entry.backend == OcrBackendKind::MlxVl {
+        // MLX OCR models install under their Hugging Face repo path
+        // (e.g. `models/ocr/mlx-community/dots.ocr-4bit`), matching the layout
+        // the in-app downloader and manual staging both produce.
+        let mut dir = root;
+        for segment in entry.hf_repo_id.split('/').filter(|seg| !seg.is_empty()) {
+            dir = dir.join(segment);
+        }
+        return Ok(dir);
+    }
+    Ok(root.join(entry.id))
 }
 
 fn directory_has_contents(path: &Path) -> bool {
@@ -340,6 +398,9 @@ pub fn compute_runnable(backend: OcrBackendKind, install_dir: &Path) -> bool {
     match backend {
         OcrBackendKind::TessdataPack => tessdata_pack_runnable(install_dir),
         OcrBackendKind::TransformersVl => transformers_vl_runnable(install_dir),
+        // MLX OCR models, like the transformers VL stack, need a config plus
+        // safetensors weights present on disk before they can run.
+        OcrBackendKind::MlxVl => transformers_vl_runnable(install_dir),
         OcrBackendKind::PaddleDetRec => paddle_det_rec_runnable(install_dir),
         OcrBackendKind::PaddleVl => install_dir.join("config.json").is_file(),
     }
@@ -475,6 +536,16 @@ mod tests {
     }
 
     #[test]
+    fn mlx_vl_requires_config_and_weights() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("config.json"), b"{}").unwrap();
+        assert!(!compute_runnable(OcrBackendKind::MlxVl, dir.path()));
+        fs::write(dir.path().join("model.safetensors"), b"fake").unwrap();
+
+        assert!(compute_runnable(OcrBackendKind::MlxVl, dir.path()));
+    }
+
+    #[test]
     fn paddle_vl_requires_config() {
         let dir = tempfile::tempdir().unwrap();
         assert!(!dir.path().join("config.json").is_file());
@@ -533,6 +604,7 @@ fn build_neural_route(app: &AppHandle, id: &str) -> Option<crate::ocr_backend::N
     let backend_dir = match entry.backend {
         OcrBackendKind::TessdataPack => locate_tessdata_pack_dir(&install_dir)?,
         OcrBackendKind::TransformersVl
+        | OcrBackendKind::MlxVl
         | OcrBackendKind::PaddleDetRec
         | OcrBackendKind::PaddleVl => install_dir,
     };

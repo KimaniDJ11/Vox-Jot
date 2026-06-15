@@ -2228,6 +2228,7 @@
       "placeholder": "Transkrypcja pojawia się tutaj po przetworzeniu.",
       "selectedLabel": "Wybrane:",
       "outputLabel": "Transkrypcja",
+      "emotionLabel": "Emocje",
       "fileDialogLabel": "Dźwięk/wideo",
       "errors": {
         "heading": "Transkrypcja nie powiodła się",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Odejmowanie widmowe - regulowana siła, najlepsze dla stałego syku, brumu i szumu wentylatora.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - najnowocześniejszy neuronowy odszumiacz pełnopasmowy 48 kHz. Pierwsze użycie pobiera jednorazowe środowisko."
+        "deepfilternetHint": "DeepFilterNet - najnowocześniejszy neuronowy odszumiacz pełnopasmowy 48 kHz. Pierwsze użycie pobiera jednorazowe środowisko.",
+        "demucs": "Demucs (izolacja wokalu)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — oddziela mowę od muzyki i tła, zachowując tylko ścieżkę wokalną. Apple Silicon. Pobiera jednorazowy model."
       },
       "quality": {
         "label": "Jakość wyjściowa",

@@ -114,7 +114,10 @@ const cleanReleaseNotes = (notes?: string, version?: string) => {
   );
 
   const lines = raw.split("\n");
-  while (lines.length > 0 && redundantForms.has(lines[0].trim().toLowerCase())) {
+  while (
+    lines.length > 0 &&
+    redundantForms.has(lines[0].trim().toLowerCase())
+  ) {
     lines.shift();
   }
   while (lines.length > 0 && lines[0].trim() === "") {
@@ -514,7 +517,9 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                     {hasNotes ? (
                       <div className="mt-4 border-t border-[var(--ring-hairline)] pt-3">
                         <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                          {t("updates.whatsNew", { defaultValue: "What's new" })}
+                          {t("updates.whatsNew", {
+                            defaultValue: "What's new",
+                          })}
                         </p>
                         <div className="max-h-32 overflow-auto whitespace-pre-line text-xs leading-5 text-[var(--text)]">
                           {releaseNotes}
@@ -523,7 +528,10 @@ const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({
                     ) : null}
 
                     <div className="mt-4 flex items-start gap-1.5 text-[11px] leading-4 text-[var(--muted)]">
-                      <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <ShieldCheck
+                        className="mt-px h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
                       <span>
                         {t("updates.signedVerified", {
                           defaultValue: "Signed & verified",

@@ -24,6 +24,9 @@ pub const NO_DIARIZATION_ID: &str = "no_speaker_labels";
 pub const DEFAULT_DIARIZATION_ID: &str = NO_DIARIZATION_ID;
 pub const PYANNOTE_COMMUNITY_DIARIZATION_ID: &str = "pyannote-community-1";
 pub const POLYVOICE_DIARIZATION_ID: &str = "onnx-polyvoice-diarization";
+pub const NO_EMOTION_ID: &str = "no_emotion";
+pub const DEFAULT_EMOTION_ID: &str = NO_EMOTION_ID;
+pub const EMOTION2VEC_PLUS_LARGE_ID: &str = "emotion2vec-plus-large";
 
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 static DOWNLOAD_CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
@@ -87,6 +90,7 @@ pub enum SpeechAnalysisTask {
     Asr,
     Diarization,
     AsrDiarization,
+    Emotion,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -102,6 +106,7 @@ pub enum SpeechAnalysisEngine {
     WhisperDiarization,
     CoreMl,
     Mlx,
+    Funasr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -179,6 +184,21 @@ pub struct SpeechAnalysisModelDescriptor {
 pub struct SpeechAnalysisSelection {
     pub asr_model_id: String,
     pub diarization_model_id: String,
+    pub emotion_model_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
+pub struct EmotionScore {
+    pub label: String,
+    pub score: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
+pub struct EmotionResult {
+    pub source_model_id: String,
+    pub top_label: String,
+    pub top_score: f32,
+    pub scores: Vec<EmotionScore>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -730,6 +750,46 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             &["speaker_turns", "rttm"],
             capability(true, true, false, false, false, false, true, false, false),
         ),
+        descriptor(
+            NO_EMOTION_ID,
+            "No Emotion Labels",
+            "Vox Jot",
+            None,
+            SpeechAnalysisSourceKind::BuiltIn,
+            None,
+            None,
+            false,
+            false,
+            None,
+            SpeechAnalysisTask::Emotion,
+            SpeechAnalysisEngine::CurrentDictation,
+            SpeechAnalysisRuntime::InProcess,
+            "Skips speech emotion recognition during file transcription.",
+            SpeechAnalysisReadiness::BuiltIn,
+            &["mul"],
+            &["none"],
+            capability(false, false, false, false, false, false, false, false, false),
+        ),
+        descriptor(
+            EMOTION2VEC_PLUS_LARGE_ID,
+            "emotion2vec+ Large",
+            "emotion2vec",
+            Some("emotion2vec/emotion2vec_plus_large"),
+            SpeechAnalysisSourceKind::HuggingFace,
+            None,
+            Some("emotion2vec License"),
+            false,
+            true,
+            Some("~1.8 GB"),
+            SpeechAnalysisTask::Emotion,
+            SpeechAnalysisEngine::Funasr,
+            SpeechAnalysisRuntime::PythonSidecar,
+            "Speech emotion recognition over eight classes (angry, disgusted, fearful, happy, neutral, other, sad, surprised) through FunASR.",
+            SpeechAnalysisReadiness::Ready,
+            &["en", "zh"],
+            &["emotion"],
+            capability(false, false, false, false, false, false, false, false, false),
+        ),
     ]
 }
 
@@ -906,6 +966,7 @@ fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
         "nemo-sortformer-4spk-v1" => &["diar_sortformer_4spk-v1.nemo"],
         "reverb-diarization-v2" => &["config.yaml", "pytorch_model.bin"],
         "whisper-diarization" => &["model.bin", "config.json"],
+        EMOTION2VEC_PLUS_LARGE_ID => &["model.pt", "config.yaml", "configuration.json"],
         _ => &[],
     };
 
@@ -1708,6 +1769,10 @@ pub fn delete_model(
         settings.file_transcription_diarization_model_id = default_diarization_model_id();
         changed = true;
     }
+    if settings.file_transcription_emotion_model_id == model.id {
+        settings.file_transcription_emotion_model_id = default_emotion_model_id();
+        changed = true;
+    }
     if changed {
         write_settings(app, settings.clone());
         let _ = app.emit("settings-changed", settings);
@@ -1781,6 +1846,10 @@ pub fn selection_from_settings(app: &AppHandle) -> SpeechAnalysisSelection {
         settings.file_transcription_diarization_model_id = default_diarization_model_id();
         changed = true;
     }
+    if model_by_id(&settings.file_transcription_emotion_model_id).is_none() {
+        settings.file_transcription_emotion_model_id = default_emotion_model_id();
+        changed = true;
+    }
     if changed {
         write_settings(app, settings.clone());
         let _ = app.emit("settings-changed", settings.clone());
@@ -1788,6 +1857,7 @@ pub fn selection_from_settings(app: &AppHandle) -> SpeechAnalysisSelection {
     SpeechAnalysisSelection {
         asr_model_id: settings.file_transcription_asr_model_id,
         diarization_model_id: settings.file_transcription_diarization_model_id,
+        emotion_model_id: settings.file_transcription_emotion_model_id,
     }
 }
 
@@ -1805,6 +1875,7 @@ pub fn set_selection(
     app: &AppHandle,
     asr_model_id: String,
     diarization_model_id: String,
+    emotion_model_id: String,
 ) -> Result<SpeechAnalysisSelection, String> {
     if model_by_id(&asr_model_id).is_none() {
         return Err(format!(
@@ -1818,10 +1889,17 @@ pub fn set_selection(
             diarization_model_id
         ));
     }
+    if model_by_id(&emotion_model_id).is_none() {
+        return Err(format!(
+            "Unknown speech analysis emotion model '{}'.",
+            emotion_model_id
+        ));
+    }
 
     let mut settings = get_settings(app);
     settings.file_transcription_asr_model_id = asr_model_id;
     settings.file_transcription_diarization_model_id = diarization_model_id;
+    settings.file_transcription_emotion_model_id = emotion_model_id;
     write_settings(app, settings.clone());
     let _ = app.emit("settings-changed", settings);
     Ok(selection_from_settings(app))
@@ -1835,9 +1913,18 @@ pub fn default_diarization_model_id() -> String {
     DEFAULT_DIARIZATION_ID.to_string()
 }
 
+pub fn default_emotion_model_id() -> String {
+    DEFAULT_EMOTION_ID.to_string()
+}
+
 pub fn should_run_diarization(model_id: &str) -> bool {
     let trimmed = model_id.trim();
     !trimmed.is_empty() && trimmed != NO_DIARIZATION_ID
+}
+
+pub fn should_run_emotion(model_id: &str) -> bool {
+    let trimmed = model_id.trim();
+    !trimmed.is_empty() && trimmed != NO_EMOTION_ID
 }
 
 fn overlap_ms(a_start: u64, a_end: u64, b_start: u64, b_end: u64) -> u64 {
@@ -1915,6 +2002,8 @@ mod tests {
             "reverb-diarization-v2",
             "whisper-diarization",
             "onnx-polyvoice-diarization",
+            NO_EMOTION_ID,
+            EMOTION2VEC_PLUS_LARGE_ID,
         ] {
             assert!(ids.contains(required), "missing required model {required}");
         }
@@ -2004,5 +2093,12 @@ mod tests {
         assert_eq!(default_diarization_model_id(), NO_DIARIZATION_ID);
         assert!(!should_run_diarization(&default_diarization_model_id()));
         assert!(should_run_diarization(PYANNOTE_COMMUNITY_DIARIZATION_ID));
+    }
+
+    #[test]
+    fn default_emotion_keeps_emotion_labels_off() {
+        assert_eq!(default_emotion_model_id(), NO_EMOTION_ID);
+        assert!(!should_run_emotion(&default_emotion_model_id()));
+        assert!(should_run_emotion(EMOTION2VEC_PLUS_LARGE_ID));
     }
 }

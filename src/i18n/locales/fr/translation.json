@@ -2228,6 +2228,7 @@
       "placeholder": "La transcription apparaît ici après le traitement.",
       "selectedLabel": "Sélectionné :",
       "outputLabel": "Transcription",
+      "emotionLabel": "Émotion",
       "fileDialogLabel": "Audio/Vidéo",
       "errors": {
         "heading": "Échec de la transcription",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Soustraction spectrale - intensité réglable, idéale pour le souffle, le bourdonnement et le bruit de ventilateur continus.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - débruiteur neuronal de pointe, pleine bande 48 kHz. La première utilisation télécharge un runtime une seule fois."
+        "deepfilternetHint": "DeepFilterNet - débruiteur neuronal de pointe, pleine bande 48 kHz. La première utilisation télécharge un runtime une seule fois.",
+        "demucs": "Demucs (isolation de la voix)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — sépare la parole de la musique et du fond, ne gardant que la piste vocale. Apple Silicon. Télécharge un modèle unique."
       },
       "quality": {
         "label": "Qualité de sortie",

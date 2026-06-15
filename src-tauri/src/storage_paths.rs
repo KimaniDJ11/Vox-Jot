@@ -26,6 +26,7 @@ const READER_RUNTIME_DIR: &str = "reader-runtime";
 const DENOISE_RUNTIME_DIR: &str = "denoise-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 const CREATIVE_AUDIO_MODELS_DIR: &str = "creative-audio";
+const AUDIO_CLEANUP_MODELS_DIR: &str = "audio-cleanup";
 const CREATIVE_AUDIO_RUNTIME_DIR: &str = "runtime";
 const CREATIVE_AUDIO_DOWNLOADS_DIR: &str = "downloads";
 const STABLE_AUDIO3_MLX_DIR: &str = "stable-audio-3-mlx";
@@ -186,6 +187,12 @@ pub fn speech_analysis_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Err
 /// These runtimes must stay off the dictation hot path.
 pub fn creative_audio_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(CREATIVE_AUDIO_MODELS_DIR))
+}
+
+/// Root for Enhance Audio cleanup/separation assets managed by the app
+/// (e.g. the Demucs MLX weights at `<this>/MLX/mlx-community/demucs-mlx-fp16`).
+pub fn audio_cleanup_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(AUDIO_CLEANUP_MODELS_DIR))
 }
 
 /// Root for creative-audio runtime bundles managed by the app.

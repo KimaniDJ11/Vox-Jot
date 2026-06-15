@@ -1580,6 +1580,31 @@ async enhanceAudioFile(path: string, outputPath: string | null, options: Enhance
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Whether Demucs vocal isolation can run: both the Swift runtime binary and
+ * the MLX weights must be installed. Apple Silicon only.
+ */
+async demucsRuntimeStatus() : Promise<Result<DemucsRuntimeStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("demucs_runtime_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Install (or repair) Demucs vocal-isolation assets. This downloads the
+ * app-managed Swift+MLX runtime from the Vox Jot artifact repo and only the
+ * `htdemucs` files from the public MLX weights repo.
+ */
+async prepareDemucsRuntime() : Promise<Result<DemucsRuntimeStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_demucs_runtime") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async revealEnhancedAudio(path: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("reveal_enhanced_audio", { path }) };
@@ -1766,9 +1791,9 @@ async getSpeechAnalysisSelection() : Promise<Result<SpeechAnalysisSelection, str
     else return { status: "error", error: e  as any };
 }
 },
-async setSpeechAnalysisSelection(asrModelId: string, diarizationModelId: string) : Promise<Result<SpeechAnalysisSelection, string>> {
+async setSpeechAnalysisSelection(asrModelId: string, diarizationModelId: string, emotionModelId: string) : Promise<Result<SpeechAnalysisSelection, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("set_speech_analysis_selection", { asrModelId, diarizationModelId }) };
+    return { status: "ok", data: await TAURI_INVOKE("set_speech_analysis_selection", { asrModelId, diarizationModelId, emotionModelId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2763,7 +2788,7 @@ screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_m
  * legacy app-aware-tone toggle so we don't surprise existing
  * users on first upgrade.
  */
-write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; file_transcription_asr_model_id?: string; file_transcription_diarization_model_id?: string; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
+write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; file_transcription_asr_model_id?: string; file_transcription_diarization_model_id?: string; file_transcription_emotion_model_id?: string; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
 /**
  * Folders Vox Jot watches; new audio files dropped into these are
  * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
@@ -2823,6 +2848,15 @@ export type CreativeAudioModelCatalog = { install_root: string; models: Creative
 export type CreativeAudioModelDescriptor = { id: string; label: string; provider: string; provider_id: string; description: string; source_kind: CreativeAudioModelSourceKind; source_url: string; license_label: string; runtime_label: string; size_hint_label: string; installed: boolean; runnable: boolean; selected: boolean; active: boolean; downloadable: boolean; recommended: boolean; status_label: string; availability: CreativeAudioAvailability; experimental: boolean; unavailable_reason: string | null; modes: StorySoundMode[] }
 export type CreativeAudioModelSourceKind = "official_source"
 export type CustomSounds = { start: boolean; stop: boolean }
+export type DemucsRuntimeStatus = {
+/**
+ * The Swift+MLX separation binary (+ co-located metallib) is present.
+ */
+runtime_installed: boolean;
+/**
+ * The `demucs-mlx-fp16` weights (htdemucs variant) are present.
+ */
+model_installed: boolean }
 export type DenoiseRuntimeStatus = {
 /**
  * Whether the DeepFilterNet runtime is installed and ready.
@@ -2863,6 +2897,8 @@ top_app_bundle_id: string | null }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type DictionaryImportSummary = { imported: number; skipped: number }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
+export type EmotionResult = { source_model_id: string; top_label: string; top_score: number; scores: EmotionScore[] }
+export type EmotionScore = { label: string; score: number }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
 export type EnhanceAudioFileResult = { output_path: string; sample_rate: number; duration_ms: number; model: string }
 export type EnhanceAudioOptions = {
@@ -2923,6 +2959,11 @@ export type OcrBackendKind =
  * GLM-OCR, olmOCR-2).
  */
 "transformers_vl" |
+/**
+ * MLX-VLM stack for Apple Silicon OCR VLMs whose MLX-quantized weights
+ * the transformers loader cannot read (dots.ocr, Nanonets-OCR2).
+ */
+"mlx_vl" |
 /**
  * Tesseract `tessdata_best` traineddata packs — feeds the existing
  * backup engine, not a "neural" backend.
@@ -3072,13 +3113,13 @@ export type SoundTheme = "marimba" | "pop" | "custom"
 export type SpeakerLabeledSegment = { speaker_id: string; start_ms: number; end_ms: number; text: string; confidence: number | null }
 export type SpeechAnalysisCapabilityFlags = { file_transcription: boolean; live_dictation: boolean; speaker_labels: boolean; timestamps: boolean; word_timestamps: boolean; requires_hf_token: boolean; requires_trust_remote_code: boolean; requires_cloud_gpu_validation: boolean; supports_onnx: boolean; supports_coreml: boolean; supports_mlx: boolean }
 export type SpeechAnalysisCatalog = { models: SpeechAnalysisModelDescriptor[]; selection: SpeechAnalysisSelection }
-export type SpeechAnalysisEngine = "current_dictation" | "transformers" | "onnx_runtime" | "pyannote" | "diarizen" | "nemo" | "reverb" | "whisper_diarization" | "core_ml" | "mlx"
+export type SpeechAnalysisEngine = "current_dictation" | "transformers" | "onnx_runtime" | "pyannote" | "diarizen" | "nemo" | "reverb" | "whisper_diarization" | "core_ml" | "mlx" | "funasr"
 export type SpeechAnalysisModelDescriptor = { id: string; label: string; provider: string; repo_id: string | null; source_kind: SpeechAnalysisSourceKind; source_url: string | null; license_label: string | null; gated: boolean; downloadable: boolean; installed: boolean; local_path: string | null; size_hint_label: string | null; task: SpeechAnalysisTask; engine: SpeechAnalysisEngine; runtime: SpeechAnalysisRuntime; description: string; readiness: SpeechAnalysisReadiness; supported_languages: string[]; output_contract: string[]; capabilities: SpeechAnalysisCapabilityFlags }
 export type SpeechAnalysisReadiness = "built_in" | "requires_runtime_install" | "requires_model_download" | "requires_hf_token" | "blocked" | "ready"
 export type SpeechAnalysisRuntime = "in_process" | "python_sidecar" | "onnx_core_ml" | "onnx_cpu" | "mlx_native" | "core_ml_native"
-export type SpeechAnalysisSelection = { asr_model_id: string; diarization_model_id: string }
+export type SpeechAnalysisSelection = { asr_model_id: string; diarization_model_id: string; emotion_model_id: string }
 export type SpeechAnalysisSourceKind = "built_in" | "hugging_face" | "git_hub" | "local_onnx_bundle" | "runtime_managed"
-export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization"
+export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization" | "emotion"
 export type StableAudio3Status = { installed: boolean; sfx_ready: boolean; ambience_ready: boolean; music_ready: boolean; runtime_path: string; message: string }
 /**
  * A stored correction entry, as returned to the frontend.
@@ -3108,7 +3149,7 @@ export type ToneDefinition = { id: string; label: string; instruction: string }
  * today). The frontend uses an empty list as the signal to disable
  * SRT/WebVTT export buttons.
  */
-export type TranscriptionFileResult = { text: string; segments: TimedSegment[]; speaker_segments: SpeakerLabeledSegment[] }
+export type TranscriptionFileResult = { text: string; segments: TimedSegment[]; speaker_segments: SpeakerLabeledSegment[]; emotion: EmotionResult | null }
 export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
 export type TranslationDestinationMode = "preview_then_paste" | "paste_in_place"
 export type TranslationOutputMode = "source" | "translated" | "bilingual"

@@ -22,6 +22,8 @@ dots-ocr = [
     "matplotlib>=3.10",
 ]
 paddle = ["paddleocr>=2.8", "paddlepaddle>=2.6"]
+# Apple Silicon MLX OCR VLMs (dots.ocr, dots.mocr, Nanonets-OCR2) via mlx-vlm.
+mlx-vl = ["mlx-vlm>=0.6.3", "pillow>=10.4"]
 
 [project.scripts]
 ocr-runtime = "ocr_runtime.__main__:main"

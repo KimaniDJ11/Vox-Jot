@@ -318,6 +318,7 @@
       "placeholder": "Transcript appears here after processing.",
       "selectedLabel": "Selected:",
       "outputLabel": "Transcript",
+      "emotionLabel": "Emotion",
       "fileDialogLabel": "Audio / Video",
       "errors": {
         "heading": "Processing failed",
@@ -477,7 +478,9 @@
         "spectral": "Spectral",
         "spectralHint": "Spectral subtraction — adjustable strength, best for steady hiss, hum, and fan noise.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet — state-of-the-art neural denoiser, full-band 48 kHz. First use downloads a one-time runtime."
+        "deepfilternetHint": "DeepFilterNet — state-of-the-art neural denoiser, full-band 48 kHz. First use downloads a one-time runtime.",
+        "demucs": "Demucs (vocal isolation)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — separates speech from music and background, keeping only the vocal stem. Apple Silicon. Downloads a one-time model."
       },
       "quality": {
         "label": "Output quality",

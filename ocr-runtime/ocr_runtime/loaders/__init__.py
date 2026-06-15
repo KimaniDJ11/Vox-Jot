@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from .base import OcrLoader
-from .generic import PaddleOcrLoader, TransformersVlLoader
+from .generic import MlxVlLoader, PaddleOcrLoader, TransformersVlLoader
 
 
 def resolve(model_root: Path, backend: str, catalog_id: str) -> Optional[OcrLoader]:
@@ -14,6 +14,12 @@ def resolve(model_root: Path, backend: str, catalog_id: str) -> Optional[OcrLoad
 
     if backend == "transformers_vl":
         return TransformersVlLoader(
+            model_root=model_root,
+            catalog_id=catalog_id,
+            backend=backend,
+        )
+    if backend == "mlx_vl":
+        return MlxVlLoader(
             model_root=model_root,
             catalog_id=catalog_id,
             backend=backend,

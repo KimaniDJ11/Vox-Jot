@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -44,6 +45,58 @@ interface AudioCleanupEnginesSectionProps {
 }
 
 type DenoiseRuntimeStatus = { installed: boolean };
+type DemucsRuntimeStatus = {
+  runtime_installed: boolean;
+  model_installed: boolean;
+};
+type AudioCleanupArtifactProgress = {
+  domain: string;
+  artifact_id: string;
+  phase: string;
+  downloaded_bytes: number;
+  total_bytes: number;
+  percentage: number;
+  error?: string | null;
+};
+
+const DEMUCS_DOWNLOAD_DOMAIN = "audio_cleanup";
+const DEMUCS_DOWNLOAD_ARTIFACT_ID = "demucs";
+
+const progressCanCancel = (phase?: string | null): boolean =>
+  !["complete", "failed", "cancelled", "cancelling"].includes(phase ?? "");
+
+const demucsProgressLabel = (
+  phase: string | undefined,
+  t: ReturnType<typeof useTranslation>["t"],
+): string => {
+  switch (phase) {
+    case "checking":
+      return t("modelHub.audioCleanup.demucsChecking", {
+        defaultValue: "Checking Demucs setup...",
+      });
+    case "downloading-runtime":
+      return t("modelHub.audioCleanup.demucsDownloadingRuntime", {
+        defaultValue: "Downloading Demucs Swift runtime...",
+      });
+    case "preparing-model":
+      return t("modelHub.audioCleanup.demucsPreparingModel", {
+        defaultValue: "Preparing Demucs model download...",
+      });
+    case "downloading-model":
+      return t("modelHub.audioCleanup.demucsDownloadingModel", {
+        defaultValue: "Downloading HTDemucs weights...",
+      });
+    case "installing-runtime":
+    case "installing-model":
+      return t("modelHub.audioCleanup.demucsInstalling", {
+        defaultValue: "Installing Demucs...",
+      });
+    default:
+      return t("modelHub.audioCleanup.demucsSettingUp", {
+        defaultValue: "Setting up Demucs...",
+      });
+  }
+};
 
 const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
   titleActionTargetId,
@@ -58,6 +111,18 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     useState<ModelSortMode>("best_match");
   // DeepFilterNet runs through an on-demand Python sidecar runtime.
   const [runtimeInstalled, setRuntimeInstalled] = useState<boolean | null>(
+    null,
+  );
+  // Demucs has its own runtime (Swift binary + MLX weights), separate from the
+  // DeepFilterNet Python runtime tracked by `runtimeInstalled`.
+  const [demucsStatus, setDemucsStatus] = useState<DemucsRuntimeStatus | null>(
+    null,
+  );
+  const [demucsProgress, setDemucsProgress] =
+    useState<AudioCleanupArtifactProgress | null>(null);
+  const [demucsInstalling, setDemucsInstalling] = useState(false);
+  const [demucsCancelling, setDemucsCancelling] = useState(false);
+  const [demucsInstallError, setDemucsInstallError] = useState<string | null>(
     null,
   );
   const [isInstalling, setIsInstalling] = useState(false);
@@ -76,10 +141,65 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     } catch {
       setRuntimeInstalled(false);
     }
+    try {
+      const demucs = await invoke<DemucsRuntimeStatus>("demucs_runtime_status");
+      setDemucsStatus(demucs);
+    } catch {
+      setDemucsStatus({ runtime_installed: false, model_installed: false });
+    }
   }, []);
+
+  const demucsReady =
+    demucsStatus?.runtime_installed === true &&
+    demucsStatus?.model_installed === true;
+
+  // Demucs is ready only when both its Swift runtime and MLX weights are
+  // present; DeepFilterNet uses the shared Python denoise runtime.
+  const modelRuntimeReady = useCallback(
+    (model: EnhanceModelMeta) => {
+      if (model.builtin) return true;
+      if (model.id === "demucs") return demucsReady;
+      return runtimeInstalled === true;
+    },
+    [demucsReady, runtimeInstalled],
+  );
 
   useEffect(() => {
     void refreshRuntime();
+  }, [refreshRuntime]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      unlisten = await listen<AudioCleanupArtifactProgress>(
+        "artifact-download-progress",
+        (event) => {
+          const progress = event.payload;
+          if (
+            progress.domain !== DEMUCS_DOWNLOAD_DOMAIN ||
+            progress.artifact_id !== DEMUCS_DOWNLOAD_ARTIFACT_ID
+          ) {
+            return;
+          }
+          setDemucsProgress(progress);
+          if (
+            progress.phase === "complete" ||
+            progress.phase === "failed" ||
+            progress.phase === "cancelled"
+          ) {
+            setDemucsInstalling(false);
+            setDemucsCancelling(false);
+            void refreshRuntime();
+          }
+          if (progress.phase === "failed" && progress.error) {
+            setDemucsInstallError(progress.error);
+          }
+        },
+      );
+    })();
+    return () => {
+      unlisten?.();
+    };
   }, [refreshRuntime]);
 
   const selectModel = useCallback((id: EnhanceModelId) => {
@@ -115,6 +235,62 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     }
   }, [isInstalling, refreshRuntime, selectModel, t]);
 
+  const installDemucs = useCallback(async () => {
+    if (demucsInstalling) return;
+    setDemucsInstalling(true);
+    setDemucsCancelling(false);
+    setDemucsInstallError(null);
+    setDemucsProgress({
+      domain: DEMUCS_DOWNLOAD_DOMAIN,
+      artifact_id: DEMUCS_DOWNLOAD_ARTIFACT_ID,
+      phase: "preparing",
+      downloaded_bytes: 0,
+      total_bytes: 0,
+      percentage: 0,
+    });
+    try {
+      const status = await invoke<DemucsRuntimeStatus>(
+        "prepare_demucs_runtime",
+      );
+      setDemucsStatus(status);
+      setDemucsProgress({
+        domain: DEMUCS_DOWNLOAD_DOMAIN,
+        artifact_id: DEMUCS_DOWNLOAD_ARTIFACT_ID,
+        phase: "complete",
+        downloaded_bytes: 100,
+        total_bytes: 100,
+        percentage: 100,
+      });
+      if (status.runtime_installed && status.model_installed) {
+        selectModel("demucs");
+      }
+    } catch (err) {
+      const message =
+        typeof err === "string"
+          ? err
+          : t("modelHub.audioCleanup.demucsInstallFailed", {
+              defaultValue: "Failed to set up Demucs.",
+            });
+      const cancelled = message.toLowerCase().includes("cancel");
+      setDemucsProgress({
+        domain: DEMUCS_DOWNLOAD_DOMAIN,
+        artifact_id: DEMUCS_DOWNLOAD_ARTIFACT_ID,
+        phase: cancelled ? "cancelled" : "failed",
+        downloaded_bytes: 0,
+        total_bytes: 0,
+        percentage: 0,
+        error: message,
+      });
+      if (!cancelled) {
+        setDemucsInstallError(message);
+      }
+    } finally {
+      setDemucsInstalling(false);
+      setDemucsCancelling(false);
+      void refreshRuntime();
+    }
+  }, [demucsInstalling, refreshRuntime, selectModel, t]);
+
   const cancelRuntimeSetup = useCallback(async () => {
     if (!isInstalling || isCancelling) return;
     setIsCancelling(true);
@@ -131,6 +307,26 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
       );
     }
   }, [isCancelling, isInstalling, t]);
+
+  const cancelDemucsSetup = useCallback(async () => {
+    if (!demucsInstalling || demucsCancelling) return;
+    setDemucsCancelling(true);
+    try {
+      await invoke("cancel_artifact_download", {
+        domain: DEMUCS_DOWNLOAD_DOMAIN,
+        artifactId: DEMUCS_DOWNLOAD_ARTIFACT_ID,
+      });
+    } catch (err) {
+      setDemucsCancelling(false);
+      setDemucsInstallError(
+        typeof err === "string"
+          ? err
+          : t("modelHub.audioCleanup.demucsCancelFailed", {
+              defaultValue: "Could not cancel Demucs setup.",
+            }),
+      );
+    }
+  }, [demucsCancelling, demucsInstalling, t]);
 
   const query = (hubSearchQuery ?? "").trim().toLowerCase();
   const sortMode = modelHubControls?.sortMode ?? localSortMode;
@@ -162,45 +358,51 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
       label: (model: EnhanceModelMeta) =>
         t(model.nameKey, { defaultValue: model.nameDefault }),
       active: (model: EnhanceModelMeta) => model.id === selected,
-      installed: (model: EnhanceModelMeta) =>
-        model.builtin || (model.needsRuntime && runtimeInstalled === true),
-      runnable: (model: EnhanceModelMeta) =>
-        model.builtin || (model.needsRuntime && runtimeInstalled === true),
+      installed: (model: EnhanceModelMeta) => modelRuntimeReady(model),
+      runnable: (model: EnhanceModelMeta) => modelRuntimeReady(model),
       inProgress: (model: EnhanceModelMeta) =>
-        model.id === "deepfilternet" &&
-        (isInstalling || runtimeInstalled === null),
+        model.id === "deepfilternet"
+          ? isInstalling || runtimeInstalled === null
+          : model.id === "demucs"
+            ? demucsInstalling || demucsStatus === null
+            : false,
       recommended: (model: EnhanceModelMeta) => model.id === "rnnoise",
       providerRank: (model: EnhanceModelMeta) =>
         model.id === "rnnoise" ? 0 : model.id === "spectral" ? 1 : 2,
     }),
-    [isInstalling, runtimeInstalled, selected, t],
+    [
+      demucsInstalling,
+      demucsStatus,
+      isInstalling,
+      modelRuntimeReady,
+      runtimeInstalled,
+      selected,
+      t,
+    ],
   );
 
   const readyModels = useMemo(
     () =>
       orderModelList(
-        visibleModels.filter(
-          (model) =>
-            model.builtin || (model.needsRuntime && runtimeInstalled === true),
-        ),
+        visibleModels.filter((model) => modelRuntimeReady(model)),
         "downloaded",
         sortMode,
         accessors,
       ),
-    [accessors, runtimeInstalled, sortMode, visibleModels],
+    [accessors, modelRuntimeReady, sortMode, visibleModels],
   );
 
   const downloadableModels = useMemo(
     () =>
       orderModelList(
         visibleModels.filter(
-          (model) => model.needsRuntime && runtimeInstalled !== true,
+          (model) => model.needsRuntime && !modelRuntimeReady(model),
         ),
         "available",
         sortMode,
         accessors,
       ),
-    [accessors, runtimeInstalled, sortMode, visibleModels],
+    [accessors, modelRuntimeReady, sortMode, visibleModels],
   );
 
   const filterAction = (
@@ -266,6 +468,27 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
           },
         ];
       }
+      if (id === "demucs") {
+        return [
+          local,
+          {
+            id: "vocal-stem",
+            label: t("modelHub.audioCleanup.chips.vocalStem", {
+              defaultValue: "Vocal stem",
+            }),
+            variant: "secondary",
+            icon: <AudioWaveform className="h-3 w-3" aria-hidden />,
+          },
+          {
+            id: "apple-silicon",
+            label: t("modelHub.audioCleanup.chips.appleSilicon", {
+              defaultValue: "Apple Silicon",
+            }),
+            variant: "secondary",
+            icon: <Cpu className="h-3 w-3" aria-hidden />,
+          },
+        ];
+      }
       return [
         local,
         {
@@ -292,8 +515,16 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
   const renderModelCard = (model: EnhanceModelMeta) => {
     const isActive = model.id === selected;
     const isDeepFilter = model.id === "deepfilternet";
-    const needsSetup = isDeepFilter && runtimeInstalled === false;
-    const isChecking = isDeepFilter && runtimeInstalled === null;
+    const isDemucs = model.id === "demucs";
+    const modelReady = modelRuntimeReady(model);
+    const needsSetup =
+      (isDeepFilter && runtimeInstalled === false) ||
+      (isDemucs && demucsStatus !== null && !modelReady);
+    const isChecking =
+      (isDeepFilter && runtimeInstalled === null) ||
+      (isDemucs && demucsStatus === null);
+    const modelInstalling = isDemucs ? demucsInstalling : isInstalling;
+    const modelCancelling = isDemucs ? demucsCancelling : isCancelling;
 
     const headerBadges: CompactBadgeItem[] = [
       isActive
@@ -324,45 +555,83 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
         : null,
     ].filter(Boolean) as CompactBadgeItem[];
 
-    const downloadState = buildHubDownloadState({
-      t,
-      localBusy: isDeepFilter && (isInstalling || isChecking),
-      localError: isDeepFilter ? installError : null,
-      activeLabel: isChecking
-        ? t("modelHub.audioCleanup.checking", {
-            defaultValue: "Checking DeepFilterNet setup…",
-          })
-        : isCancelling
-          ? t("modelHub.audioCleanup.cancelling", {
-              defaultValue: "Cancelling DeepFilterNet setup…",
-            })
-          : t("modelHub.audioCleanup.installing", {
-              defaultValue: "Setting up DeepFilterNet… (one-time)",
-            }),
-      indeterminate: true,
-      cancelling: isCancelling,
-      onCancel:
-        isDeepFilter && isInstalling
-          ? () => void cancelRuntimeSetup()
-          : undefined,
-      cancelLabel: t("modelHub.audioCleanup.cancelSetup", {
-        defaultValue: "Cancel DeepFilterNet setup",
-      }),
-      onRetry: () => void installRuntime(),
-      onDismiss: () => setInstallError(null),
-    });
+    const downloadState = isDemucs
+      ? buildHubDownloadState({
+          t,
+          progress: demucsProgress,
+          localBusy: demucsInstalling || isChecking,
+          localError: demucsInstallError,
+          activeLabel: demucsCancelling
+            ? t("modelHub.audioCleanup.demucsCancelling", {
+                defaultValue: "Cancelling Demucs setup...",
+              })
+            : demucsProgressLabel(
+                isChecking ? "checking" : demucsProgress?.phase,
+                t,
+              ),
+          progressPct: demucsProgress?.percentage ?? null,
+          indeterminate: (demucsProgress?.total_bytes ?? 0) <= 0,
+          cancelling: demucsCancelling,
+          onCancel:
+            demucsInstalling && progressCanCancel(demucsProgress?.phase)
+              ? () => void cancelDemucsSetup()
+              : undefined,
+          cancelLabel: t("modelHub.audioCleanup.cancelDemucsSetup", {
+            defaultValue: "Cancel Demucs setup",
+          }),
+          onRetry: () => void installDemucs(),
+          onDismiss: () => {
+            setDemucsInstallError(null);
+            setDemucsProgress(null);
+          },
+        })
+      : buildHubDownloadState({
+          t,
+          localBusy: isDeepFilter && (isInstalling || isChecking),
+          localError: isDeepFilter ? installError : null,
+          activeLabel: isChecking
+            ? t("modelHub.audioCleanup.checking", {
+                defaultValue: "Checking DeepFilterNet setup…",
+              })
+            : isCancelling
+              ? t("modelHub.audioCleanup.cancelling", {
+                  defaultValue: "Cancelling DeepFilterNet setup…",
+                })
+              : t("modelHub.audioCleanup.installing", {
+                  defaultValue: "Setting up DeepFilterNet… (one-time)",
+                }),
+          indeterminate: true,
+          cancelling: isCancelling,
+          onCancel:
+            isDeepFilter && isInstalling
+              ? () => void cancelRuntimeSetup()
+              : undefined,
+          cancelLabel: t("modelHub.audioCleanup.cancelSetup", {
+            defaultValue: "Cancel DeepFilterNet setup",
+          }),
+          onRetry: () => void installRuntime(),
+          onDismiss: () => setInstallError(null),
+        });
 
     let trailing: HubTrailing | undefined;
-    if (needsSetup && !isInstalling && !isCancelling) {
+    if (needsSetup && !modelInstalling && !modelCancelling) {
       trailing = {
         kind: "acquire",
-        onClick: () => void installRuntime(),
-        sizeLabel: t("modelHub.audioCleanup.downloadSize", {
-          defaultValue: "PyTorch + model",
-        }),
-        label: t("modelHub.audioCleanup.setUp", {
-          defaultValue: "Set up DeepFilterNet",
-        }),
+        onClick: () => void (isDemucs ? installDemucs() : installRuntime()),
+        sizeLabel: isDemucs
+          ? t("modelHub.audioCleanup.demucsDownloadSize", {
+              defaultValue: "~240 MB runtime + weights",
+            })
+          : t("modelHub.audioCleanup.downloadSize", {
+              defaultValue: "PyTorch + model",
+            }),
+        label: isDemucs
+          ? t("modelHub.audioCleanup.setUpDemucs", {
+              defaultValue: "Set up Demucs",
+            })
+          : t("modelHub.audioCleanup.setUp", {
+              defaultValue: "Set up DeepFilterNet",
+            }),
       };
     }
 
@@ -373,14 +642,20 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
           }),
         ]
       : [
-          t("modelHub.audioCleanup.meta.sidecar", {
-            defaultValue: "Local Python runtime · downloads on first use",
-          }),
+          model.id === "demucs"
+            ? t("modelHub.audioCleanup.meta.demucsRuntime", {
+                defaultValue: "MLX Swift runtime · downloads on setup",
+              })
+            : t("modelHub.audioCleanup.meta.sidecar", {
+                defaultValue: "Local Python runtime · downloads on first use",
+              }),
         ];
 
     const onClick = (() => {
-      if (isChecking || isInstalling || isCancelling) return undefined;
-      if (needsSetup) return () => void installRuntime();
+      if (isChecking || modelInstalling || modelCancelling) return undefined;
+      if (needsSetup)
+        return () => void (isDemucs ? installDemucs() : installRuntime());
+      if (!modelReady) return undefined;
       if (!isActive) return () => selectModel(model.id);
       return undefined;
     })();

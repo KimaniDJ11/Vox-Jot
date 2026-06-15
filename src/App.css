@@ -1617,7 +1617,9 @@ input[type="range"]:disabled::-moz-range-thumb {
     --macos-leading-controls-width: 5rem;
     --macos-traffic-shim-width: min(
       calc(env(titlebar-area-x, 68px) + 20px),
-      calc(var(--macos-sidebar-strip-width) - var(--macos-leading-controls-width))
+      calc(
+        var(--macos-sidebar-strip-width) - var(--macos-leading-controls-width)
+      )
     );
     position: fixed;
     top: 0;

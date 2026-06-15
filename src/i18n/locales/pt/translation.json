@@ -2228,6 +2228,7 @@
       "placeholder": "A transcrição aparece aqui após o processamento.",
       "selectedLabel": "Selecionado:",
       "outputLabel": "Transcrição",
+      "emotionLabel": "Emoção",
       "fileDialogLabel": "Áudio/Vídeo",
       "errors": {
         "heading": "Falha na transcrição",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Subtração espectral - intensidade ajustável, ideal para chiado, zumbido e ruído constante de ventoinha.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - removedor de ruído neural de ponta, banda completa a 48 kHz. O primeiro uso baixa um runtime uma única vez."
+        "deepfilternetHint": "DeepFilterNet - removedor de ruído neural de ponta, banda completa a 48 kHz. O primeiro uso baixa um runtime uma única vez.",
+        "demucs": "Demucs (isolamento de voz)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — separa a fala da música e do fundo, mantendo apenas a faixa vocal. Apple Silicon. Baixa um modelo único."
       },
       "quality": {
         "label": "Qualidade de saída",

@@ -6,7 +6,11 @@
 // browser `storage` event - the exact pattern the Model Hub already uses for its
 // active tab/scope.
 
-export type EnhanceModelId = "rnnoise" | "spectral" | "deepfilternet";
+export type EnhanceModelId =
+  | "rnnoise"
+  | "spectral"
+  | "deepfilternet"
+  | "demucs";
 
 export interface EnhanceModelMeta {
   id: EnhanceModelId;
@@ -58,6 +62,17 @@ export const ENHANCE_MODELS: EnhanceModelMeta[] = [
     descDefault:
       "DeepFilterNet — state-of-the-art neural denoiser, full-band 48 kHz. First use downloads a one-time runtime.",
   },
+  {
+    id: "demucs",
+    providerId: "demucs",
+    builtin: false,
+    needsRuntime: true,
+    nameKey: "dictate.enhanceAudio.engine.demucs",
+    nameDefault: "Demucs (vocal isolation)",
+    descKey: "dictate.enhanceAudio.engine.demucsHint",
+    descDefault:
+      "Demucs (HTDemucs, MLX) — separates speech from music and background, keeping only the vocal stem. Apple Silicon. Downloads a one-time model.",
+  },
 ];
 
 export const DEFAULT_ENHANCE_MODEL: EnhanceModelId = "rnnoise";
@@ -72,7 +87,10 @@ export const ENHANCE_MODEL_CHANGED_EVENT = "voxjot:enhance-model-changed";
 
 export function isEnhanceModelId(value: unknown): value is EnhanceModelId {
   return (
-    value === "rnnoise" || value === "spectral" || value === "deepfilternet"
+    value === "rnnoise" ||
+    value === "spectral" ||
+    value === "deepfilternet" ||
+    value === "demucs"
   );
 }
 

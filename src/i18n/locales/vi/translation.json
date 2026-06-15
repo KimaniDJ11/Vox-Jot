@@ -2228,6 +2228,7 @@
       "placeholder": "Bản ghi xuất hiện ở đây sau khi xử lý.",
       "selectedLabel": "Đã chọn:",
       "outputLabel": "bảng điểm",
+      "emotionLabel": "Cảm xúc",
       "fileDialogLabel": "Âm thanh / Video",
       "errors": {
         "heading": "Phiên âm không thành công",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Trừ phổ - chỉnh được cường độ, phù hợp với tiếng xì, tiếng ù và tiếng quạt ổn định.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - bộ khử nhiễu nơ-ron hiện đại, toàn dải 48 kHz. Lần dùng đầu tải runtime một lần."
+        "deepfilternetHint": "DeepFilterNet - bộ khử nhiễu nơ-ron hiện đại, toàn dải 48 kHz. Lần dùng đầu tải runtime một lần.",
+        "demucs": "Demucs (tách giọng nói)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — tách giọng nói khỏi nhạc và nền, chỉ giữ lại bản giọng. Apple Silicon. Tải mô hình một lần."
       },
       "quality": {
         "label": "Chất lượng đầu ra",

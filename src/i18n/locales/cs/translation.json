@@ -2228,6 +2228,7 @@
       "placeholder": "Zde se po zpracování objeví přepis.",
       "selectedLabel": "Vybráno:",
       "outputLabel": "Přepis",
+      "emotionLabel": "Emoce",
       "fileDialogLabel": "Audio / Video",
       "errors": {
         "heading": "Přepis se nezdařil",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Spektrální odečítání - nastavitelná síla, nejlepší pro stálé syčení, brum a hluk ventilátoru.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - špičkový neuronový odšumovač s plným pásmem 48 kHz. První použití stáhne jednorázový runtime."
+        "deepfilternetHint": "DeepFilterNet - špičkový neuronový odšumovač s plným pásmem 48 kHz. První použití stáhne jednorázový runtime.",
+        "demucs": "Demucs (izolace vokálů)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — oddělí řeč od hudby a pozadí a ponechá jen vokální stopu. Apple Silicon. Stáhne jednorázový model."
       },
       "quality": {
         "label": "Kvalita výstupu",

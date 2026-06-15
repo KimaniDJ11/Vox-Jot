@@ -42,7 +42,13 @@ const requiredFields: Array<keyof LicenseEntry> = [
   "required_notices",
 ];
 
-const validDomains = new Set(["stt", "tts", "ocr", "speech_analysis"]);
+const validDomains = new Set([
+  "stt",
+  "tts",
+  "ocr",
+  "speech_analysis",
+  "audio_cleanup",
+]);
 const validStatuses = new Set([
   "allowed_with_notice",
   "allowed_with_attribution",
@@ -179,6 +185,8 @@ const extractSpeechAnalysisIds = (): string[] => {
   const constantIds = new Map([
     ["CURRENT_DICTATION_ASR_ID", "current_dictation_engine"],
     ["NO_DIARIZATION_ID", "no_speaker_labels"],
+    ["NO_EMOTION_ID", "no_emotion"],
+    ["EMOTION2VEC_PLUS_LARGE_ID", "emotion2vec-plus-large"],
   ]);
   return [...source.matchAll(/descriptor\(\s*(?:"([^"]+)"|([A-Z_]+))/g)]
     .map((match) => match[1] ?? constantIds.get(match[2] ?? "") ?? null)
@@ -188,6 +196,7 @@ const extractSpeechAnalysisIds = (): string[] => {
 const ignoredCatalogIds = new Set([
   "current_dictation_engine",
   "no_speaker_labels",
+  "no_emotion",
   "system-voice",
   "local-openai-compatible",
 ]);

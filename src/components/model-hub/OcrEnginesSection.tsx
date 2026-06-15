@@ -82,6 +82,12 @@ const OCR_LICENSE_ACKNOWLEDGEMENT_GATES: Record<
     termsUrl:
       "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/main/LICENSE",
   },
+  "nanonets-ocr2-3b-mlx": {
+    kind: "non_commercial",
+    licenseLabel: "Qwen Research License",
+    termsUrl:
+      "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/main/LICENSE",
+  },
 };
 
 const ocrLicenseGate = (
@@ -190,6 +196,10 @@ function ocrBackendLabel(model: OcrModelDescriptor, translate: TFunction) {
     case "transformers_vl":
       return translate("modelHub.ocr.backends.transformersVl", {
         defaultValue: "VL transformer",
+      });
+    case "mlx_vl":
+      return translate("modelHub.ocr.backends.mlxVl", {
+        defaultValue: "MLX VL",
       });
     case "tessdata_pack":
       return translate("modelHub.ocr.backends.tessdata", {

@@ -18,11 +18,12 @@ fi
 
 case "$PROFILE" in
   transformers-vl) EXTRAS="dots-ocr" ;;
+  mlx-vl) EXTRAS="mlx-vl" ;;
   paddle) EXTRAS="paddle" ;;
   all) EXTRAS="dots-ocr,paddle" ;;
   *)
     echo "Unsupported OCR runtime profile: $PROFILE" >&2
-    echo "Supported profiles: transformers-vl, paddle, all" >&2
+    echo "Supported profiles: transformers-vl, mlx-vl, paddle, all" >&2
     exit 1
     ;;
 esac
@@ -67,6 +68,15 @@ case "$(uname -s)" in
     exit 1
     ;;
 esac
+
+if [[ "$PROFILE" == "mlx-vl" && ! ( "$PLATFORM" == "macos" && "$ARCH_ID" == "aarch64" ) ]]; then
+  echo "OCR runtime profile 'mlx-vl' is supported only on macOS arm64." >&2
+  exit 1
+fi
+
+if [[ "$PROFILE" == "all" && "$PLATFORM" == "macos" && "$ARCH_ID" == "aarch64" ]]; then
+  EXTRAS="dots-ocr,mlx-vl,paddle"
+fi
 
 mkdir -p "$DIST_DIR"
 if [[ -d "$BUILD_DIR" ]]; then

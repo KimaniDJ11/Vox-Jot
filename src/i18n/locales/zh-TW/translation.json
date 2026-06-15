@@ -1676,11 +1676,7 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": [
-        "總結所選文本",
-        "重寫一下更清楚",
-        "拉出行動項目"
-      ]
+      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2228,6 +2224,7 @@
       "placeholder": "處理後的文字記錄顯示在此。",
       "selectedLabel": "已選擇：",
       "outputLabel": "成績單",
+      "emotionLabel": "情緒",
       "fileDialogLabel": "音訊/視訊",
       "errors": {
         "heading": "轉錄失敗",
@@ -2391,7 +2388,9 @@
         "spectral": "Spectral",
         "spectralHint": "頻譜扣除 - 可調整強度，適合穩定的嘶聲、嗡聲和風扇噪音。",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - 先進的神經降噪器，支援 48 kHz 全頻段。首次使用會一次性下載執行環境。"
+        "deepfilternetHint": "DeepFilterNet - 先進的神經降噪器，支援 48 kHz 全頻段。首次使用會一次性下載執行環境。",
+        "demucs": "Demucs（人聲分離）",
+        "demucsHint": "Demucs（HTDemucs，MLX）— 將語音從音樂和背景中分離，僅保留人聲軌道。Apple Silicon。首次使用會下載一次模型。"
       },
       "quality": {
         "label": "輸出品質",

@@ -180,6 +180,7 @@ fn check_runtime_prerequisites(_app: &AppHandle, backend: OcrBackendKind) -> Res
 
     let modules = match backend {
         OcrBackendKind::TransformersVl | OcrBackendKind::PaddleVl => "PIL,torch,transformers",
+        OcrBackendKind::MlxVl => "PIL,mlx_vlm",
         OcrBackendKind::PaddleDetRec => "PIL,paddleocr",
         OcrBackendKind::TessdataPack => return Ok(()),
     };
@@ -919,6 +920,7 @@ fn spawn_child(
 
     let backend_str = match backend {
         OcrBackendKind::TransformersVl => "transformers_vl",
+        OcrBackendKind::MlxVl => "mlx_vl",
         OcrBackendKind::PaddleDetRec => "paddle_det_rec",
         OcrBackendKind::PaddleVl => "paddle_vl",
         OcrBackendKind::TessdataPack => "tessdata_pack",

@@ -2228,6 +2228,7 @@
       "placeholder": "처리 후 여기에 성적표가 표시됩니다.",
       "selectedLabel": "선택됨:",
       "outputLabel": "성적 증명서",
+      "emotionLabel": "감정",
       "fileDialogLabel": "오디오/비디오",
       "errors": {
         "heading": "전사 실패",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "스펙트럼 차감 - 강도 조절 가능, 일정한 히스·웅웅거림·팬 소음에 적합합니다.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - 48 kHz 풀밴드 최첨단 신경망 노이즈 제거기입니다. 첫 사용 시 런타임을 한 번 다운로드합니다."
+        "deepfilternetHint": "DeepFilterNet - 48 kHz 풀밴드 최첨단 신경망 노이즈 제거기입니다. 첫 사용 시 런타임을 한 번 다운로드합니다.",
+        "demucs": "Demucs (보컬 분리)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — 음성을 음악과 배경에서 분리하여 보컬 트랙만 남깁니다. Apple Silicon. 일회성 모델을 다운로드합니다."
       },
       "quality": {
         "label": "출력 품질",

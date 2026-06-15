@@ -21,3 +21,6 @@ nemo_toolkit[asr]==2.6.2
 onnx==1.21.0
 onnxruntime==1.25.1
 coremltools==9.0
+
+# Speech emotion recognition (emotion2vec+) runs through FunASR's AutoModel.
+funasr==1.3.9

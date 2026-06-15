@@ -18,15 +18,50 @@
       "id": "parakeet-family",
       "domains": ["stt"],
       "name": "NVIDIA Parakeet",
-      "upstream": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3",
-      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "upstream": "https://huggingface.co/collections/nvidia/parakeet-65f9f0f6c3bde3e0b3a8e10f",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models and https://huggingface.co/mlx-community",
       "license": "CC-BY-4.0",
       "commercial_status": "allowed_with_attribution",
       "required_notices": [
         "model_attribution",
         "license_link",
         "modification_notice"
+      ],
+      "catalog_ids": [
+        "parakeet-tdt-0.6b-v2",
+        "parakeet-tdt-0.6b-v3",
+        "mlx-parakeet-v3",
+        "mlx-parakeet-tdt-ctc-110m",
+        "mlx-parakeet-tdt-1.1b",
+        "mlx-parakeet-tdt-ctc-0.6b-ja"
       ]
+    },
+    {
+      "id": "emotion2vec-family",
+      "domains": ["speech_analysis"],
+      "name": "emotion2vec+ (FunASR speech emotion recognition)",
+      "upstream": "https://github.com/ddlBoJack/emotion2vec",
+      "distribution_source": "https://huggingface.co/emotion2vec/emotion2vec_plus_large",
+      "license": "Model License (FunASR)",
+      "commercial_status": "restricted_custom",
+      "required_notices": ["license_link", "model_attribution"],
+      "catalog_ids": ["emotion2vec-plus-large"]
+    },
+    {
+      "id": "demucs-mlx-audio-cleanup",
+      "domains": ["audio_cleanup"],
+      "name": "Demucs / HTDemucs MLX vocal isolation",
+      "upstream": "https://github.com/facebookresearch/demucs",
+      "distribution_source": "https://huggingface.co/mlx-community/demucs-mlx-fp16 and https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "source_link",
+        "modification_notice"
+      ],
+      "catalog_ids": ["demucs", "htdemucs"]
     },
     {
       "id": "moonshine-family",
@@ -868,6 +903,33 @@
         "modification_notice"
       ],
       "ui_acknowledgement_required": true
+    },
+    {
+      "id": "dots-ocr-family",
+      "domains": ["ocr"],
+      "name": "dots.ocr / dots.mocr (MLX)",
+      "upstream": "https://huggingface.co/rednote-hilab/dots.ocr",
+      "distribution_source": "https://huggingface.co/mlx-community/dots.ocr-4bit",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": ["dots-ocr-mlx", "dots-mocr-mlx"]
+    },
+    {
+      "id": "nanonets-ocr2-family",
+      "domains": ["ocr"],
+      "name": "Nanonets-OCR2 3B (MLX)",
+      "upstream": "https://huggingface.co/nanonets/Nanonets-OCR2-3B",
+      "distribution_source": "https://huggingface.co/mlx-community/Nanonets-OCR2-3B-4bit",
+      "license": "Qwen Research License",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "ui_acknowledgement_required": true,
+      "catalog_ids": ["nanonets-ocr2-3b-mlx"]
     },
     {
       "id": "tessdata-best",

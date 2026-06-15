@@ -84,6 +84,7 @@ python3 -m ocr_runtime --probe   # reads one probe request from stdin, writes on
 cd ocr-runtime
 uv venv
 uv pip install -e '.[dots-ocr]'        # adds transformers + torch + pillow
+uv pip install -e '.[mlx-vl]'          # adds mlx-vlm for MLX OCR snapshots
 export OCR_RUNTIME_PYTHON="$PWD/.venv/bin/python"
 ```
 

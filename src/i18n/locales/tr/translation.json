@@ -2228,6 +2228,7 @@
       "placeholder": "Transkript işlendikten sonra burada görünür.",
       "selectedLabel": "Seçilen:",
       "outputLabel": "Transkript",
+      "emotionLabel": "Duygu",
       "fileDialogLabel": "Ses / Video",
       "errors": {
         "heading": "Transkripsiyon başarısız oldu",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "Spektral çıkarma - ayarlanabilir güç, sürekli tıslama, uğultu ve fan gürültüsü için idealdir.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - 48 kHz tam bant, son teknoloji nöral gürültü giderici. İlk kullanımda bir kerelik çalışma ortamı indirilir."
+        "deepfilternetHint": "DeepFilterNet - 48 kHz tam bant, son teknoloji nöral gürültü giderici. İlk kullanımda bir kerelik çalışma ortamı indirilir.",
+        "demucs": "Demucs (vokal yalıtımı)",
+        "demucsHint": "Demucs (HTDemucs, MLX) — konuşmayı müzik ve arka plandan ayırır, yalnızca vokal kanalını tutar. Apple Silicon. Tek seferlik bir model indirir."
       },
       "quality": {
         "label": "Çıkış kalitesi",

@@ -71,7 +71,7 @@ interface SpeechAnalysisEnginesSectionProps {
   onHeaderTitleChange?: (title: string | null) => void;
 }
 
-type AnalysisGroup = "asr" | "diarization";
+type AnalysisGroup = "asr" | "diarization" | "emotion";
 type AnalysisSourceFilter = "all" | "built_in" | "hugging_face";
 
 const SPEECH_ANALYSIS_LICENSE_GATES: Record<
@@ -133,6 +133,7 @@ const taskMatchesGroup = (
   group: AnalysisGroup,
 ): boolean => {
   if (group === "asr") return task === "asr" || task === "asr_diarization";
+  if (group === "emotion") return task === "emotion";
   return task === "diarization" || task === "asr_diarization";
 };
 
@@ -439,16 +440,22 @@ const SpeechAnalysisEnginesSection: React.FC<
               ...catalog.selection,
               asr_model_id: modelId,
             }
-          : {
-              ...catalog.selection,
-              diarization_model_id: modelId,
-            };
+          : group === "emotion"
+            ? {
+                ...catalog.selection,
+                emotion_model_id: modelId,
+              }
+            : {
+                ...catalog.selection,
+                diarization_model_id: modelId,
+              };
 
       setBusyModelId(modelId);
       setError(null);
       const result = await commands.setSpeechAnalysisSelection(
         nextSelection.asr_model_id,
         nextSelection.diarization_model_id,
+        nextSelection.emotion_model_id,
       );
       if (result.status === "ok") {
         setCatalog({ ...catalog, selection: result.data });
@@ -698,6 +705,18 @@ const SpeechAnalysisEnginesSection: React.FC<
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
     [catalog, hubSearchQuery, sourceFilter],
   );
+
+  const emotionModels = useMemo(
+    () =>
+      catalog?.models
+        .filter((model) => taskMatchesGroup(model.task, "emotion"))
+        .filter(
+          (model) =>
+            sourceFilter === "all" || model.source_kind === sourceFilter,
+        )
+        .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
+    [catalog, hubSearchQuery, sourceFilter],
+  );
   const sourceOptions = useMemo(
     () => [
       { value: "all", label: "Source" },
@@ -777,12 +796,26 @@ const SpeechAnalysisEnginesSection: React.FC<
         models: diarizationModels,
         selectedModelId: catalog?.selection.diarization_model_id ?? "",
       },
+      {
+        group: "emotion" as const,
+        label: t("modelHub.analysis.emotion.title", {
+          defaultValue: "Emotion",
+        }),
+        description: t("modelHub.analysis.emotion.description", {
+          defaultValue:
+            "Speech emotion recognition engines that label the dominant emotion of a file transcript.",
+        }),
+        models: emotionModels,
+        selectedModelId: catalog?.selection.emotion_model_id ?? "",
+      },
     ],
     [
       asrModels,
       catalog?.selection.asr_model_id,
       catalog?.selection.diarization_model_id,
+      catalog?.selection.emotion_model_id,
       diarizationModels,
+      emotionModels,
       t,
     ],
   );
@@ -1239,7 +1272,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                             defaultValue:
                               group === "asr"
                                 ? "Currently selected for Reader transcription ASR."
-                                : "Currently selected for speaker isolation.",
+                                : group === "emotion"
+                                  ? "Currently selected for emotion recognition."
+                                  : "Currently selected for speaker isolation.",
                           }),
                         }
                       : null,

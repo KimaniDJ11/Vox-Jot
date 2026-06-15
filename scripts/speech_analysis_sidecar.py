@@ -65,6 +65,12 @@ PYANNOTE_REPOS = {
 
 DIARIZEN_REPO = "BUT-FIT/diarizen-wavlm-large-s80-md-v2"
 
+NO_EMOTION_ID = "no_emotion"
+
+EMOTION_REPOS = {
+    "emotion2vec-plus-large": "emotion2vec/emotion2vec_plus_large",
+}
+
 
 @dataclass
 class Segment:
@@ -801,11 +807,66 @@ def transcribe_whisperx(
     return text, segments, turns
 
 
+def clean_emotion_label(raw: Any) -> str:
+    """emotion2vec labels are ``"中文/english"`` pairs; keep the English side.
+
+    The model also emits a catch-all ``<unk>`` class, which we normalise to
+    ``"unknown"`` so the Rust/UI side can drop it from the displayed scores.
+    """
+    text = str(raw).strip()
+    if not text or text == "<unk>":
+        return "unknown"
+    if "/" in text:
+        text = text.split("/")[-1].strip()
+    return text or "unknown"
+
+
+def classify_emotion(audio_path: str, model_id: str) -> dict[str, Any]:
+    # emotion2vec runs through FunASR's AutoModel. The plus models output nine
+    # softmaxed scores over eight emotions plus a discarded ``<unk>`` slot. We
+    # pin CPU because the fairseq-style ops are not all MPS-safe and the model is
+    # tiny (RTF ~0.03), so the device choice is not a latency concern.
+    from funasr import AutoModel
+
+    model_source = local_model_path(
+        model_id, ("model.pt", "config.yaml", "configuration.json")
+    )
+    auto_kwargs: dict[str, Any] = {"disable_update": True, "device": "cpu"}
+    if model_source:
+        model = AutoModel(model=model_source, **auto_kwargs)
+    else:
+        model = AutoModel(model=EMOTION_REPOS[model_id], hub="hf", **auto_kwargs)
+
+    results = model.generate(audio_path, granularity="utterance", extract_embedding=False)
+    if not results:
+        fail(f"Emotion model '{model_id}' returned no result")
+
+    record = results[0]
+    labels = [clean_emotion_label(label) for label in record.get("labels", [])]
+    raw_scores = record.get("scores", []) or []
+    scores = [
+        {"label": label, "score": float(score)}
+        for label, score in zip(labels, raw_scores)
+        if label != "unknown"
+    ]
+    if not scores:
+        fail(f"Emotion model '{model_id}' produced no usable scores")
+
+    top = max(scores, key=lambda item: item["score"])
+    return {
+        "source_model_id": model_id,
+        "top_label": top["label"],
+        "top_score": top["score"],
+        "scores": scores,
+    }
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     read_audio_16k(args.audio)
     text = ""
     segments: list[Segment] = []
     speaker_turns: list[SpeakerTurn] = []
+    emotion: dict[str, Any] | None = None
 
     if args.asr_model == "whisper-diarization":
         text, segments, speaker_turns = transcribe_whisperx(
@@ -836,6 +897,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     elif args.diarization_model == "onnx-polyvoice-diarization":
         speaker_turns = diarize_polyvoice_onnx(args.audio)
 
+    emotion_model = getattr(args, "emotion_model", NO_EMOTION_ID)
+    if emotion_model and emotion_model != NO_EMOTION_ID:
+        if emotion_model in EMOTION_REPOS:
+            emotion = classify_emotion(args.audio, emotion_model)
+        else:
+            fail(f"Unknown emotion model '{emotion_model}'")
+
     reported_device = (
         "cpu"
         if args.asr_model == "whisper-diarization" and device_name() != "cuda"
@@ -846,6 +914,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "text": text,
         "segments": [segment.__dict__ for segment in segments],
         "speaker_turns": [turn.__dict__ for turn in speaker_turns],
+        "emotion": emotion,
         "device": reported_device,
     }
 
@@ -855,6 +924,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--audio", required=True, help="16 kHz mono WAV path")
     parser.add_argument("--asr-model", required=True)
     parser.add_argument("--diarization-model", required=True)
+    parser.add_argument("--emotion-model", default=NO_EMOTION_ID)
     return parser.parse_args()
 
 

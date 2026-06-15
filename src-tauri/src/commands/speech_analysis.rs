@@ -81,9 +81,10 @@ pub async fn set_speech_analysis_selection(
     app: AppHandle,
     asr_model_id: String,
     diarization_model_id: String,
+    emotion_model_id: String,
 ) -> Result<SpeechAnalysisSelection, String> {
     run_speech_analysis_command_on_stack("set-speech-analysis-selection", move || async move {
-        speech_analysis::set_selection(&app, asr_model_id, diarization_model_id)
+        speech_analysis::set_selection(&app, asr_model_id, diarization_model_id, emotion_model_id)
     })
     .await
 }

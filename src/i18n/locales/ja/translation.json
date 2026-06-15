@@ -2228,6 +2228,7 @@
       "placeholder": "処理後のトランスクリプトがここに表示されます。",
       "selectedLabel": "選択済み:",
       "outputLabel": "成績証明書",
+      "emotionLabel": "感情",
       "fileDialogLabel": "オーディオ/ビデオ",
       "errors": {
         "heading": "転写に失敗しました",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "スペクトル減算 - 強度を調整でき、一定のヒス、ハム、ファンノイズに適しています。",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - 48 kHz フルバンド対応の最先端ニューラルノイズ除去。初回のみランタイムをダウンロードします。"
+        "deepfilternetHint": "DeepFilterNet - 48 kHz フルバンド対応の最先端ニューラルノイズ除去。初回のみランタイムをダウンロードします。",
+        "demucs": "Demucs（ボーカル分離）",
+        "demucsHint": "Demucs（HTDemucs、MLX）— 音声を音楽や背景から分離し、ボーカルのトラックだけを残します。Apple Silicon 対応。初回はモデルを一度ダウンロードします。"
       },
       "quality": {
         "label": "出力品質",

@@ -843,6 +843,8 @@ pub struct AppSettings {
     pub file_transcription_asr_model_id: String,
     #[serde(default = "default_file_transcription_diarization_model_id")]
     pub file_transcription_diarization_model_id: String,
+    #[serde(default = "default_file_transcription_emotion_model_id")]
+    pub file_transcription_emotion_model_id: String,
     #[serde(default = "default_snippets_enabled")]
     pub snippets_enabled: bool,
     #[serde(default)]
@@ -1452,6 +1454,10 @@ fn default_file_transcription_asr_model_id() -> String {
 
 fn default_file_transcription_diarization_model_id() -> String {
     crate::speech_analysis::default_diarization_model_id()
+}
+
+fn default_file_transcription_emotion_model_id() -> String {
+    crate::speech_analysis::default_emotion_model_id()
 }
 
 fn default_snippets_enabled() -> bool {
@@ -2113,6 +2119,7 @@ pub fn get_default_settings() -> AppSettings {
         file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
         file_transcription_asr_model_id: default_file_transcription_asr_model_id(),
         file_transcription_diarization_model_id: default_file_transcription_diarization_model_id(),
+        file_transcription_emotion_model_id: default_file_transcription_emotion_model_id(),
         snippets_enabled: default_snippets_enabled(),
         snippets: Vec::new(),
         app_theme: default_app_theme(),

@@ -2228,6 +2228,7 @@
       "placeholder": "يظهر النص هنا بعد المعالجة.",
       "selectedLabel": "المحدد:",
       "outputLabel": "نسخة",
+      "emotionLabel": "المشاعر",
       "fileDialogLabel": "الصوت / الفيديو",
       "errors": {
         "heading": "فشل النسخ",
@@ -2391,7 +2392,9 @@
         "spectral": "Spectral",
         "spectralHint": "الطرح الطيفي - قوة قابلة للضبط ومناسب للهسهسة والطنين وضجيج المراوح المستمر.",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - مزيل ضوضاء عصبي متقدم بنطاق كامل 48 كيلوهرتز. يحتاج أول استخدام إلى تنزيل وقت تشغيل مرة واحدة."
+        "deepfilternetHint": "DeepFilterNet - مزيل ضوضاء عصبي متقدم بنطاق كامل 48 كيلوهرتز. يحتاج أول استخدام إلى تنزيل وقت تشغيل مرة واحدة.",
+        "demucs": "Demucs (عزل الصوت)",
+        "demucsHint": "Demucs (HTDemucs، MLX) — يفصل الكلام عن الموسيقى والخلفية ويحتفظ بمسار الصوت فقط. لأجهزة Apple Silicon. يتطلب تنزيل نموذج لمرة واحدة."
       },
       "quality": {
         "label": "جودة الإخراج",

@@ -116,9 +116,7 @@ const VoiceFilterSelect: React.FC<{
     <label
       className={[
         "relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--accent-hover)] text-sm font-bold text-[var(--accent-hover)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--accent-soft)] [&_svg]:stroke-[2.75]",
-        active
-          ? "bg-[var(--accent-soft)]"
-          : "bg-transparent",
+        active ? "bg-[var(--accent-soft)]" : "bg-transparent",
       ].join(" ")}
       aria-label={ariaLabel}
       title={label}

@@ -63,6 +63,7 @@ pub fn run(req: NeuralOcrRequest) -> Result<Vec<NativeScreenContextSnippet>, Ocr
         )
         .map_err(OcrError::Backend),
         OcrBackendKind::TransformersVl
+        | OcrBackendKind::MlxVl
         | OcrBackendKind::PaddleDetRec
         | OcrBackendKind::PaddleVl => crate::ocr_runtime::shared()
             .run_ocr(

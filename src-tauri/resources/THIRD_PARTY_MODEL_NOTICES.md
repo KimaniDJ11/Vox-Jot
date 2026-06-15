@@ -81,6 +81,20 @@ directly or mirrors/converts assets for app-managed installation.
   Source: https://huggingface.co/Revai/reverb-diarization-v2.
 - Polyvoice ONNX diarization uses WeSpeaker embeddings and Silero VAD assets.
   WeSpeaker source: https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34.
+- emotion2vec+ Large (emotion2vec-family) - custom FunASR Model License;
+  attribution and license link required. Runs through FunASR. Upstream:
+  https://github.com/ddlBoJack/emotion2vec. Source:
+  https://huggingface.co/emotion2vec/emotion2vec_plus_large.
+
+## Audio Cleanup
+
+- Demucs / HTDemucs MLX vocal isolation - MIT. Vox Jot downloads the
+  app-managed demucs-mlx-swift runtime from
+  https://huggingface.co/IrieDinamik/vox-jot-models and the HTDemucs fp16 MLX
+  weights from https://huggingface.co/mlx-community/demucs-mlx-fp16. Sources:
+  https://github.com/facebookresearch/demucs,
+  https://github.com/kylehowells/demucs-mlx-swift, and
+  https://huggingface.co/mlx-community/demucs-mlx-fp16.
 
 ## Text-to-Speech
 
@@ -175,6 +189,13 @@ directly or mirrors/converts assets for app-managed installation.
 - Qwen2.5-VL OCR - Qwen Research License; gated before download for
   non-commercial terms. Source:
   https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct.
+- dots.ocr / dots.mocr (MLX) - MIT. Runs on Apple Silicon through mlx-vlm.
+  Source: https://huggingface.co/rednote-hilab/dots.ocr and
+  https://huggingface.co/mlx-community/dots.ocr-4bit.
+- Nanonets-OCR2 3B (MLX) - Qwen Research License (inherited from the
+  Qwen2.5-VL-3B base); gated before download for non-commercial terms. Source:
+  https://huggingface.co/nanonets/Nanonets-OCR2-3B and
+  https://huggingface.co/mlx-community/Nanonets-OCR2-3B-4bit.
 - Tesseract tessdata_best - Apache-2.0. Source:
   https://github.com/tesseract-ocr/tessdata_best.
 

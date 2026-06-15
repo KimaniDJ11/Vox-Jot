@@ -1676,11 +1676,7 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": [
-        "总结所选文本",
-        "重写一下更清楚",
-        "拉出行动项目"
-      ]
+      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -2228,6 +2224,7 @@
       "placeholder": "处理后的文字记录显示在此处。",
       "selectedLabel": "已选择：",
       "outputLabel": "成绩单",
+      "emotionLabel": "情绪",
       "fileDialogLabel": "音频/视频",
       "errors": {
         "heading": "转录失败",
@@ -2391,7 +2388,9 @@
         "spectral": "Spectral",
         "spectralHint": "谱减法 - 可调强度，适合稳定的嘶声、嗡声和风扇噪声。",
         "deepfilternet": "DeepFilterNet",
-        "deepfilternetHint": "DeepFilterNet - 先进的神经降噪器，支持 48 kHz 全频带。首次使用会一次性下载运行时。"
+        "deepfilternetHint": "DeepFilterNet - 先进的神经降噪器，支持 48 kHz 全频带。首次使用会一次性下载运行时。",
+        "demucs": "Demucs（人声分离）",
+        "demucsHint": "Demucs（HTDemucs，MLX）— 将语音从音乐和背景中分离，仅保留人声轨道。Apple Silicon。首次使用会下载一次模型。"
       },
       "quality": {
         "label": "输出质量",

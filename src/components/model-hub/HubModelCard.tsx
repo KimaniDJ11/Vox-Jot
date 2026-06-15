@@ -507,7 +507,10 @@ function renderDownloadState(
   const failed = Boolean(state.error) && !cancelled;
   const terminal = failed || cancelled;
   const showCancelConfirmation =
-    confirmingCancel && Boolean(state.onCancel) && !state.cancelling && !terminal;
+    confirmingCancel &&
+    Boolean(state.onCancel) &&
+    !state.cancelling &&
+    !terminal;
   const hasKnownProgress =
     !failed &&
     !cancelled &&
@@ -539,7 +542,7 @@ function renderDownloadState(
           ? "border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)]"
           : showCancelConfirmation
             ? "border-[color-mix(in_srgb,var(--warning),transparent_58%)] bg-[var(--warning-soft)]"
-          : "border-[var(--border)] bg-[var(--panel-bg)]",
+            : "border-[var(--border)] bg-[var(--panel-bg)]",
       ].join(" ")}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}

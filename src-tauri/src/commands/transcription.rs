@@ -544,14 +544,37 @@ fn demucs_weights_root(app: &AppHandle) -> Option<PathBuf> {
 }
 
 fn demucs_runtime_ready(runtime_dir: &Path) -> bool {
-    runtime_dir.join(DEMUCS_RUNTIME_BINARY).is_file()
-        && runtime_dir.join(DEMUCS_RUNTIME_METALLIB).is_file()
+    let binary = runtime_dir.join(DEMUCS_RUNTIME_BINARY);
+    let metallib = runtime_dir.join(DEMUCS_RUNTIME_METALLIB);
+    file_sha256_matches(&binary, DEMUCS_RUNTIME_BINARY_SHA256).unwrap_or(false)
+        && file_sha256_matches(&metallib, DEMUCS_RUNTIME_METALLIB_SHA256).unwrap_or(false)
+        && demucs_binary_is_executable(&binary)
 }
 
 fn demucs_weights_ready(weights_dir: &Path) -> bool {
     DEMUCS_MODEL_REQUIRED_FILES
         .iter()
-        .all(|rel_path| weights_dir.join(rel_path).is_file())
+        .all(|rel_path| required_model_file_ready(&weights_dir.join(rel_path)))
+}
+
+fn required_model_file_ready(path: &Path) -> bool {
+    fs::metadata(path)
+        .map(|metadata| metadata.is_file() && metadata.len() > 0)
+        .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn demucs_binary_is_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::metadata(path)
+        .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn demucs_binary_is_executable(path: &Path) -> bool {
+    path.is_file()
 }
 
 /// Resolve the Demucs (MLX, Swift) separation binary. It ships as a downloaded
@@ -1721,6 +1744,34 @@ download progress: 100%
             .expect_err("stdout without JSON should fail");
 
         assert!(error.contains("Invalid speech-analysis sidecar JSON"));
+    }
+
+    #[test]
+    fn demucs_runtime_ready_rejects_invalid_named_files() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        std::fs::write(
+            dir.path().join(DEMUCS_RUNTIME_BINARY),
+            b"not the signed binary",
+        )
+        .expect("write binary placeholder");
+        std::fs::write(
+            dir.path().join(DEMUCS_RUNTIME_METALLIB),
+            b"not the metallib",
+        )
+        .expect("write metallib placeholder");
+
+        assert!(!demucs_runtime_ready(dir.path()));
+    }
+
+    #[test]
+    fn demucs_weights_ready_requires_nonempty_files() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        std::fs::write(dir.path().join("htdemucs.safetensors"), b"weights").expect("write weights");
+        std::fs::write(dir.path().join("htdemucs_config.json"), b"{}").expect("write config");
+        assert!(demucs_weights_ready(dir.path()));
+
+        std::fs::write(dir.path().join("htdemucs.safetensors"), b"").expect("truncate weights");
+        assert!(!demucs_weights_ready(dir.path()));
     }
 
     #[test]

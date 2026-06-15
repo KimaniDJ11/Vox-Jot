@@ -38,7 +38,10 @@ use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::TtsVoicePresetInput;
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
-use crate::tts::{speak_on_dedicated_thread, SpeakRequest, TtsManager, VoiceInfo};
+use crate::tts::{
+    run_tts_async_on_dedicated_stack, speak_on_dedicated_thread, SpeakRequest, TtsManager,
+    VoiceInfo,
+};
 use crate::tts_profiles::{list_voice_profiles, TtsVoiceProfileDescriptor};
 use axum::{
     extract::{DefaultBodyLimit, Multipart, State as AxumState},
@@ -597,7 +600,14 @@ async fn handle_tts_synthesize(
         remember_last_output: false,
     };
 
-    match Box::pin(manager.synthesize_to_temp_files(render_request, stop_flag)).await {
+    let manager = Arc::clone(&*manager);
+    match run_tts_async_on_dedicated_stack("http-api-tts-synthesize", move || async move {
+        manager
+            .synthesize_to_temp_files(render_request, stop_flag)
+            .await
+    })
+    .await
+    {
         Ok(paths) => Json(TtsSynthesizeApiResponse {
             status: "ok",
             output_paths: paths

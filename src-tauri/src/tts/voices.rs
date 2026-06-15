@@ -1,4 +1,6 @@
-use crate::settings::{TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID};
+use crate::settings::{
+    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_ORPHEUS_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+};
 use regex::Regex;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use std::process::Command;
@@ -64,6 +66,10 @@ pub fn mlx_voice_locale_for_provider(provider_id: &str, voice_id: &str) -> Optio
             _ => None,
         };
         return locale.map(str::to_string);
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID {
+        return Some("en-US".to_string());
     }
 
     None

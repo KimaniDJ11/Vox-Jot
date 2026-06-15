@@ -129,8 +129,27 @@ def normalize_generation_results(result):
     return result
 
 
-def patch_mlx_audio_load_config_for_indextts() -> None:
-    """Inject ``tokenizer_name`` into IndexTTS configs at load time.
+def local_mlx_dependency_dir(model_path, directory_name: str) -> Path | None:
+    """Resolve a sibling app-managed MLX dependency directory when present."""
+    candidates: list[Path] = []
+    store_root = os.environ.get("VOX_JOT_MLX_AUDIO_MODEL_STORE_DIR")
+    if store_root:
+        candidates.append(Path(store_root).expanduser() / directory_name)
+    try:
+        source = Path(model_path).expanduser()
+        if source.exists():
+            candidates.append(source.parent / directory_name)
+    except TypeError:
+        pass
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def patch_mlx_audio_load_config_for_vox_jot() -> None:
+    """Patch known upstream config gaps for app-managed MLX TTS snapshots.
 
     The upstream IndexTTS ``ModelArgs`` dataclass requires ``tokenizer_name``,
     but the official ``mlx-community/IndexTTS-1.5`` snapshot omits this field
@@ -140,11 +159,18 @@ def patch_mlx_audio_load_config_for_indextts() -> None:
     The Model constructor accepts either a HF repo id or a local directory
     containing ``tokenizer.model``; the snapshot ships ``tokenizer.model``
     alongside ``config.json``, so we default to the model_path.
+
+    Orpheus ships a local tokenizer in the 4-bit snapshot, but mlx-audio's
+    Llama TTS config defaults to the remote bf16 tokenizer unless overridden.
+
+    ZONOS2 points its DAC dependency at a Hugging Face repo id; Vox Jot
+    downloads that DAC as a sibling app-managed model, so use that local path
+    when present.
     """
     from mlx_audio import utils as mlx_audio_utils
 
     original_load_config = mlx_audio_utils.load_config
-    if getattr(original_load_config, "_vox_jot_indextts_patched", False):
+    if getattr(original_load_config, "_vox_jot_config_patched", False):
         return
 
     def patched_load_config(model_path, **kwargs):
@@ -155,10 +181,63 @@ def patch_mlx_audio_load_config_for_indextts() -> None:
             return config
         if model_type == "indextts" and "tokenizer_name" not in config:
             config["tokenizer_name"] = str(model_path)
+        if model_type == "llama" and "tokenizer_name" not in config:
+            try:
+                source = Path(model_path).expanduser()
+                if "orpheus" in source.name.lower() and (source / "tokenizer.json").exists():
+                    config["tokenizer_name"] = str(source)
+            except TypeError:
+                pass
+        if model_type == "zonos2":
+            dac_dir = local_mlx_dependency_dir(model_path, "descript-audio-codec-44khz")
+            if dac_dir is not None:
+                config["dac_model_id"] = str(dac_dir)
         return config
 
-    patched_load_config._vox_jot_indextts_patched = True  # type: ignore[attr-defined]
+    patched_load_config._vox_jot_config_patched = True  # type: ignore[attr-defined]
     mlx_audio_utils.load_config = patched_load_config
+
+
+def patch_mlx_audio_local_dac_fetch() -> None:
+    """Allow descript DAC.from_pretrained() to accept local app-managed folders."""
+    from mlx_audio.codec.models.descript import dac as dac_module
+
+    original_fetch = dac_module.fetch_from_hub
+    if getattr(original_fetch, "_vox_jot_local_dac_patched", False):
+        return
+
+    def patched_fetch_from_hub(path_or_repo):
+        try:
+            path = Path(path_or_repo).expanduser()
+            if path.exists():
+                return path
+        except TypeError:
+            pass
+        return original_fetch(path_or_repo)
+
+    patched_fetch_from_hub._vox_jot_local_dac_patched = True  # type: ignore[attr-defined]
+    dac_module.fetch_from_hub = patched_fetch_from_hub
+
+
+def patch_mlx_audio_local_snac_fetch() -> None:
+    """Allow SNAC.from_pretrained() to accept local app-managed folders."""
+    from mlx_audio.codec.models.snac import snac as snac_module
+
+    original_fetch = snac_module.fetch_from_hub
+    if getattr(original_fetch, "_vox_jot_local_snac_patched", False):
+        return
+
+    def patched_fetch_from_hub(path_or_repo):
+        try:
+            path = Path(path_or_repo).expanduser()
+            if path.exists():
+                return path
+        except TypeError:
+            pass
+        return original_fetch(path_or_repo)
+
+    patched_fetch_from_hub._vox_jot_local_snac_patched = True  # type: ignore[attr-defined]
+    snac_module.fetch_from_hub = patched_fetch_from_hub
 
 
 def display_model_name(model_name: str) -> str:
@@ -196,6 +275,10 @@ def display_model_name(model_name: str) -> str:
         return "MLX Chatterbox"
     if "voxcpm2" in model_name:
         return "VoxCPM2"
+    if "orpheus" in model_name:
+        return "Orpheus"
+    if "zonos2" in model_name or "zonos-2" in model_name or "zyphra-zonos2" in model_name:
+        return "ZONOS2"
     if "qwen3-tts-12hz-1.7b-base" in model_name or "qwen3-tts-1.7b-base" in model_name:
         return "Qwen3 TTS 1.7B Base"
     if "qwen3-tts-1.7b" in model_name:
@@ -238,6 +321,7 @@ def build_generation_kwargs(
     ref_audio,
     ref_text: str | None,
     ref_audio_path: str | None = None,
+    model_type: str | None = None,
 ) -> dict[str, object]:
     # Some models (e.g. Spark) expect ref_audio as a file path rather than a
     # pre-loaded audio array.  Use the raw path when the signature type hint
@@ -249,7 +333,7 @@ def build_generation_kwargs(
     raw_kwargs = {
         "voice": args.voice,
         "speed": args.speed,
-        "lang_code": args.lang_code,
+        "lang_code": effective_lang_code_for_model(model_type, args.lang_code),
         "instruct": effective_instruct_for_model(model, args),
         "ref_audio": effective_ref_audio,
         "ref_text": ref_text,
@@ -270,6 +354,14 @@ def build_generation_kwargs(
         for key, value in raw_kwargs.items()
         if value is not None and key in signature.parameters
     }
+
+
+def effective_lang_code_for_model(model_type: str | None, lang_code: str) -> str:
+    normalized_model_type = (model_type or "").lower()
+    normalized_lang = (lang_code or "").replace("-", "_").lower()
+    if normalized_model_type == "zonos2" and normalized_lang in {"en", "en_us"}:
+        return "en_us"
+    return lang_code
 
 
 def generate_audio(model, text: str, kwargs: dict[str, object]):
@@ -1057,7 +1149,9 @@ def main() -> int:
     used_conditioning_retry = False
 
     try:
-        patch_mlx_audio_load_config_for_indextts()
+        patch_mlx_audio_load_config_for_vox_jot()
+        patch_mlx_audio_local_dac_fetch()
+        patch_mlx_audio_local_snac_fetch()
         model_name = Path(args.model).name.lower()
         config = load_model_config(args.model)
         model_type = config.get("model_type") or config.get("architecture")
@@ -1089,7 +1183,14 @@ def main() -> int:
             if ref_audio_path:
                 ref_audio = load_reference_audio(model, model_type, ref_audio_path)
 
-            kwargs = build_generation_kwargs(model, args, ref_audio, ref_text, ref_audio_path)
+            kwargs = build_generation_kwargs(
+                model,
+                args,
+                ref_audio,
+                ref_text,
+                ref_audio_path,
+                model_type,
+            )
             try:
                 audio, sample_rate = generate_audio(model, args.text, kwargs)
             except Exception as exc:
@@ -1116,6 +1217,7 @@ def main() -> int:
                     retry_audio,
                     retry_text,
                     retry_audio_path,
+                    model_type,
                 )
                 try:
                     audio, sample_rate = generate_audio(model, args.text, retry_kwargs)

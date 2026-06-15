@@ -41,13 +41,14 @@ fn health_client() -> &'static reqwest::blocking::Client {
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
-    "mlx-audio[server,stt,tts]==0.4.4|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|phonemizer-fork|setuptools<81|patches=voxtral_eos_v1,parakeet_stt_remap_v1,kitten_sine_len_v1,server_stt_inline_v1";
+    "mlx-audio[server,stt,tts]@git+https://github.com/Blaizzy/mlx-audio.git@4ee95391967e6ff802970a300d68c67bd8809158|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|phonemizer-fork|numpy>=1.26.4,<2.4|setuptools<81|patches=voxtral_eos_v1,parakeet_stt_remap_v1,kitten_sine_len_v1,server_stt_inline_v1,local_snac_v1";
 const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
-    "mlx-audio[server,stt,tts]==0.4.4",
+    "mlx-audio[server,stt,tts] @ git+https://github.com/Blaizzy/mlx-audio.git@4ee95391967e6ff802970a300d68c67bd8809158",
     "torch==2.11.0",
     "g2p_en==2.1.0",
     "misaki[zh]",
     "phonemizer-fork",
+    "numpy>=1.26.4,<2.4",
     "setuptools<81",
 ];
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
@@ -1185,6 +1186,35 @@ impl SidecarManager {
             }
         }
 
+        for snac_user_file in [
+            site_packages
+                .join("mlx_audio")
+                .join("tts")
+                .join("models")
+                .join("llama")
+                .join("llama.py"),
+            site_packages
+                .join("mlx_audio")
+                .join("tts")
+                .join("models")
+                .join("qwen3")
+                .join("qwen3.py"),
+        ] {
+            if snac_user_file.exists() {
+                let snac_contents = std::fs::read_to_string(&snac_user_file).map_err(|err| {
+                    format!("Failed to read '{}': {err}", snac_user_file.display())
+                })?;
+                if let Some(snac_patched) = Self::patch_mlx_audio_snac_dependency(&snac_contents) {
+                    std::fs::write(&snac_user_file, snac_patched).map_err(|err| {
+                        format!(
+                            "Failed to write patched mlx-audio SNAC dependency file '{}': {err}",
+                            snac_user_file.display()
+                        )
+                    })?;
+                }
+            }
+        }
+
         let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
 
         if stt_utils_file.exists() {
@@ -1299,6 +1329,22 @@ impl SidecarManager {
         let patched = contents.replace(
             "MODEL_REMAPPING = {\n",
             "MODEL_REMAPPING = {\n    \"parakeet\": \"parakeet\",\n",
+        );
+        (patched != contents).then_some(patched)
+    }
+
+    fn mlx_audio_snac_dependency_has_local_patch(contents: &str) -> bool {
+        contents.contains("VOX_JOT_MLX_SNAC_24KHZ_DIR")
+    }
+
+    fn patch_mlx_audio_snac_dependency(contents: &str) -> Option<String> {
+        if Self::mlx_audio_snac_dependency_has_local_patch(contents) {
+            return None;
+        }
+
+        let patched = contents.replace(
+            "snac_model = SNAC.from_pretrained(\"mlx-community/snac_24khz\").eval()",
+            "import os\n\n_vox_jot_snac_repo = os.environ.get(\"VOX_JOT_MLX_SNAC_24KHZ_DIR\") or \"mlx-community/snac_24khz\"\nsnac_model = SNAC.from_pretrained(_vox_jot_snac_repo).eval()",
         );
         (patched != contents).then_some(patched)
     }
@@ -1599,6 +1645,20 @@ mod tests {
             &patched
         ));
         assert!(SidecarManager::patch_mlx_audio_stt_utils(&patched).is_none());
+    }
+
+    #[test]
+    fn mlx_audio_snac_patch_prefers_local_dependency_env() {
+        let original = "snac_model = SNAC.from_pretrained(\"mlx-community/snac_24khz\").eval()\n";
+
+        let patched =
+            SidecarManager::patch_mlx_audio_snac_dependency(original).expect("patch should apply");
+
+        assert!(SidecarManager::mlx_audio_snac_dependency_has_local_patch(
+            &patched
+        ));
+        assert!(patched.contains("VOX_JOT_MLX_SNAC_24KHZ_DIR"));
+        assert!(SidecarManager::patch_mlx_audio_snac_dependency(&patched).is_none());
     }
 
     #[test]

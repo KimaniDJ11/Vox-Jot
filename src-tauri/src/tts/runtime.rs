@@ -52,6 +52,7 @@ pub struct MlxAudioContext {
     pub model_label: String,
     pub python_path: PathBuf,
     pub bridge_script_path: PathBuf,
+    pub model_store_dir: PathBuf,
     pub model_source: String,
     pub clone_profile: Option<MlxAudioCloneProfile>,
     pub language: String,
@@ -947,6 +948,14 @@ pub fn synthesize_mlx_audio_chunk(
         .arg(tuning.repetition_penalty.max(1.0).to_string())
         .current_dir(&temp_cwd)
         .env("PYTHONUNBUFFERED", "1")
+        .env(
+            "VOX_JOT_MLX_AUDIO_MODEL_STORE_DIR",
+            &context.model_store_dir,
+        )
+        .env(
+            "VOX_JOT_MLX_SNAC_24KHZ_DIR",
+            context.model_store_dir.join("snac_24khz"),
+        )
         .stdout(Stdio::from(stdout_log))
         .stderr(Stdio::from(stderr_log));
 
@@ -974,6 +983,11 @@ pub fn synthesize_mlx_audio_chunk(
         command
             .arg("--exaggeration")
             .arg(exaggeration.clamp(0.0, 2.0).to_string());
+    }
+    if let Some(max_tokens) = tuning_number_override(tuning, "max_tokens") {
+        command
+            .arg("--max-tokens")
+            .arg(max_tokens.clamp(16.0, 4096.0).round().to_string());
     }
 
     if let Some(voice_id) = preferred_voice_id

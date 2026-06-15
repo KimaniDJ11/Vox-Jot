@@ -6,12 +6,13 @@ use crate::settings::{
     TTS_PROVIDER_MLX_KITTEN_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
     TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
     TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MISO_TTS_ID,
-    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_OUTE_ID,
-    TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID,
-    TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
-    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
-    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
-    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID,
+    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
+    TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
+    TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_MLX_ZONOS2_ID,
+    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_VIBEVOICE_ID,
+    TTS_PROVIDER_XTTS_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1189,6 +1190,37 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_ORPHEUS_ID,
+        provider_label: "MLX Orpheus",
+        provider_description: "Orpheus preset voices running through mlx-audio.",
+        model_id: "orpheus-3b-0.1-ft-4bit",
+        hf_model_id: "mlx-community/orpheus-3b-0.1-ft-4bit",
+        local_dir_names: &["orpheus-3b-0.1-ft-4bit"],
+        label: "Orpheus 3B 4-bit",
+        description: "Apache-licensed English Orpheus TTS with built-in preset voices.",
+        engine_family: "mlx_audio",
+        license_label: Some("Apache-2.0"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_ZONOS2_ID,
+        provider_label: "MLX ZONOS2",
+        provider_description: "Zyphra ZONOS2 speech generation through mlx-audio.",
+        model_id: "zonos2",
+        hf_model_id: "mlx-community/Zyphra-ZONOS2",
+        local_dir_names: &["Zyphra-ZONOS2"],
+        label: "ZONOS2",
+        description:
+            "Apache-licensed 44.1 kHz autoregressive TTS with reference-audio speaker conditioning.",
+        engine_family: "mlx_audio",
+        license_label: Some("Apache-2.0"),
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
 ];
 
 pub fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
@@ -1225,12 +1257,14 @@ pub fn provider_is_mlx_audio(provider_id: &str) -> bool {
             | TTS_PROVIDER_MLX_POCKET_TTS_ID
             | TTS_PROVIDER_MLX_MOSS_TTS_ID
             | TTS_PROVIDER_MLX_OMNIVOICE_ID
+            | TTS_PROVIDER_MLX_ORPHEUS_ID
             | TTS_PROVIDER_MLX_SOPRANO_ID
             | TTS_PROVIDER_MLX_VIBEVOICE_ID
             | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
             | TTS_PROVIDER_MLX_KITTEN_TTS_ID
             | TTS_PROVIDER_MLX_MISO_TTS_ID
+            | TTS_PROVIDER_MLX_ZONOS2_ID
     )
 }
 
@@ -1374,6 +1408,7 @@ pub fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_MING_OMNI_ID
             | TTS_PROVIDER_MLX_MOSS_TTS_ID
             | TTS_PROVIDER_MLX_OMNIVOICE_ID
+            | TTS_PROVIDER_MLX_ORPHEUS_ID
             | TTS_PROVIDER_MLX_OUTE_ID
             | TTS_PROVIDER_MLX_POCKET_TTS_ID
             | TTS_PROVIDER_MLX_QWEN3TTS_ID
@@ -1384,6 +1419,7 @@ pub fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
             | TTS_PROVIDER_MLX_KITTEN_TTS_ID
             | TTS_PROVIDER_MLX_MISO_TTS_ID
+            | TTS_PROVIDER_MLX_ZONOS2_ID
             | TTS_PROVIDER_LFM_AUDIO_GGUF_ID
             | TTS_PROVIDER_VIBEVOICE_ID
     )

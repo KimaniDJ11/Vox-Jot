@@ -15,11 +15,12 @@ use crate::settings::{
     TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
     TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
     TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MOSS_TTS_ID,
-    TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
-    TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
-    TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID,
-    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID,
+    TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID,
+    TTS_PROVIDER_MLX_VIBEVOICE_ID, TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+    TTS_PROVIDER_MLX_ZONOS2_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
+    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
 use crate::tts_profiles;
@@ -621,6 +622,8 @@ impl TtsManager {
 
         let voices = if provider_id == TTS_PROVIDER_MLX_KOKORO_ID {
             self.kokoro_voice_inventory(&model_source)
+        } else if provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID {
+            self.orpheus_voice_inventory()
         } else {
             self.mlx_embedded_voice_inventory(&model_source)
         };
@@ -685,6 +688,20 @@ impl TtsManager {
 
         voices.sort_by(|left, right| left.label.cmp(&right.label).then(left.id.cmp(&right.id)));
         voices
+    }
+
+    fn orpheus_voice_inventory(&self) -> Vec<VoiceInfo> {
+        ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"]
+            .into_iter()
+            .map(|voice_id| VoiceInfo {
+                label: mlx_voice_label(voice_id),
+                locale: Some("en-US".to_string()),
+                id: voice_id.to_string(),
+                engine: TtsEngineKind::MlxNative,
+                installed: true,
+                available: true,
+            })
+            .collect()
     }
 
     fn mlx_embedded_voice_inventory(&self, model_source: &Path) -> Vec<VoiceInfo> {
@@ -1850,6 +1867,7 @@ impl TtsManager {
             || provider_id == TTS_PROVIDER_MLX_IRODORI_TTS_ID
             || provider_id == TTS_PROVIDER_MLX_INDEXTTS_ID
             || provider_id == TTS_PROVIDER_MLX_OMNIVOICE_ID
+            || provider_id == TTS_PROVIDER_MLX_ZONOS2_ID
         {
             return vec![
                 Self::tempo_advanced_control(
@@ -1865,6 +1883,7 @@ impl TtsManager {
         if provider_id == TTS_PROVIDER_MLX_DIA_ID
             || provider_id == TTS_PROVIDER_MLX_SPARK_ID
             || provider_id == TTS_PROVIDER_MLX_MOSS_TTS_ID
+            || provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID
             || provider_id == TTS_PROVIDER_MLX_VIBEVOICE_ID
             || provider_id == TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
         {
@@ -4649,6 +4668,7 @@ impl TtsManager {
             model_label: definition.label.to_string(),
             python_path,
             bridge_script_path,
+            model_store_dir: self.tts_model_store_root().join("MLX"),
             model_source: model_root.to_string_lossy().to_string(),
             clone_profile: self.resolve_mlx_audio_clone_profile(settings, definition)?,
             language: mlx_audio_language_for_locale(locale),

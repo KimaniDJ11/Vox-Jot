@@ -3,9 +3,9 @@ use crate::settings::{
     TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID,
     TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
     TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID, TTS_PROVIDER_MLX_MELOTTS_ID,
-    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_OUTE_ID,
-    TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
-    TTS_PROVIDER_SUPERTONIC_ID,
+    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID,
+    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID,
+    TTS_PROVIDER_MLX_VIBEVOICE_ID, TTS_PROVIDER_MLX_ZONOS2_ID, TTS_PROVIDER_SUPERTONIC_ID,
 };
 use crate::translation::TranslationOrigin;
 
@@ -528,6 +528,16 @@ fn sidecar_payload_maps_expanded_mlx_provider_catalog_to_huggingface_ids() {
             "vibevoice-realtime-0-5b-4bit-mlx",
             "mlx-community/VibeVoice-Realtime-0.5B-4bit",
         ),
+        (
+            TTS_PROVIDER_MLX_ORPHEUS_ID,
+            "orpheus-3b-0.1-ft-4bit",
+            "mlx-community/orpheus-3b-0.1-ft-4bit",
+        ),
+        (
+            TTS_PROVIDER_MLX_ZONOS2_ID,
+            "zonos2",
+            "mlx-community/Zyphra-ZONOS2",
+        ),
     ];
 
     for (provider_id, model_id, expected_hf_id) in cases {
@@ -584,7 +594,9 @@ fn mlx_voice_sanitizer_rejects_placeholder_and_model_ids() {
     assert!(!is_valid_mlx_voice_id("pocket-tts-4bit"));
     assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_KOKORO_ID));
     assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_POCKET_TTS_ID));
+    assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_ORPHEUS_ID));
     assert!(is_valid_mlx_voice_id("af_heart"));
+    assert!(is_valid_mlx_voice_id("tara"));
 }
 
 #[test]

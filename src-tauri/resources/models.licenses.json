@@ -599,6 +599,36 @@
       "catalog_ids": ["vibevoice-realtime-0-5b-4bit-mlx"]
     },
     {
+      "id": "orpheus-3b-0-1-ft",
+      "domains": ["tts"],
+      "name": "Orpheus 3B 0.1 fine-tuned MLX conversion",
+      "upstream": "https://huggingface.co/canopylabs/orpheus-3b-0.1-ft",
+      "distribution_source": "https://huggingface.co/mlx-community/orpheus-3b-0.1-ft-4bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["orpheus-3b-0.1-ft-4bit"]
+    },
+    {
+      "id": "zyphra-zonos2",
+      "domains": ["tts"],
+      "name": "Zyphra ZONOS2 MLX conversion",
+      "upstream": "https://huggingface.co/Zyphra/ZONOS2",
+      "distribution_source": "https://huggingface.co/mlx-community/Zyphra-ZONOS2",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["zonos2"]
+    },
+    {
       "id": "voxcpm2",
       "domains": ["tts"],
       "name": "VoxCPM2",

@@ -146,6 +146,10 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/mlx-community/MisoLabs-MisoTTS-bf16.
 - VibeVoice Realtime - MIT. Source:
   https://huggingface.co/mlx-community/VibeVoice-Realtime-0.5B-4bit.
+- Orpheus 3B 0.1 fine-tuned MLX conversion - Apache-2.0. Source:
+  https://huggingface.co/mlx-community/orpheus-3b-0.1-ft-4bit.
+- Zyphra ZONOS2 MLX conversion - Apache-2.0. Source:
+  https://huggingface.co/mlx-community/Zyphra-ZONOS2.
 - Voxtral TTS - CC-BY-NC-4.0; gated before download for non-commercial terms.
   Source: https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-bf16.
 - VoxCPM2 - Apache-2.0. Source:

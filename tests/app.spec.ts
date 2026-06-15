@@ -446,6 +446,13 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
               tts: { providers: [], models: [] },
               selection: {},
             };
+          case "get_model_platform_overview_json":
+            return JSON.stringify({
+              stt: { providers: [], models: [] },
+              llm: { providers: [], models: [] },
+              tts: { providers: [], models: [] },
+              selection: {},
+            });
           case "get_refine_model_catalog":
             return { providers: [], models: [] };
           case "get_active_refine_installs":
@@ -961,22 +968,28 @@ test.describe("Vox Jot app", () => {
     const titleBarNotice = page.getByRole("button", {
       name: /macOS permissions need attention/i,
     });
+    const permissionDialog = page.getByRole("dialog", {
+      name: /macOS permissions need attention/i,
+    });
 
     await expect(titleBarNotice).toBeVisible();
     await expect(
       page.getByText(
-        /Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring/i,
+        /Grant the permissions below to enable dictation, shortcuts, and Screen Context/i,
       ),
     ).toHaveCount(0);
 
     await titleBarNotice.click();
 
     await expect(
-      page.getByText(
-        /Vox Jot uses Accessibility for user-started assistive text insertion and correction learning, Input Monitoring/i,
+      permissionDialog.getByText(
+        /Grant the permissions below to enable dictation, shortcuts, and Screen Context/i,
       ),
     ).toBeVisible();
-    await expect(page.getByText(/Input Monitoring/i).first()).toBeVisible();
+    await expect(
+      permissionDialog.getByText(/Accessibility Access/i),
+    ).toBeVisible();
+    await expect(permissionDialog.getByText(/Input Monitoring/i)).toBeVisible();
   });
 
   test("keeps Post Process visible in the sidebar even when it is off", async ({
@@ -1179,7 +1192,9 @@ test.describe("Vox Jot app", () => {
       watchFolders: [],
     });
 
-    await page.getByRole("button", { name: "Reader", exact: true }).click();
+    await page
+      .getByRole("button", { name: "File Transcription", exact: true })
+      .click();
     await page.getByRole("button", { name: "Folders", exact: true }).click();
 
     const panel = page.getByTestId("watch-folders-panel");
@@ -1232,7 +1247,6 @@ test.describe("Vox Jot app", () => {
     });
 
     await page.getByRole("button", { name: "Reader", exact: true }).click();
-    await page.getByRole("button", { name: "Documents", exact: true }).click();
 
     await expect(
       page.getByRole("button", { name: /research\.pdf/ }),
@@ -1281,7 +1295,9 @@ test.describe("Vox Jot app", () => {
       ],
     });
 
-    await page.getByRole("button", { name: "Reader", exact: true }).click();
+    await page
+      .getByRole("button", { name: "File Transcription", exact: true })
+      .click();
     await page.getByRole("button", { name: "Folders", exact: true }).click();
 
     const folderRow = page.locator("li", { hasText: "Interviews" });

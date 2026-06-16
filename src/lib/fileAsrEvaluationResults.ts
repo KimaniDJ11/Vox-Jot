@@ -20,12 +20,12 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  generatedAt: "2026-06-07T17:43:52Z",
+  generatedAt: "2026-06-16T14:56:32Z",
   suite: "File ASR full local sample benchmark",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
   limitations:
-    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio and Gemma 4 E4B Audio were added from 2026-06-07 full five-format runs via the gemma-audio-venv Transformers path.",
+    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio and Gemma 4 E4B Audio were added from 2026-06-07 full five-format runs via the gemma-audio-venv Transformers path. Higgs Audio v3 STT was added from a 2026-06-16 full five-format run via the speech-analysis-venv Transformers path.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
@@ -34,7 +34,7 @@ export const FILE_ASR_EVALUATION_RUN = {
     "Device is informational.",
   ],
   reportPath:
-    "output/file-asr-model-eval-gemma-e4b-2026-06-07/2026-06-07T17-42-05/file-asr-summary.md",
+    "output/file-asr-model-eval-higgs-v3/2026-06-16T14-56-32/file-asr-summary.md",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
@@ -50,7 +50,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "granite-speech-4-1-2b",
     label: "Granite Speech 4.1 2B",
     status: "tested",
-    rank: 8,
+    rank: 9,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.357,
@@ -64,7 +64,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
     status: "tested",
-    rank: 11,
+    rank: 12,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 12.086,
@@ -162,7 +162,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "whisper-diarization",
     label: "Whisper Diarization",
     status: "tested",
-    rank: 7,
+    rank: 8,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.214,
@@ -176,7 +176,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "gemma4-e2b-audio",
     label: "Gemma 4 E2B Audio",
     status: "tested",
-    rank: 9,
+    rank: 10,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.5,
@@ -190,7 +190,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "gemma4-e4b-audio",
     label: "Gemma 4 E4B Audio",
     status: "tested",
-    rank: 10,
+    rank: 11,
     sampleCount: 5,
     exactMatches: 0,
     averageWer: 0.5,
@@ -199,6 +199,20 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     device: "mps",
     notes:
       "Full five-format local suite via the gemma-audio-venv Transformers path; same accuracy as E2B but ~2x slower (16 GB model). Its app download first landed incomplete (weights present, config metadata missing) and was repaired before this run.",
+  },
+  {
+    modelId: "higgs-audio-v3-stt",
+    label: "Higgs Audio v3 STT",
+    status: "tested",
+    rank: 7,
+    sampleCount: 5,
+    exactMatches: 0,
+    averageWer: 0.143,
+    latencyMs: 5924,
+    realTimeFactor: 0.91,
+    device: "mps",
+    notes:
+      "Full five-format local suite via the speech-analysis-venv Transformers path; consistently heard Vox Jot as voxjet and ran slightly faster than real time.",
   },
 ];
 

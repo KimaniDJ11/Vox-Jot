@@ -1,4 +1,6 @@
+import { execSync } from "node:child_process";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 type FindingLevel = "fail" | "warn";
@@ -203,6 +205,97 @@ for (const resource of requiredOcrRuntimeResources) {
       `OCR runtime source resource is not explicitly bundled: ${resource}`,
     );
   }
+}
+
+// ── Credential & tooling readiness ──
+// The prerequisites that actually block `release:local-mac` (notary, updater
+// signing, R2, HF, Gumroad). If a required tool is absent we WARN (can't verify
+// here); if the tool is present but the credential is missing we FAIL with the
+// fix. Network checks are time-boxed so the audit can't hang.
+function hasBin(bin: string): boolean {
+  try {
+    execSync(`command -v ${bin}`, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const home = homedir();
+
+if (!hasBin("xcrun")) {
+  add("warn", "Cannot verify notarization profile (xcrun unavailable).");
+} else {
+  try {
+    execSync("xcrun notarytool history --keychain-profile voxjot-notary", {
+      stdio: "ignore",
+      timeout: 30_000,
+    });
+  } catch {
+    add(
+      "fail",
+      'Notarization profile "voxjot-notary" is not accessible.',
+      "Restore: bun run mac:setup-notary (Apple ID + Team ID NS5M2UJLKP + app-specific password). It can disappear intermittently in this environment.",
+    );
+  }
+}
+
+const updaterKey = join(home, ".tauri", "voxjot-updater.key");
+const updaterPwd = join(home, ".tauri", "voxjot-updater.password");
+if (!existsSync(updaterKey)) {
+  add("fail", `Updater signing key missing: ${updaterKey}`);
+}
+if (!existsSync(updaterPwd)) {
+  add(
+    "fail",
+    `Updater key password file missing: ${updaterPwd}`,
+    'The password lives in this file, not env/keychain. Pass TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(cat ~/.tauri/voxjot-updater.password)".',
+  );
+}
+
+if (!hasBin("wrangler")) {
+  add("fail", "wrangler is not installed (needed for the R2 upload).");
+} else {
+  try {
+    const buckets = execSync("wrangler r2 bucket list", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 30_000,
+    });
+    if (!buckets.includes("vox-jot-downloads")) {
+      add(
+        "fail",
+        "Cloudflare R2 bucket vox-jot-downloads is not visible to wrangler.",
+        "Re-auth wrangler with R2 access. Note: `wrangler whoami` omits the r2 scope even when R2 works — trust `wrangler r2 bucket list`.",
+      );
+    }
+  } catch {
+    add(
+      "fail",
+      "wrangler cannot reach R2 (bucket list failed).",
+      "Run `wrangler login` (grant R2) or set an R2-scoped CLOUDFLARE_API_TOKEN.",
+    );
+  }
+}
+
+const hfToken = join(home, ".cache", "huggingface", "token");
+if (
+  !existsSync(hfToken) &&
+  !process.env.HF_TOKEN &&
+  !process.env.HUGGINGFACE_TOKEN
+) {
+  add(
+    "warn",
+    "Hugging Face token not found (~/.cache/huggingface/token or HF_TOKEN).",
+    "Needed to push latest.json to IrieDinamik/vox-jot-releases.",
+  );
+}
+
+if (!hasBin("gumroad")) {
+  add(
+    "warn",
+    "gumroad CLI not installed (release verifies the Gumroad product URL).",
+  );
 }
 
 const hasFailures = findings.some((finding) => finding.level === "fail");

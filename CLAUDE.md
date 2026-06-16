@@ -22,13 +22,28 @@ GitHub Releases are blocked for Vox Jot app distribution. Do not create GitHub r
 Use the local Cloudflare R2 + Gumroad + updater feed distributor for public releases:
 
 ```bash
+# 1. Verify every prerequisite first (notary / updater key+password / R2 / HF / Gumroad):
+bun run audit:distribution
+# 2. Release (the password lives in a FILE, not env/keychain — read it inline):
 VOX_JOT_R2_BUCKET="vox-jot-downloads" \
 TAURI_SIGNING_PRIVATE_KEY_PATH="$HOME/.tauri/voxjot-updater.key" \
-TAURI_SIGNING_PRIVATE_KEY_PASSWORD="..." \
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(cat "$HOME/.tauri/voxjot-updater.password")" \
 bun run release:local-mac -- <version>
 ```
 
 If notarization, R2, updater signing, Hugging Face, Gumroad, website, or public-download verification is blocked, report that exact blocker and stop. Do not use GitHub Releases or GitHub Actions release workflows instead.
+
+### Distribution runbook — credentials, locations, and gotchas
+
+`bun run release:local-mac -- <version>` ([scripts/distribute-macos-release.ts](scripts/distribute-macos-release.ts)) auto-bumps the version in `package.json` / `Cargo.toml` / `tauri.conf.json`, validates, builds + notarizes, signs the updater archive, then uploads the DMG/checksums to R2, pushes `latest.json` to Hugging Face, and verifies Gumroad + the website. It validates and builds **before** any upload, so a failed run cannot half-publish. Every prerequisite below lives on this Mac (not in env by default); `bun run audit:distribution` checks them all and prints the fix for anything missing.
+
+- **Notarization** — keychain profile `voxjot-notary`. Check: `xcrun notarytool history --keychain-profile voxjot-notary`. "No Keychain password item found" = the profile is missing (it disappears intermittently in this environment). Restore via `bun run mac:setup-notary` (Apple ID + Team ID `NS5M2UJLKP` + an Apple **app-specific** password). **Gotcha:** a plain `store-credentials` can fail with `User interaction is not allowed`; it must target the login keychain explicitly with `--keychain "$HOME/Library/Keychains/login.keychain-db"` (the setup script now passes this, and also accepts `APPLE_ID` / `APPLE_TEAM_ID` / `APPLE_APP_SPECIFIC_PASSWORD` env vars for non-interactive use).
+- **Updater signing** — key `~/.tauri/voxjot-updater.key`; its password is in the **file** `~/.tauri/voxjot-updater.password` (NOT in env or keychain). Always pass `TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(cat "$HOME/.tauri/voxjot-updater.password")"`.
+- **Cloudflare R2** — `wrangler` OAuth login; bucket `vox-jot-downloads`. **Gotcha:** `wrangler whoami` does NOT list an `r2` scope even though R2 works — verify with `wrangler r2 bucket list`, never the scope list.
+- **Hugging Face** — CLI token at `~/.cache/huggingface/token`; updater-feed repo `IrieDinamik/vox-jot-releases` (`latest.json`).
+- **Gumroad** — `gumroad` CLI configured; product already points at the stable `…/voxjot/latest/Vox-Jot-latest-aarch64.dmg` URL.
+
+Public download (stable, version-independent): `https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg`. After releasing, confirm it 200s and that HF `latest.json` advertises the new version. Do **not** append `; echo "EXIT $?"` to the release command in a backgrounded run — it masks the real exit code so a failure looks like success.
 
 ## Development Commands
 

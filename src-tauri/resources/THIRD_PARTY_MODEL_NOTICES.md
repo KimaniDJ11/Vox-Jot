@@ -64,6 +64,8 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/ibm-granite/granite-speech-4.1-2b.
 - Cohere Transcribe 03-2026 - Apache-2.0 with gated provider terms. Source:
   https://huggingface.co/CohereLabs/cohere-transcribe-03-2026.
+- Higgs Audio v3 STT - Apache-2.0. Source:
+  https://huggingface.co/bosonai/higgs-audio-v3-stt.
 - pyannote Speaker Diarization Community-1 - CC-BY-4.0 attribution required
   and gated Hugging Face terms apply. Source:
   https://huggingface.co/pyannote/speaker-diarization-community-1.

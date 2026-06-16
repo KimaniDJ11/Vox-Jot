@@ -36,6 +36,11 @@ const GEMMA_AUDIO_PYTHON = resolve(
   process.env.HOME ?? "",
   "Library/Application Support/com.iriedinamik.voxjot/gemma-audio-venv/bin/python",
 );
+const SPEECH_ANALYSIS_PYTHON = resolve(
+  process.env.HOME ?? "",
+  "Library/Application Support/com.iriedinamik.voxjot/speech-analysis-venv/bin/python",
+);
+const PROJECT_VENV_PYTHON = resolve(PROJECT_ROOT, ".venv/bin/python");
 const REFERENCE =
   "This is a file transcription test for Vox Jot. One, two, three, four, five.";
 
@@ -133,6 +138,11 @@ const MODELS: ModelSpec[] = [
   {
     id: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
+    sidecar: true,
+  },
+  {
+    id: "higgs-audio-v3-stt",
+    label: "Higgs Audio v3 STT",
     sidecar: true,
   },
   {
@@ -310,6 +320,19 @@ function sampleDurationMs(samplePath: string): number {
 
 function modelDownloaded(modelId: string): boolean {
   const path = resolve(MODEL_ROOT, modelId);
+  if (modelId === "higgs-audio-v3-stt") {
+    return [
+      "config.json",
+      "generation_config.json",
+      "higgs_audio_collator.py",
+      "model-00001-of-00002.safetensors",
+      "model-00002-of-00002.safetensors",
+      "model.safetensors.index.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "transcribe.py",
+    ].every((file) => existsSync(resolve(path, file)));
+  }
   if (modelSnapshotReady(path)) return true;
 
   const sttMlxPaths: Record<string, string> = {
@@ -361,7 +384,9 @@ function runSidecar(
     ? GEMMA_AUDIO_PYTHON
     : MLX_ASR_MODEL_IDS.has(model.id)
       ? MLX_AUDIO_PYTHON
-      : resolve(PROJECT_ROOT, ".venv/bin/python");
+      : existsSync(SPEECH_ANALYSIS_PYTHON)
+        ? SPEECH_ANALYSIS_PYTHON
+        : PROJECT_VENV_PYTHON;
   if (!existsSync(python)) {
     return {
       model_id: model.id,
@@ -388,6 +413,8 @@ function runSidecar(
       cwd: PROJECT_ROOT,
       env: {
         ...process.env,
+        PYTORCH_ENABLE_MPS_FALLBACK: "1",
+        TOKENIZERS_PARALLELISM: "false",
         VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT: MODEL_ROOT,
         VOX_JOT_STT_MODEL_ROOT: STT_MODEL_ROOT,
       },

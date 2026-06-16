@@ -144,19 +144,36 @@ pub fn generate_http_api_token() -> String {
     format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
 
+pub fn get_http_api_token() -> Result<Option<String>, String> {
+    store()
+        .get_secret(HTTP_API_TOKEN_ACCOUNT)
+        .map(|token| token.filter(|value| !value.trim().is_empty()))
+}
+
 pub fn get_or_create_http_api_token(legacy_token: Option<&str>) -> Result<String, String> {
-    if let Some(token) = store().get_secret(HTTP_API_TOKEN_ACCOUNT)? {
-        if !token.trim().is_empty() {
+    let store = store();
+    let legacy_token = legacy_token
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(ToOwned::to_owned);
+
+    match store.get_secret(HTTP_API_TOKEN_ACCOUNT) {
+        Ok(Some(token)) if !token.trim().is_empty() => return Ok(token),
+        Ok(_) => {}
+        Err(read_error) => {
+            let token = legacy_token.unwrap_or_else(generate_http_api_token);
+            store.set_secret(HTTP_API_TOKEN_ACCOUNT, &token).map_err(|write_error| {
+                format!(
+                    "Failed to recover unreadable HTTP API credential after read error ({read_error}): {write_error}"
+                )
+            })?;
+            log::warn!("Recovered unreadable Local API token credential after keychain read failure: {read_error}");
             return Ok(token);
         }
     }
 
-    let token = legacy_token
-        .map(str::trim)
-        .filter(|token| !token.is_empty())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(generate_http_api_token);
-    store().set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
+    let token = legacy_token.unwrap_or_else(generate_http_api_token);
+    store.set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
     Ok(token)
 }
 
@@ -183,6 +200,21 @@ impl TestSecretStore {
             fail_writes: Mutex::new(HashSet::new()),
             fail_clears: Mutex::new(HashSet::new()),
         }
+    }
+
+    pub fn fail_read(&self, account: &str) {
+        self.fail_reads
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(account.to_string());
+    }
+
+    pub fn stored_value(&self, account: &str) -> Option<String> {
+        self.values
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(account)
+            .cloned()
     }
 }
 
@@ -260,4 +292,39 @@ pub fn install_test_secret_store(store_impl: Arc<dyn SecretStore>) -> TestSecret
     let previous = guard.clone();
     *guard = store_impl;
     TestSecretStoreGuard { previous }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn http_api_token_recovers_unreadable_credential_with_legacy_token() {
+        let store = Arc::new(TestSecretStore::new());
+        store.fail_read(HTTP_API_TOKEN_ACCOUNT);
+        let _guard = install_test_secret_store(store.clone());
+
+        let token = get_or_create_http_api_token(Some(" legacy-token ")).unwrap();
+
+        assert_eq!(token, "legacy-token");
+        assert_eq!(
+            store.stored_value(HTTP_API_TOKEN_ACCOUNT).as_deref(),
+            Some("legacy-token")
+        );
+    }
+
+    #[test]
+    fn http_api_token_recovers_unreadable_credential_without_legacy_token() {
+        let store = Arc::new(TestSecretStore::new());
+        store.fail_read(HTTP_API_TOKEN_ACCOUNT);
+        let _guard = install_test_secret_store(store.clone());
+
+        let token = get_or_create_http_api_token(None).unwrap();
+
+        assert_eq!(token.len(), 64);
+        assert_eq!(
+            store.stored_value(HTTP_API_TOKEN_ACCOUNT).as_deref(),
+            Some(token.as_str())
+        );
+    }
 }

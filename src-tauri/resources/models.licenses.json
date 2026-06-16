@@ -249,6 +249,20 @@
       "required_notices": ["license_text", "copyright_notice", "accepted_terms"]
     },
     {
+      "id": "higgs-audio-v3-stt",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Higgs Audio v3 STT",
+      "upstream": "https://huggingface.co/bosonai/higgs-audio-v3-stt",
+      "distribution_source": "https://huggingface.co/bosonai/higgs-audio-v3-stt",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
       "id": "pyannote-community-1",
       "domains": ["speech_analysis"],
       "name": "pyannote Speaker Diarization Community-1",

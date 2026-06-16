@@ -1288,6 +1288,8 @@ fn run_speech_analysis_sidecar(
     let mut command = Command::new(&python);
     command.env("VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT", &model_root);
     command.env("VOX_JOT_STT_MODEL_ROOT", &stt_model_root);
+    command.env("PYTORCH_ENABLE_MPS_FALLBACK", "1");
+    command.env("TOKENIZERS_PARALLELISM", "false");
     if let Some(polyvoice_bin) = bundled_polyvoice_bin(app) {
         command.env("VOX_JOT_POLYVOICE_BIN", polyvoice_bin);
     }

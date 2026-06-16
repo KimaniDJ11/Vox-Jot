@@ -21,6 +21,9 @@ from typing import Any
 
 import soundfile as sf
 
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 
 CURRENT_DICTATION_ASR_ID = "current_dictation_engine"
 APP_SUPPORT_MODEL_ROOT = (
@@ -31,6 +34,10 @@ APP_SUPPORT_MODEL_ROOT = (
 ASR_REPOS = {
     "granite-speech-4-1-2b": "ibm-granite/granite-speech-4.1-2b",
     "cohere-transcribe-03-2026": "CohereLabs/cohere-transcribe-03-2026",
+}
+
+HIGGS_AUDIO_V3_STT_REPOS = {
+    "higgs-audio-v3-stt": "bosonai/higgs-audio-v3-stt",
 }
 
 GEMMA4_AUDIO_REPOS = {
@@ -182,6 +189,25 @@ def has_mlx_snapshot_weights(path: Path) -> bool:
     return any(path.glob("model-*.safetensors"))
 
 
+def has_higgs_audio_v3_stt_snapshot(path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    required = (
+        "config.json",
+        "generation_config.json",
+        "higgs_audio_collator.py",
+        "model.safetensors.index.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "transcribe.py",
+    )
+    if not all((path / file).exists() for file in required):
+        return False
+    return (path / "model-00001-of-00002.safetensors").exists() and (
+        path / "model-00002-of-00002.safetensors"
+    ).exists()
+
+
 def repo_or_local(model_id: str, repo_id: str) -> str:
     required = {
         "pyannote-community-1": ("config.yaml",),
@@ -218,6 +244,16 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
             and (stt_path / "processor_config.json").exists()
             and (stt_path / "tokenizer.json").exists()
         ):
+            return str(stt_path)
+
+    if model_id in HIGGS_AUDIO_V3_STT_REPOS:
+        stt_path = Path(
+            os.environ.get(
+                "VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT",
+                str(APP_SUPPORT_MODEL_ROOT / "speech-analysis"),
+            )
+        ) / model_id
+        if has_higgs_audio_v3_stt_snapshot(stt_path):
             return str(stt_path)
 
     if model_id in GEMMA4_MLX_AUDIO_REPOS:
@@ -440,6 +476,46 @@ def transcribe_gemma4_mlx_audio(audio_path: str, model_id: str) -> tuple[str, li
         verbose=False,
     )
     return normalize_text(getattr(result, "text", result)), []
+
+
+def transcribe_higgs_audio_v3_stt(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
+    torch = import_guarded_torch()
+    import numpy as np
+    from transformers import AutoModel, AutoTokenizer
+    from transformers.dynamic_module_utils import get_class_from_dynamic_module
+
+    audio, sample_rate = read_audio_16k(audio_path)
+    if getattr(audio, "ndim", 1) > 1:
+        audio = np.mean(audio, axis=1)
+    audio = np.asarray(audio, dtype=np.float32)
+
+    model_name = repo_or_local(model_id, HIGGS_AUDIO_V3_STT_REPOS[model_id])
+    device = device_name()
+    dtype = torch.bfloat16 if device in {"cuda", "mps"} else torch.float32
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModel.from_pretrained(
+        model_name,
+        torch_dtype=dtype,
+        trust_remote_code=True,
+        attn_implementation="eager",
+        low_cpu_mem_usage=True,
+    )
+    if not hasattr(model.generation_config, "generation_kwargs"):
+        model.generation_config.generation_kwargs = {}
+    if device in {"cuda", "mps"}:
+        model = model.to(device)
+    model.eval()
+
+    transcribe_fn = get_class_from_dynamic_module("transcribe.transcribe", model_name)
+    text = transcribe_fn(
+        model,
+        tokenizer,
+        audio_np=audio,
+        sample_rate=sample_rate,
+        enable_thinking=True,
+        max_new_tokens=512,
+    )
+    return normalize_text(text), []
 
 
 def coerce_segment(segment: Any) -> Segment | None:
@@ -910,6 +986,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         text, segments = transcribe_gemma4_audio(args.audio, args.asr_model)
     elif args.asr_model in GEMMA4_MLX_AUDIO_REPOS:
         text, segments = transcribe_gemma4_mlx_audio(args.audio, args.asr_model)
+    elif args.asr_model in HIGGS_AUDIO_V3_STT_REPOS:
+        text, segments = transcribe_higgs_audio_v3_stt(args.audio, args.asr_model)
     elif args.asr_model in MLX_ASR_REPOS:
         text, segments = transcribe_mlx_audio(args.audio, args.asr_model)
     elif args.asr_model in ASR_REPOS:

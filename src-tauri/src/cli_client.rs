@@ -53,6 +53,14 @@ pub fn run(cmd: CliCommand) -> i32 {
     let token = std::env::var("VOX_JOT_API_TOKEN")
         .ok()
         .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .or_else(|| match crate::secret_store::get_http_api_token() {
+            Ok(token) => token.map(|value| value.trim().to_string()),
+            Err(error) => {
+                eprintln!("warning: could not read Vox Jot local API token from keychain: {error}");
+                None
+            }
+        })
         .filter(|value| !value.is_empty());
 
     match cmd {

@@ -57,6 +57,7 @@ class ModelReport:
 MODEL_CHECKS: tuple[ModelCheck, ...] = (
     ModelCheck("granite-speech-4-1-2b", "asr", "transformers", ("torch", "transformers", "librosa"), cloud_gpu_preferred=True),
     ModelCheck("cohere-transcribe-03-2026", "asr", "transformers", ("torch", "transformers", "librosa"), requires_hf_token=True, cloud_gpu_preferred=True),
+    ModelCheck("higgs-audio-v3-stt", "asr", "transformers", ("torch", "transformers", "accelerate", "numpy", "soundfile"), cloud_gpu_preferred=True),
     ModelCheck("mlx-qwen3-asr-0.6b", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-qwen3-asr", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-fireredasr2-aed", "asr", "mlx_audio", ("mlx_audio",)),
@@ -148,6 +149,17 @@ def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
     required_files = {
         "granite-speech-4-1-2b": ("config.json", "model.safetensors.index.json"),
         "cohere-transcribe-03-2026": ("config.json", "model.safetensors"),
+        "higgs-audio-v3-stt": (
+            "config.json",
+            "generation_config.json",
+            "higgs_audio_collator.py",
+            "model-00001-of-00002.safetensors",
+            "model-00002-of-00002.safetensors",
+            "model.safetensors.index.json",
+            "tokenizer.json",
+            "tokenizer_config.json",
+            "transcribe.py",
+        ),
         "mlx-qwen3-asr-0.6b": ("config.json", "model.safetensors"),
         "mlx-qwen3-asr": ("config.json", "model.safetensors"),
         "mlx-fireredasr2-aed": ("config.json", "model.safetensors"),

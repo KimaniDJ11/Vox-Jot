@@ -272,6 +272,16 @@ fn capability(
     }
 }
 
+/// Mark a capability set as also usable on the live dictation path. File-ASR
+/// catalog entries default to `live_dictation: false`; models wired into the
+/// `TranscriptionManager` engine path (e.g. Higgs Audio v3) opt in here.
+fn with_live_dictation(
+    mut capabilities: SpeechAnalysisCapabilityFlags,
+) -> SpeechAnalysisCapabilityFlags {
+    capabilities.live_dictation = true;
+    capabilities
+}
+
 #[allow(clippy::too_many_arguments)]
 fn descriptor(
     id: &str,
@@ -420,11 +430,13 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             SpeechAnalysisTask::Asr,
             SpeechAnalysisEngine::Transformers,
             SpeechAnalysisRuntime::PythonSidecar,
-            "Whisper-Large-v3 encoder plus Qwen3 decoder ASR through the model's Transformers custom code.",
+            "Whisper-Large-v3 encoder plus Qwen3 decoder ASR through the model's Transformers custom code. Also available for live dictation via a cached Transformers server.",
             SpeechAnalysisReadiness::Ready,
             &["en"],
             &["text"],
-            capability(false, false, false, false, true, false, false, false, false),
+            with_live_dictation(capability(
+                false, false, false, false, true, false, false, false, false,
+            )),
         ),
         descriptor(
             "gemma4-e2b-audio",

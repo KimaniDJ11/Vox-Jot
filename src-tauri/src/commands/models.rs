@@ -351,6 +351,12 @@ fn stt_provider_meta(
             "Google Gemma 4 / mlx-vlm / Transformers",
             "Cached Gemma audio sidecar",
         ),
+        EngineType::HiggsAudioStt => (
+            "stt_higgs_audio",
+            "Boson AI Higgs Audio",
+            "Boson AI Higgs Audio v3 / Transformers",
+            "Cached Higgs audio sidecar",
+        ),
         EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => (
             "stt_apple_speech",
             "Apple Speech",

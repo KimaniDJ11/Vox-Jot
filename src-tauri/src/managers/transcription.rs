@@ -63,6 +63,13 @@ struct GemmaAudioSttEngine {
     stderr_tail: crate::utils::ChildStderrTail,
 }
 
+struct HiggsAudioSttEngine {
+    base_url: String,
+    model_source: String,
+    child: Option<Child>,
+    stderr_tail: crate::utils::ChildStderrTail,
+}
+
 const MLX_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
 static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::Agent::new_with_config(
@@ -80,6 +87,16 @@ static GEMMA_AUDIO_STT_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::n
         .timeout(GEMMA_AUDIO_STT_REQUEST_TIMEOUT)
         .build()
         .expect("failed to build Gemma audio STT client")
+});
+const HIGGS_AUDIO_STT_PORT: u16 = 8038;
+const HIGGS_AUDIO_STT_SERVER_SOURCE: &str = include_str!("../../../scripts/higgs_stt_server.py");
+const HIGGS_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
+static HIGGS_AUDIO_STT_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(HIGGS_AUDIO_STT_REQUEST_TIMEOUT)
+        .build()
+        .expect("failed to build Higgs audio STT client")
 });
 
 struct FinalTranscriptionPendingGuard {
@@ -106,6 +123,7 @@ enum LoadedEngine {
     GigaAM(GigaAMModel),
     MlxAudioStt(MlxAudioSttEngine),
     GemmaAudioStt(GemmaAudioSttEngine),
+    HiggsAudioStt(HiggsAudioSttEngine),
     AppleSpeech(AppleSpeechEngine),
     AppleSpeechStreaming(AppleSpeechEngine),
 }
@@ -402,6 +420,169 @@ impl GemmaAudioSttEngine {
     }
 }
 
+impl Drop for HiggsAudioSttEngine {
+    fn drop(&mut self) {
+        if let Some(child) = self.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+impl HiggsAudioSttEngine {
+    fn transcribe(
+        &self,
+        audio: Vec<f32>,
+        sample_rate: u32,
+    ) -> Result<transcribe_rs::TranscriptionResult> {
+        let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
+        let response = HIGGS_AUDIO_STT_CLIENT
+            .post(format!(
+                "{}/v1/audio/transcriptions",
+                self.base_url.trim_end_matches('/')
+            ))
+            .json(&serde_json::json!({
+                "model": self.model_source,
+                "audio_base64": BASE64_STANDARD.encode(wav_bytes),
+            }))
+            .send()
+            .map_err(|err| anyhow::anyhow!("Higgs audio transcription request failed: {err}"))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().unwrap_or_default();
+            return Err(anyhow::anyhow!(
+                "Higgs audio transcription request failed with HTTP {status}: {body}"
+            ));
+        }
+        let payload: MlxAudioTranscriptionResponse = response
+            .json()
+            .map_err(|err| anyhow::anyhow!("Failed to decode Higgs audio response: {err}"))?;
+        Ok(transcribe_rs::TranscriptionResult {
+            text: payload.text,
+            segments: None,
+        })
+    }
+
+    fn start(
+        app_handle: &AppHandle,
+        python: &Path,
+        model_source: String,
+        token: Option<String>,
+    ) -> Result<Self> {
+        let base_url = higgs_audio_base_url();
+        if higgs_audio_server_matches(&base_url, &model_source) {
+            return Ok(Self {
+                base_url,
+                model_source,
+                child: None,
+                stderr_tail: crate::utils::ChildStderrTail::default(),
+            });
+        }
+
+        terminate_listeners_on_port(app_handle, HIGGS_AUDIO_STT_PORT)?;
+        let server_path = higgs_audio_stt_server_path(app_handle)?;
+        let mut command = Command::new(python);
+        command
+            .arg(&server_path)
+            .arg("--model")
+            .arg(&model_source)
+            .arg("--port")
+            .arg(HIGGS_AUDIO_STT_PORT.to_string())
+            .env("PYTHONUNBUFFERED", "1")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
+        if let Some(token) = token {
+            command.env("HF_TOKEN", token);
+        }
+
+        let mut child = command
+            .spawn()
+            .map_err(|err| anyhow::anyhow!("Failed to start Higgs audio sidecar: {err}"))?;
+        // Drain stderr continuously so transformers/torch download progress and
+        // warnings cannot fill the pipe buffer and stall the server.
+        let stderr_tail = child
+            .stderr
+            .take()
+            .map(|stderr| crate::utils::drain_child_stderr("higgs-stt", stderr))
+            .unwrap_or_default();
+        let mut engine = Self {
+            base_url,
+            model_source,
+            child: Some(child),
+            stderr_tail,
+        };
+        engine.wait_until_ready()?;
+        Ok(engine)
+    }
+
+    fn wait_until_ready(&mut self) -> Result<()> {
+        for _ in 0..600 {
+            if higgs_audio_server_matches(&self.base_url, &self.model_source) {
+                return Ok(());
+            }
+            if let Some(child) = self.child.as_mut() {
+                if let Some(status) = child.try_wait()? {
+                    let stderr = crate::utils::child_stderr_tail_snapshot(&self.stderr_tail, 1000);
+                    return Err(anyhow::anyhow!(
+                        "Higgs audio sidecar exited with {status}. Stderr: {stderr}"
+                    ));
+                }
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        Err(anyhow::anyhow!(
+            "Higgs audio sidecar did not become ready within 300 seconds."
+        ))
+    }
+}
+
+fn higgs_audio_base_url() -> String {
+    format!("http://127.0.0.1:{HIGGS_AUDIO_STT_PORT}")
+}
+
+fn higgs_audio_stt_server_path(app_handle: &AppHandle) -> Result<PathBuf> {
+    if let Ok(path) = std::env::var("VOX_JOT_HIGGS_STT_SERVER") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    let runtime_dir = crate::portable::app_data_dir(app_handle)
+        .map_err(|err| anyhow::anyhow!("Failed to resolve app data dir for Higgs STT: {err}"))?
+        .join("higgs-stt-runtime");
+    fs::create_dir_all(&runtime_dir)
+        .map_err(|err| anyhow::anyhow!("Failed to create Higgs STT runtime dir: {err}"))?;
+    let server = runtime_dir.join("higgs_stt_server.py");
+    let should_write = fs::read_to_string(&server)
+        .map(|existing| existing != HIGGS_AUDIO_STT_SERVER_SOURCE)
+        .unwrap_or(true);
+    if should_write {
+        fs::write(&server, HIGGS_AUDIO_STT_SERVER_SOURCE)
+            .map_err(|err| anyhow::anyhow!("Failed to write Higgs STT server: {err}"))?;
+    }
+    Ok(server)
+}
+
+fn higgs_audio_server_matches(base_url: &str, model_source: &str) -> bool {
+    let Ok(response) = HIGGS_AUDIO_STT_CLIENT
+        .get(format!("{}/health", base_url.trim_end_matches('/')))
+        .send()
+    else {
+        return false;
+    };
+    if !response.status().is_success() {
+        return false;
+    }
+    let Ok(value) = response.json::<Value>() else {
+        return false;
+    };
+    value
+        .get("model")
+        .and_then(Value::as_str)
+        .is_some_and(|model| model == model_source)
+}
+
 fn encode_wav_bytes(audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
     let spec = hound::WavSpec {
         channels: 1,
@@ -636,7 +817,7 @@ fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {
 fn supports_live_partial_provider(model_info: &ModelInfo) -> bool {
     !matches!(
         model_info.engine_type,
-        EngineType::MlxAudioStt | EngineType::GemmaAudioStt
+        EngineType::MlxAudioStt | EngineType::GemmaAudioStt | EngineType::HiggsAudioStt
     )
 }
 
@@ -1094,6 +1275,29 @@ impl TranscriptionManager {
                     crate::speech_analysis::hugging_face_token_for_runtime(),
                 )?)
             }
+            EngineType::HiggsAudioStt => {
+                let sidecar = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                    .ok_or_else(|| anyhow::anyhow!("SidecarManager is not available."))?;
+                // Higgs runs under the same Transformers runtime as the
+                // file-ASR adapter, so reuse the speech-analysis venv instead
+                // of provisioning a second multi-GB environment.
+                let python = sidecar
+                    .ensure_speech_analysis_environment()
+                    .map_err(|err| anyhow::anyhow!(err))?;
+                let model_source = self
+                    .model_manager
+                    .get_model_path(model_id)?
+                    .to_string_lossy()
+                    .to_string();
+                LoadedEngine::HiggsAudioStt(HiggsAudioSttEngine::start(
+                    &self.app_handle,
+                    &python,
+                    model_source,
+                    crate::speech_analysis::hugging_face_token_for_runtime(),
+                )?)
+            }
             EngineType::AppleSpeech => {
                 LoadedEngine::AppleSpeech(AppleSpeechEngine::new(AppleSpeechMode::Offline)?)
             }
@@ -1262,6 +1466,13 @@ impl TranscriptionManager {
                 let r = gemma_engine
                     .transcribe(audio, 16_000)
                     .map_err(|e| anyhow::anyhow!("Gemma audio transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
+            }
+            LoadedEngine::HiggsAudioStt(higgs_engine) => {
+                let r = higgs_engine
+                    .transcribe(audio, 16_000)
+                    .map_err(|e| anyhow::anyhow!("Higgs audio transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
             }

@@ -247,14 +247,25 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
             return str(stt_path)
 
     if model_id in HIGGS_AUDIO_V3_STT_REPOS:
-        stt_path = Path(
+        # Canonical (shared-asset) layout lives under the STT root so the live
+        # dictation engine and File ASR reuse a single download.
+        shared_path = Path(
+            os.environ.get(
+                "VOX_JOT_STT_MODEL_ROOT",
+                str(APP_SUPPORT_MODEL_ROOT / "stt"),
+            )
+        ) / "Higgs" / repo_id
+        if has_higgs_audio_v3_stt_snapshot(shared_path):
+            return str(shared_path)
+        # Legacy layout: speech-analysis root keyed by model id.
+        legacy_path = Path(
             os.environ.get(
                 "VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT",
                 str(APP_SUPPORT_MODEL_ROOT / "speech-analysis"),
             )
         ) / model_id
-        if has_higgs_audio_v3_stt_snapshot(stt_path):
-            return str(stt_path)
+        if has_higgs_audio_v3_stt_snapshot(legacy_path):
+            return str(legacy_path)
 
     if model_id in GEMMA4_MLX_AUDIO_REPOS:
         stt_root = Path(

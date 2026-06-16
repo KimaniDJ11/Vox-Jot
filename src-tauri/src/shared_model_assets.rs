@@ -9,6 +9,7 @@ pub enum SharedModelAssetFamily {
     MlxAsr,
     GemmaAudio,
     GemmaMlxAudio,
+    HiggsAudio,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,10 +96,19 @@ const SHARED_GEMMA_AUDIO_MODELS: &[SharedModelAssetDefinition] = &[
     },
 ];
 
+const SHARED_HIGGS_AUDIO_MODELS: &[SharedModelAssetDefinition] = &[SharedModelAssetDefinition {
+    family: SharedModelAssetFamily::HiggsAudio,
+    model_ids: &["higgs-audio-v3-stt"],
+    repo_id: "bosonai/higgs-audio-v3-stt",
+    canonical_root: SharedModelStorageRoot::Stt,
+    legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+}];
+
 fn definition_for_model_id(model_id: &str) -> Option<&'static SharedModelAssetDefinition> {
     SHARED_MLX_ASR_MODELS
         .iter()
         .chain(SHARED_GEMMA_AUDIO_MODELS.iter())
+        .chain(SHARED_HIGGS_AUDIO_MODELS.iter())
         .find(|definition| definition.model_ids.contains(&model_id))
 }
 
@@ -120,6 +130,7 @@ fn shared_model_ids_for_family(family: SharedModelAssetFamily) -> Vec<&'static s
     SHARED_MLX_ASR_MODELS
         .iter()
         .chain(SHARED_GEMMA_AUDIO_MODELS.iter())
+        .chain(SHARED_HIGGS_AUDIO_MODELS.iter())
         .filter(|definition| definition.family == family)
         .flat_map(|definition| definition.model_ids.iter().copied())
         .collect()
@@ -130,6 +141,7 @@ fn canonical_relative_path(definition: &SharedModelAssetDefinition) -> PathBuf {
         SharedModelAssetFamily::MlxAsr => Path::new("MLX").join(definition.repo_id),
         SharedModelAssetFamily::GemmaAudio => Path::new("Gemma").join(definition.repo_id),
         SharedModelAssetFamily::GemmaMlxAudio => Path::new("GemmaMLX").join(definition.repo_id),
+        SharedModelAssetFamily::HiggsAudio => Path::new("Higgs").join(definition.repo_id),
     }
 }
 
@@ -138,6 +150,7 @@ fn legacy_relative_path(definition: &SharedModelAssetDefinition, model_id: &str)
         SharedModelAssetFamily::MlxAsr => PathBuf::from(model_id),
         SharedModelAssetFamily::GemmaAudio => PathBuf::from(model_id),
         SharedModelAssetFamily::GemmaMlxAudio => PathBuf::from(model_id),
+        SharedModelAssetFamily::HiggsAudio => PathBuf::from(model_id),
     }
 }
 
@@ -232,6 +245,7 @@ pub fn shared_model_has_required_files(model_id: &str, path: &Path) -> bool {
         Some(SharedModelAssetFamily::MlxAsr) => shared_mlx_asr_has_required_files(path),
         Some(SharedModelAssetFamily::GemmaAudio) => shared_gemma_audio_has_required_files(path),
         Some(SharedModelAssetFamily::GemmaMlxAudio) => shared_mlx_asr_has_required_files(path),
+        Some(SharedModelAssetFamily::HiggsAudio) => shared_higgs_audio_has_required_files(path),
         None => false,
     }
 }
@@ -279,6 +293,21 @@ fn shared_gemma_audio_has_required_files(path: &Path) -> bool {
         && path.join("model.safetensors").exists()
         && path.join("processor_config.json").exists()
         && path.join("tokenizer.json").exists()
+}
+
+fn shared_higgs_audio_has_required_files(path: &Path) -> bool {
+    const REQUIRED: &[&str] = &[
+        "config.json",
+        "generation_config.json",
+        "higgs_audio_collator.py",
+        "model-00001-of-00002.safetensors",
+        "model-00002-of-00002.safetensors",
+        "model.safetensors.index.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "transcribe.py",
+    ];
+    path.is_dir() && REQUIRED.iter().all(|file| path.join(file).exists())
 }
 
 #[cfg(test)]

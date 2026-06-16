@@ -746,6 +746,7 @@ fn load_regression_engine(model_runtime: &ModelRuntime) -> Result<RegressionEngi
             MlxAudioRegressionEngine::new(model_runtime.model_path.display().to_string())?,
         )),
         EngineType::GemmaAudioStt => Err(anyhow!("Gemma audio models are app-sidecar backed.")),
+        EngineType::HiggsAudioStt => Err(anyhow!("Higgs audio models are app-sidecar backed.")),
         EngineType::AppleSpeech => Ok(RegressionEngine::AppleSpeech(AppleSpeechEngine::new(
             AppleSpeechMode::Offline,
         )?)),

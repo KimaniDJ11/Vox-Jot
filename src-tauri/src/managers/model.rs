@@ -29,6 +29,7 @@ pub enum EngineType {
     GigaAM,
     MlxAudioStt,
     GemmaAudioStt,
+    HiggsAudioStt,
     AppleSpeech,
     AppleSpeechStreaming,
 }
@@ -38,6 +39,7 @@ pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
         engine_type,
         EngineType::MlxAudioStt
             | EngineType::GemmaAudioStt
+            | EngineType::HiggsAudioStt
             | EngineType::AppleSpeech
             | EngineType::AppleSpeechStreaming
     )
@@ -104,6 +106,7 @@ impl ModelManager {
             EngineType::GigaAM => "stt_gigaam",
             EngineType::MlxAudioStt => "stt_mlx_audio",
             EngineType::GemmaAudioStt => "stt_gemma_audio",
+            EngineType::HiggsAudioStt => "stt_higgs_audio",
             EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => "stt_apple_speech",
         }
     }
@@ -1407,6 +1410,32 @@ impl ModelManager {
                 8000,
                 0.90,
                 0.25,
+            );
+
+            available_models.insert(
+                "higgs-audio-v3-stt".to_string(),
+                ModelInfo {
+                    id: "higgs-audio-v3-stt".to_string(),
+                    name: "Higgs Audio v3 STT".to_string(),
+                    description:
+                        "Whisper-Large-v3 encoder plus Qwen3 decoder ASR served from a cached Transformers sidecar. Shares its download with File ASR."
+                            .to_string(),
+                    filename: "Higgs/bosonai/higgs-audio-v3-stt".to_string(),
+                    url: Some(Self::hf_snapshot_url("bosonai/higgs-audio-v3-stt")),
+                    sha256: None,
+                    size_mb: 5100,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: true,
+                    engine_type: EngineType::HiggsAudioStt,
+                    accuracy_score: 0.82,
+                    speed_score: 0.25,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec!["en".to_string()],
+                    is_custom: false,
+                },
             );
         }
 

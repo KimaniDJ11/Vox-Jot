@@ -2907,7 +2907,7 @@ export type DictionaryImportSummary = { imported: number; skipped: number }
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
 export type EmotionResult = { source_model_id: string; top_label: string; top_score: number; scores: EmotionScore[] }
 export type EmotionScore = { label: string; score: number }
-export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
+export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "HiggsAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
 export type EnhanceAudioFileResult = { output_path: string; sample_rate: number; duration_ms: number; model: string }
 export type EnhanceAudioOptions = {
 /**

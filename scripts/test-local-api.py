@@ -15,6 +15,7 @@ so it stays correct across rebuilds without hardcoding a secret.
 Usage:
   python3 scripts/test-local-api.py                 # read-only GET smoke test
   python3 scripts/test-local-api.py --write         # also exercise benign POSTs
+  python3 scripts/test-local-api.py --content-fixtures
   python3 scripts/test-local-api.py --transcribe-fixture
   VOX_JOT_API_URL=http://127.0.0.1:8978 python3 scripts/test-local-api.py
 """
@@ -45,6 +46,8 @@ ENDPOINTS = [
     ("GET", "/v1/app/settings", None, {200}),
     ("GET", "/v1/settings", None, {200}),
     ("GET", "/v1/settings/schema", None, {200}),
+    ("GET", "/v1/app/navigation-schema", None, {200}),
+    ("GET", "/v1/app/windows", None, {200}),
     ("GET", "/v1/dictation/status", None, {200}),
     ("GET", "/v1/model-platform", None, {200}),
     ("GET", "/v1/audio/devices", None, {200}),
@@ -63,11 +66,28 @@ ENDPOINTS = [
     ("GET", "/v1/history/latest", None, {200, 404}),
     ("GET", "/v1/stats/dictation", None, {200}),
     ("GET", "/v1/screen-context/diagnostics", None, {200}),
+    ("GET", "/v1/dictionary/corrections", None, {200}),
+    ("GET", "/v1/dictionary/corrections/export", None, {200}),
+    ("GET", "/v1/phrase-keys", None, {200}),
+    ("GET", "/v1/phrase-keys/export", None, {200}),
+    ("GET", "/v1/write-rules", None, {200}),
 ]
 
 # Benign side effects only (no recording, no downloads, no model loads).
 WRITE_ENDPOINTS = [
     ("POST", "/v1/app/show", {}, {200}),
+    (
+        "POST",
+        "/v1/app/navigate",
+        {"view": "settings", "section": "automation-agents"},
+        {200},
+    ),
+    (
+        "POST",
+        "/v1/app/navigate",
+        {"view": "listen", "section": "voice-design"},
+        {200},
+    ),
     ("POST", "/v1/app/cancel", {}, {200}),
 ]
 
@@ -264,6 +284,227 @@ def run_transcribe_fixture(base, token):
     return ok
 
 
+def run_json_case(method, path, body, allowed, base, token, label=None):
+    code, raw, ms, err = call(method, path, base, token, body)
+    parsed = None
+    if err is not None:
+        ok = False
+        detail = f"ERROR {err}"
+    elif code in allowed:
+        try:
+            parsed = json.loads(raw)
+            ok = True
+            detail = summarize(raw)
+        except Exception:
+            ok = False
+            detail = "body is not JSON"
+    else:
+        ok = False
+        detail = raw[:90].decode("utf-8", "replace").replace("\n", " ")
+
+    flag = "PASS" if ok else "FAIL"
+    display = label or f"{method} {path}"
+    print(f"  [{flag}] {display:44} {str(code):>4} {ms:>6}ms  {detail[:56]}")
+    return ok, parsed
+
+
+def find_by(items, **expected):
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if isinstance(item, dict) and all(item.get(k) == v for k, v in expected.items()):
+            return item
+    return None
+
+
+def run_content_fixtures(base, token):
+    suffix = str(int(time.time() * 1000))
+    results = []
+
+    original = f"codex api mishear {suffix}"
+    corrected = f"Codex API correction {suffix}"
+    ok, parsed = run_json_case(
+        "POST",
+        "/v1/dictionary/corrections",
+        {"original": original, "corrected": corrected, "exact_only": True},
+        {200},
+        base,
+        token,
+        "POST dictionary create fixture",
+    )
+    results.append(ok)
+    correction_id = None
+    if ok and isinstance(parsed, dict):
+        match = find_by(parsed.get("corrections"), original=original, corrected=corrected)
+        correction_id = match.get("id") if match else None
+    if correction_id is None:
+        results.append(False)
+        print("  [FAIL] dictionary fixture id lookup")
+    else:
+        updated_original = f"{original} updated"
+        for label, path, body in (
+            (
+                "POST dictionary update fixture",
+                "/v1/dictionary/corrections/update",
+                {
+                    "id": correction_id,
+                    "original": updated_original,
+                    "corrected": corrected,
+                },
+            ),
+            (
+                "POST dictionary toggle fixture",
+                "/v1/dictionary/corrections/toggle",
+                {"id": correction_id, "active": False},
+            ),
+            (
+                "POST dictionary disabled-apps fixture",
+                "/v1/dictionary/corrections/disabled-apps",
+                {"id": correction_id, "bundle_ids": ["com.voxjot.api.fixture"]},
+            ),
+        ):
+            ok, _ = run_json_case("POST", path, body, {200}, base, token, label)
+            results.append(ok)
+        ok, _ = run_json_case(
+            "GET",
+            "/v1/dictionary/corrections/export",
+            None,
+            {200},
+            base,
+            token,
+            "GET dictionary export fixture",
+        )
+        results.append(ok)
+        ok, _ = run_json_case(
+            "POST",
+            "/v1/dictionary/corrections/delete",
+            {"id": correction_id},
+            {200},
+            base,
+            token,
+            "POST dictionary delete fixture",
+        )
+        results.append(ok)
+
+    trigger = f"api phrase {suffix}"
+    expansion = f"Automated phrase {suffix}"
+    ok, parsed = run_json_case(
+        "POST",
+        "/v1/phrase-keys",
+        {"trigger": trigger, "expansion": expansion, "enabled": True},
+        {200},
+        base,
+        token,
+        "POST phrase-key create fixture",
+    )
+    results.append(ok)
+    phrase_id = None
+    if ok and isinstance(parsed, dict):
+        match = find_by(parsed.get("snippets"), trigger=trigger, expansion=expansion)
+        phrase_id = match.get("id") if match else None
+    if phrase_id is None:
+        results.append(False)
+        print("  [FAIL] phrase-key fixture id lookup")
+    else:
+        ok, _ = run_json_case(
+            "POST",
+            "/v1/phrase-keys/update",
+            {
+                "id": phrase_id,
+                "trigger": f"{trigger} updated",
+                "expansion": expansion,
+                "enabled": False,
+            },
+            {200},
+            base,
+            token,
+            "POST phrase-key update fixture",
+        )
+        results.append(ok)
+        ok, _ = run_json_case(
+            "GET",
+            "/v1/phrase-keys/export",
+            None,
+            {200},
+            base,
+            token,
+            "GET phrase-key export fixture",
+        )
+        results.append(ok)
+        ok, _ = run_json_case(
+            "POST",
+            "/v1/phrase-keys/delete",
+            {"id": phrase_id},
+            {200},
+            base,
+            token,
+            "POST phrase-key delete fixture",
+        )
+        results.append(ok)
+
+    rule_id = f"api-fixture-{suffix}"
+    rule = {
+        "id": rule_id,
+        "name": f"API Fixture {suffix}",
+        "enabled": True,
+        "priority": 9999,
+        "matchers": {
+            "bundle_ids": ["com.voxjot.api.fixture"],
+            "url_patterns": ["example.com/vox-jot-api-fixture*"],
+        },
+        "overrides": {},
+    }
+    ok, _ = run_json_case(
+        "POST",
+        "/v1/write-rules",
+        rule,
+        {200},
+        base,
+        token,
+        "POST write-rule upsert fixture",
+    )
+    results.append(ok)
+    if ok:
+        ok, parsed = run_json_case(
+            "POST",
+            "/v1/write-rules/test-resolve",
+            {
+                "bundle_id": "com.voxjot.api.fixture",
+                "app_name": "API Fixture",
+                "url": "https://example.com/vox-jot-api-fixture/page",
+            },
+            {200},
+            base,
+            token,
+            "POST write-rule resolve fixture",
+        )
+        results.append(ok and isinstance(parsed, dict) and parsed.get("rule_id") == rule_id)
+        if ok and not (isinstance(parsed, dict) and parsed.get("rule_id") == rule_id):
+            print("  [FAIL] write-rule resolve returned unexpected rule")
+        ok, _ = run_json_case(
+            "POST",
+            "/v1/write-rules/reorder",
+            {"ordered_ids": [rule_id]},
+            {200},
+            base,
+            token,
+            "POST write-rule reorder fixture",
+        )
+        results.append(ok)
+        ok, _ = run_json_case(
+            "POST",
+            "/v1/write-rules/delete",
+            {"id": rule_id},
+            {200},
+            base,
+            token,
+            "POST write-rule delete fixture",
+        )
+        results.append(ok)
+
+    return all(results)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", default=DEFAULT_BASE)
@@ -281,6 +522,11 @@ def main() -> int:
         "--transcribe-fixture",
         action="store_true",
         help="also POST a generated silence WAV to /v1/transcribe when STT is ready",
+    )
+    parser.add_argument(
+        "--content-fixtures",
+        action="store_true",
+        help="create/update/export/resolve/delete temporary Dictionary, Phrase Key, and Write Profile entries",
     )
     args = parser.parse_args()
 
@@ -377,6 +623,9 @@ def main() -> int:
         result = run_transcribe_fixture(args.base, token)
         if result is not None:
             results.append(result)
+
+    if args.content_fixtures:
+        results.append(run_content_fixtures(args.base, token))
 
     if not args.no_auth_check:
         code, _, ms, err = call("GET", "/v1/app/settings", args.base, "")

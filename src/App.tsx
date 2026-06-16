@@ -120,6 +120,13 @@ const shouldStartWindowDrag = (
 
 type PrimaryMode = "dictate" | "refine" | "listen";
 type RootView = PrimaryMode | "settings";
+type NavigateEventPayload =
+  | RootView
+  | "story_studio"
+  | {
+      view?: RootView | "story_studio";
+      section?: string | null;
+    };
 
 type PostProcessPreviewRequest = {
   request_id: string;
@@ -1147,23 +1154,39 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unlisten = listen<string>("navigate", (event) => {
-      const view = event.payload;
+    const unlisten = listen<NavigateEventPayload>("navigate", (event) => {
+      const payload = event.payload;
+      const view = typeof payload === "string" ? payload : payload?.view;
+      const section =
+        typeof payload === "string" ? undefined : payload?.section || undefined;
 
       if (view === "settings") {
         handleSettingsOpen();
+        if (section) {
+          setActiveSectionId(section);
+          lastSectionByView.current.settings = section;
+        }
         return;
       }
 
       if (view === "story_studio") {
         handleModeSelect("listen");
-        setActiveSectionId("story-studio");
-        lastSectionByView.current.listen = "story-studio";
+        const resolved = section
+          ? resolveListenSectionId(section)
+          : "story-studio";
+        setActiveSectionId(resolved);
+        lastSectionByView.current.listen = resolved;
         return;
       }
 
       if (view === "dictate" || view === "refine" || view === "listen") {
         handleModeSelect(view);
+        if (section) {
+          const resolved =
+            view === "listen" ? resolveListenSectionId(section) : section;
+          setActiveSectionId(resolved);
+          lastSectionByView.current[view] = resolved;
+        }
       }
     });
 

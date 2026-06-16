@@ -42,17 +42,19 @@ use crate::commands::tts::{
     VoiceChangerResult,
 };
 use crate::commands::{self, audio::AudioDevice};
-use crate::correction_tracker::store::CorrectionStore;
+use crate::correction_tracker::store::{CorrectionStore, StoredCorrection};
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::{HistoryEntriesPage, HistoryEntry, HistoryManager};
 use crate::managers::model::ModelManager;
 use crate::managers::transcription::TranscriptionManager;
+use crate::post_processing::WriteRule;
 use crate::settings::{
     build_tts_preset_from_legacy, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
 use crate::sidecar::SidecarManager;
+use crate::snippets::Snippet;
 use crate::tts::{
     run_tts_async_on_dedicated_stack, speak_on_dedicated_thread, SpeakRequest, TtsManager,
     VoiceInfo,
@@ -158,6 +160,18 @@ struct AppShowApiRequest {
 }
 
 #[derive(Deserialize)]
+struct AppNavigateApiRequest {
+    view: String,
+    section: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+struct AppNavigateEvent {
+    view: String,
+    section: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct ShortcutBindingApiRequest {
     id: String,
     binding: Option<String>,
@@ -228,6 +242,113 @@ struct HistoryPageApiQuery {
 struct RefinePreviewApiRequest {
     text: String,
     app_bundle_id_override: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct CorrectionCreateApiRequest {
+    original: String,
+    corrected: String,
+    exact_only: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct CorrectionUpdateApiRequest {
+    id: i64,
+    original: String,
+    corrected: String,
+}
+
+#[derive(Deserialize)]
+struct CorrectionIdApiRequest {
+    id: i64,
+}
+
+#[derive(Deserialize)]
+struct CorrectionToggleApiRequest {
+    id: i64,
+    active: bool,
+}
+
+#[derive(Deserialize)]
+struct CorrectionDisabledAppsApiRequest {
+    id: i64,
+    bundle_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct DictionaryImportApiRequest {
+    json: Option<String>,
+    #[serde(alias = "source_path")]
+    path: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeyCreateApiRequest {
+    id: Option<String>,
+    trigger: String,
+    expansion: String,
+    enabled: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeyUpdateApiRequest {
+    id: String,
+    trigger: String,
+    expansion: String,
+    enabled: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeyIdApiRequest {
+    id: String,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeysImportApiRequest {
+    json: String,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeysEnabledApiRequest {
+    enabled: bool,
+}
+
+#[derive(Deserialize)]
+struct PhraseKeysReorderApiRequest {
+    ordered_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct WriteRuleDeleteApiRequest {
+    id: String,
+}
+
+#[derive(Deserialize)]
+struct WriteRulePreviewApiRequest {
+    rule_id: String,
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct WriteRuleReorderApiRequest {
+    ordered_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct WriteRuleResolveApiRequest {
+    bundle_id: Option<String>,
+    app_name: Option<String>,
+    url: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct WriteRulesEnabledApiRequest {
+    enabled: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct WriteRulesUrlCaptureApiRequest {
+    enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -350,6 +471,32 @@ struct SettingsSchemaResponse {
 }
 
 #[derive(Serialize)]
+struct NavigationViewDescriptor {
+    view: &'static str,
+    sections: Vec<&'static str>,
+}
+
+#[derive(Serialize)]
+struct NavigationSchemaResponse {
+    views: Vec<NavigationViewDescriptor>,
+    aliases: HashMap<&'static str, &'static str>,
+}
+
+#[derive(Serialize)]
+struct AppWindowDescriptor {
+    label: String,
+    title: Option<String>,
+    visible: Option<bool>,
+    focused: Option<bool>,
+    minimized: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct AppWindowsResponse {
+    windows: Vec<AppWindowDescriptor>,
+}
+
+#[derive(Serialize)]
 struct SpeakApiResponse {
     status: &'static str,
 }
@@ -400,6 +547,61 @@ struct SettingsPatchResponse {
     status: &'static str,
     updated_keys: Vec<String>,
     settings: crate::settings::AppSettings,
+}
+
+#[derive(Serialize)]
+struct CorrectionMutationResponse {
+    status: &'static str,
+    corrections: Vec<StoredCorrection>,
+}
+
+#[derive(Serialize)]
+struct DictionaryImportApiResponse {
+    status: &'static str,
+    imported: usize,
+    skipped: usize,
+    corrections: Vec<StoredCorrection>,
+}
+
+#[derive(Serialize)]
+struct JsonExportResponse {
+    json: String,
+}
+
+#[derive(Serialize)]
+struct PhraseKeysResponse {
+    enabled: bool,
+    snippets: Vec<Snippet>,
+}
+
+#[derive(Serialize)]
+struct PhraseKeysMutationResponse {
+    status: &'static str,
+    enabled: bool,
+    snippets: Vec<Snippet>,
+}
+
+#[derive(Serialize)]
+struct PhraseKeysImportApiResponse {
+    status: &'static str,
+    imported: usize,
+    enabled: bool,
+    snippets: Vec<Snippet>,
+}
+
+#[derive(Serialize)]
+struct WriteRulesResponse {
+    enabled: bool,
+    url_capture_enabled: bool,
+    rules: Vec<WriteRule>,
+}
+
+#[derive(Serialize)]
+struct WriteRulesMutationResponse {
+    status: &'static str,
+    enabled: bool,
+    url_capture_enabled: bool,
+    rules: Vec<WriteRule>,
 }
 
 #[derive(Serialize)]
@@ -459,6 +661,12 @@ impl HttpApiManager {
             .route("/v1/settings/shortcut", post(handle_shortcut_binding))
             .route("/v1/settings/shortcut/reset", post(handle_shortcut_reset))
             .route("/v1/app/show", post(handle_app_show))
+            .route("/v1/app/navigate", post(handle_app_navigate))
+            .route("/v1/app/windows", get(handle_app_windows))
+            .route(
+                "/v1/app/navigation-schema",
+                get(handle_app_navigation_schema),
+            )
             .route("/v1/app/cancel", post(handle_app_cancel))
             .route("/v1/dictation/status", get(handle_dictation_status))
             .route("/v1/dictation/start", post(handle_dictation_start))
@@ -494,6 +702,60 @@ impl HttpApiManager {
             .route(
                 "/v1/screen-context/diagnostics",
                 get(handle_screen_context_diagnostics),
+            )
+            .route(
+                "/v1/dictionary/corrections",
+                get(handle_dictionary_corrections).post(handle_dictionary_correction_create),
+            )
+            .route(
+                "/v1/dictionary/corrections/update",
+                post(handle_dictionary_correction_update),
+            )
+            .route(
+                "/v1/dictionary/corrections/toggle",
+                post(handle_dictionary_correction_toggle),
+            )
+            .route(
+                "/v1/dictionary/corrections/disabled-apps",
+                post(handle_dictionary_correction_disabled_apps),
+            )
+            .route(
+                "/v1/dictionary/corrections/delete",
+                post(handle_dictionary_correction_delete),
+            )
+            .route(
+                "/v1/dictionary/corrections/import",
+                post(handle_dictionary_corrections_import),
+            )
+            .route(
+                "/v1/dictionary/corrections/export",
+                get(handle_dictionary_corrections_export),
+            )
+            .route(
+                "/v1/phrase-keys",
+                get(handle_phrase_keys).post(handle_phrase_key_create),
+            )
+            .route("/v1/phrase-keys/update", post(handle_phrase_key_update))
+            .route("/v1/phrase-keys/delete", post(handle_phrase_key_delete))
+            .route("/v1/phrase-keys/import", post(handle_phrase_keys_import))
+            .route("/v1/phrase-keys/export", get(handle_phrase_keys_export))
+            .route("/v1/phrase-keys/enabled", post(handle_phrase_keys_enabled))
+            .route("/v1/phrase-keys/reorder", post(handle_phrase_keys_reorder))
+            .route(
+                "/v1/write-rules",
+                get(handle_write_rules).post(handle_write_rule_upsert),
+            )
+            .route("/v1/write-rules/delete", post(handle_write_rule_delete))
+            .route("/v1/write-rules/preview", post(handle_write_rule_preview))
+            .route("/v1/write-rules/reorder", post(handle_write_rules_reorder))
+            .route(
+                "/v1/write-rules/test-resolve",
+                post(handle_write_rule_test_resolve),
+            )
+            .route("/v1/write-rules/enabled", post(handle_write_rules_enabled))
+            .route(
+                "/v1/write-rules/url-capture-enabled",
+                post(handle_write_rules_url_capture_enabled),
             )
             .route("/v1/refine/preview", post(handle_refine_preview))
             .route("/v1/models", get(handle_models))
@@ -661,6 +923,94 @@ fn ok_response() -> axum::response::Response {
     Json(StatusResponse { status: "ok" }).into_response()
 }
 
+fn navigation_schema() -> NavigationSchemaResponse {
+    NavigationSchemaResponse {
+        views: vec![
+            NavigationViewDescriptor {
+                view: "dictate",
+                sections: vec![
+                    "history",
+                    "corrections",
+                    "file-transcription",
+                    "reader",
+                    "enhance-audio",
+                ],
+            },
+            NavigationViewDescriptor {
+                view: "refine",
+                sections: vec!["write-profiles", "phrase-keys", "translation"],
+            },
+            NavigationViewDescriptor {
+                view: "listen",
+                sections: vec![
+                    "story-studio",
+                    "voice-design",
+                    "voice-cloning",
+                    "voice-changer",
+                    "story-audio-history",
+                ],
+            },
+            NavigationViewDescriptor {
+                view: "settings",
+                sections: vec![
+                    "general",
+                    "shortcuts",
+                    "recording-devices",
+                    "output-paste",
+                    "corrections-settings",
+                    "ai-setup",
+                    "model-testing",
+                    "screen-context",
+                    "privacy",
+                    "legal-model-terms",
+                    "automation-agents",
+                    "diagnostics",
+                    "about",
+                ],
+            },
+        ],
+        aliases: HashMap::from([
+            ("story_studio", "listen/story-studio"),
+            ("story-studio", "listen/story-studio"),
+            ("create-voices", "listen/voice-design"),
+        ]),
+    }
+}
+
+fn normalize_navigation_request(
+    request: AppNavigateApiRequest,
+) -> Result<AppNavigateEvent, String> {
+    let raw_view = request.view.trim();
+    let (view, default_section) = match raw_view {
+        "dictate" => ("dictate", None),
+        "refine" => ("refine", None),
+        "listen" => ("listen", None),
+        "settings" => ("settings", None),
+        "story_studio" | "story-studio" => ("listen", Some("story-studio")),
+        _ => {
+            return Err(format!(
+                "Unknown view '{raw_view}'. Use dictate, refine, listen, settings, or story_studio."
+            ))
+        }
+    };
+
+    let section = request
+        .section
+        .as_deref()
+        .map(str::trim)
+        .filter(|section| !section.is_empty())
+        .or(default_section)
+        .map(|section| match section {
+            "create-voices" if view == "listen" => "voice-design".to_string(),
+            _ => section.to_string(),
+        });
+
+    Ok(AppNavigateEvent {
+        view: view.to_string(),
+        section,
+    })
+}
+
 async fn handle_app_settings(
     AxumState(state): AxumState<ApiState>,
     headers: HeaderMap,
@@ -812,6 +1162,14 @@ fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
         "screen_context_ocr_neural_model_id" => Some((
             "/v1/ocr/select",
             "OCR model selection validates install/runtime readiness.",
+        )),
+        "snippets" | "snippets_enabled" => Some((
+            "/v1/phrase-keys",
+            "Phrase Keys have dedicated CRUD routes that validate triggers and preserve import/export behavior.",
+        )),
+        "write_rules" | "write_rules_enabled_override" | "write_rules_url_capture_enabled" => Some((
+            "/v1/write-rules",
+            "Write Profile changes have dedicated routes for validation, ordering, and rule-resolution tests.",
         )),
         "autostart_enabled" | "update_checks_enabled" | "enable_crash_reporting"
         | "keyboard_implementation" => Some((
@@ -1415,6 +1773,202 @@ fn apply_settings_patch_side_effects(
     Ok(())
 }
 
+fn required_trimmed(value: String, field: &str) -> Result<String, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(format!("{field} is required."));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn list_corrections(app: &AppHandle) -> Result<Vec<StoredCorrection>, String> {
+    commands::corrections::get_corrections(app.clone())
+}
+
+const PHRASE_KEY_MAX_TRIGGER_CHARS: usize = 60;
+const PHRASE_KEY_MAX_EXPANSION_CHARS: usize = 4000;
+
+fn phrase_keys_response(app: &AppHandle) -> PhraseKeysResponse {
+    let settings = get_settings(app);
+    PhraseKeysResponse {
+        enabled: settings.snippets_enabled,
+        snippets: settings.snippets,
+    }
+}
+
+fn phrase_keys_mutation_response(app: &AppHandle) -> PhraseKeysMutationResponse {
+    let response = phrase_keys_response(app);
+    PhraseKeysMutationResponse {
+        status: "ok",
+        enabled: response.enabled,
+        snippets: response.snippets,
+    }
+}
+
+fn normalize_phrase_key(
+    id: Option<String>,
+    trigger: String,
+    expansion: String,
+    enabled: Option<bool>,
+) -> Result<Snippet, String> {
+    let trigger = required_trimmed(trigger, "trigger")?;
+    let expansion = required_trimmed(expansion, "expansion")?;
+    if trigger.chars().count() > PHRASE_KEY_MAX_TRIGGER_CHARS {
+        return Err("trigger must be 60 characters or fewer.".to_string());
+    }
+    if expansion.chars().count() > PHRASE_KEY_MAX_EXPANSION_CHARS {
+        return Err("expansion must be 4,000 characters or fewer.".to_string());
+    }
+    let id = id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("snippet_{}", Uuid::new_v4().simple()));
+
+    Ok(Snippet {
+        id,
+        trigger,
+        expansion,
+        enabled: enabled.unwrap_or(true),
+    })
+}
+
+fn create_phrase_key(
+    app: &AppHandle,
+    request: PhraseKeyCreateApiRequest,
+) -> Result<PhraseKeysMutationResponse, String> {
+    let snippet = normalize_phrase_key(
+        request.id,
+        request.trigger,
+        request.expansion,
+        request.enabled,
+    )?;
+    let mut settings = get_settings(app);
+    if settings
+        .snippets
+        .iter()
+        .any(|existing| existing.id == snippet.id)
+    {
+        return Err(format!("Phrase key id '{}' already exists.", snippet.id));
+    }
+    if settings.snippets.iter().any(|existing| {
+        existing
+            .trigger
+            .trim()
+            .eq_ignore_ascii_case(snippet.trigger.trim())
+    }) {
+        return Err(format!(
+            "A phrase key for trigger '{}' already exists.",
+            snippet.trigger
+        ));
+    }
+    settings.snippets.push(snippet);
+    write_settings(app, settings);
+    Ok(phrase_keys_mutation_response(app))
+}
+
+fn update_phrase_key(
+    app: &AppHandle,
+    request: PhraseKeyUpdateApiRequest,
+) -> Result<PhraseKeysMutationResponse, String> {
+    let id = required_trimmed(request.id, "id")?;
+    let snippet = normalize_phrase_key(
+        Some(id.clone()),
+        request.trigger,
+        request.expansion,
+        request.enabled,
+    )?;
+    let mut settings = get_settings(app);
+    if settings.snippets.iter().any(|existing| {
+        existing.id != id
+            && existing
+                .trigger
+                .trim()
+                .eq_ignore_ascii_case(snippet.trigger.trim())
+    }) {
+        return Err(format!(
+            "A phrase key for trigger '{}' already exists.",
+            snippet.trigger
+        ));
+    }
+    let Some(existing) = settings
+        .snippets
+        .iter_mut()
+        .find(|existing| existing.id == id)
+    else {
+        return Err(format!("Phrase key id '{id}' was not found."));
+    };
+    *existing = snippet;
+    write_settings(app, settings);
+    Ok(phrase_keys_mutation_response(app))
+}
+
+fn delete_phrase_key(app: &AppHandle, id: String) -> Result<PhraseKeysMutationResponse, String> {
+    let id = required_trimmed(id, "id")?;
+    let mut settings = get_settings(app);
+    let before = settings.snippets.len();
+    settings.snippets.retain(|snippet| snippet.id != id);
+    if settings.snippets.len() == before {
+        return Err(format!("Phrase key id '{id}' was not found."));
+    }
+    write_settings(app, settings);
+    Ok(phrase_keys_mutation_response(app))
+}
+
+fn reorder_phrase_keys(
+    app: &AppHandle,
+    ordered_ids: Vec<String>,
+) -> Result<PhraseKeysMutationResponse, String> {
+    let mut settings = get_settings(app);
+    let order = ordered_ids
+        .into_iter()
+        .map(|id| id.trim().to_string())
+        .filter(|id| !id.is_empty())
+        .enumerate()
+        .map(|(index, id)| (id, index))
+        .collect::<HashMap<_, _>>();
+    if order.is_empty() {
+        return Err("ordered_ids must include at least one phrase key id.".to_string());
+    }
+    let original_positions = settings
+        .snippets
+        .iter()
+        .enumerate()
+        .map(|(index, snippet)| (snippet.id.clone(), index))
+        .collect::<HashMap<_, _>>();
+    settings.snippets.sort_by_key(|snippet| {
+        (
+            order.get(&snippet.id).copied().unwrap_or(usize::MAX / 2),
+            original_positions
+                .get(&snippet.id)
+                .copied()
+                .unwrap_or(usize::MAX / 2),
+        )
+    });
+    write_settings(app, settings);
+    Ok(phrase_keys_mutation_response(app))
+}
+
+fn write_rules_response(app: &AppHandle) -> WriteRulesResponse {
+    let settings = get_settings(app);
+    WriteRulesResponse {
+        enabled: settings.write_rules_enabled(),
+        url_capture_enabled: settings.write_rules_url_capture_enabled,
+        rules: settings.write_rules,
+    }
+}
+
+fn write_rules_mutation_response(app: &AppHandle) -> WriteRulesMutationResponse {
+    let response = write_rules_response(app);
+    WriteRulesMutationResponse {
+        status: "ok",
+        enabled: response.enabled,
+        url_capture_enabled: response.url_capture_enabled,
+        rules: response.rules,
+    }
+}
+
 async fn handle_app_show(
     AxumState(state): AxumState<ApiState>,
     headers: HeaderMap,
@@ -1430,6 +1984,72 @@ async fn handle_app_show(
         crate::show_main_window(&state.app);
     }
     ok_response()
+}
+
+async fn handle_app_navigate(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<AppNavigateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let event = match normalize_navigation_request(request) {
+        Ok(event) => event,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+
+    crate::show_main_window(&state.app);
+    if let Err(error) = state.app.emit("navigate", event.clone()) {
+        return api_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to emit navigation event: {error}"),
+        );
+    }
+
+    Json(serde_json::json!({
+        "status": "ok",
+        "view": event.view,
+        "section": event.section,
+    }))
+    .into_response()
+}
+
+async fn handle_app_navigation_schema(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    Json(navigation_schema()).into_response()
+}
+
+async fn handle_app_windows(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let mut windows = state
+        .app
+        .webview_windows()
+        .into_iter()
+        .map(|(label, window)| AppWindowDescriptor {
+            label,
+            title: window.title().ok(),
+            visible: window.is_visible().ok(),
+            focused: window.is_focused().ok(),
+            minimized: window.is_minimized().ok(),
+        })
+        .collect::<Vec<_>>();
+    windows.sort_by(|left, right| left.label.cmp(&right.label));
+
+    Json(AppWindowsResponse { windows }).into_response()
 }
 
 async fn handle_app_cancel(
@@ -2085,6 +2705,495 @@ async fn handle_screen_context_diagnostics(
     match commands::get_screen_context_diagnostics(state.app.clone()) {
         Ok(diagnostics) => Json(diagnostics).into_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_dictionary_corrections(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match list_corrections(&state.app) {
+        Ok(corrections) => Json(corrections).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_dictionary_correction_create(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CorrectionCreateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let original = match required_trimmed(request.original, "original") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    let corrected = match required_trimmed(request.corrected, "corrected") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+
+    match commands::corrections::add_manual_correction(
+        state.app.clone(),
+        original,
+        corrected,
+        request.exact_only.unwrap_or(false),
+    )
+    .and_then(|_| list_corrections(&state.app))
+    {
+        Ok(corrections) => Json(CorrectionMutationResponse {
+            status: "ok",
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_dictionary_correction_update(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CorrectionUpdateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let original = match required_trimmed(request.original, "original") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    let corrected = match required_trimmed(request.corrected, "corrected") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+
+    match commands::corrections::update_correction(
+        state.app.clone(),
+        request.id,
+        original,
+        corrected,
+    )
+    .and_then(|_| list_corrections(&state.app))
+    {
+        Ok(corrections) => Json(CorrectionMutationResponse {
+            status: "ok",
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_dictionary_correction_toggle(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CorrectionToggleApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::corrections::toggle_correction(state.app.clone(), request.id, request.active)
+        .and_then(|_| list_corrections(&state.app))
+    {
+        Ok(corrections) => Json(CorrectionMutationResponse {
+            status: "ok",
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_dictionary_correction_disabled_apps(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CorrectionDisabledAppsApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let bundle_ids = request
+        .bundle_ids
+        .into_iter()
+        .map(|bundle_id| bundle_id.trim().to_string())
+        .filter(|bundle_id| !bundle_id.is_empty())
+        .collect::<Vec<_>>();
+    match commands::corrections::set_correction_disabled_apps(
+        state.app.clone(),
+        request.id,
+        bundle_ids,
+    )
+    .and_then(|_| list_corrections(&state.app))
+    {
+        Ok(corrections) => Json(CorrectionMutationResponse {
+            status: "ok",
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_dictionary_correction_delete(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CorrectionIdApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::corrections::delete_correction(state.app.clone(), request.id)
+        .and_then(|_| list_corrections(&state.app))
+    {
+        Ok(corrections) => Json(CorrectionMutationResponse {
+            status: "ok",
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_dictionary_corrections_import(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<DictionaryImportApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let json = request
+        .json
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let path = request
+        .path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let (imported, skipped) = match (json, path) {
+        (Some(json), None) => {
+            match commands::corrections::import_corrections(state.app.clone(), json.to_string()) {
+                Ok(imported) => (imported, 0),
+                Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+            }
+        }
+        (None, Some(path)) => {
+            match commands::corrections::import_dictionary_file(state.app.clone(), path.to_string())
+            {
+                Ok(summary) => (summary.imported, summary.skipped),
+                Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+            }
+        }
+        (Some(_), Some(_)) => {
+            return api_error(
+                StatusCode::BAD_REQUEST,
+                "Provide either json or path, not both.",
+            )
+        }
+        (None, None) => {
+            return api_error(
+                StatusCode::BAD_REQUEST,
+                "Provide json or path for dictionary import.",
+            )
+        }
+    };
+
+    match list_corrections(&state.app) {
+        Ok(corrections) => Json(DictionaryImportApiResponse {
+            status: "ok",
+            imported,
+            skipped,
+            corrections,
+        })
+        .into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_dictionary_corrections_export(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::corrections::export_corrections(state.app) {
+        Ok(json) => Json(JsonExportResponse { json }).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_phrase_keys(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    Json(phrase_keys_response(&state.app)).into_response()
+}
+
+async fn handle_phrase_key_create(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeyCreateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match create_phrase_key(&state.app, request) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_phrase_key_update(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeyUpdateApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match update_phrase_key(&state.app, request) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_phrase_key_delete(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeyIdApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match delete_phrase_key(&state.app, request.id) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_phrase_keys_import(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeysImportApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    if request.json.trim().is_empty() {
+        return api_error(StatusCode::BAD_REQUEST, "json is required.");
+    }
+    match crate::shortcut::import_snippets(state.app.clone(), request.json) {
+        Ok(imported) => {
+            let response = phrase_keys_response(&state.app);
+            Json(PhraseKeysImportApiResponse {
+                status: "ok",
+                imported,
+                enabled: response.enabled,
+                snippets: response.snippets,
+            })
+            .into_response()
+        }
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_phrase_keys_export(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::shortcut::export_snippets(state.app) {
+        Ok(json) => Json(JsonExportResponse { json }).into_response(),
+        Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
+    }
+}
+
+async fn handle_phrase_keys_enabled(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeysEnabledApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::shortcut::change_snippets_enabled_setting(state.app.clone(), request.enabled) {
+        Ok(()) => Json(phrase_keys_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_phrase_keys_reorder(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<PhraseKeysReorderApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match reorder_phrase_keys(&state.app, request.ordered_ids) {
+        Ok(response) => Json(response).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rules(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    Json(write_rules_response(&state.app)).into_response()
+}
+
+async fn handle_write_rule_upsert(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(rule): Json<WriteRule>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::write_rules::upsert_write_rule(state.app.clone(), rule) {
+        Ok(_) => Json(write_rules_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rule_delete(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRuleDeleteApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let id = match required_trimmed(request.id, "id") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    match commands::write_rules::delete_write_rule(state.app.clone(), id) {
+        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rule_preview(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRulePreviewApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    let rule_id = match required_trimmed(request.rule_id, "rule_id") {
+        Ok(value) => value,
+        Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
+    };
+    match commands::write_rules::preview_write_rule_text(state.app, rule_id, request.text).await {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rules_reorder(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRuleReorderApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::write_rules::reorder_write_rules(state.app.clone(), request.ordered_ids) {
+        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rule_test_resolve(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRuleResolveApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::write_rules::test_resolve_write_rule(
+        state.app,
+        request.bundle_id,
+        request.app_name,
+        request.url,
+    ) {
+        Ok(resolved) => Json(resolved).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rules_enabled(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRulesEnabledApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match crate::shortcut::change_write_rules_enabled_setting(state.app.clone(), request.enabled) {
+        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
+    }
+}
+
+async fn handle_write_rules_url_capture_enabled(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<WriteRulesUrlCaptureApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_authorized(&state.app, &headers) {
+        return *response;
+    }
+
+    match commands::write_rules::change_write_rules_url_capture_enabled_setting(
+        state.app.clone(),
+        request.enabled,
+    ) {
+        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+        Err(error) => api_error(StatusCode::BAD_REQUEST, error),
     }
 }
 
@@ -3605,6 +4714,58 @@ mod tests {
         assert!(!is_patchable_setting("overlay_position"));
         assert!(!is_patchable_setting("debug_mode"));
         assert!(!is_patchable_setting("post_process_api_keys"));
+        assert!(!is_patchable_setting("snippets"));
+        assert!(!is_patchable_setting("snippets_enabled"));
+        assert!(!is_patchable_setting("write_rules"));
+        assert!(!is_patchable_setting("write_rules_url_capture_enabled"));
+    }
+
+    #[test]
+    fn api_navigation_normalizes_aliases_and_sections() {
+        let request = AppNavigateApiRequest {
+            view: "story_studio".to_string(),
+            section: None,
+        };
+        let event = normalize_navigation_request(request).unwrap();
+        assert_eq!(event.view, "listen");
+        assert_eq!(event.section.as_deref(), Some("story-studio"));
+
+        let request = AppNavigateApiRequest {
+            view: "listen".to_string(),
+            section: Some("create-voices".to_string()),
+        };
+        let event = normalize_navigation_request(request).unwrap();
+        assert_eq!(event.view, "listen");
+        assert_eq!(event.section.as_deref(), Some("voice-design"));
+
+        let request = AppNavigateApiRequest {
+            view: "unknown".to_string(),
+            section: None,
+        };
+        assert!(normalize_navigation_request(request).is_err());
+    }
+
+    #[test]
+    fn api_phrase_key_validation_trims_and_rejects_empty_fields() {
+        let snippet = normalize_phrase_key(
+            Some(" custom ".to_string()),
+            " trigger ".to_string(),
+            " expansion ".to_string(),
+            Some(false),
+        )
+        .unwrap();
+        assert_eq!(snippet.id, "custom");
+        assert_eq!(snippet.trigger, "trigger");
+        assert_eq!(snippet.expansion, "expansion");
+        assert!(!snippet.enabled);
+
+        assert!(normalize_phrase_key(
+            Some("id".to_string()),
+            " ".to_string(),
+            "expansion".to_string(),
+            None,
+        )
+        .is_err());
     }
 
     #[test]

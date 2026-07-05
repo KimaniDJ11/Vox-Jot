@@ -179,8 +179,22 @@ def local_model_path(model_id: str, required_files: tuple[str, ...] = ()) -> str
     return None
 
 
-def has_mlx_snapshot_weights(path: Path) -> bool:
-    if not path.is_dir() or not (path / "config.json").exists():
+def required_mlx_snapshot_files(model_id: str) -> tuple[str, ...]:
+    if model_id == "mlx-fireredasr2-aed":
+        return (
+            "cmvn.json",
+            "config.json",
+            "dict.txt",
+            "model.safetensors",
+            "train_bpe1000.model",
+        )
+    return ("config.json",)
+
+
+def has_mlx_snapshot_weights(model_id: str, path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    if not all((path / file).exists() for file in required_mlx_snapshot_files(model_id)):
         return False
     if (path / "model.safetensors").exists():
         return True
@@ -226,7 +240,7 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
             )
         )
         stt_path = stt_root / "MLX" / repo_id
-        if has_mlx_snapshot_weights(stt_path):
+        if has_mlx_snapshot_weights(model_id, stt_path):
             return str(stt_path)
 
     if model_id in GEMMA4_AUDIO_REPOS:

@@ -832,8 +832,21 @@ fn stt_sidecar_request_error_is_retryable(message: &str) -> bool {
         || lower.contains("timeout")
 }
 
-fn mlx_audio_stt_model_dir_is_runnable(path: &std::path::Path) -> bool {
-    if !path.is_dir() || !path.join("config.json").is_file() {
+fn mlx_audio_stt_model_dir_is_runnable(model_id: &str, path: &std::path::Path) -> bool {
+    if !path.is_dir() {
+        return false;
+    }
+    let required_files: &[&str] = match model_id {
+        "mlx-fireredasr2-aed" => &[
+            "cmvn.json",
+            "config.json",
+            "dict.txt",
+            "model.safetensors",
+            "train_bpe1000.model",
+        ],
+        _ => &["config.json"],
+    };
+    if !required_files.iter().all(|file| path.join(file).is_file()) {
         return false;
     }
     path.join("model.safetensors").is_file()
@@ -1352,7 +1365,7 @@ impl TranscriptionManager {
                     .model_manager
                     .get_model_path(model_id)
                     .ok()
-                    .filter(|path| mlx_audio_stt_model_dir_is_runnable(path))
+                    .filter(|path| mlx_audio_stt_model_dir_is_runnable(model_id, path))
                     .map(|path| path.to_string_lossy().to_string())
                     .or_else(|| mlx_audio_stt_model_ref(model_id).map(str::to_string))
                     .ok_or_else(|| {
@@ -2413,10 +2426,16 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
 
         std::fs::write(dir.path().join("model.safetensors"), b"weights").expect("write weights");
-        assert!(!mlx_audio_stt_model_dir_is_runnable(dir.path()));
+        assert!(!mlx_audio_stt_model_dir_is_runnable(
+            "mlx-qwen3-asr",
+            dir.path()
+        ));
 
         std::fs::write(dir.path().join("config.json"), b"{}").expect("write config");
-        assert!(mlx_audio_stt_model_dir_is_runnable(dir.path()));
+        assert!(mlx_audio_stt_model_dir_is_runnable(
+            "mlx-qwen3-asr",
+            dir.path()
+        ));
     }
 
     #[test]
@@ -2429,7 +2448,30 @@ mod tests {
         )
         .expect("write shard");
 
-        assert!(mlx_audio_stt_model_dir_is_runnable(dir.path()));
+        assert!(mlx_audio_stt_model_dir_is_runnable(
+            "mlx-vibevoice-asr-bf16",
+            dir.path()
+        ));
+    }
+
+    #[test]
+    fn mlx_audio_stt_model_dir_requires_firered_metadata() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        std::fs::write(dir.path().join("config.json"), b"{}").expect("write config");
+        std::fs::write(dir.path().join("model.safetensors"), b"weights").expect("write weights");
+        std::fs::write(dir.path().join("train_bpe1000.model"), b"tokenizer")
+            .expect("write tokenizer");
+        assert!(!mlx_audio_stt_model_dir_is_runnable(
+            "mlx-fireredasr2-aed",
+            dir.path()
+        ));
+
+        std::fs::write(dir.path().join("cmvn.json"), b"{}").expect("write cmvn");
+        std::fs::write(dir.path().join("dict.txt"), b"vocab").expect("write dict");
+        assert!(mlx_audio_stt_model_dir_is_runnable(
+            "mlx-fireredasr2-aed",
+            dir.path()
+        ));
     }
 
     #[test]

@@ -34,4 +34,15 @@ ignore = [
 
   # ferrous-opencc currently brings this in transitively.
   "RUSTSEC-2025-0141", # bincode
+
+  # Current pdf-extract/lopdf transitive with no drop-in replacement for the
+  # Reader PDF text extraction path.
+  "RUSTSEC-2026-0192", # ttf-parser unmaintained
+
+  # Linux Wayland scanner proc-macro through tauri-plugin-clipboard-manager /
+  # arboard. wayland-scanner 0.31.10 is currently latest and still pins
+  # quick-xml 0.39; the scanner parses bundled protocol XML at build time, not
+  # app/user data or macOS runtime input.
+  "RUSTSEC-2026-0194", # quick-xml duplicate attributes
+  "RUSTSEC-2026-0195", # quick-xml namespace allocation
 ]

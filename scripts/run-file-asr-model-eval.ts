@@ -346,7 +346,19 @@ function modelDownloaded(modelId: string): boolean {
   };
   const sttPath = sttMlxPaths[modelId];
   if (sttPath)
-    return modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true);
+    return modelSnapshotReady(
+      resolve(STT_MODEL_ROOT, sttPath),
+      true,
+      modelId === "mlx-fireredasr2-aed"
+        ? [
+            "cmvn.json",
+            "config.json",
+            "dict.txt",
+            "model.safetensors",
+            "train_bpe1000.model",
+          ]
+        : ["config.json"],
+    );
 
   const sttOtherPaths: Record<string, string> = {
     "gemma4-e2b-audio": "Gemma/google/gemma-4-E2B-it",
@@ -358,9 +370,13 @@ function modelDownloaded(modelId: string): boolean {
     : false;
 }
 
-function modelSnapshotReady(path: string, requireWeights = false): boolean {
+function modelSnapshotReady(
+  path: string,
+  requireWeights = false,
+  requiredFiles = ["config.json"],
+): boolean {
   if (!existsSync(path)) return false;
-  if (existsSync(resolve(path, "config.json"))) {
+  if (requiredFiles.every((file) => existsSync(resolve(path, file)))) {
     if (existsSync(resolve(path, "model.safetensors"))) return true;
     if (
       existsSync(resolve(path, "model.safetensors.index.json")) &&

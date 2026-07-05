@@ -181,6 +181,19 @@ pub fn shared_model_primary_install_dir(
     ))
 }
 
+pub fn shared_model_primary_staging_dir(
+    app: &AppHandle,
+    model_id: &str,
+) -> Result<Option<PathBuf>, String> {
+    let Some(install_dir) = shared_model_primary_install_dir(app, model_id)? else {
+        return Ok(None);
+    };
+
+    Ok(progress_dirs_for_install_dir(&install_dir)
+        .into_iter()
+        .next())
+}
+
 pub fn shared_model_candidate_dirs(
     app: &AppHandle,
     model_id: &str,
@@ -242,9 +255,11 @@ pub fn delete_shared_model_assets(app: &AppHandle, model_id: &str) -> Result<boo
 
 pub fn shared_model_has_required_files(model_id: &str, path: &Path) -> bool {
     match shared_model_family(model_id) {
-        Some(SharedModelAssetFamily::MlxAsr) => shared_mlx_asr_has_required_files(path),
+        Some(SharedModelAssetFamily::MlxAsr) => shared_mlx_asr_has_required_files(model_id, path),
         Some(SharedModelAssetFamily::GemmaAudio) => shared_gemma_audio_has_required_files(path),
-        Some(SharedModelAssetFamily::GemmaMlxAudio) => shared_mlx_asr_has_required_files(path),
+        Some(SharedModelAssetFamily::GemmaMlxAudio) => {
+            shared_mlx_asr_has_required_files(model_id, path)
+        }
         Some(SharedModelAssetFamily::HiggsAudio) => shared_higgs_audio_has_required_files(path),
         None => false,
     }
@@ -263,10 +278,30 @@ pub fn installed_shared_model_dir(
     Ok(None)
 }
 
-fn shared_mlx_asr_has_required_files(path: &Path) -> bool {
-    if !path.is_dir() || !path.join("config.json").exists() {
+fn shared_mlx_asr_required_files(model_id: &str) -> &'static [&'static str] {
+    match model_id {
+        "mlx-fireredasr2-aed" => &[
+            "cmvn.json",
+            "config.json",
+            "dict.txt",
+            "model.safetensors",
+            "train_bpe1000.model",
+        ],
+        _ => &["config.json"],
+    }
+}
+
+fn shared_mlx_asr_has_required_files(model_id: &str, path: &Path) -> bool {
+    if !path.is_dir() {
         return false;
     }
+    if !shared_mlx_asr_required_files(model_id)
+        .iter()
+        .all(|file| path.join(file).exists())
+    {
+        return false;
+    }
+
     if path.join("model.safetensors").exists() {
         return true;
     }
@@ -376,7 +411,7 @@ mod tests {
         fs::write(single_file.join("config.json"), "{}").unwrap();
         fs::write(single_file.join("model.safetensors"), "").unwrap();
         assert!(shared_model_has_required_files(
-            "mlx-fireredasr2-aed",
+            "mlx-qwen3-asr",
             &single_file
         ));
 
@@ -386,6 +421,27 @@ mod tests {
         fs::write(sharded.join("model.safetensors.index.json"), "{}").unwrap();
         fs::write(sharded.join("model-00001-of-00004.safetensors"), "").unwrap();
         assert!(shared_model_has_required_files("mlx-qwen3-asr", &sharded));
+    }
+
+    #[test]
+    fn firered_requires_complete_runtime_snapshot_metadata() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let firered = temp_dir.path().join("firered");
+        fs::create_dir(&firered).unwrap();
+        fs::write(firered.join("config.json"), "{}").unwrap();
+        fs::write(firered.join("model.safetensors"), "").unwrap();
+        fs::write(firered.join("train_bpe1000.model"), "").unwrap();
+        assert!(!shared_model_has_required_files(
+            "mlx-fireredasr2-aed",
+            &firered
+        ));
+
+        fs::write(firered.join("cmvn.json"), "{}").unwrap();
+        fs::write(firered.join("dict.txt"), "").unwrap();
+        assert!(shared_model_has_required_files(
+            "mlx-fireredasr2-aed",
+            &firered
+        ));
     }
 
     #[test]

@@ -859,6 +859,11 @@ fn install_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
 }
 
 fn staging_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
+    if let Some(path) = crate::shared_model_assets::shared_model_primary_staging_dir(app, model_id)?
+    {
+        return Ok(path);
+    }
+
     Ok(storage_paths::speech_analysis_models_dir(app)
         .map_err(|err| format!("Failed to resolve speech analysis staging dir: {err}"))?
         .join(format!("{model_id}.partial")))

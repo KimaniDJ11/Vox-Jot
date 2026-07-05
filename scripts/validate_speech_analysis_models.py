@@ -62,6 +62,8 @@ MODEL_CHECKS: tuple[ModelCheck, ...] = (
     ModelCheck("mlx-qwen3-asr", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-fireredasr2-aed", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("mlx-vibevoice-asr-bf16", "asr", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-nemotron-asr-streaming-0.6b", "asr", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-mega-asr", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("pyannote-community-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("pyannote-3-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("nemo-sortformer-4spk-v1", "diarization", "nemo", ("torch", "nemo.collections.asr"), cloud_gpu_preferred=True),
@@ -143,9 +145,28 @@ def stt_model_root() -> Path:
     return Path.home() / ".local" / "share" / "com.iriedinamik.voxjot" / "models" / "stt"
 
 
+SHARED_STT_MODEL_PATHS = {
+    "mlx-qwen3-asr-0.6b": Path("MLX/mlx-community/Qwen3-ASR-0.6B-8bit"),
+    "mlx-qwen3-asr": Path("MLX/mlx-community/Qwen3-ASR-1.7B-8bit"),
+    "mlx-fireredasr2-aed": Path("MLX/mlx-community/FireRedASR2-AED-mlx"),
+    "mlx-vibevoice-asr-bf16": Path("MLX/mlx-community/VibeVoice-ASR-bf16"),
+    "mlx-nemotron-asr-streaming-0.6b": Path("MLX/mlx-community/nemotron-3.5-asr-streaming-0.6b"),
+    "mlx-mega-asr": Path("MLX/mlx-community/Mega-ASR-8bit"),
+}
+
+
+def has_safetensors_weights(model_dir: Path) -> bool:
+    if (model_dir / "model.safetensors").exists():
+        return True
+    if not (model_dir / "model.safetensors.index.json").exists():
+        return False
+    return any(model_dir.glob("model-*.safetensors"))
+
+
 def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
     model_dir = speech_analysis_model_root() / model_id
-    model_dir = stt_model_root() / model_id if model_id.startswith("mlx-") and "asr" in model_id else model_dir
+    if model_id in SHARED_STT_MODEL_PATHS:
+        model_dir = stt_model_root() / SHARED_STT_MODEL_PATHS[model_id]
     required_files = {
         "granite-speech-4-1-2b": ("config.json", "model.safetensors.index.json"),
         "cohere-transcribe-03-2026": ("config.json", "model.safetensors"),
@@ -160,10 +181,18 @@ def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
             "tokenizer_config.json",
             "transcribe.py",
         ),
-        "mlx-qwen3-asr-0.6b": ("config.json", "model.safetensors"),
-        "mlx-qwen3-asr": ("config.json", "model.safetensors"),
-        "mlx-fireredasr2-aed": ("config.json", "model.safetensors"),
-        "mlx-vibevoice-asr-bf16": ("config.json", "model.safetensors"),
+        "mlx-qwen3-asr-0.6b": ("config.json",),
+        "mlx-qwen3-asr": ("config.json",),
+        "mlx-fireredasr2-aed": (
+            "cmvn.json",
+            "config.json",
+            "dict.txt",
+            "model.safetensors",
+            "train_bpe1000.model",
+        ),
+        "mlx-vibevoice-asr-bf16": ("config.json",),
+        "mlx-nemotron-asr-streaming-0.6b": ("config.json",),
+        "mlx-mega-asr": ("config.json",),
         "pyannote-community-1": (
             "config.yaml",
             "segmentation/pytorch_model.bin",
@@ -185,6 +214,13 @@ def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
         "whisper-diarization": ("model.bin", "config.json"),
     }
     required = required_files.get(model_id)
+    if (
+        model_id in SHARED_STT_MODEL_PATHS
+        and required
+        and all((model_dir / file_name).exists() for file_name in required)
+        and has_safetensors_weights(model_dir)
+    ):
+        return True, f"model weights downloaded at {model_dir}"
     if required and all((model_dir / file_name).exists() for file_name in required):
         return True, f"model weights downloaded at {model_dir}"
     if model_dir.exists() and any(model_dir.iterdir()):

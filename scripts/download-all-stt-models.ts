@@ -115,6 +115,21 @@ const modelSpecs: ModelSpec[] = [
     "mlx-community/Qwen3-ASR-1.7B-8bit",
   ),
   hfSnapshot(
+    "mlx-qwen3-asr-0.6b",
+    "MLX/mlx-community/Qwen3-ASR-0.6B-8bit",
+    "mlx-community/Qwen3-ASR-0.6B-8bit",
+  ),
+  hfSnapshot(
+    "mlx-fireredasr2-aed",
+    "MLX/mlx-community/FireRedASR2-AED-mlx",
+    "mlx-community/FireRedASR2-AED-mlx",
+  ),
+  hfSnapshot(
+    "mlx-vibevoice-asr-bf16",
+    "MLX/mlx-community/VibeVoice-ASR-bf16",
+    "mlx-community/VibeVoice-ASR-bf16",
+  ),
+  hfSnapshot(
     "mlx-parakeet-v3",
     "MLX/mlx-community/parakeet-tdt-0.6b-v3",
     "mlx-community/parakeet-tdt-0.6b-v3",
@@ -128,6 +143,16 @@ const modelSpecs: ModelSpec[] = [
     "mlx-voxtral-mini-4b-realtime",
     "MLX/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
     "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+  ),
+  hfSnapshot(
+    "mlx-nemotron-asr-streaming-0.6b",
+    "MLX/mlx-community/nemotron-3.5-asr-streaming-0.6b",
+    "mlx-community/nemotron-3.5-asr-streaming-0.6b",
+  ),
+  hfSnapshot(
+    "mlx-mega-asr",
+    "MLX/mlx-community/Mega-ASR-8bit",
+    "mlx-community/Mega-ASR-8bit",
   ),
 ];
 
@@ -205,6 +230,40 @@ function ensureTool(tool: string) {
 
 function hasDirectoryContents(path: string): boolean {
   return existsSync(path) && readdirSync(path).length > 0;
+}
+
+function hasSafetensorsWeights(path: string): boolean {
+  if (existsSync(resolve(path, "model.safetensors"))) return true;
+  if (!existsSync(resolve(path, "model.safetensors.index.json"))) return false;
+  return readdirSync(path).some(
+    (name) => name.startsWith("model-") && name.endsWith(".safetensors"),
+  );
+}
+
+function requiredSnapshotFiles(
+  spec: Extract<ModelSpec, { kind: "hf-snapshot" }>,
+): string[] {
+  if (spec.id === "mlx-fireredasr2-aed") {
+    return [
+      "cmvn.json",
+      "config.json",
+      "dict.txt",
+      "model.safetensors",
+      "train_bpe1000.model",
+    ];
+  }
+  return ["config.json"];
+}
+
+function snapshotReady(spec: Extract<ModelSpec, { kind: "hf-snapshot" }>) {
+  const finalPath = resolve(STT_MODELS_DIR, spec.filename);
+  return (
+    existsSync(finalPath) &&
+    requiredSnapshotFiles(spec).every((file) =>
+      existsSync(resolve(finalPath, file)),
+    ) &&
+    hasSafetensorsWeights(finalPath)
+  );
 }
 
 function githubReleaseAssetName(url: string): string | null {
@@ -352,7 +411,7 @@ function downloadSnapshot(
   force: boolean,
 ) {
   const finalPath = resolve(STT_MODELS_DIR, spec.filename);
-  if (hasDirectoryContents(finalPath) && !force) {
+  if (snapshotReady(spec) && !force) {
     console.log(`Already installed: ${spec.id}`);
     return;
   }

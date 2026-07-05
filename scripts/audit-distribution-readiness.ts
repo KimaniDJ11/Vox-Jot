@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -223,22 +223,105 @@ function hasBin(bin: string): boolean {
 
 const home = homedir();
 
-if (!hasBin("xcrun")) {
-  add("warn", "Cannot verify notarization profile (xcrun unavailable).");
-} else {
+function commandErrorDetail(error: unknown): string {
+  const err = error as {
+    message?: string;
+    stderr?: Buffer | string;
+    stdout?: Buffer | string;
+  };
+  const parts = [err.stderr, err.stdout]
+    .map((part) => {
+      if (!part) {
+        return "";
+      }
+      return Buffer.isBuffer(part) ? part.toString("utf8") : String(part);
+    })
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.join("\n") || err.message || "";
+}
+
+function runNotaryHistory(
+  args: string[],
+): { ok: true } | { ok: false; detail: string } {
   try {
-    execSync("xcrun notarytool history --keychain-profile voxjot-notary", {
-      stdio: "ignore",
+    execFileSync("/usr/bin/xcrun", ["notarytool", "history", ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
       timeout: 30_000,
     });
-  } catch {
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, detail: commandErrorDetail(error) };
+  }
+}
+
+function verifyNotaryReadiness(): void {
+  if (!hasBin("xcrun")) {
+    add("warn", "Cannot verify notarization credentials (xcrun unavailable).");
+    return;
+  }
+
+  const notaryProfile = process.env.NOTARY_KEYCHAIN_PROFILE || "voxjot-notary";
+  const applePassword =
+    process.env.APPLE_PASSWORD || process.env.APPLE_ID_PASSWORD;
+
+  if (process.env.APPLE_ID && applePassword && process.env.APPLE_TEAM_ID) {
+    const result = runNotaryHistory([
+      "--apple-id",
+      process.env.APPLE_ID,
+      "--team-id",
+      process.env.APPLE_TEAM_ID,
+      "--password",
+      applePassword,
+    ]);
+    if (!result.ok) {
+      add(
+        "fail",
+        "Apple ID environment notarization credentials are not accepted.",
+        result.detail ||
+          "Check APPLE_ID, APPLE_PASSWORD or APPLE_ID_PASSWORD, and APPLE_TEAM_ID.",
+      );
+    }
+    return;
+  }
+
+  if (
+    process.env.APPLE_API_KEY &&
+    process.env.APPLE_API_ISSUER &&
+    process.env.APPLE_API_KEY_PATH
+  ) {
+    const result = runNotaryHistory([
+      "--key",
+      process.env.APPLE_API_KEY_PATH,
+      "--key-id",
+      process.env.APPLE_API_KEY,
+      "--issuer",
+      process.env.APPLE_API_ISSUER,
+    ]);
+    if (!result.ok) {
+      add(
+        "fail",
+        "App Store Connect API notarization credentials are not accepted.",
+        result.detail ||
+          "Check APPLE_API_KEY, APPLE_API_ISSUER, and APPLE_API_KEY_PATH.",
+      );
+    }
+    return;
+  }
+
+  const result = runNotaryHistory(["--keychain-profile", notaryProfile]);
+  if (!result.ok) {
     add(
       "fail",
-      'Notarization profile "voxjot-notary" is not accessible.',
-      "Restore: bun run mac:setup-notary (Apple ID + Team ID NS5M2UJLKP + app-specific password). It can disappear intermittently in this environment.",
+      `Notarization profile "${notaryProfile}" is not accepted by notarytool.`,
+      result.detail ||
+        `Restore with bun run mac:setup-notary or set NOTARY_KEYCHAIN_PROFILE to a valid profile. If notarytool returns HTTP 403, accept the pending Apple Developer agreement before retrying.`,
     );
   }
 }
+
+verifyNotaryReadiness();
 
 const updaterKey = join(home, ".tauri", "voxjot-updater.key");
 const updaterPwd = join(home, ".tauri", "voxjot-updater.password");

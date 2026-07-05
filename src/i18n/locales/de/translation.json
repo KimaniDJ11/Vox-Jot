@@ -2264,6 +2264,16 @@
         "emptyDetail": "Keine beobachteten Ordner",
         "missing": "Ordner fehlt",
         "paused": "Pausiert"
+      },
+      "scan": {
+        "title": "Vorhandene Dateien transkribieren?",
+        "subtitle": "„{{folder}}“ enthält bereits {{count}} Audio- oder Videodatei(en). Neue Dateien werden automatisch transkribiert.",
+        "selectAll": "Alle auswählen ({{count}})",
+        "transcribed": "Transkribiert",
+        "skip": "Überspringen",
+        "confirm": "{{count}} Datei(en) transkribieren",
+        "empty": "In diesem Ordner sind noch keine Audio- oder Videodateien. Neue Dateien werden automatisch transkribiert.",
+        "action": "Vorhandene Dateien transkribieren"
       }
     },
     "reader": {

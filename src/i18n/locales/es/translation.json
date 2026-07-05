@@ -2264,6 +2264,16 @@
         "emptyDetail": "No hay carpetas vigiladas",
         "missing": "Carpeta faltante",
         "paused": "En pausa"
+      },
+      "scan": {
+        "title": "¿Transcribir archivos existentes?",
+        "subtitle": "«{{folder}}» ya contiene {{count}} archivo(s) de audio o vídeo. Los archivos nuevos se transcriben automáticamente.",
+        "selectAll": "Seleccionar todo ({{count}})",
+        "transcribed": "Transcrito",
+        "skip": "Omitir",
+        "confirm": "Transcribir {{count}} archivo(s)",
+        "empty": "Todavía no hay archivos de audio o vídeo en esta carpeta. Los archivos nuevos se transcriben automáticamente.",
+        "action": "Transcribir archivos existentes"
       }
     },
     "reader": {

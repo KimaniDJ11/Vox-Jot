@@ -1692,6 +1692,34 @@ async addWatchFolder(path: string, outputFormat: WatchFolderOutputFormat, delete
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * List audio/video files already present in a watched folder. Used by the
+ * picker dialog shown right after adding a folder (and on demand from the
+ * folder card) so pre-existing files can be transcribed too — the
+ * filesystem watcher itself only reacts to new events.
+ */
+async listWatchFolderFiles(id: string) : Promise<Result<WatchFolderExistingFile[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_watch_folder_files", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Queue specific pre-existing files from a watched folder for
+ * transcription through the normal watch-folder pipeline (same progress
+ * events, concurrency limits, and output handling as new files). Returns
+ * how many files were actually queued.
+ */
+async transcribeWatchFolderFiles(id: string, paths: string[]) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("transcribe_watch_folder_files", { id, paths }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async removeWatchFolder(id: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("remove_watch_folder", { id }) };
@@ -3204,6 +3232,24 @@ delete_after?: boolean;
  * disabled rows entirely so users can pause without removing them.
  */
 enabled?: boolean }
+/**
+ * One audio/video file that already exists inside a watched folder,
+ * surfaced so the user can pick which pre-existing files to transcribe.
+ */
+export type WatchFolderExistingFile = {
+/**
+ * Absolute path, fed back into `transcribe_watch_folder_files`.
+ */
+path: string;
+/**
+ * Path relative to the watched root, for display.
+ */
+relative_path: string; size_bytes: number;
+/**
+ * True when a transcript in the folder's current output format is
+ * already sitting next to the source file.
+ */
+has_transcript: boolean }
 /**
  * Output format for files written by the watch-folder service.
  */

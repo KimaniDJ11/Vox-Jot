@@ -2264,6 +2264,16 @@
         "emptyDetail": "Aucun dossier surveillé",
         "missing": "Dossier manquant",
         "paused": "En pause"
+      },
+      "scan": {
+        "title": "Transcrire les fichiers existants ?",
+        "subtitle": "« {{folder}} » contient déjà {{count}} fichier(s) audio ou vidéo. Les nouveaux fichiers sont transcrits automatiquement.",
+        "selectAll": "Tout sélectionner ({{count}})",
+        "transcribed": "Transcrit",
+        "skip": "Ignorer",
+        "confirm": "Transcrire {{count}} fichier(s)",
+        "empty": "Aucun fichier audio ou vidéo dans ce dossier pour l'instant. Les nouveaux fichiers sont transcrits automatiquement.",
+        "action": "Transcrire les fichiers existants"
       }
     },
     "reader": {

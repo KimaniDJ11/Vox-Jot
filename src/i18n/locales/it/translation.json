@@ -2264,6 +2264,16 @@
         "emptyDetail": "Nessuna cartella monitorata",
         "missing": "Cartella mancante",
         "paused": "In pausa"
+      },
+      "scan": {
+        "title": "Trascrivere i file esistenti?",
+        "subtitle": "“{{folder}}” contiene già {{count}} file audio o video. I nuovi file vengono trascritti automaticamente.",
+        "selectAll": "Seleziona tutto ({{count}})",
+        "transcribed": "Trascritto",
+        "skip": "Salta",
+        "confirm": "Trascrivi {{count}} file",
+        "empty": "In questa cartella non ci sono ancora file audio o video. I nuovi file vengono trascritti automaticamente.",
+        "action": "Trascrivi i file esistenti"
       }
     },
     "reader": {

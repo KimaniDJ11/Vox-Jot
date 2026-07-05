@@ -581,6 +581,15 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
             anyhow::anyhow!("Failed to initialize transcription manager: {error:#}")
         })?,
     );
+    // Dedicated engine instance for file/watch-folder transcription so long
+    // file jobs run in parallel with live dictation instead of queuing behind
+    // its engine lock. Loads nothing until the first file job; the idle
+    // watcher reclaims its RAM afterwards.
+    let file_transcription_engine = Arc::new(
+        TranscriptionManager::new_background(app_handle, model_manager.clone()).map_err(
+            |error| anyhow::anyhow!("Failed to initialize file transcription engine: {error:#}"),
+        )?,
+    );
     let history_manager = Arc::new(
         HistoryManager::new(app_handle)
             .map_err(|error| anyhow::anyhow!("Failed to initialize history manager: {error:#}"))?,
@@ -606,6 +615,9 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     app_handle.manage(recording_manager.clone());
     app_handle.manage(model_manager.clone());
     app_handle.manage(transcription_manager.clone());
+    app_handle.manage(crate::managers::FileTranscriptionEngine(
+        file_transcription_engine.clone(),
+    ));
     app_handle.manage(history_manager.clone());
     app_handle.manage(tts_manager.clone());
     app_handle.manage(continuous_cloning_manager.clone());
@@ -850,6 +862,10 @@ fn shutdown_core_logic(app: &AppHandle) {
 
     if let Some(transcription) = app.try_state::<Arc<TranscriptionManager>>() {
         transcription.shutdown();
+    }
+
+    if let Some(file_engine) = app.try_state::<crate::managers::FileTranscriptionEngine>() {
+        file_engine.0.shutdown();
     }
 
     if let Some(sidecar) = app.try_state::<Arc<SidecarManager>>() {
@@ -1126,6 +1142,8 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::export_subtitles_vtt,
         commands::transcription::list_watch_folders,
         commands::transcription::add_watch_folder,
+        commands::transcription::list_watch_folder_files,
+        commands::transcription::transcribe_watch_folder_files,
         commands::transcription::remove_watch_folder,
         commands::transcription::set_watch_folder_enabled,
         commands::transcription::update_watch_folder_format,

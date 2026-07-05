@@ -7,12 +7,15 @@
 //!   the `notify` crate, then debounce them so a file that's still being
 //!   copied isn't transcribed mid-write. The supervisor also does a cheap
 //!   root-exists health check so a deleted watched folder is not silent.
-//! - When a settled audio file appears, we run the existing
-//!   `transcribe_with_segments` pipeline on a Tokio task and write the
-//!   transcript next to the source file (or as `.srt`/`.vtt`).
+//! - When a settled audio file appears, we run the same `transcribe_file_impl`
+//!   pipeline as the File Transcription panel (File-ASR model selection,
+//!   personal dictionary, speaker labels) and write the transcript next to
+//!   the source file (or as `.srt`/`.vtt`).
 //! - All work happens off the dictation hot path. Recording-start latency
 //!   is unaffected because nothing in this module runs unless a file
-//!   actually changes.
+//!   actually changes, and transcription itself runs on the dedicated
+//!   background engine (or a sidecar process), never the live dictation
+//!   engine's lock.
 //!
 //! ## Lifecycle
 //!
@@ -21,9 +24,10 @@
 //! re-initializes the underlying watcher whenever the list changes
 //! (driven by a `settings-changed` event listener registered in `lib.rs`).
 
+use crate::correction_tracker::store::CorrectionStore;
 use crate::helpers::subtitles::{to_srt, to_vtt};
-use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, WatchFolderConfig, WatchFolderOutputFormat};
+use crate::sidecar::SidecarManager;
 use anyhow::Result;
 use log::{debug, info, warn};
 use notify::{RecursiveMode, Watcher};
@@ -39,10 +43,14 @@ use tokio::sync::Semaphore;
 
 /// Audio/video extensions we'll auto-transcribe. Mirrors the frontend
 /// drag-drop allow-list in `FileTranscriptionPanel.tsx`.
-const AUDIO_VIDEO_EXTENSIONS: &[&str] = &[
+pub const AUDIO_VIDEO_EXTENSIONS: &[&str] = &[
     "wav", "mp3", "m4a", "aac", "flac", "ogg", "oga", "opus", "wma", "mp4", "mov", "m4v", "webm",
     "mkv", "3gp",
 ];
+/// Cap for the "existing files" scan so a watched Downloads-style folder
+/// with tens of thousands of entries cannot stall the UI thread that
+/// awaits the command.
+pub const EXISTING_SCAN_MAX_FILES: usize = 1000;
 const WATCH_FOLDER_MAX_CONCURRENT_FILES: usize = 2;
 const WATCH_FOLDER_STABLE_CHECKS: usize = 3;
 const WATCH_FOLDER_STABLE_INTERVAL: Duration = Duration::from_millis(500);
@@ -124,6 +132,25 @@ impl WatchFolderManager {
     /// rebuilds its watch list on the next tick.
     pub fn reload_from_settings(&self) {
         self.config_version.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Push files that already existed in a watched folder through the same
+    /// bounded pipeline used for filesystem events. Called from the
+    /// `transcribe_watch_folder_files` command when the user opts in to
+    /// transcribing pre-existing files. Returns how many files were queued
+    /// (files already in flight are skipped by `maybe_handle_file`).
+    pub fn enqueue_existing_files(
+        self: &Arc<Self>,
+        paths: Vec<PathBuf>,
+        cfg: &WatchFolderConfig,
+    ) -> usize {
+        let mut queued = 0;
+        for path in paths {
+            if self.maybe_handle_file(path, cfg.clone(), PathBuf::from(&cfg.path)) {
+                queued += 1;
+            }
+        }
+        queued
     }
 
     /// Stop the supervisor and join it before process teardown reaches native
@@ -264,20 +291,20 @@ impl WatchFolderManager {
         }
     }
 
-    fn maybe_handle_file(self: &Arc<Self>, path: PathBuf, cfg: WatchFolderConfig, _root: PathBuf) {
+    /// Returns `true` when the file was accepted and queued for processing,
+    /// `false` when it was filtered out (wrong type, missing, already in flight).
+    fn maybe_handle_file(
+        self: &Arc<Self>,
+        path: PathBuf,
+        cfg: WatchFolderConfig,
+        _root: PathBuf,
+    ) -> bool {
         // Only process actual audio/video files.
-        let Some(ext) = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_ascii_lowercase())
-        else {
-            return;
-        };
-        if !AUDIO_VIDEO_EXTENSIONS.iter().any(|allowed| *allowed == ext) {
-            return;
+        if !is_supported_media_file(&path) {
+            return false;
         }
         if !path.is_file() {
-            return;
+            return false;
         }
 
         // Skip if we're already processing this file.
@@ -287,14 +314,14 @@ impl WatchFolderManager {
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if !in_flight.insert(path.clone()) {
-                return;
+                return false;
             }
         }
 
         let manager = Arc::clone(self);
         let slots = Arc::clone(&self.processing_slots);
-        // The transcription call is sync; queue an async task first so heavy
-        // blocking work is bounded by the semaphore.
+        // Queue an async task so the heavy decode/transcribe pipeline is
+        // bounded by the semaphore.
         tauri::async_runtime::spawn(async move {
             let permit = match slots.acquire_owned().await {
                 Ok(permit) => permit,
@@ -309,18 +336,13 @@ impl WatchFolderManager {
                 }
             };
 
-            let manager_for_blocking = Arc::clone(&manager);
-            let path_for_blocking = path.clone();
-            let join_result = tauri::async_runtime::spawn_blocking(move || {
-                manager_for_blocking.process_file(path_for_blocking, cfg);
-            })
-            .await;
+            let manager_for_processing = Arc::clone(&manager);
+            let path_for_processing = path.clone();
+            manager_for_processing
+                .process_file(path_for_processing, cfg)
+                .await;
 
             drop(permit);
-
-            if let Err(err) = join_result {
-                warn!("watch-folders: processing task failed to join: {err}");
-            }
 
             manager
                 .in_flight
@@ -328,9 +350,10 @@ impl WatchFolderManager {
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .remove(&path);
         });
+        true
     }
 
-    fn process_file(&self, path: PathBuf, cfg: WatchFolderConfig) {
+    async fn process_file(&self, path: PathBuf, cfg: WatchFolderConfig) {
         let path_str = path.to_string_lossy().to_string();
         let _ = self.app.emit(
             "watch-folder-progress",
@@ -342,43 +365,65 @@ impl WatchFolderManager {
             },
         );
 
-        let manager = match self.app.try_state::<Arc<TranscriptionManager>>() {
-            Some(m) => m.inner().clone(),
-            None => {
-                warn!("watch-folders: TranscriptionManager not available");
-                return;
-            }
+        let Some(sidecar_manager) = self
+            .app
+            .try_state::<Arc<SidecarManager>>()
+            .map(|state| state.inner().clone())
+        else {
+            self.emit_failure(&cfg, &path_str, "SidecarManager not available");
+            return;
+        };
+        let Some(correction_store) = self
+            .app
+            .try_state::<Arc<CorrectionStore>>()
+            .map(|state| state.inner().clone())
+        else {
+            self.emit_failure(&cfg, &path_str, "CorrectionStore not available");
+            return;
         };
 
-        if let Err(err) = wait_for_stable_file(&path) {
-            self.emit_failure(&cfg, &path_str, &err);
-            return;
+        // The stability probe sleeps in a loop; keep it off the async runtime.
+        let stability_path = path.clone();
+        let stability =
+            tauri::async_runtime::spawn_blocking(move || wait_for_stable_file(&stability_path))
+                .await;
+        match stability {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                self.emit_failure(&cfg, &path_str, &err);
+                return;
+            }
+            Err(err) => {
+                self.emit_failure(&cfg, &path_str, &format!("stability check failed: {err}"));
+                return;
+            }
         }
 
-        // Reuse the same audio-decoding helpers the file command uses.
-        let audio_result = decode_audio_file(&path);
-        let audio = match audio_result {
-            Ok(samples) => samples,
+        // Same pipeline as the File Transcription panel: decodes the media,
+        // honors the File-ASR/diarization/emotion selection (sidecar models
+        // run in their own process), applies the personal dictionary, and
+        // runs in-process ASR on the dedicated background engine so live
+        // dictation stays responsive throughout.
+        let result = crate::commands::transcription::transcribe_file_impl(
+            self.app.clone(),
+            sidecar_manager,
+            correction_store,
+            path_str.clone(),
+        )
+        .await;
+        let file_result = match result {
+            Ok(result) => result,
             Err(err) => {
                 self.emit_failure(&cfg, &path_str, &err);
                 return;
             }
         };
 
-        let result = manager.transcribe_with_segments(Arc::new(audio));
-        let (text, segments) = match result {
-            Ok(pair) => pair,
-            Err(err) => {
-                self.emit_failure(&cfg, &path_str, &err.to_string());
-                return;
-            }
-        };
-
         let output_path = build_output_path(&path, cfg.output_format);
         let body = match cfg.output_format {
-            WatchFolderOutputFormat::Text => text.clone(),
-            WatchFolderOutputFormat::Srt => to_srt(&segments),
-            WatchFolderOutputFormat::Vtt => to_vtt(&segments),
+            WatchFolderOutputFormat::Text => file_result.text,
+            WatchFolderOutputFormat::Srt => to_srt(&file_result.segments),
+            WatchFolderOutputFormat::Vtt => to_vtt(&file_result.segments),
         };
 
         if let Err(err) = std::fs::write(&output_path, body.as_bytes()) {
@@ -470,7 +515,57 @@ fn find_owning_folder<'a>(
         .map(|(root, cfg)| (root.clone(), cfg))
 }
 
-fn build_output_path(input: &Path, format: WatchFolderOutputFormat) -> PathBuf {
+/// True when the path has one of the audio/video extensions we transcribe.
+pub fn is_supported_media_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .is_some_and(|ext| AUDIO_VIDEO_EXTENSIONS.iter().any(|allowed| *allowed == ext))
+}
+
+/// Recursively list audio/video files already present under `root`,
+/// mirroring the watcher's `RecursiveMode::Recursive`. Hidden entries are
+/// skipped and the walk stops at [`EXISTING_SCAN_MAX_FILES`] results so a
+/// huge folder cannot hang the command. Results are sorted for stable UI.
+pub fn scan_existing_media_files(root: &Path) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+
+    while let Some(dir) = pending.pop() {
+        if found.len() >= EXISTING_SCAN_MAX_FILES {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if found.len() >= EXISTING_SCAN_MAX_FILES {
+                break;
+            }
+            let path = entry.path();
+            let hidden = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with('.'));
+            if hidden {
+                continue;
+            }
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_dir() {
+                pending.push(path);
+            } else if file_type.is_file() && is_supported_media_file(&path) {
+                found.push(path);
+            }
+        }
+    }
+
+    found.sort();
+    found
+}
+
+pub fn build_output_path(input: &Path, format: WatchFolderOutputFormat) -> PathBuf {
     let ext = match format {
         WatchFolderOutputFormat::Text => "txt",
         WatchFolderOutputFormat::Srt => "srt",
@@ -527,21 +622,47 @@ fn wait_for_stable_file(path: &Path) -> Result<(), String> {
     }
 }
 
-/// Decode an audio file into 16 kHz mono f32 samples by reusing the
-/// helpers from `commands::transcription`. We call them directly (rather
-/// than invoking the Tauri command) so we don't need the `State` plumbing.
-fn decode_audio_file(path: &Path) -> Result<Vec<f32>, String> {
-    let path_str = path.to_string_lossy().to_string();
-    let is_wav = path_str.to_ascii_lowercase().ends_with(".wav");
-    if is_wav {
-        let (mono, sample_rate) = crate::commands::transcription::read_wav_as_mono_f32(&path_str)?;
-        Ok(crate::commands::transcription::resample_linear(
-            &mono,
-            sample_rate,
-            16_000,
-        ))
-    } else {
-        let ffmpeg_exe = crate::commands::transcription::resolve_ffmpeg_exe();
-        crate::commands::transcription::decode_with_ffmpeg_blocking(&ffmpeg_exe, &path_str)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_finds_nested_media_and_skips_hidden_and_unsupported() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        let nested = root.join("interviews/2026");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(root.join(".cache")).unwrap();
+
+        std::fs::write(root.join("a.mp3"), b"x").unwrap();
+        std::fs::write(nested.join("b.MOV"), b"x").unwrap(); // extension case-insensitive
+        std::fs::write(root.join("notes.txt"), b"x").unwrap(); // unsupported
+        std::fs::write(root.join(".hidden.wav"), b"x").unwrap(); // hidden file
+        std::fs::write(root.join(".cache").join("c.wav"), b"x").unwrap(); // hidden dir
+
+        let found = scan_existing_media_files(root);
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| {
+                p.strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect();
+        assert_eq!(names, vec!["a.mp3", "interviews/2026/b.MOV"]);
+    }
+
+    #[test]
+    fn output_path_replaces_extension_per_format() {
+        let input = Path::new("/tmp/recording.mp3");
+        assert_eq!(
+            build_output_path(input, WatchFolderOutputFormat::Text),
+            Path::new("/tmp/recording.txt")
+        );
+        assert_eq!(
+            build_output_path(input, WatchFolderOutputFormat::Srt),
+            Path::new("/tmp/recording.srt")
+        );
     }
 }

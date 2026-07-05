@@ -2260,6 +2260,16 @@
         "emptyDetail": "沒有已監看資料夾",
         "missing": "資料夾遺失",
         "paused": "已暫停"
+      },
+      "scan": {
+        "title": "要轉錄現有檔案嗎？",
+        "subtitle": "「{{folder}}」已包含 {{count}} 個音訊或影片檔案。新檔案會自動轉錄。",
+        "selectAll": "全選（{{count}}）",
+        "transcribed": "已轉錄",
+        "skip": "略過",
+        "confirm": "轉錄 {{count}} 個檔案",
+        "empty": "此資料夾中還沒有音訊或影片檔案。新檔案會自動轉錄。",
+        "action": "轉錄現有檔案"
       }
     },
     "reader": {

@@ -5,7 +5,9 @@ use crate::audio_toolkit::{
 use crate::correction_tracker::store::CorrectionStore;
 use crate::helpers::subtitles::{to_srt, to_vtt, TimedSegment};
 use crate::managers::transcription::TranscriptionManager;
-use crate::managers::watch_folders::WatchFolderManager;
+use crate::managers::watch_folders::{
+    build_output_path, is_supported_media_file, scan_existing_media_files, WatchFolderManager,
+};
 use crate::settings::{
     get_settings, write_settings, ModelUnloadTimeout, WatchFolderConfig, WatchFolderOutputFormat,
 };
@@ -14,6 +16,7 @@ use crate::speech_analysis::{
     self, EmotionResult, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment,
     CURRENT_DICTATION_ASR_ID,
 };
+use log::warn;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -24,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 const SPEECH_ANALYSIS_SIDECAR_SOURCE: &str =
     include_str!("../../../scripts/speech_analysis_sidecar.py");
@@ -133,8 +136,16 @@ pub fn get_runtime_memory_status(
 #[tauri::command]
 #[specta::specta]
 pub fn unload_model_manually(
+    app: AppHandle,
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
 ) -> Result<(), String> {
+    // "Unload" means "free the RAM now", so also drop the background
+    // file-transcription engine if it is holding a model copy.
+    if let Some(file_engine) = app.try_state::<crate::managers::FileTranscriptionEngine>() {
+        if let Err(e) = file_engine.0.unload_model() {
+            warn!("Failed to unload background file engine: {}", e);
+        }
+    }
     transcription_manager
         .unload_model()
         .map_err(|e| format!("Failed to unload model: {}", e))
@@ -1397,14 +1408,12 @@ pub struct TranscriptionFileResult {
 #[specta::specta]
 pub async fn transcribe_file(
     app: AppHandle,
-    transcription_manager: State<'_, Arc<TranscriptionManager>>,
     sidecar_manager: State<'_, Arc<SidecarManager>>,
     correction_store: State<'_, Arc<CorrectionStore>>,
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
     transcribe_file_impl(
         app,
-        Arc::clone(transcription_manager.inner()),
         Arc::clone(sidecar_manager.inner()),
         Arc::clone(correction_store.inner()),
         path,
@@ -1414,11 +1423,14 @@ pub async fn transcribe_file(
 
 pub(crate) async fn transcribe_file_impl(
     app: AppHandle,
-    manager: Arc<TranscriptionManager>,
     speech_sidecar_manager: Arc<SidecarManager>,
     correction_store: Arc<CorrectionStore>,
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
+    // File jobs run on the dedicated background engine (or the live manager
+    // for remote-runtime models) so they never block live dictation.
+    let manager = crate::managers::file_transcription_engine(&app)
+        .ok_or_else(|| "TranscriptionManager not available".to_string())?;
     let selection = speech_analysis::selection_from_settings(&app);
     let asr_model_id = selection.asr_model_id.clone();
     let diarization_model_id = selection.diarization_model_id.clone();
@@ -1629,6 +1641,116 @@ pub fn add_watch_folder(
     Ok(cfg)
 }
 
+/// One audio/video file that already exists inside a watched folder,
+/// surfaced so the user can pick which pre-existing files to transcribe.
+#[derive(Serialize, Type, Debug, Clone)]
+pub struct WatchFolderExistingFile {
+    /// Absolute path, fed back into `transcribe_watch_folder_files`.
+    pub path: String,
+    /// Path relative to the watched root, for display.
+    pub relative_path: String,
+    pub size_bytes: u32,
+    /// True when a transcript in the folder's current output format is
+    /// already sitting next to the source file.
+    pub has_transcript: bool,
+}
+
+fn find_watch_folder(app: &AppHandle, id: &str) -> Result<WatchFolderConfig, String> {
+    get_settings(app)
+        .watch_folders
+        .into_iter()
+        .find(|f| f.id == id)
+        .ok_or_else(|| format!("watch folder {} not found", id))
+}
+
+fn resolve_watch_folder_existing_file(canonical_root: &Path, raw: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(raw);
+    if !path.is_file() {
+        return Err(format!("'{}' no longer exists", raw));
+    }
+    let canonical_path = path
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve '{}': {}", raw, e))?;
+    // The paths come back from the frontend, so validate against resolved
+    // filesystem locations. A lexical check would allow `..` or symlink
+    // escapes from the watched root.
+    if !canonical_path.starts_with(canonical_root) {
+        return Err(format!("'{}' is outside the watched folder", raw));
+    }
+    if !is_supported_media_file(&canonical_path) {
+        return Err(format!("'{}' is not a supported audio/video file", raw));
+    }
+    Ok(canonical_path)
+}
+
+/// List audio/video files already present in a watched folder. Used by the
+/// picker dialog shown right after adding a folder (and on demand from the
+/// folder card) so pre-existing files can be transcribed too — the
+/// filesystem watcher itself only reacts to new events.
+#[tauri::command]
+#[specta::specta]
+pub fn list_watch_folder_files(
+    app: AppHandle,
+    id: String,
+) -> Result<Vec<WatchFolderExistingFile>, String> {
+    let cfg = find_watch_folder(&app, &id)?;
+    let root = PathBuf::from(&cfg.path);
+    if !root.is_dir() {
+        return Err(format!("'{}' is not a folder", cfg.path));
+    }
+
+    let files = scan_existing_media_files(&root)
+        .into_iter()
+        .map(|path| {
+            let size_bytes = std::fs::metadata(&path)
+                .map(|m| m.len().min(u32::MAX as u64) as u32)
+                .unwrap_or(0);
+            let has_transcript = build_output_path(&path, cfg.output_format).is_file();
+            let relative_path = path
+                .strip_prefix(&root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
+            WatchFolderExistingFile {
+                path: path.to_string_lossy().to_string(),
+                relative_path,
+                size_bytes,
+                has_transcript,
+            }
+        })
+        .collect();
+    Ok(files)
+}
+
+/// Queue specific pre-existing files from a watched folder for
+/// transcription through the normal watch-folder pipeline (same progress
+/// events, concurrency limits, and output handling as new files). Returns
+/// how many files were actually queued.
+#[tauri::command]
+#[specta::specta]
+pub fn transcribe_watch_folder_files(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    id: String,
+    paths: Vec<String>,
+) -> Result<u32, String> {
+    let cfg = find_watch_folder(&app, &id)?;
+    let root = PathBuf::from(&cfg.path);
+    if !root.is_dir() {
+        return Err(format!("'{}' is not a folder", cfg.path));
+    }
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve watched folder '{}': {}", cfg.path, e))?;
+
+    let mut accepted = Vec::new();
+    for raw in paths {
+        accepted.push(resolve_watch_folder_existing_file(&canonical_root, &raw)?);
+    }
+
+    Ok(watch_manager.enqueue_existing_files(accepted, &cfg) as u32)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn remove_watch_folder(
@@ -1733,6 +1855,66 @@ mod tests {
 
         assert!(!folders[0].missing);
         assert!(folders[1].missing);
+    }
+
+    #[test]
+    fn watch_folder_existing_file_validation_accepts_nested_media() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path().join("watch");
+        let nested = root.join("nested");
+        std::fs::create_dir_all(&nested).expect("nested dir");
+        let audio = nested.join("clip.MP3");
+        std::fs::write(&audio, b"audio").expect("audio file");
+
+        let resolved = resolve_watch_folder_existing_file(
+            &root.canonicalize().expect("canonical root"),
+            &audio.to_string_lossy(),
+        )
+        .expect("media file should be accepted");
+
+        assert_eq!(resolved, audio.canonicalize().expect("canonical audio"));
+    }
+
+    #[test]
+    fn watch_folder_existing_file_validation_rejects_parent_escape() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path().join("watch");
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(&root).expect("root dir");
+        std::fs::create_dir_all(&outside).expect("outside dir");
+        let audio = outside.join("clip.mp3");
+        std::fs::write(&audio, b"audio").expect("audio file");
+        let escaped = root.join("../outside/clip.mp3");
+
+        let error = resolve_watch_folder_existing_file(
+            &root.canonicalize().expect("canonical root"),
+            &escaped.to_string_lossy(),
+        )
+        .expect_err("parent traversal should be rejected");
+
+        assert!(error.contains("outside the watched folder"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn watch_folder_existing_file_validation_rejects_symlink_escape() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path().join("watch");
+        let outside = temp.path().join("outside");
+        std::fs::create_dir_all(&root).expect("root dir");
+        std::fs::create_dir_all(&outside).expect("outside dir");
+        let audio = outside.join("clip.mp3");
+        let link = root.join("linked.mp3");
+        std::fs::write(&audio, b"audio").expect("audio file");
+        std::os::unix::fs::symlink(&audio, &link).expect("symlink");
+
+        let error = resolve_watch_folder_existing_file(
+            &root.canonicalize().expect("canonical root"),
+            &link.to_string_lossy(),
+        )
+        .expect_err("symlink escape should be rejected");
+
+        assert!(error.contains("outside the watched folder"));
     }
 
     #[test]

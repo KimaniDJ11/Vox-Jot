@@ -2264,6 +2264,16 @@
         "emptyDetail": "İzlenen klasör yok",
         "missing": "Klasör eksik",
         "paused": "Duraklatıldı"
+      },
+      "scan": {
+        "title": "Mevcut dosyalar yazıya dökülsün mü?",
+        "subtitle": "“{{folder}}” zaten {{count}} ses veya video dosyası içeriyor. Yeni dosyalar otomatik olarak yazıya dökülür.",
+        "selectAll": "Tümünü seç ({{count}})",
+        "transcribed": "Yazıya döküldü",
+        "skip": "Atla",
+        "confirm": "{{count}} dosyayı yazıya dök",
+        "empty": "Bu klasörde henüz ses veya video dosyası yok. Yeni dosyalar otomatik olarak yazıya dökülür.",
+        "action": "Mevcut dosyaları yazıya dök"
       }
     },
     "reader": {

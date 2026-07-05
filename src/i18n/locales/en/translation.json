@@ -457,6 +457,16 @@
         "emptyDetail": "No watched folders",
         "missing": "Folder missing",
         "paused": "Paused"
+      },
+      "scan": {
+        "title": "Transcribe existing files?",
+        "subtitle": "“{{folder}}” already contains {{count}} audio or video file(s). New files are transcribed automatically.",
+        "selectAll": "Select all ({{count}})",
+        "transcribed": "Transcribed",
+        "skip": "Skip",
+        "confirm": "Transcribe {{count}} file(s)",
+        "empty": "No audio or video files in this folder yet. New files are transcribed automatically.",
+        "action": "Transcribe existing files"
       }
     },
     "enhanceAudio": {

@@ -18,6 +18,13 @@ impl TranscriptionManager {
         Ok(Self)
     }
 
+    pub fn new_background(
+        _app_handle: &AppHandle,
+        _model_manager: Arc<ModelManager>,
+    ) -> Result<Self> {
+        Ok(Self)
+    }
+
     pub fn is_model_loaded(&self) -> bool {
         false
     }

@@ -1,6 +1,5 @@
 use crate::helpers::subtitles::TimedSegment;
 use crate::http_api::{decode_wav_bytes, require_api_token, ApiState};
-use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{TtsVoicePreset, TtsVoiceTuningSettings};
 use crate::tts::{speak_on_dedicated_thread, SpeakRequest, TtsManager};
 use crate::tts_profiles::list_voice_profiles;
@@ -321,10 +320,11 @@ async fn call_transcribe_wav(state: &ApiState, arguments: Value) -> Result<Value
         ));
     }
     let samples = decode_wav_bytes(&bytes)?;
-    let Some(manager) = state.app.try_state::<Arc<TranscriptionManager>>() else {
+    // Background file engine: MCP-driven transcriptions must not block a
+    // live dictation in progress.
+    let Some(manager) = crate::managers::file_transcription_engine(&state.app) else {
         return Err("TranscriptionManager is unavailable.".to_string());
     };
-    let manager = manager.inner().clone();
     let (text, segments) =
         tokio::task::spawn_blocking(move || manager.transcribe_with_segments(Arc::new(samples)))
             .await

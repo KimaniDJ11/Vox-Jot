@@ -2496,12 +2496,6 @@ async fn handle_transcribe_file(
     if path.is_empty() {
         return api_error(StatusCode::BAD_REQUEST, "Audio file path is required.");
     }
-    let Some(transcription_manager) = state.app.try_state::<Arc<TranscriptionManager>>() else {
-        return api_error(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "TranscriptionManager not ready.",
-        );
-    };
     let Some(sidecar_manager) = state.app.try_state::<Arc<SidecarManager>>() else {
         return api_error(StatusCode::SERVICE_UNAVAILABLE, "SidecarManager not ready.");
     };
@@ -2512,13 +2506,11 @@ async fn handle_transcribe_file(
         );
     };
     let app = state.app.clone();
-    let transcription_manager = Arc::clone(&*transcription_manager);
     let sidecar_manager = Arc::clone(&*sidecar_manager);
     let correction_store = Arc::clone(&*correction_store);
 
     match commands::transcription::transcribe_file_impl(
         app,
-        transcription_manager,
         sidecar_manager,
         correction_store,
         path.to_string(),
@@ -4182,8 +4174,10 @@ async fn handle_transcribe(
         }
     };
 
-    let manager = match state.app.try_state::<Arc<TranscriptionManager>>() {
-        Some(m) => m.inner().clone(),
+    // Uses the background file engine so API-driven transcriptions never
+    // block a live dictation in progress.
+    let manager = match crate::managers::file_transcription_engine(&state.app) {
+        Some(m) => m,
         None => {
             return (
                 StatusCode::SERVICE_UNAVAILABLE,

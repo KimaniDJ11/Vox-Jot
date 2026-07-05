@@ -871,6 +871,10 @@ pub struct TranscriptionManager {
     processing_generation: Arc<AtomicU64>,
     canceled_processing_generation: Arc<AtomicU64>,
     final_transcription_pending: Arc<AtomicBool>,
+    /// False for the background file-transcription instance: its loads and
+    /// unloads must not drive the dictation model status UI, which reflects
+    /// only the live (primary) engine.
+    emit_state_events: bool,
     shutdown_on_drop: bool,
 }
 
@@ -895,6 +899,7 @@ impl Clone for TranscriptionManager {
             processing_generation: Arc::clone(&self.processing_generation),
             canceled_processing_generation: Arc::clone(&self.canceled_processing_generation),
             final_transcription_pending: Arc::clone(&self.final_transcription_pending),
+            emit_state_events: self.emit_state_events,
             shutdown_on_drop: false,
         }
     }
@@ -902,6 +907,27 @@ impl Clone for TranscriptionManager {
 
 impl TranscriptionManager {
     pub fn new(app_handle: &AppHandle, model_manager: Arc<ModelManager>) -> Result<Self> {
+        Self::new_with_options(app_handle, model_manager, true)
+    }
+
+    /// A second, independent engine instance used for file/watch-folder
+    /// transcription so long file jobs never hold the live dictation engine's
+    /// lock. It loads models lazily (on the first file job), stays silent on
+    /// the `model-state-changed` UI channel, and is unloaded by the same idle
+    /// watcher policy as the live engine, so the extra RAM cost only exists
+    /// while file work is active.
+    pub fn new_background(
+        app_handle: &AppHandle,
+        model_manager: Arc<ModelManager>,
+    ) -> Result<Self> {
+        Self::new_with_options(app_handle, model_manager, false)
+    }
+
+    fn new_with_options(
+        app_handle: &AppHandle,
+        model_manager: Arc<ModelManager>,
+        emit_state_events: bool,
+    ) -> Result<Self> {
         let manager = Self {
             engine: Arc::new(Mutex::new(None)),
             engine_epoch: Arc::new(AtomicU64::new(0)),
@@ -921,6 +947,7 @@ impl TranscriptionManager {
             processing_generation: Arc::new(AtomicU64::new(0)),
             canceled_processing_generation: Arc::new(AtomicU64::new(0)),
             final_transcription_pending: Arc::new(AtomicBool::new(false)),
+            emit_state_events,
             shutdown_on_drop: true,
         };
 
@@ -965,15 +992,12 @@ impl TranscriptionManager {
                                 debug!("Starting to unload model due to inactivity");
 
                                 if let Ok(()) = manager_cloned.unload_model() {
-                                    let _ = app_handle_cloned.emit(
-                                        "model-state-changed",
-                                        ModelStateEvent {
-                                            event_type: "unloaded".to_string(),
-                                            model_id: None,
-                                            model_name: None,
-                                            error: None,
-                                        },
-                                    );
+                                    manager_cloned.emit_model_state(ModelStateEvent {
+                                        event_type: "unloaded".to_string(),
+                                        model_id: None,
+                                        model_name: None,
+                                        error: None,
+                                    });
                                     let unload_duration = unload_start.elapsed();
                                     debug!(
                                         "Model unloaded due to inactivity (took {}ms)",
@@ -993,6 +1017,15 @@ impl TranscriptionManager {
         }
 
         Ok(manager)
+    }
+
+    /// Emit a `model-state-changed` UI event, unless this is the background
+    /// file-transcription instance (whose engine lifecycle is invisible to
+    /// the dictation model status UI).
+    fn emit_model_state(&self, event: ModelStateEvent) {
+        if self.emit_state_events {
+            let _ = self.app_handle.emit("model-state-changed", event);
+        }
     }
 
     /// Lock the engine mutex, recovering from poison if a previous transcription panicked.
@@ -1628,18 +1661,15 @@ impl TranscriptionManager {
                                 .unwrap_or_else(|e| e.into_inner());
                             *current_model = None;
                         }
-                        let _ = self.app_handle.emit(
-                            "model-state-changed",
-                            ModelStateEvent {
-                                event_type: "unloaded".to_string(),
-                                model_id: None,
-                                model_name: None,
-                                error: Some(format!(
-                                    "Partial transcription engine panicked: {}",
-                                    panic_msg
-                                )),
-                            },
-                        );
+                        self.emit_model_state(ModelStateEvent {
+                            event_type: "unloaded".to_string(),
+                            model_id: None,
+                            model_name: None,
+                            error: Some(format!(
+                                "Partial transcription engine panicked: {}",
+                                panic_msg
+                            )),
+                        });
                         warn!(
                             "Partial transcription engine panicked for binding {}; model has been unloaded: {}",
                             binding_id, panic_msg
@@ -1788,15 +1818,12 @@ impl TranscriptionManager {
         }
 
         // Emit unloaded event
-        let _ = self.app_handle.emit(
-            "model-state-changed",
-            ModelStateEvent {
-                event_type: "unloaded".to_string(),
-                model_id: None,
-                model_name: None,
-                error: None,
-            },
-        );
+        self.emit_model_state(ModelStateEvent {
+            event_type: "unloaded".to_string(),
+            model_id: None,
+            model_name: None,
+            error: None,
+        });
 
         let unload_duration = unload_start.elapsed();
         debug!(
@@ -1824,15 +1851,12 @@ impl TranscriptionManager {
         debug!("Starting to load model: {}", model_id);
 
         // Emit loading started event
-        let _ = self.app_handle.emit(
-            "model-state-changed",
-            ModelStateEvent {
-                event_type: "loading_started".to_string(),
-                model_id: Some(model_id.to_string()),
-                model_name: None,
-                error: None,
-            },
-        );
+        self.emit_model_state(ModelStateEvent {
+            event_type: "loading_started".to_string(),
+            model_id: Some(model_id.to_string()),
+            model_name: None,
+            error: None,
+        });
 
         let model_info = self
             .model_manager
@@ -1841,15 +1865,12 @@ impl TranscriptionManager {
 
         if !model_is_available(&model_info) {
             let error_msg = "Model not downloaded";
-            let _ = self.app_handle.emit(
-                "model-state-changed",
-                ModelStateEvent {
-                    event_type: "loading_failed".to_string(),
-                    model_id: Some(model_id.to_string()),
-                    model_name: Some(model_info.name.clone()),
-                    error: Some(error_msg.to_string()),
-                },
-            );
+            self.emit_model_state(ModelStateEvent {
+                event_type: "loading_failed".to_string(),
+                model_id: Some(model_id.to_string()),
+                model_name: Some(model_info.name.clone()),
+                error: Some(error_msg.to_string()),
+            });
             return Err(anyhow::anyhow!(error_msg));
         }
 
@@ -1875,7 +1896,8 @@ impl TranscriptionManager {
             *current_model = None;
         }
 
-        let loaded_engine = self.create_loaded_engine(model_id, &model_info, true)?;
+        let loaded_engine =
+            self.create_loaded_engine(model_id, &model_info, self.emit_state_events)?;
 
         // Update the current engine and model ID
         {
@@ -1892,15 +1914,12 @@ impl TranscriptionManager {
         }
 
         // Emit loading completed event
-        let _ = self.app_handle.emit(
-            "model-state-changed",
-            ModelStateEvent {
-                event_type: "loading_completed".to_string(),
-                model_id: Some(model_id.to_string()),
-                model_name: Some(model_info.name.clone()),
-                error: None,
-            },
-        );
+        self.emit_model_state(ModelStateEvent {
+            event_type: "loading_completed".to_string(),
+            model_id: Some(model_id.to_string()),
+            model_name: Some(model_info.name.clone()),
+            error: None,
+        });
 
         let load_duration = load_start.elapsed();
         debug!(
@@ -1963,15 +1982,12 @@ impl TranscriptionManager {
                         "Model load panicked for '{}': {}",
                         selected_model, panic_message
                     );
-                    let _ = self_clone.app_handle.emit(
-                        "model-state-changed",
-                        ModelStateEvent {
-                            event_type: "loading_failed".to_string(),
-                            model_id: Some(selected_model.clone()),
-                            model_name: None,
-                            error: Some(format!("Model load panicked: {}", panic_message)),
-                        },
-                    );
+                    self_clone.emit_model_state(ModelStateEvent {
+                        event_type: "loading_failed".to_string(),
+                        model_id: Some(selected_model.clone()),
+                        model_name: None,
+                        error: Some(format!("Model load panicked: {}", panic_message)),
+                    });
                 }
             }
         });
@@ -2011,7 +2027,12 @@ impl TranscriptionManager {
             return Ok((String::new(), Vec::new()));
         }
 
-        // Wait for any in-progress load.
+        let settings = get_settings(&self.app_handle);
+
+        // Wait for any in-progress load, then load on demand. File jobs can
+        // arrive while no engine is resident (idle-unloaded, or the dedicated
+        // background instance that only ever loads lazily), so a missing or
+        // mismatched engine is loaded here instead of failing the job.
         {
             let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
             if *is_loading {
@@ -2027,13 +2048,18 @@ impl TranscriptionManager {
                 }
             }
 
-            let engine_guard = self.lock_engine();
-            if engine_guard.is_none() {
-                return Err(anyhow::anyhow!("Model is not loaded for transcription."));
+            let selected_model = settings.selected_model.trim().to_string();
+            if selected_model.is_empty() {
+                return Err(anyhow::anyhow!("No transcription model is selected."));
+            }
+            let engine_loaded = self.lock_engine().is_some();
+            if !engine_loaded
+                || self.get_current_model().as_deref() != Some(selected_model.as_str())
+            {
+                drop(is_loading);
+                self.load_model(&selected_model)?;
             }
         }
-
-        let settings = get_settings(&self.app_handle);
 
         let result = {
             let _lifecycle_guard = self.lock_lifecycle();
@@ -2224,15 +2250,12 @@ impl TranscriptionManager {
                         *current_model = None;
                     }
 
-                    let _ = self.app_handle.emit(
-                        "model-state-changed",
-                        ModelStateEvent {
-                            event_type: "unloaded".to_string(),
-                            model_id: None,
-                            model_name: None,
-                            error: Some(format!("Engine panicked: {}", panic_msg)),
-                        },
-                    );
+                    self.emit_model_state(ModelStateEvent {
+                        event_type: "unloaded".to_string(),
+                        model_id: None,
+                        model_name: None,
+                        error: Some(format!("Engine panicked: {}", panic_msg)),
+                    });
 
                     return Err(anyhow::anyhow!(
                         "Transcription engine panicked: {}. The model has been unloaded and will reload on next attempt.",

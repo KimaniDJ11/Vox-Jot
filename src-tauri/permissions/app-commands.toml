@@ -206,6 +206,8 @@ commands.allow = [
   "export_subtitles_vtt",
   "list_watch_folders",
   "add_watch_folder",
+  "list_watch_folder_files",
+  "transcribe_watch_folder_files",
   "remove_watch_folder",
   "set_watch_folder_enabled",
   "update_watch_folder_format",

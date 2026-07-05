@@ -2264,6 +2264,16 @@
         "emptyDetail": "Žádné sledované složky",
         "missing": "Složka chybí",
         "paused": "Pozastaveno"
+      },
+      "scan": {
+        "title": "Přepsat existující soubory?",
+        "subtitle": "„{{folder}}“ již obsahuje {{count}} audio nebo video souborů. Nové soubory se přepisují automaticky.",
+        "selectAll": "Vybrat vše ({{count}})",
+        "transcribed": "Přepsáno",
+        "skip": "Přeskočit",
+        "confirm": "Přepsat {{count}} souborů",
+        "empty": "V této složce zatím nejsou žádné audio ani video soubory. Nové soubory se přepisují automaticky.",
+        "action": "Přepsat existující soubory"
       }
     },
     "reader": {

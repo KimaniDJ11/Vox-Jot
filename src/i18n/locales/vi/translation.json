@@ -2264,6 +2264,16 @@
         "emptyDetail": "Không có thư mục đang theo dõi",
         "missing": "Thiếu thư mục",
         "paused": "Đã tạm dừng"
+      },
+      "scan": {
+        "title": "Chép lại các tệp hiện có?",
+        "subtitle": "“{{folder}}” đã chứa {{count}} tệp âm thanh hoặc video. Các tệp mới sẽ được chép lại tự động.",
+        "selectAll": "Chọn tất cả ({{count}})",
+        "transcribed": "Đã chép lại",
+        "skip": "Bỏ qua",
+        "confirm": "Chép lại {{count}} tệp",
+        "empty": "Chưa có tệp âm thanh hoặc video nào trong thư mục này. Các tệp mới sẽ được chép lại tự động.",
+        "action": "Chép lại các tệp hiện có"
       }
     },
     "reader": {

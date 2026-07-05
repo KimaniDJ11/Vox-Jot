@@ -2264,6 +2264,16 @@
         "emptyDetail": "Nenhuma pasta monitorada",
         "missing": "Pasta ausente",
         "paused": "Pausado"
+      },
+      "scan": {
+        "title": "Transcrever arquivos existentes?",
+        "subtitle": "“{{folder}}” já contém {{count}} arquivo(s) de áudio ou vídeo. Arquivos novos são transcritos automaticamente.",
+        "selectAll": "Selecionar tudo ({{count}})",
+        "transcribed": "Transcrito",
+        "skip": "Pular",
+        "confirm": "Transcrever {{count}} arquivo(s)",
+        "empty": "Ainda não há arquivos de áudio ou vídeo nesta pasta. Arquivos novos são transcritos automaticamente.",
+        "action": "Transcrever arquivos existentes"
       }
     },
     "reader": {

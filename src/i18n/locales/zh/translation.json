@@ -2260,6 +2260,16 @@
         "emptyDetail": "没有已监视文件夹",
         "missing": "文件夹缺失",
         "paused": "已暂停"
+      },
+      "scan": {
+        "title": "要转录现有文件吗？",
+        "subtitle": "“{{folder}}”已包含 {{count}} 个音频或视频文件。新文件会自动转录。",
+        "selectAll": "全选（{{count}}）",
+        "transcribed": "已转录",
+        "skip": "跳过",
+        "confirm": "转录 {{count}} 个文件",
+        "empty": "此文件夹中还没有音频或视频文件。新文件会自动转录。",
+        "action": "转录现有文件"
       }
     },
     "reader": {

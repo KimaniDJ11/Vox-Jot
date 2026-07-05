@@ -15,6 +15,7 @@ Environment:
   CLAUDE_BIN=/path/to/claude       Override the Claude CLI path.
   ASK_CLAUDE_RUNTIME=/path/to/bin  Run the Claude CLI script through a runtime.
   ASK_CLAUDE_MODEL=sonnet          Optional Claude model/alias; defaults to opus.
+  ASK_CLAUDE_TIMEOUT_SECONDS=180   Max runtime before the review is stopped.
 USAGE
 }
 
@@ -77,9 +78,58 @@ claude_args+=(
   WebSearch
 )
 
+run_with_timeout() {
+  local timeout_seconds="${ASK_CLAUDE_TIMEOUT_SECONDS:-180}"
+
+  if [[ "$timeout_seconds" == "0" ]]; then
+    exec "$@"
+  fi
+
+  if ! [[ "$timeout_seconds" =~ ^[0-9]+$ ]]; then
+    echo "ask-claude: ASK_CLAUDE_TIMEOUT_SECONDS must be a non-negative integer" >&2
+    exit 64
+  fi
+
+  perl -e '
+    use strict;
+    use warnings;
+
+    my $timeout = shift @ARGV;
+    my $pid = fork();
+    die "ask-claude: failed to fork: $!\n" unless defined $pid;
+
+    if ($pid == 0) {
+      exec @ARGV or die "ask-claude: failed to exec $ARGV[0]: $!\n";
+    }
+
+    local $SIG{ALRM} = sub {
+      kill "TERM", $pid;
+      sleep 2;
+      kill "KILL", $pid;
+      print STDERR "ask-claude: timed out after ${timeout}s\n";
+      exit 124;
+    };
+
+    alarm $timeout;
+    waitpid($pid, 0);
+    my $status = $?;
+    alarm 0;
+
+    if ($status == -1) {
+      print STDERR "ask-claude: waitpid failed: $!\n";
+      exit 70;
+    }
+    if ($status & 127) {
+      exit(128 + ($status & 127));
+    }
+    exit($status >> 8);
+  ' "$timeout_seconds" "$@"
+}
+
 run_claude() {
   if [[ -n "${ASK_CLAUDE_RUNTIME:-}" ]]; then
-    exec "$ASK_CLAUDE_RUNTIME" "$claude_bin" "${claude_args[@]}" -- "$prompt"
+    run_with_timeout "$ASK_CLAUDE_RUNTIME" "$claude_bin" "${claude_args[@]}" -- "$prompt"
+    exit $?
   fi
 
   node_major=""
@@ -91,7 +141,8 @@ run_claude() {
 
   if [[ "$node_major" =~ ^[0-9]+$ ]] && (( node_major >= 25 )); then
     if command -v bun >/dev/null 2>&1; then
-      exec bun "$claude_bin" "${claude_args[@]}" -- "$prompt"
+      run_with_timeout bun "$claude_bin" "${claude_args[@]}" -- "$prompt"
+      exit $?
     fi
 
     echo "ask-claude: Claude CLI is installed, but Node $node_major is too new for this Claude build." >&2
@@ -99,7 +150,7 @@ run_claude() {
     exit 70
   fi
 
-  exec "$claude_bin" "${claude_args[@]}" -- "$prompt"
+  run_with_timeout "$claude_bin" "${claude_args[@]}" -- "$prompt"
 }
 
 run_claude

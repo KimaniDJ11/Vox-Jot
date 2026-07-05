@@ -66,6 +66,8 @@ struct GemmaAudioSttEngine {
 struct HiggsAudioSttEngine {
     base_url: String,
     model_source: String,
+    python: PathBuf,
+    token: Option<String>,
     child: Option<Child>,
     stderr_tail: crate::utils::ChildStderrTail,
 }
@@ -185,12 +187,16 @@ impl MlxAudioSttEngine {
         let response_body = match self.send_wav_bytes(&wav_bytes) {
             Ok(body) => body,
             Err(first_err) => {
+                let first_err_message = first_err.to_string();
+                if !stt_sidecar_request_error_is_retryable(&first_err_message) {
+                    return Err(first_err);
+                }
                 if let Some(sidecar) = sidecar {
                     log::warn!(
-                        "mlx-audio transcription request failed; ensuring sidecar is running before one retry: {}",
-                        first_err
+                        "mlx-audio transcription request failed; restarting sidecar before one retry: {}",
+                        first_err_message
                     );
-                    sidecar.ensure_running().map_err(|err| {
+                    sidecar.restart_running().map_err(|err| {
                         anyhow::anyhow!(
                             "Failed to restart mlx-audio sidecar after request failure: {err}"
                         )
@@ -422,20 +428,58 @@ impl GemmaAudioSttEngine {
 
 impl Drop for HiggsAudioSttEngine {
     fn drop(&mut self) {
-        if let Some(child) = self.child.as_mut() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
+        self.stop_child();
     }
 }
 
 impl HiggsAudioSttEngine {
-    fn transcribe(
-        &self,
+    fn stop_child(&mut self) {
+        if let Some(child) = self.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        self.child = None;
+    }
+
+    fn transcribe_with_recovery(
+        &mut self,
+        app_handle: &AppHandle,
         audio: Vec<f32>,
         sample_rate: u32,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
+        let payload = match self.send_wav_bytes(&wav_bytes) {
+            Ok(payload) => payload,
+            Err(first_err) => {
+                let first_err_message = first_err.to_string();
+                if !stt_sidecar_request_error_is_retryable(&first_err_message) {
+                    return Err(first_err);
+                }
+                warn!(
+                    "Higgs audio transcription request failed; restarting sidecar before one retry: {}",
+                    first_err_message
+                );
+                self.restart(app_handle).map_err(|err| {
+                    anyhow::anyhow!(
+                        "Failed to restart Higgs audio sidecar after request failure: {err}"
+                    )
+                })?;
+                self.send_wav_bytes(&wav_bytes).map_err(|retry_err| {
+                    anyhow::anyhow!(
+                        "Higgs audio transcription request failed after sidecar restart: {}",
+                        retry_err
+                    )
+                })?
+            }
+        };
+
+        Ok(transcribe_rs::TranscriptionResult {
+            text: payload.text,
+            segments: None,
+        })
+    }
+
+    fn send_wav_bytes(&self, wav_bytes: &[u8]) -> Result<MlxAudioTranscriptionResponse> {
         let response = HIGGS_AUDIO_STT_CLIENT
             .post(format!(
                 "{}/v1/audio/transcriptions",
@@ -457,10 +501,7 @@ impl HiggsAudioSttEngine {
         let payload: MlxAudioTranscriptionResponse = response
             .json()
             .map_err(|err| anyhow::anyhow!("Failed to decode Higgs audio response: {err}"))?;
-        Ok(transcribe_rs::TranscriptionResult {
-            text: payload.text,
-            segments: None,
-        })
+        Ok(payload)
     }
 
     fn start(
@@ -470,28 +511,44 @@ impl HiggsAudioSttEngine {
         token: Option<String>,
     ) -> Result<Self> {
         let base_url = higgs_audio_base_url();
-        if higgs_audio_server_matches(&base_url, &model_source) {
-            return Ok(Self {
-                base_url,
-                model_source,
-                child: None,
-                stderr_tail: crate::utils::ChildStderrTail::default(),
-            });
+        let mut engine = Self {
+            base_url,
+            model_source,
+            python: python.to_path_buf(),
+            token,
+            child: None,
+            stderr_tail: crate::utils::ChildStderrTail::default(),
+        };
+        if higgs_audio_server_matches(&engine.base_url, &engine.model_source) {
+            return Ok(engine);
         }
 
         terminate_listeners_on_port(app_handle, HIGGS_AUDIO_STT_PORT)?;
+        engine.launch_child(app_handle)?;
+        engine.wait_until_ready()?;
+        Ok(engine)
+    }
+
+    fn restart(&mut self, app_handle: &AppHandle) -> Result<()> {
+        self.stop_child();
+        terminate_listeners_on_port(app_handle, HIGGS_AUDIO_STT_PORT)?;
+        self.launch_child(app_handle)?;
+        self.wait_until_ready()
+    }
+
+    fn launch_child(&mut self, app_handle: &AppHandle) -> Result<()> {
         let server_path = higgs_audio_stt_server_path(app_handle)?;
-        let mut command = Command::new(python);
+        let mut command = Command::new(&self.python);
         command
             .arg(&server_path)
             .arg("--model")
-            .arg(&model_source)
+            .arg(&self.model_source)
             .arg("--port")
             .arg(HIGGS_AUDIO_STT_PORT.to_string())
             .env("PYTHONUNBUFFERED", "1")
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped());
-        if let Some(token) = token {
+        if let Some(token) = self.token.as_deref() {
             command.env("HF_TOKEN", token);
         }
 
@@ -505,14 +562,9 @@ impl HiggsAudioSttEngine {
             .take()
             .map(|stderr| crate::utils::drain_child_stderr("higgs-stt", stderr))
             .unwrap_or_default();
-        let mut engine = Self {
-            base_url,
-            model_source,
-            child: Some(child),
-            stderr_tail,
-        };
-        engine.wait_until_ready()?;
-        Ok(engine)
+        self.child = Some(child);
+        self.stderr_tail = stderr_tail;
+        Ok(())
     }
 
     fn wait_until_ready(&mut self) -> Result<()> {
@@ -766,8 +818,36 @@ fn mlx_audio_base_url() -> String {
     "http://127.0.0.1:8018".to_string()
 }
 
+fn stt_sidecar_request_error_is_retryable(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("http ") || lower.contains("status code") || lower.contains("status:") {
+        return false;
+    }
+    lower.contains("error sending request")
+        || lower.contains("connection refused")
+        || lower.contains("connection reset")
+        || lower.contains("connection closed")
+        || lower.contains("broken pipe")
+        || lower.contains("timed out")
+        || lower.contains("timeout")
+}
+
 fn mlx_audio_stt_model_dir_is_runnable(path: &std::path::Path) -> bool {
-    path.join("config.json").is_file()
+    if !path.is_dir() || !path.join("config.json").is_file() {
+        return false;
+    }
+    path.join("model.safetensors").is_file()
+        || path
+            .read_dir()
+            .ok()
+            .into_iter()
+            .flat_map(|entries| entries.filter_map(Result::ok))
+            .any(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "safetensors")
+            })
 }
 
 fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {
@@ -1504,7 +1584,7 @@ impl TranscriptionManager {
             }
             LoadedEngine::HiggsAudioStt(higgs_engine) => {
                 let r = higgs_engine
-                    .transcribe(audio, 16_000)
+                    .transcribe_with_recovery(&self.app_handle, audio, 16_000)
                     .map_err(|e| anyhow::anyhow!("Higgs audio transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
@@ -2321,5 +2401,60 @@ impl Drop for TranscriptionManager {
         if self.shutdown_on_drop {
             self.shutdown();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{mlx_audio_stt_model_dir_is_runnable, stt_sidecar_request_error_is_retryable};
+
+    #[test]
+    fn mlx_audio_stt_model_dir_requires_config_and_weights() {
+        let dir = tempfile::tempdir().expect("temp dir");
+
+        std::fs::write(dir.path().join("model.safetensors"), b"weights").expect("write weights");
+        assert!(!mlx_audio_stt_model_dir_is_runnable(dir.path()));
+
+        std::fs::write(dir.path().join("config.json"), b"{}").expect("write config");
+        assert!(mlx_audio_stt_model_dir_is_runnable(dir.path()));
+    }
+
+    #[test]
+    fn mlx_audio_stt_model_dir_accepts_sharded_safetensors() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        std::fs::write(dir.path().join("config.json"), b"{}").expect("write config");
+        std::fs::write(
+            dir.path().join("model-00001-of-00002.safetensors"),
+            b"weights",
+        )
+        .expect("write shard");
+
+        assert!(mlx_audio_stt_model_dir_is_runnable(dir.path()));
+    }
+
+    #[test]
+    fn stt_sidecar_retry_policy_retries_transport_failures() {
+        assert!(stt_sidecar_request_error_is_retryable(
+            "Higgs audio transcription request failed: error sending request for url (http://127.0.0.1:8038/v1/audio/transcriptions)"
+        ));
+        assert!(stt_sidecar_request_error_is_retryable(
+            "mlx-audio transcription request failed: connection refused"
+        ));
+        assert!(stt_sidecar_request_error_is_retryable(
+            "mlx-audio transcription request failed: operation timed out"
+        ));
+    }
+
+    #[test]
+    fn stt_sidecar_retry_policy_does_not_restart_for_http_failures() {
+        assert!(!stt_sidecar_request_error_is_retryable(
+            "Higgs audio transcription request failed with HTTP 400: bad input"
+        ));
+        assert!(!stt_sidecar_request_error_is_retryable(
+            "Higgs audio transcription request failed with HTTP 500: model failed"
+        ));
+        assert!(!stt_sidecar_request_error_is_retryable(
+            "mlx-audio transcription request failed: status code: 422"
+        ));
     }
 }

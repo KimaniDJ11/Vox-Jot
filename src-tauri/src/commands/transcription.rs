@@ -1371,9 +1371,13 @@ fn whole_file_segment(audio_16k: &[f32], text: &str) -> Vec<TimedSegment> {
     }
     vec![TimedSegment {
         start_ms: 0,
-        end_ms: ((audio_16k.len() as f64 / 16_000.0) * 1000.0).round() as u64,
+        end_ms: audio_duration_ms(audio_16k),
         text: text.trim().to_string(),
     }]
+}
+
+fn audio_duration_ms(audio_16k: &[f32]) -> u64 {
+    ((audio_16k.len() as f64 / 16_000.0) * 1000.0).round() as u64
 }
 
 fn format_speaker_labeled_text(
@@ -1641,6 +1645,61 @@ pub fn add_watch_folder(
     Ok(cfg)
 }
 
+/// Existing transcript state for a source file in a watched folder.
+#[derive(Serialize, Type, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WatchFolderTranscriptStatus {
+    Missing,
+    Present,
+    NeedsReview,
+}
+
+const WATCH_FOLDER_MEDIUM_MEDIA_BYTES: u64 = 10 * 1024 * 1024;
+const WATCH_FOLDER_LARGE_MEDIA_BYTES: u64 = 50 * 1024 * 1024;
+const WATCH_FOLDER_TINY_OUTPUT_BYTES: u64 = 80;
+const WATCH_FOLDER_MIN_MEDIUM_OUTPUT_BYTES: u64 = 200;
+const WATCH_FOLDER_MIN_LARGE_OUTPUT_BYTES: u64 = 800;
+
+fn classify_existing_watch_transcript(
+    source_path: &Path,
+    output_format: WatchFolderOutputFormat,
+    source_size_bytes: u64,
+) -> (bool, WatchFolderTranscriptStatus, Option<String>) {
+    let output_path = build_output_path(source_path, output_format);
+    if !output_path.is_file() {
+        return (false, WatchFolderTranscriptStatus::Missing, None);
+    }
+
+    let output_size_bytes = std::fs::metadata(&output_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    let warning = if output_size_bytes == 0 {
+        Some("Output file is empty.".to_string())
+    } else if source_size_bytes >= WATCH_FOLDER_LARGE_MEDIA_BYTES
+        && output_size_bytes < WATCH_FOLDER_MIN_LARGE_OUTPUT_BYTES
+    {
+        Some("Output file is very small for a large media file.".to_string())
+    } else if source_size_bytes >= WATCH_FOLDER_MEDIUM_MEDIA_BYTES
+        && output_size_bytes < WATCH_FOLDER_MIN_MEDIUM_OUTPUT_BYTES
+    {
+        Some("Output file is very small for this media file.".to_string())
+    } else if output_size_bytes < WATCH_FOLDER_TINY_OUTPUT_BYTES {
+        Some("Output file is very short.".to_string())
+    } else {
+        None
+    };
+
+    if let Some(warning) = warning {
+        (
+            true,
+            WatchFolderTranscriptStatus::NeedsReview,
+            Some(warning),
+        )
+    } else {
+        (true, WatchFolderTranscriptStatus::Present, None)
+    }
+}
+
 /// One audio/video file that already exists inside a watched folder,
 /// surfaced so the user can pick which pre-existing files to transcribe.
 #[derive(Serialize, Type, Debug, Clone)]
@@ -1653,6 +1712,11 @@ pub struct WatchFolderExistingFile {
     /// True when a transcript in the folder's current output format is
     /// already sitting next to the source file.
     pub has_transcript: bool,
+    /// Whether the sibling transcript is missing, present, or suspiciously
+    /// small and worth rerunning.
+    pub transcript_status: WatchFolderTranscriptStatus,
+    /// User-facing reason when `transcript_status` is `needs_review`.
+    pub transcript_warning: Option<String>,
 }
 
 fn find_watch_folder(app: &AppHandle, id: &str) -> Result<WatchFolderConfig, String> {
@@ -1702,10 +1766,10 @@ pub fn list_watch_folder_files(
     let files = scan_existing_media_files(&root)
         .into_iter()
         .map(|path| {
-            let size_bytes = std::fs::metadata(&path)
-                .map(|m| m.len().min(u32::MAX as u64) as u32)
-                .unwrap_or(0);
-            let has_transcript = build_output_path(&path, cfg.output_format).is_file();
+            let source_size_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            let size_bytes = source_size_bytes.min(u32::MAX as u64) as u32;
+            let (has_transcript, transcript_status, transcript_warning) =
+                classify_existing_watch_transcript(&path, cfg.output_format, source_size_bytes);
             let relative_path = path
                 .strip_prefix(&root)
                 .unwrap_or(&path)
@@ -1716,6 +1780,8 @@ pub fn list_watch_folder_files(
                 relative_path,
                 size_bytes,
                 has_transcript,
+                transcript_status,
+                transcript_warning,
             }
         })
         .collect();
@@ -1927,6 +1993,62 @@ mod tests {
         assert_eq!(segments[0].start_ms, 0);
         assert_eq!(segments[0].end_ms, 1_500);
         assert_eq!(segments[0].text, "hello world");
+    }
+
+    #[test]
+    fn watch_folder_transcript_status_flags_tiny_outputs_for_large_media() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let source = temp.path().join("clip.mov");
+        let output = temp.path().join("clip.txt");
+        std::fs::write(&source, b"video").expect("source");
+        std::fs::write(&output, b"too short").expect("output");
+
+        let (has_transcript, status, warning) = classify_existing_watch_transcript(
+            &source,
+            WatchFolderOutputFormat::Text,
+            WATCH_FOLDER_LARGE_MEDIA_BYTES,
+        );
+
+        assert!(has_transcript);
+        assert_eq!(status, WatchFolderTranscriptStatus::NeedsReview);
+        assert!(warning
+            .expect("warning")
+            .contains("very small for a large media file"));
+    }
+
+    #[test]
+    fn watch_folder_transcript_status_flags_tiny_outputs_for_small_media() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let source = temp.path().join("clip.mov");
+        let output = temp.path().join("clip.txt");
+        std::fs::write(&source, b"video").expect("source");
+        std::fs::write(&output, b"ok").expect("output");
+
+        let (has_transcript, status, warning) =
+            classify_existing_watch_transcript(&source, WatchFolderOutputFormat::Text, 2_000_000);
+
+        assert!(has_transcript);
+        assert_eq!(status, WatchFolderTranscriptStatus::NeedsReview);
+        assert!(warning.expect("warning").contains("very short"));
+    }
+
+    #[test]
+    fn watch_folder_transcript_status_accepts_substantial_outputs() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let source = temp.path().join("clip.mov");
+        let output = temp.path().join("clip.txt");
+        std::fs::write(&source, b"video").expect("source");
+        std::fs::write(&output, "word ".repeat(200)).expect("output");
+
+        let (has_transcript, status, warning) = classify_existing_watch_transcript(
+            &source,
+            WatchFolderOutputFormat::Text,
+            WATCH_FOLDER_LARGE_MEDIA_BYTES,
+        );
+
+        assert!(has_transcript);
+        assert_eq!(status, WatchFolderTranscriptStatus::Present);
+        assert!(warning.is_none());
     }
 
     #[test]

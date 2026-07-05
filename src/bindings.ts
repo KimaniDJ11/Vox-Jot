@@ -3233,6 +3233,10 @@ delete_after?: boolean;
  */
 enabled?: boolean }
 /**
+ * Existing transcript state for a source file in a watched folder.
+ */
+export type WatchFolderTranscriptStatus = "missing" | "present" | "needs_review"
+/**
  * One audio/video file that already exists inside a watched folder,
  * surfaced so the user can pick which pre-existing files to transcribe.
  */
@@ -3249,7 +3253,16 @@ relative_path: string; size_bytes: number;
  * True when a transcript in the folder's current output format is
  * already sitting next to the source file.
  */
-has_transcript: boolean }
+has_transcript: boolean;
+/**
+ * Whether the sibling transcript is missing, present, or suspiciously
+ * small and worth rerunning.
+ */
+transcript_status: WatchFolderTranscriptStatus;
+/**
+ * User-facing reason when `transcript_status` is `needs_review`.
+ */
+transcript_warning: string | null }
 /**
  * Output format for files written by the watch-folder service.
  */

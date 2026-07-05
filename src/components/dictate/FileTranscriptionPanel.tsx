@@ -4106,9 +4106,16 @@ const WatchFolderExistingFilesDialog: React.FC<{
   const titleId = useId();
   const selectAllRef = useRef<HTMLInputElement | null>(null);
   const [selected, setSelected] = useState<Set<string>>(
-    // Preselect everything that doesn't have a transcript yet; files that
-    // were already transcribed stay opt-in so re-runs are deliberate.
-    () => new Set(files.filter((f) => !f.has_transcript).map((f) => f.path)),
+    // Preselect files that are missing output, plus tiny existing outputs
+    // that the backend flagged as likely incomplete.
+    () =>
+      new Set(
+        files
+          .filter(
+            (f) => !f.has_transcript || f.transcript_status === "needs_review",
+          )
+          .map((f) => f.path),
+      ),
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -4233,7 +4240,11 @@ const WatchFolderExistingFilesDialog: React.FC<{
             <li key={f.path}>
               <label
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-[var(--input)]"
-                title={f.relative_path}
+                title={
+                  f.transcript_warning
+                    ? `${f.relative_path} - ${f.transcript_warning}`
+                    : f.relative_path
+                }
               >
                 <input
                   type="checkbox"
@@ -4244,7 +4255,13 @@ const WatchFolderExistingFilesDialog: React.FC<{
                 <span className="min-w-0 flex-1 truncate text-[var(--text)]">
                   {f.relative_path}
                 </span>
-                {f.has_transcript ? (
+                {f.transcript_status === "needs_review" ? (
+                  <span className="shrink-0 rounded-full bg-[var(--danger-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--danger)]">
+                    {t("dictate.watchFolders.scan.needsReview", {
+                      defaultValue: "Needs review",
+                    })}
+                  </span>
+                ) : f.has_transcript ? (
                   <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,var(--card))] px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">
                     {t("dictate.watchFolders.scan.transcribed", {
                       defaultValue: "Transcribed",

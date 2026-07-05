@@ -378,6 +378,20 @@ impl SidecarManager {
         self.ensure_legacy_runtime_running()
     }
 
+    pub fn restart_running(&self) -> Result<(), String> {
+        let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
+        let port = match self.backend {
+            SidecarBackend::LegacyPythonRuntime => SPEECH_RUNTIME_PORT,
+            SidecarBackend::MlxAudio => MLX_AUDIO_PORT,
+        };
+        self.reclaim_sidecar_port(port)?;
+
+        match self.backend {
+            SidecarBackend::LegacyPythonRuntime => self.ensure_legacy_runtime_running(),
+            SidecarBackend::MlxAudio => self.ensure_mlx_audio_running(),
+        }
+    }
+
     pub fn ensure_running(&self) -> Result<(), String> {
         let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
         self.ensure_running_locked()
@@ -1583,6 +1597,7 @@ pub(crate) fn command_line_is_vox_jot_runtime(command_line: &str, app_data_dir: 
     command_line_has_python_module(command_line, "runtime.app")
         || command_line_has_python_module(command_line, "mlx_audio.server")
         || command_line.contains("gemma4_stt_server.py")
+        || command_line.contains("higgs_stt_server.py")
 }
 
 fn command_line_has_python_module(command_line: &str, module: &str) -> bool {
@@ -1614,6 +1629,10 @@ mod tests {
         ));
         assert!(command_line_is_vox_jot_runtime(
             "python /tmp/gemma4_stt_server.py",
+            "",
+        ));
+        assert!(command_line_is_vox_jot_runtime(
+            "python /tmp/higgs_stt_server.py",
             "",
         ));
     }

@@ -78,11 +78,6 @@ const SPEECH_ANALYSIS_LICENSE_GATES: Record<
   string,
   LicenseAcknowledgementGate
 > = {
-  "nemo-sortformer-4spk-v1": {
-    kind: "non_commercial",
-    licenseLabel: "CC-BY-NC-4.0",
-    termsUrl: "https://huggingface.co/nvidia/diar_sortformer_4spk-v1",
-  },
   "mlx-sortformer-4spk-v1": {
     kind: "non_commercial",
     licenseLabel: "CC-BY-NC-4.0",

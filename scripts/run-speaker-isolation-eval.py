@@ -18,7 +18,6 @@ from typing import Any
 DEFAULT_MODELS = (
     "pyannote-community-1",
     "pyannote-3-1",
-    "nemo-sortformer-4spk-v1",
     "mlx-sortformer-4spk-v1",
     "mlx-sortformer-4spk-v2-1",
     "reverb-diarization-v2",

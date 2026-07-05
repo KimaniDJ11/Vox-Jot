@@ -314,7 +314,7 @@
         "model_attribution",
         "modification_notice"
       ],
-      "catalog_ids": ["nemo-sortformer-4spk-v1", "mlx-sortformer-4spk-v1"],
+      "catalog_ids": ["mlx-sortformer-4spk-v1"],
       "ui_acknowledgement_required": true
     },
     {

@@ -14,7 +14,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -693,64 +692,6 @@ def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
     return turns
 
 
-def diarize_nemo_sortformer(audio_path: str) -> list[SpeakerTurn]:
-    from nemo.collections.asr.models import SortformerEncLabelModel
-
-    model_path = local_model_path(
-        "nemo-sortformer-4spk-v1", ("diar_sortformer_4spk-v1.nemo",)
-    )
-    nemo_file = Path(model_path, "diar_sortformer_4spk-v1.nemo") if model_path else None
-    if nemo_file and nemo_file.exists():
-        model = SortformerEncLabelModel.restore_from(str(nemo_file))
-    else:
-        model = SortformerEncLabelModel.from_pretrained("nvidia/diar_sortformer_4spk-v1")
-    with tempfile.TemporaryDirectory(prefix="vox-jot-nemo-") as tmp:
-        data, sample_rate = read_audio_16k(audio_path)
-        duration = len(data) / sample_rate
-        manifest_path = Path(tmp) / "manifest.json"
-        manifest_path.write_text(
-            json.dumps(
-                {
-                    "audio_filepath": str(Path(audio_path).resolve()),
-                    "offset": 0,
-                    "duration": duration,
-                    "label": "infer",
-                    "text": "-",
-                    "num_speakers": None,
-                    "rttm_filepath": None,
-                    "uem_filepath": None,
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        output = model.diarize(audio=str(manifest_path), batch_size=1)
-
-    turns: list[SpeakerTurn] = []
-    rows = output[0] if isinstance(output, list) and output else output
-    for row in rows or []:
-        if isinstance(row, str):
-            parts = row.split()
-            if len(parts) >= 3:
-                start, end, speaker = float(parts[0]), float(parts[1]), parts[2]
-            else:
-                continue
-        else:
-            start = float(getattr(row, "start", 0.0))
-            end = float(getattr(row, "end", start))
-            speaker = str(getattr(row, "speaker", getattr(row, "label", "SPEAKER_00")))
-        turns.append(
-            SpeakerTurn(
-                speaker_id=speaker,
-                start_ms=max(0, round(start * 1000)),
-                end_ms=max(0, round(end * 1000)),
-                confidence=None,
-                source_model_id="nemo-sortformer-4spk-v1",
-            )
-        )
-    return turns
-
-
 def coerce_speaker_turn(segment: Any, source_model_id: str) -> SpeakerTurn | None:
     if isinstance(segment, dict):
         speaker = segment.get("speaker", segment.get("speaker_id", "SPEAKER_00"))
@@ -1020,8 +961,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     if args.diarization_model in PYANNOTE_REPOS:
         speaker_turns = diarize_pyannote(args.audio, args.diarization_model)
-    elif args.diarization_model == "nemo-sortformer-4spk-v1":
-        speaker_turns = diarize_nemo_sortformer(args.audio)
     elif args.diarization_model == "diarizen-wavlm-large-s80-md":
         speaker_turns = diarize_diarizen(args.audio)
     elif args.diarization_model in MLX_DIARIZATION_REPOS:

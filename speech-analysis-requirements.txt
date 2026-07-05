@@ -9,14 +9,17 @@ torchaudio==2.11.0
 torchvision==0.26.0
 torchcodec==0.14.0
 
-transformers==4.53.3
-huggingface-hub==0.36.0
+transformers==5.3.0
+huggingface-hub==1.4.1
 librosa==0.11.0
 soundfile==0.13.1
 
 pyannote.audio==4.0.4
 whisperx==3.4.2
-nemo_toolkit[asr]==2.6.2
+# NeMo Sortformer is intentionally excluded until NeMo supports
+# transformers>=5.3.0. The latest tested NeMo line still requires vulnerable
+# Transformers 4.x pins, so the app disables the NeMo catalog row instead of
+# shipping an insecure shared runtime.
 
 onnx==1.21.0
 onnxruntime==1.25.1

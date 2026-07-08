@@ -1,38 +1,39 @@
 # Vox Jot paid download runbook
 
-This is the production path for charging a small price for Vox Jot without mixing App Store and self-hosted rules.
+This is the production path for distributing Vox Jot as pay-what-you-want software without mixing App Store and self-hosted rules.
 
 ## Recommended setup
 
 Use self-hosted distribution first: a direct checkout link, a signed and notarized DMG, and Cloudflare R2 downloads.
 
-- Price: `2.00 USD`
-- Website CTA: `Buy Vox Jot for $2`
-- Checkout provider: Lemon Squeezy first; Stripe Payment Links only if tax handling is being managed separately
+- Price: pay what you want, suggested `27.00 USD`, with `$0` allowed
+- Website CTA: `Get Vox Jot - pay what you want, suggested $27`
+- Checkout provider: Gumroad for the current launch; Lemon Squeezy remains a later option if license keys or merchant-of-record handling become more important
 - File host: Cloudflare R2 through `https://downloads.iriedinamik.org`
 - Delivery target: latest signed and notarized Apple Silicon DMG
 
-For a $2 desktop beta, do not add license enforcement first. It adds support burden, activation edge cases, offline failure modes, and latency-risking startup checks. Treat the first paid build as paid access to the download, then add signed license receipts later if abuse becomes real.
+For the pay-what-you-want desktop beta, do not add license enforcement first. It adds support burden, activation edge cases, offline failure modes, and latency-risking startup checks. Treat the first public build as download access through the checkout page, then add signed license receipts later if abuse becomes real.
 
 ## Checkout provider decision
 
-Default to Lemon Squeezy for the self-hosted beta.
+Default to Gumroad for the current self-hosted launch because the product is already live there as a pay-what-you-want download.
 
 Why:
 
-- It is a merchant of record style flow, so tax handling is simpler than raw Stripe checkout.
-- It supports software license keys if we later add a paste-in unlock flow.
-- Its fixed fee is still meaningful at `$2`, but the operational overhead is lower than building tax, receipts, license fulfillment, and customer download delivery ourselves.
+- It already supports the launch model: `$0+` pricing with a clear `$27` suggested anchor.
+- It keeps checkout, receipts, creator-style delivery, and customer support in one path.
 - It keeps the app free from payment SDKs and private payment secrets.
+
+Revisit Lemon Squeezy later if Vox Jot needs generated license keys, stronger tax handling, or a less creator-marketplace checkout surface.
 
 Provider tradeoffs:
 
 | Provider             | Best use                                                                     | Vox Jot fit                                                               |
 | -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Lemon Squeezy        | Self-hosted software with tax handling, downloads, and optional license keys | Best default for the website beta                                         |
+| Lemon Squeezy        | Self-hosted software with tax handling, downloads, and optional license keys | Strong later if license keys or merchant-of-record handling become needed |
 | Stripe Payment Links | Lowest-friction checkout when taxes/compliance are handled separately        | Good fallback, especially if a Stripe account is already ready            |
-| Gumroad              | Fast creator-style digital downloads                                         | Simple, but expensive at a `$2` price                                     |
-| Paddle               | More mature merchant-of-record SaaS billing                                  | Strong later, but not ideal for a tiny under-`$10` one-time beta purchase |
+| Gumroad              | Fast creator-style digital downloads and pay-what-you-want pricing           | Current launch path for `$0+`, suggested `$27`                             |
+| Paddle               | More mature merchant-of-record SaaS billing                                  | Strong later, but more operationally heavy than the current launch needs  |
 | Apple StoreKit       | App Store unlocks and trials                                                 | Best only for a Mac App Store build                                       |
 
 Do not wire more than one provider into the first beta. Pick one checkout path, one receipt email path, one support path, and one download page.
@@ -102,8 +103,9 @@ The DMG on R2 is for new installs and manual re-downloads. The Hugging Face `lat
 
 Create one live checkout product:
 
-- Product name: `Vox Jot`
-- Price: `$2.00`
+- Product name: `Vox Jot: Local-First Mac Dictation`
+- Price: `$0+` pay what you want
+- Suggested price: `$27.00`
 - Currency: `USD`
 - Type: one-time payment
 - Success URL: `https://www.iriedinamik.org/voxjot/download/?paid=1`
@@ -144,7 +146,9 @@ The website should point users at `latest/`. Support and rollback workflows shou
 Primary CTA:
 
 ```html
-<a class="btn btn-primary" href="PAYMENT_LINK_URL">Buy Vox Jot for $2</a>
+<a class="btn btn-primary" href="PAYMENT_LINK_URL"
+  >Get Vox Jot - pay what you want, suggested $27</a
+>
 ```
 
 Secondary CTA after payment:
@@ -160,7 +164,7 @@ Secondary CTA after payment:
 Short purchase note:
 
 ```text
-One-time $2 beta download for Apple Silicon Macs. Vox Jot is signed and notarized for direct macOS distribution. Audio and transcripts stay local by default.
+Pay-what-you-want beta download for Apple Silicon Macs. Suggested price: $27. If you need Vox Jot free, enter $0. Vox Jot is signed and notarized for direct macOS distribution. Core dictation stays local by default; optional cleanup only runs when configured.
 ```
 
 ## Security and abuse controls
@@ -184,7 +188,7 @@ One-time $2 beta download for Apple Silicon Macs. Vox Jot is signed and notarize
 5. Gatekeeper-validate the installed app and DMG.
 6. Upload the DMG and checksum to R2 versioned paths.
 7. Copy the same files to `voxjot/latest/`.
-8. Create or update the `$2` checkout link.
+8. Create or update the `$0+` pay-what-you-want checkout link with `$27` suggested.
 9. Update `https://www.iriedinamik.org/voxjot/` so the primary CTA points to checkout.
 10. Verify purchase success page and public download URL in a browser.
 11. For updater-capable releases, use the local distributor to create the signed updater archive and upload the updater artifacts plus `latest.json` to Hugging Face.

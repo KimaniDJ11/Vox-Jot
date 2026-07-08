@@ -15,7 +15,8 @@ Do not commit Gumroad access tokens. For CI or a fresh machine, use `GUMROAD_ACC
 
 ## Vox Jot Product
 
-- Product name: `Vox Jot: Local AI Dictation & Voice Studio for Mac`
+- Product name: `Vox Jot: Local-First Mac Dictation`
+- Pricing: `$0+` pay what you want, suggested `$27`
 - Product ID: `8UhuqxxzvPRLgPfGc37FFw==`
 - Custom permalink: `voxjot`
 - Public product page: `https://iriedinamik.gumroad.com/l/voxjot`
@@ -55,11 +56,12 @@ gumroad products sections list '8UhuqxxzvPRLgPfGc37FFw==' --json --no-input --qu
 
 The CLI can inspect rich content and product metadata. Use it before opening Gumroad in a browser.
 
-Current state as of June 5, 2026:
+Current state as of July 8, 2026:
 
 - The Gumroad purchased-content page starts with `DOWNLOAD VOX JOT`.
 - The main download link text is `Download Vox Jot for Mac (.dmg, Apple Silicon)`.
-- Product `file_info` is empty, so the DMG is linked from Gumroad content but is not currently attached as a native Gumroad file.
+- The product description leads with shortcut-to-text dictation, local by default.
+- The primary download is the stable R2 URL. A matching native Gumroad DMG attachment may also be present for receipt/download-page convenience.
 
 To attach a local release artifact as a native Gumroad file in a future release, first verify the artifact path and checksum, then preview the update:
 

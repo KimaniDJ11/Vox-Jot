@@ -2,20 +2,20 @@
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
-**A free, open source, and extensible speech-to-text application that works completely offline.**
+**Pay-what-you-want, open source, local-first Mac dictation. Suggested price: $27, with $0 allowed.**
 
-Vox Jot is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
+Vox Jot is a desktop voice input layer for people who write all day. Press a shortcut, speak, and have your words appear where your cursor is focused. Core dictation runs locally by default with no Vox Jot account required. Optional cleanup and rewrite features only use cloud providers when you configure them.
 
 ## Why Vox Jot?
 
 Vox Jot was created to fill the gap for a truly open source, extensible speech-to-text tool. As stated on [handy.computer](https://handy.computer):
 
-- **Free**: Accessibility tooling belongs in everyone's hands, not behind a paywall
+- **Accessible**: Pay what you want for the Mac download. The suggested price is `$27`, and people who need it free can enter `$0`
 - **Open Source**: Together we can build further. Extend Vox Jot for yourself and contribute to something bigger
-- **Private**: Your voice stays on your computer. Get transcriptions without sending audio to the cloud
-- **Simple**: One tool, one job. Transcribe what you say and put it into a text box
+- **Private by default**: Core dictation uses local speech models. Cloud cleanup is optional and user-configured
+- **Simple first**: Talk once and get text where your cursor already is
 
-Vox Jot isn't trying to be the best speech-to-text app—it's trying to be the most forkable one.
+Vox Jot includes deeper tools such as Dictation Modes, Phrase Keys, file transcription, Reader/Listen, OCR, and Model Hub. Those are power-user depth. The main job is simple: speak once and get text where you were already writing.
 
 ## How It Works
 
@@ -24,21 +24,22 @@ Vox Jot isn't trying to be the best speech-to-text app—it's trying to be the m
 3. **Release** and Vox Jot processes your speech using Whisper
 4. **Get** your transcribed text pasted directly into whatever app you're using
 
-The process is entirely local:
+Core dictation is local by default:
 
 - Silence is filtered using VAD (Voice Activity Detection) with Silero
 - Transcription uses your choice of models:
   - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
   - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
-- Works on Windows, macOS, and Linux
+- Optional post-processing can run locally or through cloud providers you configure
+- Works on Windows, macOS, and Linux in development; public direct downloads currently prioritize signed Apple Silicon Mac builds
 
 ## Quick Start
 
 ### Installation
 
-1. Download the latest release from the [releases page](https://github.com/KimaniDJ11/Vox-Jot/releases)
-   - **macOS**: Also available via [Homebrew cask](https://formulae.brew.sh/cask/handy): `brew install --cask handy` \
-     **Note:** The Homebrew cask is not maintained by the Vox Jot developers.
+1. Get the latest signed Mac download from [iriedinamik.org/voxjot](https://www.iriedinamik.org/voxjot/).
+   - The public Mac download is pay-what-you-want through Gumroad, with `$27` suggested and `$0` allowed.
+   - **macOS**: A third-party Homebrew cask may exist, but it is not maintained by the Vox Jot developers.
 2. Install the application
 3. Launch Vox Jot and grant necessary system permissions (microphone, accessibility)
 4. Configure your preferred keyboard shortcuts in Settings

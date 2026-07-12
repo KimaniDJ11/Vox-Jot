@@ -254,14 +254,24 @@ pub fn delete_shared_model_assets(app: &AppHandle, model_id: &str) -> Result<boo
 }
 
 pub fn shared_model_has_required_files(model_id: &str, path: &Path) -> bool {
+    shared_model_missing_required_files(model_id, path).is_empty()
+}
+
+pub fn shared_model_missing_required_files(model_id: &str, path: &Path) -> Vec<String> {
     match shared_model_family(model_id) {
-        Some(SharedModelAssetFamily::MlxAsr) => shared_mlx_asr_has_required_files(model_id, path),
-        Some(SharedModelAssetFamily::GemmaAudio) => shared_gemma_audio_has_required_files(path),
-        Some(SharedModelAssetFamily::GemmaMlxAudio) => {
-            shared_mlx_asr_has_required_files(model_id, path)
+        Some(SharedModelAssetFamily::MlxAsr) => {
+            shared_mlx_asr_missing_required_files(model_id, path)
         }
-        Some(SharedModelAssetFamily::HiggsAudio) => shared_higgs_audio_has_required_files(path),
-        None => false,
+        Some(SharedModelAssetFamily::GemmaAudio) => {
+            shared_static_missing_required_files(path, SHARED_GEMMA_AUDIO_REQUIRED_FILES)
+        }
+        Some(SharedModelAssetFamily::GemmaMlxAudio) => {
+            shared_mlx_asr_missing_required_files(model_id, path)
+        }
+        Some(SharedModelAssetFamily::HiggsAudio) => {
+            shared_static_missing_required_files(path, SHARED_HIGGS_AUDIO_REQUIRED_FILES)
+        }
+        None => vec!["shared model definition".to_string()],
     }
 }
 
@@ -291,59 +301,68 @@ fn shared_mlx_asr_required_files(model_id: &str) -> &'static [&'static str] {
     }
 }
 
-fn shared_mlx_asr_has_required_files(model_id: &str, path: &Path) -> bool {
+fn shared_static_missing_required_files(path: &Path, required_files: &[&str]) -> Vec<String> {
     if !path.is_dir() {
-        return false;
+        return vec!["model directory".to_string()];
     }
-    if !shared_mlx_asr_required_files(model_id)
+
+    required_files
         .iter()
-        .all(|file| path.join(file).exists())
-    {
-        return false;
+        .filter(|file| !path.join(file).exists())
+        .map(|file| (*file).to_string())
+        .collect()
+}
+
+fn shared_mlx_asr_missing_required_files(model_id: &str, path: &Path) -> Vec<String> {
+    let mut missing =
+        shared_static_missing_required_files(path, shared_mlx_asr_required_files(model_id));
+    if missing.iter().any(|file| file == "model directory") {
+        return missing;
     }
 
     if path.join("model.safetensors").exists() {
-        return true;
-    }
-    if !path.join("model.safetensors.index.json").exists() {
-        return false;
+        return missing;
     }
 
-    path.read_dir()
-        .ok()
-        .into_iter()
-        .flatten()
-        .filter_map(Result::ok)
-        .any(|entry| {
-            entry
-                .file_name()
-                .to_str()
-                .is_some_and(|name| name.starts_with("model-") && name.ends_with(".safetensors"))
-        })
+    let has_sharded_weights = path.join("model.safetensors.index.json").exists()
+        && path
+            .read_dir()
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .any(|entry| {
+                entry.file_name().to_str().is_some_and(|name| {
+                    name.starts_with("model-") && name.ends_with(".safetensors")
+                })
+            });
+    if !has_sharded_weights {
+        missing.push(
+            "model.safetensors or model.safetensors.index.json + model-*.safetensors".to_string(),
+        );
+    }
+
+    missing
 }
 
-fn shared_gemma_audio_has_required_files(path: &Path) -> bool {
-    path.is_dir()
-        && path.join("config.json").exists()
-        && path.join("model.safetensors").exists()
-        && path.join("processor_config.json").exists()
-        && path.join("tokenizer.json").exists()
-}
+const SHARED_GEMMA_AUDIO_REQUIRED_FILES: &[&str] = &[
+    "config.json",
+    "model.safetensors",
+    "processor_config.json",
+    "tokenizer.json",
+];
 
-fn shared_higgs_audio_has_required_files(path: &Path) -> bool {
-    const REQUIRED: &[&str] = &[
-        "config.json",
-        "generation_config.json",
-        "higgs_audio_collator.py",
-        "model-00001-of-00002.safetensors",
-        "model-00002-of-00002.safetensors",
-        "model.safetensors.index.json",
-        "tokenizer.json",
-        "tokenizer_config.json",
-        "transcribe.py",
-    ];
-    path.is_dir() && REQUIRED.iter().all(|file| path.join(file).exists())
-}
+const SHARED_HIGGS_AUDIO_REQUIRED_FILES: &[&str] = &[
+    "config.json",
+    "generation_config.json",
+    "higgs_audio_collator.py",
+    "model-00001-of-00002.safetensors",
+    "model-00002-of-00002.safetensors",
+    "model.safetensors.index.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "transcribe.py",
+];
 
 #[cfg(test)]
 mod tests {
@@ -421,6 +440,23 @@ mod tests {
         fs::write(sharded.join("model.safetensors.index.json"), "{}").unwrap();
         fs::write(sharded.join("model-00001-of-00004.safetensors"), "").unwrap();
         assert!(shared_model_has_required_files("mlx-qwen3-asr", &sharded));
+    }
+
+    #[test]
+    fn reports_missing_metadata_for_shared_weight_only_snapshot() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let partial = temp_dir.path().join("partial");
+        fs::create_dir(&partial).unwrap();
+        fs::write(partial.join("model.safetensors"), "").unwrap();
+
+        assert_eq!(
+            shared_model_missing_required_files("mlx-qwen3-asr", &partial),
+            vec!["config.json".to_string()]
+        );
+        assert!(!shared_model_has_required_files("mlx-qwen3-asr", &partial));
+
+        fs::write(partial.join("config.json"), "{}").unwrap();
+        assert!(shared_model_has_required_files("mlx-qwen3-asr", &partial));
     }
 
     #[test]

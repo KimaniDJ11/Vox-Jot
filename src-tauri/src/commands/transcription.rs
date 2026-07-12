@@ -1380,6 +1380,20 @@ fn audio_duration_ms(audio_16k: &[f32]) -> u64 {
     ((audio_16k.len() as f64 / 16_000.0) * 1000.0).round() as u64
 }
 
+/// Keep whole-file timing only when speaker labeling is not active.
+/// Diarization must never see a synthetic full-file ASR span.
+fn maybe_whole_file_segment_for_export(
+    audio_16k: &[f32],
+    text: &str,
+    use_diarization: bool,
+) -> Vec<TimedSegment> {
+    if use_diarization {
+        Vec::new()
+    } else {
+        whole_file_segment(audio_16k, text)
+    }
+}
+
 fn format_speaker_labeled_text(
     labeled_segments: &[SpeakerLabeledSegment],
     fallback_text: &str,
@@ -1431,20 +1445,49 @@ pub(crate) async fn transcribe_file_impl(
     correction_store: Arc<CorrectionStore>,
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
+    let selection = speech_analysis::selection_from_settings(&app);
+    transcribe_file_impl_with_models(
+        app,
+        speech_sidecar_manager,
+        correction_store,
+        path,
+        selection.asr_model_id,
+        selection.diarization_model_id,
+        selection.emotion_model_id,
+    )
+    .await
+}
+
+pub(crate) async fn transcribe_file_impl_with_models(
+    app: AppHandle,
+    speech_sidecar_manager: Arc<SidecarManager>,
+    correction_store: Arc<CorrectionStore>,
+    path: String,
+    asr_model_id: String,
+    diarization_model_id: String,
+    emotion_model_id: String,
+) -> Result<TranscriptionFileResult, String> {
     // File jobs run on the dedicated background engine (or the live manager
     // for remote-runtime models) so they never block live dictation.
     let manager = crate::managers::file_transcription_engine(&app)
         .ok_or_else(|| "TranscriptionManager not available".to_string())?;
-    let selection = speech_analysis::selection_from_settings(&app);
-    let asr_model_id = selection.asr_model_id.clone();
-    let diarization_model_id = selection.diarization_model_id.clone();
-    let emotion_model_id = selection.emotion_model_id.clone();
     let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
     let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
     let use_emotion = speech_analysis::should_run_emotion(&emotion_model_id);
+    let alignment_asr_model_id = if use_diarization && !use_sidecar_asr {
+        speech_analysis::prefer_timestamp_asr_for_speaker_alignment(&app, &asr_model_id)
+    } else {
+        asr_model_id.clone()
+    };
     let mut active_speech_analysis_models = Vec::new();
     if use_sidecar_asr {
         active_speech_analysis_models.push(asr_model_id.clone());
+    }
+    if use_diarization
+        && alignment_asr_model_id != CURRENT_DICTATION_ASR_ID
+        && alignment_asr_model_id != asr_model_id
+    {
+        active_speech_analysis_models.push(alignment_asr_model_id.clone());
     }
     if use_diarization {
         active_speech_analysis_models.push(diarization_model_id.clone());
@@ -1462,71 +1505,141 @@ pub(crate) async fn transcribe_file_impl(
         Some(resolve_ffmpeg_exe())
     };
 
-    let (raw_text, raw_segments, raw_speaker_turns, raw_emotion) = tokio::task::spawn_blocking(
-        move || -> Result<
-            (
+    let (raw_text, raw_segments, raw_speaker_turns, raw_emotion, audio_duration) =
+        tokio::task::spawn_blocking(
+            move || -> Result<
+                (
+                    String,
+                    Vec<TimedSegment>,
+                    Vec<SpeakerTurn>,
+                    Option<EmotionResult>,
+                    u64,
+                ),
                 String,
-                Vec<TimedSegment>,
-                Vec<SpeakerTurn>,
-                Option<EmotionResult>,
-            ),
-            String,
-        > {
-            let _speech_analysis_model_guard = speech_analysis_model_guard;
-            let audio_16k = if is_wav {
-                let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
-                resample_linear(&mono, sample_rate, 16_000)
-            } else {
-                let ff = ffmpeg_exe.expect("ffmpeg path resolved for non-wav");
-                decode_with_ffmpeg_blocking(&ff, &path)?
-            };
+            > {
+                let _speech_analysis_model_guard = speech_analysis_model_guard;
+                let audio_16k = if is_wav {
+                    let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
+                    resample_linear(&mono, sample_rate, 16_000)
+                } else {
+                    let ff = ffmpeg_exe.expect("ffmpeg path resolved for non-wav");
+                    decode_with_ffmpeg_blocking(&ff, &path)?
+                };
+                let duration_ms = audio_duration_ms(&audio_16k);
 
-            if use_sidecar_asr {
-                let (sidecar_text, mut sidecar_segments, speaker_turns, emotion) =
-                    run_speech_analysis_sidecar(
+                if use_sidecar_asr {
+                    let (sidecar_text, mut sidecar_segments, speaker_turns, emotion) =
+                        run_speech_analysis_sidecar(
+                            &sidecar_app,
+                            &speech_sidecar_manager,
+                            &audio_16k,
+                            &asr_model_id,
+                            &diarization_model_id,
+                            &emotion_model_id,
+                        )?;
+                    if sidecar_segments.is_empty() {
+                        sidecar_segments = maybe_whole_file_segment_for_export(
+                            &audio_16k,
+                            &sidecar_text,
+                            use_diarization,
+                        );
+                    }
+                    return Ok((
+                        sidecar_text,
+                        sidecar_segments,
+                        speaker_turns,
+                        emotion,
+                        duration_ms,
+                    ));
+                }
+
+                let (current_text, mut current_segments) = manager
+                    .transcribe_with_segments(Arc::new(audio_16k.clone()))
+                    .map_err(|e| format!("Failed to transcribe file: {}", e))?;
+
+                // The current-dictation ASR runs in-process, but diarization and
+                // emotion still need the sidecar. Invoke it once for whichever of the
+                // two is requested; passing the "no_*" ids makes the sidecar skip the
+                // unwanted stage.
+                let (speaker_turns, emotion) = if use_diarization || use_emotion {
+                    let (_, _, speaker_turns, emotion) = run_speech_analysis_sidecar(
                         &sidecar_app,
                         &speech_sidecar_manager,
                         &audio_16k,
-                        &asr_model_id,
+                        CURRENT_DICTATION_ASR_ID,
                         &diarization_model_id,
                         &emotion_model_id,
                     )?;
-                if sidecar_segments.is_empty() {
-                    sidecar_segments = whole_file_segment(&audio_16k, &sidecar_text);
+                    (speaker_turns, emotion)
+                } else {
+                    (Vec::new(), None)
+                };
+
+                let analysis_segments = timed_segments_to_analysis_segments(&current_segments);
+                let needs_timestamp_asr = use_diarization
+                    && !speaker_turns.is_empty()
+                    && !speech_analysis::asr_segments_usable_for_speaker_alignment(
+                        &analysis_segments,
+                        Some(duration_ms),
+                    )
+                    && alignment_asr_model_id != CURRENT_DICTATION_ASR_ID;
+
+                if needs_timestamp_asr {
+                    match run_speech_analysis_sidecar(
+                        &sidecar_app,
+                        &speech_sidecar_manager,
+                        &audio_16k,
+                        &alignment_asr_model_id,
+                        speech_analysis::NO_DIARIZATION_ID,
+                        speech_analysis::NO_EMOTION_ID,
+                    ) {
+                        Ok((_, timed_segments, _, _))
+                            if speech_analysis::asr_segments_usable_for_speaker_alignment(
+                                &timed_segments_to_analysis_segments(&timed_segments),
+                                Some(duration_ms),
+                            ) =>
+                        {
+                            log::info!(
+                                "Speaker labeling using timestamp ASR '{}' because dictation ASR returned no usable timestamps",
+                                alignment_asr_model_id
+                            );
+                            current_segments = timed_segments;
+                        }
+                        Ok(_) => {
+                            log::warn!(
+                                "Timestamp ASR '{}' returned no usable segments; labeling from diarization turns",
+                                alignment_asr_model_id
+                            );
+                        }
+                        Err(error) => {
+                            log::warn!(
+                                "Timestamp ASR '{}' failed ({}); labeling from diarization turns",
+                                alignment_asr_model_id,
+                                error
+                            );
+                        }
+                    }
                 }
-                return Ok((sidecar_text, sidecar_segments, speaker_turns, emotion));
-            }
 
-            let (current_text, mut current_segments) = manager
-                .transcribe_with_segments(Arc::new(audio_16k.clone()))
-                .map_err(|e| format!("Failed to transcribe file: {}", e))?;
-            if current_segments.is_empty() {
-                current_segments = whole_file_segment(&audio_16k, &current_text);
-            }
+                if current_segments.is_empty() {
+                    current_segments = maybe_whole_file_segment_for_export(
+                        &audio_16k,
+                        &current_text,
+                        use_diarization,
+                    );
+                }
 
-            // The current-dictation ASR runs in-process, but diarization and
-            // emotion still need the sidecar. Invoke it once for whichever of the
-            // two is requested; passing the "no_*" ids makes the sidecar skip the
-            // unwanted stage.
-            let (speaker_turns, emotion) = if use_diarization || use_emotion {
-                let (_, _, speaker_turns, emotion) = run_speech_analysis_sidecar(
-                    &sidecar_app,
-                    &speech_sidecar_manager,
-                    &audio_16k,
-                    CURRENT_DICTATION_ASR_ID,
-                    &diarization_model_id,
-                    &emotion_model_id,
-                )?;
-                (speaker_turns, emotion)
-            } else {
-                (Vec::new(), None)
-            };
-
-            Ok((current_text, current_segments, speaker_turns, emotion))
-        },
-    )
-    .await
-    .map_err(|e| format!("Task join error: {}", e))??;
+                Ok((
+                    current_text,
+                    current_segments,
+                    speaker_turns,
+                    emotion,
+                    duration_ms,
+                ))
+            },
+        )
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
 
     let settings = get_settings(&app);
     let mut text = raw_text;
@@ -1550,10 +1663,19 @@ pub(crate) async fn transcribe_file_impl(
     let speaker_segments = if raw_speaker_turns.is_empty() {
         Vec::new()
     } else {
-        speech_analysis::align_segments_to_speakers(
+        let outcome = speech_analysis::build_speaker_labeled_segments(
             &timed_segments_to_analysis_segments(&raw_segments),
             &raw_speaker_turns,
-        )
+            &text,
+            Some(audio_duration),
+        )?;
+        if outcome.collapsed_and_recovered {
+            log::warn!(
+                "Recovered speaker labels from {} raw diarization speakers after ASR timestamp collapse",
+                outcome.raw_speaker_count
+            );
+        }
+        outcome.segments
     };
     if !speaker_segments.is_empty() {
         text = format_speaker_labeled_text(&speaker_segments, &text);

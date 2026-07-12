@@ -956,11 +956,37 @@ fn descriptor_with_install_state(
 }
 
 fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
+    hugging_face_model_missing_required_files(model_id, path).is_empty()
+}
+
+fn hugging_face_model_missing_required_files(model_id: &str, path: &Path) -> Vec<String> {
     if crate::shared_model_assets::is_shared_model_asset(model_id) {
-        return crate::shared_model_assets::shared_model_has_required_files(model_id, path);
+        return crate::shared_model_assets::shared_model_missing_required_files(model_id, path);
     }
 
-    let required_files: &[&str] = match model_id {
+    let required_files = hugging_face_required_files(model_id);
+
+    if required_files.is_empty() {
+        return if path.exists() {
+            Vec::new()
+        } else {
+            vec!["model directory".to_string()]
+        };
+    }
+
+    if !path.is_dir() {
+        return vec!["model directory".to_string()];
+    }
+
+    required_files
+        .iter()
+        .filter(|file| !path.join(file).exists())
+        .map(|file| (*file).to_string())
+        .collect()
+}
+
+fn hugging_face_required_files(model_id: &str) -> &'static [&'static str] {
+    match model_id {
         "granite-speech-4-1-2b" => &["config.json", "model.safetensors.index.json"],
         "cohere-transcribe-03-2026" => &["config.json", "model.safetensors"],
         "higgs-audio-v3-stt" => &[
@@ -995,13 +1021,7 @@ fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
         "whisper-diarization" => &["model.bin", "config.json"],
         EMOTION2VEC_PLUS_LARGE_ID => &["model.pt", "config.yaml", "configuration.json"],
         _ => &[],
-    };
-
-    if required_files.is_empty() {
-        return path.exists();
     }
-
-    required_files.iter().all(|file| path.join(file).exists())
 }
 
 fn hf_env_token() -> Option<String> {
@@ -1473,6 +1493,108 @@ async fn download_hf_repo_to_dir(
     Ok(())
 }
 
+fn incomplete_model_error(label: &str, missing: &[String]) -> String {
+    if missing.is_empty() {
+        return format!("Downloaded {label} but the required model files are still incomplete.");
+    }
+
+    format!(
+        "Downloaded {label} but the required model files are still incomplete: missing {}.",
+        missing.join(", ")
+    )
+}
+
+async fn recalculate_downloaded_bytes(
+    target_dir: &Path,
+    download_files: &[HfDownloadFile],
+) -> Result<u64, String> {
+    let mut downloaded = 0u64;
+    for file in download_files {
+        let target = target_dir.join(&file.path);
+        let Some(actual) = local_file_len(&target).await? else {
+            continue;
+        };
+        downloaded += file.size.map_or(actual, |expected| actual.min(expected));
+    }
+    Ok(downloaded)
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn repair_missing_required_hf_files(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    cancel_flag: &Arc<AtomicBool>,
+    model: &SpeechAnalysisModelDescriptor,
+    repo_id: &str,
+    staging: &Path,
+    download_files: &[HfDownloadFile],
+    total_bytes: u64,
+    cumulative_bytes: &mut u64,
+) -> Result<(), String> {
+    let missing = hugging_face_model_missing_required_files(&model.id, staging);
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let download_index = download_files
+        .iter()
+        .enumerate()
+        .map(|(idx, file)| (file.path.as_str(), (idx + 1, file.clone())))
+        .collect::<HashMap<_, _>>();
+    let repair_candidates = missing
+        .iter()
+        .filter_map(|file| download_index.get(file.as_str()).cloned())
+        .collect::<Vec<_>>();
+
+    if repair_candidates.is_empty() {
+        return Ok(());
+    }
+
+    *cumulative_bytes = recalculate_downloaded_bytes(staging, download_files).await?;
+    emit_download_progress(
+        app,
+        &model.id,
+        "repairing",
+        *cumulative_bytes,
+        total_bytes,
+        None,
+        None,
+        Some(download_files.len()),
+        None,
+    );
+
+    for (file_index, file) in repair_candidates {
+        ensure_download_not_cancelled(cancel_flag)?;
+        let target = staging.join(&file.path);
+        let existing_len = local_file_len(&target).await?.unwrap_or(0);
+        if file.size.is_some_and(|expected| existing_len == expected) {
+            continue;
+        }
+        let resume_from = match file.size {
+            Some(expected) if existing_len > 0 && existing_len < expected => existing_len,
+            _ => 0,
+        };
+        download_one_file(
+            app,
+            client,
+            cancel_flag,
+            &model.id,
+            repo_id,
+            &file.path,
+            &target,
+            file_index,
+            download_files.len(),
+            total_bytes,
+            cumulative_bytes,
+            file.size,
+            resume_from,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
 async fn download_related_assets(
     app: &AppHandle,
     client: &reqwest::Client,
@@ -1695,7 +1817,23 @@ async fn download_model_inner(
 
     ensure_download_not_cancelled(cancel_flag)?;
     download_related_assets(app, &client, cancel_flag, model, &staging).await?;
+    repair_missing_required_hf_files(
+        app,
+        &client,
+        cancel_flag,
+        model,
+        repo_id,
+        &staging,
+        &download_files,
+        total_bytes,
+        &mut cumulative,
+    )
+    .await?;
     ensure_download_not_cancelled(cancel_flag)?;
+    let missing_required = hugging_face_model_missing_required_files(&model.id, &staging);
+    if !missing_required.is_empty() {
+        return Err(incomplete_model_error(&model.label, &missing_required));
+    }
     let final_dir = install_dir(app, &model.id)?;
     if let Some(parent) = final_dir.parent() {
         tokio_fs::create_dir_all(parent)
@@ -1706,12 +1844,6 @@ async fn download_model_inner(
         tokio_fs::remove_dir_all(&final_dir)
             .await
             .map_err(|err| format!("Failed to clear existing install: {err}"))?;
-    }
-    if !hugging_face_model_has_required_files(&model.id, &staging) {
-        return Err(format!(
-            "Downloaded {} but the required model files are still incomplete.",
-            model.label
-        ));
     }
     tokio_fs::rename(&staging, &final_dir)
         .await
@@ -1960,6 +2092,177 @@ fn overlap_ms(a_start: u64, a_end: u64, b_start: u64, b_end: u64) -> u64 {
     end.saturating_sub(start)
 }
 
+pub fn unique_speaker_ids_from_turns(turns: &[SpeakerTurn]) -> Vec<String> {
+    let mut ids = std::collections::BTreeSet::new();
+    for turn in turns {
+        let speaker = turn.speaker_id.trim();
+        if !speaker.is_empty() {
+            ids.insert(speaker.to_string());
+        }
+    }
+    ids.into_iter().collect()
+}
+
+pub fn unique_speaker_ids_from_labeled(segments: &[SpeakerLabeledSegment]) -> Vec<String> {
+    let mut ids = std::collections::BTreeSet::new();
+    for segment in segments {
+        let speaker = segment.speaker_id.trim();
+        if !speaker.is_empty() && speaker != "unknown" {
+            ids.insert(speaker.to_string());
+        }
+    }
+    ids.into_iter().collect()
+}
+
+pub fn raw_speaker_count(turns: &[SpeakerTurn]) -> usize {
+    unique_speaker_ids_from_turns(turns).len()
+}
+
+/// Merge adjacent same-speaker turns so granular diarization output does not
+/// explode into thousands of labeled rows before text is assigned.
+pub fn coalesce_adjacent_speaker_turns(turns: &[SpeakerTurn]) -> Vec<SpeakerTurn> {
+    let mut coalesced: Vec<SpeakerTurn> = Vec::with_capacity(turns.len());
+    for turn in turns {
+        if turn.end_ms < turn.start_ms {
+            continue;
+        }
+        if let Some(last) = coalesced.last_mut() {
+            if last.speaker_id == turn.speaker_id {
+                last.end_ms = last.end_ms.max(turn.end_ms);
+                last.start_ms = last.start_ms.min(turn.start_ms);
+                last.confidence = match (last.confidence, turn.confidence) {
+                    (Some(left), Some(right)) => Some(left.max(right)),
+                    (Some(value), None) | (None, Some(value)) => Some(value),
+                    (None, None) => None,
+                };
+                continue;
+            }
+        }
+        coalesced.push(turn.clone());
+    }
+    coalesced
+}
+
+/// True when ASR timestamps are granular enough to drive speaker labeling.
+/// Empty lists and a single whole-file span are not usable: aligning either
+/// collapses multi-speaker diarization into one labeled speaker.
+pub fn asr_segments_usable_for_speaker_alignment(
+    segments: &[SpeechAnalysisSegment],
+    audio_duration_ms: Option<u64>,
+) -> bool {
+    if segments.len() >= 2 {
+        return true;
+    }
+    let Some(segment) = segments.first() else {
+        return false;
+    };
+    let span = segment.end_ms.saturating_sub(segment.start_ms);
+    if span == 0 {
+        return false;
+    }
+    // A solitary segment is only safe when it clearly does *not* cover the
+    // whole recording (e.g. a short clip with one utterance). Near-full-file
+    // spans are the whole-file fallback and must not drive labeling.
+    match audio_duration_ms {
+        Some(duration) if duration > 0 => {
+            let starts_near_zero = segment.start_ms <= duration / 50;
+            let covers_most_of_file = span >= (duration.saturating_mul(9) / 10);
+            !(starts_near_zero && covers_most_of_file)
+        }
+        _ => false,
+    }
+}
+
+/// Prefer installed timestamp-capable file ASR over the live dictation engine
+/// when labeling speakers. History analysis previously forced current dictation,
+/// which often returns text without timestamps.
+pub fn prefer_timestamp_asr_for_speaker_alignment(
+    app: &AppHandle,
+    preferred_asr_model_id: &str,
+) -> String {
+    let settings = get_settings(app);
+    let candidates = [
+        preferred_asr_model_id.trim(),
+        settings.file_transcription_asr_model_id.trim(),
+    ];
+    for candidate in candidates {
+        if candidate.is_empty() || candidate == CURRENT_DICTATION_ASR_ID {
+            continue;
+        }
+        let Some(model) = get_model(app, candidate) else {
+            continue;
+        };
+        if !model.capabilities.timestamps {
+            continue;
+        }
+        if !matches!(
+            model.task,
+            SpeechAnalysisTask::Asr | SpeechAnalysisTask::AsrDiarization
+        ) {
+            continue;
+        }
+        if !model.installed && !matches!(model.readiness, SpeechAnalysisReadiness::BuiltIn) {
+            continue;
+        }
+        if matches!(
+            model.readiness,
+            SpeechAnalysisReadiness::Ready | SpeechAnalysisReadiness::BuiltIn
+        ) {
+            return model.id;
+        }
+    }
+    CURRENT_DICTATION_ASR_ID.to_string()
+}
+
+/// Assign transcript words to coalesced diarization turns by duration share.
+/// Used when ASR did not provide real timestamps.
+pub fn label_segments_from_speaker_turns(
+    turns: &[SpeakerTurn],
+    full_text: &str,
+) -> Vec<SpeakerLabeledSegment> {
+    let coalesced = coalesce_adjacent_speaker_turns(turns);
+    if coalesced.is_empty() {
+        return Vec::new();
+    }
+
+    let words: Vec<&str> = full_text
+        .split_whitespace()
+        .filter(|word| !word.is_empty())
+        .collect();
+    let total_duration: u64 = coalesced
+        .iter()
+        .map(|turn| turn.end_ms.saturating_sub(turn.start_ms).max(1))
+        .sum();
+
+    let mut labeled = Vec::with_capacity(coalesced.len());
+    let mut word_index = 0usize;
+    let mut elapsed_duration = 0u64;
+
+    for (index, turn) in coalesced.iter().enumerate() {
+        let duration = turn.end_ms.saturating_sub(turn.start_ms).max(1);
+        let end_word = if index + 1 == coalesced.len() || words.is_empty() {
+            words.len()
+        } else {
+            elapsed_duration = elapsed_duration.saturating_add(duration);
+            let target =
+                ((words.len() as u64).saturating_mul(elapsed_duration)) / total_duration.max(1);
+            (target as usize).clamp(word_index, words.len())
+        };
+        let text = words[word_index..end_word].join(" ");
+        word_index = end_word;
+
+        labeled.push(SpeakerLabeledSegment {
+            speaker_id: turn.speaker_id.clone(),
+            start_ms: turn.start_ms,
+            end_ms: turn.end_ms,
+            text,
+            confidence: turn.confidence,
+        });
+    }
+
+    labeled
+}
+
 pub fn align_segments_to_speakers(
     segments: &[SpeechAnalysisSegment],
     turns: &[SpeakerTurn],
@@ -1997,10 +2300,90 @@ pub fn align_segments_to_speakers(
         .collect()
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpeakerAlignmentMode {
+    AsrTimestamps,
+    DiarizationTurns,
+}
+
+#[derive(Debug, Clone)]
+pub struct SpeakerAlignmentOutcome {
+    pub segments: Vec<SpeakerLabeledSegment>,
+    pub raw_speaker_count: usize,
+    pub aligned_speaker_count: usize,
+    pub mode: SpeakerAlignmentMode,
+    pub collapsed_and_recovered: bool,
+}
+
+/// Build speaker-labeled segments without ever trusting a whole-file ASR span.
+/// When ASR timestamps are missing or would collapse multi-speaker diarization
+/// to one label, assign text onto the raw diarization turns instead.
+pub fn build_speaker_labeled_segments(
+    segments: &[SpeechAnalysisSegment],
+    turns: &[SpeakerTurn],
+    full_text: &str,
+    audio_duration_ms: Option<u64>,
+) -> Result<SpeakerAlignmentOutcome, String> {
+    if turns.is_empty() {
+        return Ok(SpeakerAlignmentOutcome {
+            segments: Vec::new(),
+            raw_speaker_count: 0,
+            aligned_speaker_count: 0,
+            mode: SpeakerAlignmentMode::AsrTimestamps,
+            collapsed_and_recovered: false,
+        });
+    }
+
+    let raw_count = raw_speaker_count(turns);
+    let usable_asr = asr_segments_usable_for_speaker_alignment(segments, audio_duration_ms);
+
+    let (mut labeled, mut mode) = if usable_asr {
+        (
+            align_segments_to_speakers(segments, turns),
+            SpeakerAlignmentMode::AsrTimestamps,
+        )
+    } else {
+        (
+            label_segments_from_speaker_turns(turns, full_text),
+            SpeakerAlignmentMode::DiarizationTurns,
+        )
+    };
+
+    let mut aligned_count = unique_speaker_ids_from_labeled(&labeled).len();
+    let mut collapsed_and_recovered = false;
+
+    if raw_count >= 2 && aligned_count < 2 {
+        log::warn!(
+            "Speaker alignment collapsed {} raw speakers into {}; recovering from diarization turns",
+            raw_count,
+            aligned_count
+        );
+        labeled = label_segments_from_speaker_turns(turns, full_text);
+        mode = SpeakerAlignmentMode::DiarizationTurns;
+        aligned_count = unique_speaker_ids_from_labeled(&labeled).len();
+        collapsed_and_recovered = true;
+    }
+
+    if raw_count >= 2 && aligned_count < 2 {
+        return Err(format!(
+            "Speaker analysis found {raw_count} speakers in the diarization output, but alignment collapsed to {aligned_count}. Try Re-analyze speakers or switch Speaker Isolation model."
+        ));
+    }
+
+    Ok(SpeakerAlignmentOutcome {
+        segments: labeled,
+        raw_speaker_count: raw_count,
+        aligned_speaker_count: aligned_count,
+        mode,
+        collapsed_and_recovered,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashSet;
+    use std::fs;
 
     #[test]
     fn catalog_ids_are_unique_and_include_required_models() {
@@ -2034,6 +2417,45 @@ mod tests {
         ] {
             assert!(ids.contains(required), "missing required model {required}");
         }
+    }
+
+    #[test]
+    fn downloadable_hugging_face_models_have_required_file_contracts() {
+        for model in built_in_catalog_models() {
+            if model.source_kind != SpeechAnalysisSourceKind::HuggingFace
+                || !model.downloadable
+                || crate::shared_model_assets::is_shared_model_asset(&model.id)
+            {
+                continue;
+            }
+
+            assert!(
+                !hugging_face_required_files(&model.id).is_empty(),
+                "{} must declare required files so partial downloads are rejected",
+                model.id
+            );
+        }
+    }
+
+    #[test]
+    fn sortformer_weight_only_partial_is_incomplete_until_config_arrives() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("model.safetensors"), "").unwrap();
+
+        assert_eq!(
+            hugging_face_model_missing_required_files("mlx-sortformer-4spk-v1", temp_dir.path()),
+            vec!["config.json".to_string()]
+        );
+        assert!(!hugging_face_model_has_required_files(
+            "mlx-sortformer-4spk-v1",
+            temp_dir.path()
+        ));
+
+        fs::write(temp_dir.path().join("config.json"), "{}").unwrap();
+        assert!(hugging_face_model_has_required_files(
+            "mlx-sortformer-4spk-v1",
+            temp_dir.path()
+        ));
     }
 
     #[test]
@@ -2113,6 +2535,119 @@ mod tests {
 
         assert_eq!(labeled[0].speaker_id, "unknown");
         assert_eq!(labeled[0].confidence, None);
+    }
+
+    #[test]
+    fn whole_file_asr_segment_is_not_usable_for_speaker_alignment() {
+        let segments = vec![SpeechAnalysisSegment {
+            start_ms: 0,
+            end_ms: 1_232_280,
+            text: "entire transcript".to_string(),
+        }];
+        assert!(!asr_segments_usable_for_speaker_alignment(
+            &segments,
+            Some(1_232_280)
+        ));
+        assert!(!asr_segments_usable_for_speaker_alignment(&[], Some(1_000)));
+        assert!(asr_segments_usable_for_speaker_alignment(
+            &[
+                SpeechAnalysisSegment {
+                    start_ms: 0,
+                    end_ms: 1_000,
+                    text: "a".to_string(),
+                },
+                SpeechAnalysisSegment {
+                    start_ms: 1_000,
+                    end_ms: 2_000,
+                    text: "b".to_string(),
+                },
+            ],
+            Some(2_000)
+        ));
+    }
+
+    #[test]
+    fn build_speaker_labels_recovers_from_whole_file_collapse() {
+        let segments = vec![SpeechAnalysisSegment {
+            start_ms: 0,
+            end_ms: 10_000,
+            text: "hello there friend how are you today".to_string(),
+        }];
+        let turns = vec![
+            SpeakerTurn {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 0,
+                end_ms: 4_000,
+                confidence: Some(0.9),
+                source_model_id: "mlx-sortformer-4spk-v1".to_string(),
+            },
+            SpeakerTurn {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 4_000,
+                end_ms: 5_000,
+                confidence: Some(0.8),
+                source_model_id: "mlx-sortformer-4spk-v1".to_string(),
+            },
+            SpeakerTurn {
+                speaker_id: "SPEAKER_01".to_string(),
+                start_ms: 5_000,
+                end_ms: 10_000,
+                confidence: Some(0.85),
+                source_model_id: "mlx-sortformer-4spk-v1".to_string(),
+            },
+        ];
+
+        let outcome = build_speaker_labeled_segments(
+            &segments,
+            &turns,
+            "hello there friend how are you today",
+            Some(10_000),
+        )
+        .expect("alignment should recover");
+
+        assert_eq!(outcome.raw_speaker_count, 2);
+        assert_eq!(outcome.aligned_speaker_count, 2);
+        assert!(
+            outcome.collapsed_and_recovered
+                || matches!(outcome.mode, SpeakerAlignmentMode::DiarizationTurns)
+        );
+        assert_eq!(outcome.segments.len(), 2);
+        assert_eq!(outcome.segments[0].speaker_id, "SPEAKER_00");
+        assert_eq!(outcome.segments[1].speaker_id, "SPEAKER_01");
+        assert!(!outcome.segments[0].text.is_empty());
+        assert!(!outcome.segments[1].text.is_empty());
+    }
+
+    #[test]
+    fn coalesce_adjacent_speaker_turns_merges_same_speaker() {
+        let turns = vec![
+            SpeakerTurn {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 0,
+                end_ms: 100,
+                confidence: Some(0.5),
+                source_model_id: "x".to_string(),
+            },
+            SpeakerTurn {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 100,
+                end_ms: 200,
+                confidence: Some(0.9),
+                source_model_id: "x".to_string(),
+            },
+            SpeakerTurn {
+                speaker_id: "SPEAKER_01".to_string(),
+                start_ms: 200,
+                end_ms: 300,
+                confidence: None,
+                source_model_id: "x".to_string(),
+            },
+        ];
+        let coalesced = coalesce_adjacent_speaker_turns(&turns);
+        assert_eq!(coalesced.len(), 2);
+        assert_eq!(coalesced[0].end_ms, 200);
+        assert_eq!(coalesced[0].confidence, Some(0.9));
+        assert_eq!(coalesced[1].speaker_id, "SPEAKER_01");
     }
 
     #[test]

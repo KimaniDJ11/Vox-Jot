@@ -1062,7 +1062,10 @@
       "saveError": "Kayıt geçmişe kaydedilemedi: {{error}}",
       "saveToggleError": "Kayıtlı durum güncellenemedi: {{error}}",
       "badges": {
-        "appA11y": "Uygulama: {{appName}}"
+        "appA11y": "Uygulama: {{appName}}",
+        "speakers": "{{count}} konuşmacı",
+        "postProcessOn": "Son işlem uygulandı",
+        "dictionaryOn": "Sözlük uygulandı"
       },
       "showRecordingInFolder": "Kaydı klasörde göster",
       "revealError": "Kayıt gösterilemedi: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” sözlüğünüze kaydedildi",
         "saveError": "Değişiklik kaydedilemedi: {{error}}"
       },
-      "audioOnlyEntry": "Ses kaydedildi — transkripsiyon tamamlanamadı"
+      "audioOnlyEntry": "Ses kaydedildi — transkripsiyon tamamlanamadı",
+      "modes": {
+        "ariaLabel": "Kayıt görünümleri",
+        "transcript": "Döküm",
+        "speakers": "Konuşmacılar",
+        "summary": "Özet"
+      },
+      "displayTitle": {
+        "editLabel": "Kayıt başlığını düzenle",
+        "saveError": "Başlık kaydedilemedi: {{error}}"
+      },
+      "speakers": {
+        "title": "Konuşmacılar",
+        "analyze": "Konuşmacıları analiz et",
+        "reanalyze": "Konuşmacıları yeniden analiz et",
+        "copy": "Konuşmacılı dökümü kopyala",
+        "copied": "Konuşmacılı döküm kopyalandı",
+        "openModelHub": "Model seç",
+        "showLabels": "Konuşmacı etiketlerini göster",
+        "renameHint": "Bu kayıt için konuşmacıları yeniden adlandırın.",
+        "renameField": "{{id}} için görünen ad",
+        "renamePlaceholder": "örn. Ben, avukat",
+        "saveNames": "Adları kaydet",
+        "namesSaved": "Konuşmacı adları kaydedildi",
+        "namesError": "Konuşmacı adları kaydedilemedi: {{error}}",
+        "labelsError": "Etiket görünürlüğü güncellenemedi: {{error}}",
+        "analyzeError": "Konuşmacı analizi başarısız oldu: {{error}}",
+        "oneSpeakerHint": "1 konuşmacı algılandı. Etiketler gizli.",
+        "status": {
+          "notAnalyzed": "Konuşmacıları belirlemek için kaydedilen kaydı analiz edin.",
+          "modelRequired": "Önce bir konuşmacı izolasyonu modeli seçin.",
+          "running": "Konuşmacılar analiz ediliyor…",
+          "complete": "{{count}} konuşmacı belirlendi",
+          "completeEmpty": "Konuşmacı analizi tamamlandı, ancak hiçbir konuşmacı etiketlenmedi.",
+          "oneSpeaker": "1 konuşmacı algılandı",
+          "failed": "Konuşmacı analizi başarısız oldu."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Uzun kayıtlarda konuşmacıları otomatik analiz et",
+        "description": "2 dakika veya daha uzun kayıtlarda, kaydetmeden sonra konuşmacılar arka planda algılanır. Kısa dikteler değişmeden kalır. Konuşmacıları analiz etmeyi her zaman Geçmiş ayrıntısından çalıştırabilirsiniz."
+      }
     },
     "debug": {
       "title": "Hata ayıklama",

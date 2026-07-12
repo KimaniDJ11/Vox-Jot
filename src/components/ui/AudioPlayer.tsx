@@ -351,9 +351,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         {title || actions || starred ? (
           <div className="flex min-w-0 items-center gap-2">
             {title ? (
-              <p className="m-0 min-w-0 truncate text-sm font-semibold leading-5 text-[var(--text)]">
+              <div className="m-0 min-w-0 truncate text-sm font-semibold leading-5 text-[var(--text)]">
                 {title}
-              </p>
+              </div>
             ) : null}
             {starred ? (
               <span

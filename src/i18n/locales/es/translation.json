@@ -1062,7 +1062,10 @@
       "saveError": "No se pudo guardar la grabación en el historial: {{error}}",
       "saveToggleError": "No se pudo actualizar el estado guardado: {{error}}",
       "badges": {
-        "appA11y": "Aplicación: {{appName}}"
+        "appA11y": "Aplicación: {{appName}}",
+        "speakers": "{{count}} hablantes",
+        "postProcessOn": "Posprocesado",
+        "dictionaryOn": "Diccionario aplicado"
       },
       "showRecordingInFolder": "Mostrar grabación en carpeta",
       "revealError": "No se pudo mostrar la grabación: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "Se guardó “{{original}}” → “{{corrected}}” en tu diccionario",
         "saveError": "No se pudo guardar el cambio: {{error}}"
       },
-      "audioOnlyEntry": "Audio guardado: la transcripción no se completó"
+      "audioOnlyEntry": "Audio guardado: la transcripción no se completó",
+      "modes": {
+        "ariaLabel": "Vistas de la grabación",
+        "transcript": "Transcripción",
+        "speakers": "Hablantes",
+        "summary": "Resumen"
+      },
+      "displayTitle": {
+        "editLabel": "Editar título de la grabación",
+        "saveError": "No se pudo guardar el título: {{error}}"
+      },
+      "speakers": {
+        "title": "Hablantes",
+        "analyze": "Analizar hablantes",
+        "reanalyze": "Volver a analizar hablantes",
+        "copy": "Copiar transcripción por hablante",
+        "copied": "Transcripción por hablante copiada",
+        "openModelHub": "Elegir modelo",
+        "showLabels": "Mostrar etiquetas de hablantes",
+        "renameHint": "Cambie el nombre de los hablantes para esta grabación.",
+        "renameField": "Nombre para mostrar de {{id}}",
+        "renamePlaceholder": "p. ej., Yo, abogado",
+        "saveNames": "Guardar nombres",
+        "namesSaved": "Nombres de hablantes guardados",
+        "namesError": "No se pudieron guardar los nombres: {{error}}",
+        "labelsError": "No se pudo actualizar la visibilidad de etiquetas: {{error}}",
+        "analyzeError": "Error al analizar hablantes: {{error}}",
+        "oneSpeakerHint": "Se detectó 1 hablante. Las etiquetas están ocultas.",
+        "status": {
+          "notAnalyzed": "Analice la grabación guardada para identificar hablantes.",
+          "modelRequired": "Primero elija un modelo de aislamiento de hablantes.",
+          "running": "Analizando hablantes…",
+          "complete": "{{count}} hablantes identificados",
+          "completeEmpty": "El análisis de hablantes finalizó, pero no se etiquetó ningún hablante.",
+          "oneSpeaker": "Se detectó 1 hablante",
+          "failed": "Error en el análisis de hablantes."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Analizar automáticamente hablantes en grabaciones largas",
+        "description": "En grabaciones de 2 minutos o más, detecta hablantes en segundo plano después de guardar. Los dictados cortos no cambian. Siempre puede ejecutar Analizar hablantes desde el detalle del historial."
+      }
     },
     "debug": {
       "title": "Depurar",

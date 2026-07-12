@@ -117,6 +117,18 @@ const makeEntry = (
   tts_status: null,
   screen_context_metadata: null,
   duration_ms: null,
+  display_title: transcriptionText,
+  display_title_source: "heuristic",
+  summary: null,
+  speaker_status: "not_analyzed",
+  speaker_error: null,
+  speaker_model_id: null,
+  speaker_analyzed_at: null,
+  speaker_count: null,
+  speaker_labels_visible: true,
+  speaker_segments_json: null,
+  speaker_transcript_text: null,
+  speaker_display_names_json: null,
 });
 
 const render = async (node: React.ReactNode) => {
@@ -202,5 +214,68 @@ describe("HistorySettings", () => {
 
     expect(view.textContent).toContain("Newest transcript");
     expect(view.textContent).toContain("Initial transcript");
+  });
+
+  it("ignores stale history refreshes that finish out of order", async () => {
+    const initialEntry = makeEntry(1, "Initial transcript", 1_780_000_000);
+    const staleEntry = makeEntry(1, "Stale running transcript", 1_780_000_000);
+    const latestEntry = makeEntry(1, "Completed transcript", 1_780_000_000);
+    let resolveStale:
+      | ((value: {
+          status: "ok";
+          data: { entries: HistoryEntry[]; has_more: boolean };
+        }) => void)
+      | null = null;
+    let resolveLatest:
+      | ((value: {
+          status: "ok";
+          data: { entries: HistoryEntry[]; has_more: boolean };
+        }) => void)
+      | null = null;
+
+    mockState.getHistoryEntriesPage
+      .mockResolvedValueOnce({
+        status: "ok",
+        data: { entries: [initialEntry], has_more: false },
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStale = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveLatest = resolve;
+          }),
+      );
+
+    const view = await render(<HistorySettings />);
+    await flushEffects();
+    const historyListeners = mockState.listeners.get("history-updated");
+
+    await act(async () => {
+      historyListeners?.forEach((listener) => {
+        listener();
+        listener();
+      });
+    });
+    await act(async () => {
+      resolveLatest?.({
+        status: "ok",
+        data: { entries: [latestEntry], has_more: false },
+      });
+    });
+    expect(view.textContent).toContain("Completed transcript");
+
+    await act(async () => {
+      resolveStale?.({
+        status: "ok",
+        data: { entries: [staleEntry], has_more: false },
+      });
+    });
+    expect(view.textContent).toContain("Completed transcript");
+    expect(view.textContent).not.toContain("Stale running transcript");
   });
 });

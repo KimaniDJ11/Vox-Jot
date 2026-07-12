@@ -1062,7 +1062,10 @@
       "saveError": "Échec de la sauvegarde de l'enregistrement dans l'historique : {{error}}",
       "saveToggleError": "Échec de la mise à jour du statut enregistré : {{error}}",
       "badges": {
-        "appA11y": "Application : {{appName}}"
+        "appA11y": "Application : {{appName}}",
+        "speakers": "{{count}} locuteurs",
+        "postProcessOn": "Post-traité",
+        "dictionaryOn": "Dictionnaire appliqué"
       },
       "showRecordingInFolder": "Afficher l'enregistrement dans le dossier",
       "revealError": "Impossible d'afficher l'enregistrement : {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "« {{original}} » → « {{corrected}} » enregistré dans votre dictionnaire",
         "saveError": "Impossible d’enregistrer la modification : {{error}}"
       },
-      "audioOnlyEntry": "Audio enregistré — la transcription n'a pas abouti"
+      "audioOnlyEntry": "Audio enregistré — la transcription n'a pas abouti",
+      "modes": {
+        "ariaLabel": "Vues de l’enregistrement",
+        "transcript": "Transcription",
+        "speakers": "Locuteurs",
+        "summary": "Résumé"
+      },
+      "displayTitle": {
+        "editLabel": "Modifier le titre de l’enregistrement",
+        "saveError": "Impossible d’enregistrer le titre : {{error}}"
+      },
+      "speakers": {
+        "title": "Locuteurs",
+        "analyze": "Analyser les locuteurs",
+        "reanalyze": "Réanalyser les locuteurs",
+        "copy": "Copier la transcription par locuteur",
+        "copied": "Transcription par locuteur copiée",
+        "openModelHub": "Choisir le modèle",
+        "showLabels": "Afficher les étiquettes des locuteurs",
+        "renameHint": "Renommez les locuteurs pour cet enregistrement.",
+        "renameField": "Nom affiché pour {{id}}",
+        "renamePlaceholder": "ex. Moi, avocat",
+        "saveNames": "Enregistrer les noms",
+        "namesSaved": "Noms des locuteurs enregistrés",
+        "namesError": "Impossible d’enregistrer les noms des locuteurs : {{error}}",
+        "labelsError": "Impossible de mettre à jour la visibilité des étiquettes : {{error}}",
+        "analyzeError": "Échec de l’analyse des locuteurs : {{error}}",
+        "oneSpeakerHint": "1 locuteur détecté. Les étiquettes sont masquées.",
+        "status": {
+          "notAnalyzed": "Analysez l’enregistrement sauvegardé pour identifier les locuteurs.",
+          "modelRequired": "Choisissez d’abord un modèle d’isolation des locuteurs.",
+          "running": "Analyse des locuteurs…",
+          "complete": "{{count}} locuteurs identifiés",
+          "completeEmpty": "L’analyse des locuteurs est terminée, mais aucun locuteur n’a été identifié.",
+          "oneSpeaker": "1 locuteur détecté",
+          "failed": "Échec de l’analyse des locuteurs."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Analyser automatiquement les locuteurs des longs enregistrements",
+        "description": "Pour les enregistrements de 2 minutes ou plus, détecte les locuteurs en arrière-plan après l’enregistrement. Les dictées courtes restent inchangées. Vous pouvez toujours lancer Analyser les locuteurs depuis le détail de l’historique."
+      }
     },
     "debug": {
       "title": "Débogage",

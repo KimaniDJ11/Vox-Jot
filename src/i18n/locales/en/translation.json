@@ -1846,7 +1846,51 @@
       "saveError": "Failed to save recording to history: {{error}}",
       "saveToggleError": "Failed to update saved status: {{error}}",
       "badges": {
-        "appA11y": "Application: {{appName}}"
+        "appA11y": "Application: {{appName}}",
+        "speakers": "{{count}} speakers",
+        "postProcessOn": "Post processed",
+        "dictionaryOn": "Dictionary applied"
+      },
+      "modes": {
+        "ariaLabel": "Recording views",
+        "transcript": "Transcript",
+        "speakers": "Speakers",
+        "summary": "Summary"
+      },
+      "displayTitle": {
+        "editLabel": "Edit recording title",
+        "saveError": "Could not save title: {{error}}"
+      },
+      "speakers": {
+        "title": "Speakers",
+        "analyze": "Analyze speakers",
+        "reanalyze": "Re-analyze speakers",
+        "copy": "Copy speaker transcript",
+        "copied": "Speaker transcript copied",
+        "openModelHub": "Choose model",
+        "showLabels": "Show speaker labels",
+        "renameHint": "Select a speaker label to rename. The new name applies to every turn from that speaker.",
+        "renameField": "Display name for {{id}}",
+        "renamePlaceholder": "e.g. Me, Lawyer",
+        "saveNames": "Save names",
+        "namesSaved": "Speaker names saved",
+        "namesError": "Could not save speaker names: {{error}}",
+        "labelsError": "Could not update label visibility: {{error}}",
+        "analyzeError": "Speaker analysis failed: {{error}}",
+        "oneSpeakerHint": "1 speaker detected. Labels are hidden. Re-analyze if this recording should have multiple speakers.",
+        "status": {
+          "notAnalyzed": "Analyze the saved recording to identify speakers.",
+          "modelRequired": "Choose a Speaker Isolation model first.",
+          "running": "Analyzing speakers…",
+          "complete": "{{count}} speakers identified",
+          "completeEmpty": "Speaker analysis finished, but no speakers were labeled.",
+          "oneSpeaker": "1 speaker detected",
+          "failed": "Speaker analysis failed."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Auto-analyze speakers for long recordings",
+        "description": "For recordings 2 minutes or longer, detect speakers in the background after save. Short dictations stay unchanged. You can always run Analyze speakers from History detail."
       },
       "viewSwitcher": {
         "ariaLabel": "History views",

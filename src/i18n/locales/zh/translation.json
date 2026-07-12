@@ -1062,7 +1062,10 @@
       "saveError": "无法将录音保存到历史记录：{{error}}",
       "saveToggleError": "无法更新保存的状态：{{error}}",
       "badges": {
-        "appA11y": "应用：{{appName}}"
+        "appA11y": "应用：{{appName}}",
+        "speakers": "{{count}} 位说话人",
+        "postProcessOn": "已后处理",
+        "dictionaryOn": "已应用词典"
       },
       "showRecordingInFolder": "显示文件夹中的录音",
       "revealError": "无法显示录音：{{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "已将“{{original}}”→“{{corrected}}”保存到你的词典",
         "saveError": "无法保存你的更改：{{error}}"
       },
-      "audioOnlyEntry": "已保存音频 — 转写未完成"
+      "audioOnlyEntry": "已保存音频 — 转写未完成",
+      "modes": {
+        "ariaLabel": "录音视图",
+        "transcript": "转写",
+        "speakers": "说话人",
+        "summary": "摘要"
+      },
+      "displayTitle": {
+        "editLabel": "编辑录音标题",
+        "saveError": "无法保存标题：{{error}}"
+      },
+      "speakers": {
+        "title": "说话人",
+        "analyze": "分析说话人",
+        "reanalyze": "重新分析说话人",
+        "copy": "复制按说话人标注的转写",
+        "copied": "已复制按说话人标注的转写",
+        "openModelHub": "选择模型",
+        "showLabels": "显示说话人标签",
+        "renameHint": "为此录音重命名说话人。",
+        "renameField": "{{id}} 的显示名称",
+        "renamePlaceholder": "例如：我、律师",
+        "saveNames": "保存名称",
+        "namesSaved": "已保存说话人名称",
+        "namesError": "无法保存说话人名称：{{error}}",
+        "labelsError": "无法更新标签可见性：{{error}}",
+        "analyzeError": "说话人分析失败：{{error}}",
+        "oneSpeakerHint": "检测到 1 位说话人。标签已隐藏。",
+        "status": {
+          "notAnalyzed": "分析已保存的录音以识别说话人。",
+          "modelRequired": "请先选择说话人分离模型。",
+          "running": "正在分析说话人…",
+          "complete": "已识别 {{count}} 位说话人",
+          "completeEmpty": "说话人分析已完成，但未标记任何说话人。",
+          "oneSpeaker": "检测到 1 位说话人",
+          "failed": "说话人分析失败。"
+        }
+      },
+      "autoAnalyze": {
+        "label": "自动分析长录音中的说话人",
+        "description": "对于 2 分钟或更长的录音，保存后会在后台检测说话人。短听写保持不变。你随时可以在历史详情中运行“分析说话人”。"
+      }
     },
     "debug": {
       "title": "调试",

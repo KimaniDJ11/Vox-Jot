@@ -1062,7 +1062,10 @@
       "saveError": "Aufzeichnung konnte nicht im Verlauf gespeichert werden: {{error}}",
       "saveToggleError": "Der gespeicherte Status konnte nicht aktualisiert werden: {{error}}",
       "badges": {
-        "appA11y": "Anwendung: {{appName}}"
+        "appA11y": "Anwendung: {{appName}}",
+        "speakers": "{{count}} Sprecher",
+        "postProcessOn": "Nachbearbeitet",
+        "dictionaryOn": "Wörterbuch angewendet"
       },
       "showRecordingInFolder": "Aufnahme im Ordner anzeigen",
       "revealError": "Aufnahme konnte nicht angezeigt werden: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ in deinem Wörterbuch gespeichert",
         "saveError": "Änderung konnte nicht gespeichert werden: {{error}}"
       },
-      "audioOnlyEntry": "Audio gespeichert — Transkription nicht abgeschlossen"
+      "audioOnlyEntry": "Audio gespeichert — Transkription nicht abgeschlossen",
+      "modes": {
+        "ariaLabel": "Aufzeichnungsansichten",
+        "transcript": "Transkript",
+        "speakers": "Sprecher",
+        "summary": "Zusammenfassung"
+      },
+      "displayTitle": {
+        "editLabel": "Aufzeichnungstitel bearbeiten",
+        "saveError": "Titel konnte nicht gespeichert werden: {{error}}"
+      },
+      "speakers": {
+        "title": "Sprecher",
+        "analyze": "Sprecher analysieren",
+        "reanalyze": "Sprecher erneut analysieren",
+        "copy": "Sprechertranskript kopieren",
+        "copied": "Sprechertranskript kopiert",
+        "openModelHub": "Modell auswählen",
+        "showLabels": "Sprecherlabels anzeigen",
+        "renameHint": "Benennen Sie die Sprecher für diese Aufzeichnung um.",
+        "renameField": "Anzeigename für {{id}}",
+        "renamePlaceholder": "z. B. Ich, Anwalt",
+        "saveNames": "Namen speichern",
+        "namesSaved": "Sprechernamen gespeichert",
+        "namesError": "Sprechernamen konnten nicht gespeichert werden: {{error}}",
+        "labelsError": "Label-Sichtbarkeit konnte nicht aktualisiert werden: {{error}}",
+        "analyzeError": "Sprecheranalyse fehlgeschlagen: {{error}}",
+        "oneSpeakerHint": "1 Sprecher erkannt. Labels sind ausgeblendet.",
+        "status": {
+          "notAnalyzed": "Analysieren Sie die gespeicherte Aufzeichnung, um Sprecher zu erkennen.",
+          "modelRequired": "Wählen Sie zuerst ein Modell zur Sprecherisolierung.",
+          "running": "Sprecher werden analysiert…",
+          "complete": "{{count}} Sprecher identifiziert",
+          "completeEmpty": "Die Sprecheranalyse ist abgeschlossen, aber es wurden keine Sprecher zugeordnet.",
+          "oneSpeaker": "1 Sprecher erkannt",
+          "failed": "Sprecheranalyse fehlgeschlagen."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Sprecher bei langen Aufzeichnungen automatisch analysieren",
+        "description": "Bei Aufzeichnungen ab 2 Minuten werden Sprecher nach dem Speichern im Hintergrund erkannt. Kurze Diktate bleiben unverändert. Sie können Sprecher analysieren jederzeit im Historien-Detail ausführen."
+      }
     },
     "debug": {
       "title": "Debuggen",

@@ -1062,7 +1062,10 @@
       "saveError": "Không lưu được bản ghi vào lịch sử: {{error}}",
       "saveToggleError": "Không cập nhật được trạng thái đã lưu: {{error}}",
       "badges": {
-        "appA11y": "ứng dụng: {{appName}}"
+        "appA11y": "ứng dụng: {{appName}}",
+        "speakers": "{{count}} người nói",
+        "postProcessOn": "Đã hậu xử lý",
+        "dictionaryOn": "Đã áp dụng từ điển"
       },
       "showRecordingInFolder": "Hiển thị bản ghi trong thư mục",
       "revealError": "Không thể hiển thị bản ghi: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "Đã lưu “{{original}}” → “{{corrected}}” vào từ điển của bạn",
         "saveError": "Không thể lưu thay đổi của bạn: {{error}}"
       },
-      "audioOnlyEntry": "Đã lưu âm thanh — phiên âm chưa hoàn tất"
+      "audioOnlyEntry": "Đã lưu âm thanh — phiên âm chưa hoàn tất",
+      "modes": {
+        "ariaLabel": "Chế độ xem bản ghi",
+        "transcript": "Bản chép lời",
+        "speakers": "Người nói",
+        "summary": "Tóm tắt"
+      },
+      "displayTitle": {
+        "editLabel": "Sửa tiêu đề bản ghi",
+        "saveError": "Không thể lưu tiêu đề: {{error}}"
+      },
+      "speakers": {
+        "title": "Người nói",
+        "analyze": "Phân tích người nói",
+        "reanalyze": "Phân tích lại người nói",
+        "copy": "Sao chép bản chép lời theo người nói",
+        "copied": "Đã sao chép bản chép lời theo người nói",
+        "openModelHub": "Chọn mô hình",
+        "showLabels": "Hiện nhãn người nói",
+        "renameHint": "Đổi tên người nói cho bản ghi này.",
+        "renameField": "Tên hiển thị cho {{id}}",
+        "renamePlaceholder": "ví dụ: Tôi, luật sư",
+        "saveNames": "Lưu tên",
+        "namesSaved": "Đã lưu tên người nói",
+        "namesError": "Không thể lưu tên người nói: {{error}}",
+        "labelsError": "Không thể cập nhật hiển thị nhãn: {{error}}",
+        "analyzeError": "Phân tích người nói thất bại: {{error}}",
+        "oneSpeakerHint": "Đã phát hiện 1 người nói. Nhãn đang bị ẩn.",
+        "status": {
+          "notAnalyzed": "Phân tích bản ghi đã lưu để xác định người nói.",
+          "modelRequired": "Trước tiên hãy chọn mô hình tách người nói.",
+          "running": "Đang phân tích người nói…",
+          "complete": "Đã xác định {{count}} người nói",
+          "completeEmpty": "Phân tích người nói đã hoàn tất nhưng không có người nói nào được gắn nhãn.",
+          "oneSpeaker": "Đã phát hiện 1 người nói",
+          "failed": "Phân tích người nói thất bại."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Tự động phân tích người nói cho bản ghi dài",
+        "description": "Với bản ghi dài từ 2 phút trở lên, phát hiện người nói trong nền sau khi lưu. Các đoạn đọc chính tả ngắn không thay đổi. Bạn luôn có thể chạy Phân tích người nói từ chi tiết Lịch sử."
+      }
     },
     "debug": {
       "title": "Gỡ lỗi",

@@ -1062,7 +1062,10 @@
       "saveError": "Impossibile salvare la registrazione nella cronologia: {{error}}",
       "saveToggleError": "Impossibile aggiornare lo stato salvato: {{error}}",
       "badges": {
-        "appA11y": "Applicazione: {{appName}}"
+        "appA11y": "Applicazione: {{appName}}",
+        "speakers": "{{count}} parlanti",
+        "postProcessOn": "Post-elaborato",
+        "dictionaryOn": "Dizionario applicato"
       },
       "showRecordingInFolder": "Mostra la registrazione nella cartella",
       "revealError": "Impossibile mostrare la registrazione: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvato nel tuo dizionario",
         "saveError": "Impossibile salvare la modifica: {{error}}"
       },
-      "audioOnlyEntry": "Audio salvato — trascrizione non completata"
+      "audioOnlyEntry": "Audio salvato — trascrizione non completata",
+      "modes": {
+        "ariaLabel": "Viste della registrazione",
+        "transcript": "Trascrizione",
+        "speakers": "Parlanti",
+        "summary": "Riepilogo"
+      },
+      "displayTitle": {
+        "editLabel": "Modifica titolo registrazione",
+        "saveError": "Impossibile salvare il titolo: {{error}}"
+      },
+      "speakers": {
+        "title": "Parlanti",
+        "analyze": "Analizza parlanti",
+        "reanalyze": "Rianalizza parlanti",
+        "copy": "Copia trascrizione per parlante",
+        "copied": "Trascrizione per parlante copiata",
+        "openModelHub": "Scegli modello",
+        "showLabels": "Mostra etichette dei parlanti",
+        "renameHint": "Rinomina i parlanti per questa registrazione.",
+        "renameField": "Nome visualizzato per {{id}}",
+        "renamePlaceholder": "es. Io, avvocato",
+        "saveNames": "Salva nomi",
+        "namesSaved": "Nomi dei parlanti salvati",
+        "namesError": "Impossibile salvare i nomi dei parlanti: {{error}}",
+        "labelsError": "Impossibile aggiornare la visibilità delle etichette: {{error}}",
+        "analyzeError": "Analisi dei parlanti non riuscita: {{error}}",
+        "oneSpeakerHint": "Rilevato 1 parlante. Le etichette sono nascoste.",
+        "status": {
+          "notAnalyzed": "Analizza la registrazione salvata per identificare i parlanti.",
+          "modelRequired": "Scegli prima un modello di isolamento dei parlanti.",
+          "running": "Analisi dei parlanti…",
+          "complete": "{{count}} parlanti identificati",
+          "completeEmpty": "L'analisi dei parlanti è terminata, ma non è stato etichettato alcun parlante.",
+          "oneSpeaker": "Rilevato 1 parlante",
+          "failed": "Analisi dei parlanti non riuscita."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Analizza automaticamente i parlanti nelle registrazioni lunghe",
+        "description": "Per registrazioni di 2 minuti o più, rileva i parlanti in background dopo il salvataggio. Le dettature brevi restano invariate. Puoi sempre eseguire Analizza parlanti dal dettaglio della cronologia."
+      }
     },
     "debug": {
       "title": "Debug",

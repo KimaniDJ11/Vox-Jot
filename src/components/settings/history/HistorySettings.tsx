@@ -32,6 +32,14 @@ import { readFile } from "@tauri-apps/plugin-fs";
 import { commands, type HistoryEntry } from "@/bindings";
 import { TranscriptView } from "./TranscriptView";
 import { humanizeBundleId } from "@/lib/installedApps";
+import {
+  formatHistoryDuration,
+  resolveHistoryDisplayTitle,
+  resolveHistorySnippet,
+  resolveHistoryTranscriptText,
+  shouldShowHistorySpeakerBadge,
+  isSnippetRedundant,
+} from "@/lib/historyDisplay";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
@@ -86,10 +94,15 @@ export const HistorySettings: React.FC = () => {
   const [view, setView] = useState<"list" | "transcript">("list");
   const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
   const historyEntryCountRef = useRef(0);
+  const historyLoadRequestRef = useRef(0);
 
   const loadHistoryEntries = useCallback(
     async (reset = true, showLoading = true) => {
+      const requestId = ++historyLoadRequestRef.current;
       const offset = reset ? 0 : historyEntryCountRef.current;
+      const limit = reset
+        ? Math.max(HISTORY_PAGE_SIZE, historyEntryCountRef.current)
+        : HISTORY_PAGE_SIZE;
       if (reset) {
         if (showLoading) {
           setLoading(true);
@@ -99,10 +112,8 @@ export const HistorySettings: React.FC = () => {
       }
 
       try {
-        const result = await commands.getHistoryEntriesPage(
-          offset,
-          HISTORY_PAGE_SIZE,
-        );
+        const result = await commands.getHistoryEntriesPage(offset, limit);
+        if (requestId !== historyLoadRequestRef.current) return;
         if (result.status === "ok") {
           setHistoryEntries((current) => {
             const next = reset
@@ -122,6 +133,7 @@ export const HistorySettings: React.FC = () => {
           );
         }
       } catch (error) {
+        if (requestId !== historyLoadRequestRef.current) return;
         console.error("Failed to load history entries:", error);
         toast.error(
           t("settings.history.loadError", {
@@ -130,13 +142,9 @@ export const HistorySettings: React.FC = () => {
           }),
         );
       } finally {
-        if (reset) {
-          if (showLoading) {
-            setLoading(false);
-          }
-        } else {
-          setIsLoadingMore(false);
-        }
+        if (requestId !== historyLoadRequestRef.current) return;
+        setLoading(false);
+        setIsLoadingMore(false);
       }
     },
     [t],
@@ -282,10 +290,32 @@ export const HistorySettings: React.FC = () => {
   const handleTranscriptChange = useCallback((id: number, nextText: string) => {
     setHistoryEntries((current) =>
       current.map((entry) =>
-        entry.id === id ? { ...entry, transcription_text: nextText } : entry,
+        entry.id === id
+          ? {
+              ...entry,
+              transcription_text: nextText,
+            }
+          : entry,
       ),
     );
   }, []);
+
+  const handleEntryUpdate = useCallback((next: HistoryEntry) => {
+    setHistoryEntries((current) =>
+      current.map((entry) => (entry.id === next.id ? next : entry)),
+    );
+  }, []);
+
+  const handleEntryPatch = useCallback(
+    (id: number, patch: Partial<HistoryEntry>) => {
+      setHistoryEntries((current) =>
+        current.map((entry) =>
+          entry.id === id ? { ...entry, ...patch } : entry,
+        ),
+      );
+    },
+    [],
+  );
 
   const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {
@@ -346,25 +376,23 @@ export const HistorySettings: React.FC = () => {
             </div>
             <div className="space-y-3">
               {group.entries.map((entry) => {
-                const fallbackText = entry.transcription_text;
-                // Entries saved after a transcription failure carry audio but
-                // no text; label them so the row isn't a blank mystery.
-                const displayText =
-                  entry.pasted_text?.trim() ||
-                  entry.post_processed_text?.trim() ||
-                  fallbackText.trim() ||
-                  t("settings.history.audioOnlyEntry", {
-                    defaultValue:
-                      "Audio saved — transcription did not complete",
-                  });
+                const displayTitle = resolveHistoryDisplayTitle(entry);
+                const transcriptText = resolveHistoryTranscriptText(entry);
+                const audioOnlyLabel = t("settings.history.audioOnlyEntry", {
+                  defaultValue: "Audio saved — transcription did not complete",
+                });
+                const snippet = resolveHistorySnippet(entry) || audioOnlyLabel;
 
                 return (
                   <HistoryEntryComponent
                     key={entry.id}
                     entry={entry}
-                    displayText={displayText}
+                    displayTitle={displayTitle}
+                    snippet={snippet}
                     onToggleSaved={() => toggleSaved(entry.id)}
-                    onCopyText={() => copyToClipboard(displayText)}
+                    onCopyText={() =>
+                      copyToClipboard(transcriptText || audioOnlyLabel)
+                    }
                     onRevealInFolder={() =>
                       void revealRecordingInFolder(entry.file_name)
                     }
@@ -412,27 +440,31 @@ export const HistorySettings: React.FC = () => {
     );
   }
 
+  const viewSwitcher = (
+    <SegmentedControl
+      items={[
+        {
+          value: "list",
+          label: t("settings.history.viewSwitcher.list"),
+        },
+        {
+          value: "transcript",
+          label: t("settings.history.viewSwitcher.transcript"),
+        },
+      ]}
+      value={view}
+      onChange={setView}
+      ariaLabel={t("settings.history.viewSwitcher.ariaLabel")}
+    />
+  );
+
   return (
     <div className="w-full">
-      <div className="flex flex-wrap items-center gap-2 px-1">
-        <SegmentedControl
-          items={[
-            {
-              value: "list",
-              label: t("settings.history.viewSwitcher.list"),
-            },
-            {
-              value: "transcript",
-              label: t("settings.history.viewSwitcher.transcript"),
-            },
-          ]}
-          value={view}
-          onChange={setView}
-          ariaLabel={t("settings.history.viewSwitcher.ariaLabel")}
-        />
-      </div>
       {view === "list" ? (
         <>
+          <div className="sticky top-0 z-20 -mx-5 flex items-center px-5 pb-3 pt-0">
+            {viewSwitcher}
+          </div>
           {renderEntries(sortedEntries, t("settings.history.empty"))}
           {hasMore ? (
             <div className="mt-5 flex justify-center">
@@ -459,6 +491,9 @@ export const HistorySettings: React.FC = () => {
           onSelectEntry={setSelectedEntryId}
           getAudioUrl={getAudioUrl}
           onTranscriptChange={handleTranscriptChange}
+          onEntryUpdate={handleEntryUpdate}
+          onEntryPatch={handleEntryPatch}
+          viewSwitcher={viewSwitcher}
         />
       )}
     </div>
@@ -467,7 +502,8 @@ export const HistorySettings: React.FC = () => {
 
 interface HistoryEntryProps {
   entry: HistoryEntry;
-  displayText: string;
+  displayTitle: string;
+  snippet: string;
   onToggleSaved: () => void;
   onCopyText: () => void;
   onRevealInFolder: () => void;
@@ -631,7 +667,8 @@ const getHistoryEntryAppLabel = (entry: HistoryEntry): string | null => {
 
 const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   entry,
-  displayText,
+  displayTitle,
+  snippet,
   onToggleSaved,
   onCopyText,
   onRevealInFolder,
@@ -667,15 +704,16 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   };
 
   const formattedTime = formatTime(String(entry.timestamp), i18n.language);
+  const durationLabel = formatHistoryDuration(entry.duration_ms);
   const rawText = entry.transcription_text.trim();
   const polishedText = entry.post_processed_text?.trim() || "";
   const insertedText = entry.pasted_text?.trim() || "";
-  const pastedText =
-    insertedText || polishedText || rawText || displayText.trim();
+  const pastedText = insertedText || polishedText || rawText || snippet.trim();
   const observedText = entry.field_snapshot_text?.trim() || "";
   const dictionaryHits = entry.dictionary_hits ?? [];
   const dictionaryApplied = dictionaryHits.length > 0;
   const postProcessApplied = polishedText.length > 0;
+  const showSpeakerBadge = shouldShowHistorySpeakerBadge(entry);
   const appLabel = getHistoryEntryAppLabel(entry);
   const appBundleId =
     entry.screen_context_metadata?.active_app_bundle_id?.trim() || null;
@@ -874,6 +912,32 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     </span>,
   ];
 
+  if (durationLabel) {
+    metaParts.push(
+      <span key="duration" className="font-medium tabular-nums">
+        {durationLabel}
+      </span>,
+    );
+  }
+
+  if (showSpeakerBadge) {
+    metaParts.push(
+      <span
+        key="speakers"
+        className="inline-flex items-center gap-1 font-semibold text-[var(--accent)]"
+      >
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
+        />
+        {t("settings.history.badges.speakers", {
+          count: entry.speaker_count ?? 0,
+          defaultValue: "{{count}} speakers",
+        })}
+      </span>,
+    );
+  }
+
   if (showTechnicalFeatures && postProcessApplied) {
     metaParts.push(
       <HistoryBadgeHoverPanel key="post-process" panel={postProcessBadgePanel}>
@@ -940,12 +1004,22 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             entry.duration_ms ? entry.duration_ms / 1000 : undefined
           }
           title={
-            <span
-              className="block min-w-0 truncate select-text"
-              title={displayText}
-            >
-              {displayText}
-            </span>
+            <div className="min-w-0 space-y-0.5">
+              <span
+                className="block min-w-0 truncate select-text font-semibold text-[var(--text)]"
+                title={displayTitle}
+              >
+                {displayTitle}
+              </span>
+              {snippet && !isSnippetRedundant(displayTitle, snippet) ? (
+                <span
+                  className="block min-w-0 truncate select-text text-sm font-normal text-[var(--muted)]"
+                  title={snippet}
+                >
+                  {snippet}
+                </span>
+              ) : null}
+            </div>
           }
           meta={
             <>

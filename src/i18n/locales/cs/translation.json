@@ -1062,7 +1062,10 @@
       "saveError": "Nepodařilo se uložit záznam do historie: {{error}}",
       "saveToggleError": "Aktualizace uloženého stavu se nezdařila: {{error}}",
       "badges": {
-        "appA11y": "Aplikace: {{appName}}"
+        "appA11y": "Aplikace: {{appName}}",
+        "speakers": "{{count}} mluvčí",
+        "postProcessOn": "Dodatečně zpracováno",
+        "dictionaryOn": "Slovník použit"
       },
       "showRecordingInFolder": "Zobrazit záznam ve složce",
       "revealError": "Nelze zobrazit záznam: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ uloženo do vašeho slovníku",
         "saveError": "Změnu se nepodařilo uložit: {{error}}"
       },
-      "audioOnlyEntry": "Zvuk uložen — přepis nebyl dokončen"
+      "audioOnlyEntry": "Zvuk uložen — přepis nebyl dokončen",
+      "modes": {
+        "ariaLabel": "Zobrazení nahrávky",
+        "transcript": "Přepis",
+        "speakers": "Mluvčí",
+        "summary": "Souhrn"
+      },
+      "displayTitle": {
+        "editLabel": "Upravit název nahrávky",
+        "saveError": "Název se nepodařilo uložit: {{error}}"
+      },
+      "speakers": {
+        "title": "Mluvčí",
+        "analyze": "Analyzovat mluvčí",
+        "reanalyze": "Znovu analyzovat mluvčí",
+        "copy": "Kopírovat přepis podle mluvčích",
+        "copied": "Přepis podle mluvčích zkopírován",
+        "openModelHub": "Vybrat model",
+        "showLabels": "Zobrazit štítky mluvčích",
+        "renameHint": "Přejmenujte mluvčí pro tuto nahrávku.",
+        "renameField": "Zobrazované jméno pro {{id}}",
+        "renamePlaceholder": "např. Já, právník",
+        "saveNames": "Uložit jména",
+        "namesSaved": "Jména mluvčích uložena",
+        "namesError": "Jména mluvčích se nepodařilo uložit: {{error}}",
+        "labelsError": "Viditelnost štítků se nepodařilo aktualizovat: {{error}}",
+        "analyzeError": "Analýza mluvčích selhala: {{error}}",
+        "oneSpeakerHint": "Zjištěn 1 mluvčí. Štítky jsou skryté.",
+        "status": {
+          "notAnalyzed": "Analyzujte uloženou nahrávku a určete mluvčí.",
+          "modelRequired": "Nejprve vyberte model izolace mluvčích.",
+          "running": "Analyzuji mluvčí…",
+          "complete": "Identifikováno {{count}} mluvčích",
+          "completeEmpty": "Analýza mluvčích byla dokončena, ale žádní mluvčí nebyli označeni.",
+          "oneSpeaker": "Zjištěn 1 mluvčí",
+          "failed": "Analýza mluvčích selhala."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Automaticky analyzovat mluvčí u dlouhých nahrávek",
+        "description": "U nahrávek dlouhých 2 minuty nebo déle se po uložení na pozadí zjistí mluvčí. Krátká diktování zůstanou beze změny. Analýzu mluvčích můžete kdykoli spustit v detailu Historie."
+      }
     },
     "debug": {
       "title": "Ladit",

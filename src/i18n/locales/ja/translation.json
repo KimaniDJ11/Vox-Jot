@@ -1062,7 +1062,10 @@
       "saveError": "録画を履歴に保存できませんでした: {{error}}",
       "saveToggleError": "保存されたステータスの更新に失敗しました: {{error}}",
       "badges": {
-        "appA11y": "アプリケーション: {{appName}}"
+        "appA11y": "アプリケーション: {{appName}}",
+        "speakers": "{{count}}人の話者",
+        "postProcessOn": "後処理済み",
+        "dictionaryOn": "辞書を適用済み"
       },
       "showRecordingInFolder": "フォルダー内の録画を表示",
       "revealError": "録画を表示できませんでした: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "「{{original}}」→「{{corrected}}」を辞書に保存しました",
         "saveError": "変更を保存できませんでした: {{error}}"
       },
-      "audioOnlyEntry": "音声を保存しました — 文字起こしは完了しませんでした"
+      "audioOnlyEntry": "音声を保存しました — 文字起こしは完了しませんでした",
+      "modes": {
+        "ariaLabel": "録音ビュー",
+        "transcript": "文字起こし",
+        "speakers": "話者",
+        "summary": "要約"
+      },
+      "displayTitle": {
+        "editLabel": "録音タイトルを編集",
+        "saveError": "タイトルを保存できませんでした: {{error}}"
+      },
+      "speakers": {
+        "title": "話者",
+        "analyze": "話者を分析",
+        "reanalyze": "話者を再分析",
+        "copy": "話者別の文字起こしをコピー",
+        "copied": "話者別の文字起こしをコピーしました",
+        "openModelHub": "モデルを選択",
+        "showLabels": "話者ラベルを表示",
+        "renameHint": "この録音の話者名を変更します。",
+        "renameField": "{{id}} の表示名",
+        "renamePlaceholder": "例: 私、弁護士",
+        "saveNames": "名前を保存",
+        "namesSaved": "話者名を保存しました",
+        "namesError": "話者名を保存できませんでした: {{error}}",
+        "labelsError": "ラベル表示を更新できませんでした: {{error}}",
+        "analyzeError": "話者分析に失敗しました: {{error}}",
+        "oneSpeakerHint": "1人の話者を検出しました。ラベルは非表示です。",
+        "status": {
+          "notAnalyzed": "保存済み録音を分析して話者を識別します。",
+          "modelRequired": "先に話者分離モデルを選択してください。",
+          "running": "話者を分析中…",
+          "complete": "{{count}}人の話者を識別しました",
+          "completeEmpty": "話者分析は完了しましたが、話者を特定できませんでした。",
+          "oneSpeaker": "1人の話者を検出しました",
+          "failed": "話者分析に失敗しました。"
+        }
+      },
+      "autoAnalyze": {
+        "label": "長い録音の話者を自動分析",
+        "description": "2分以上の録音では、保存後にバックグラウンドで話者を検出します。短いディクテーションは変更されません。履歴の詳細からいつでも話者分析を実行できます。"
+      }
     },
     "debug": {
       "title": "デバッグ",

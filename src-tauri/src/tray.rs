@@ -308,6 +308,18 @@ mod tests {
             tts_status: None,
             screen_context_metadata: None,
             duration_ms: None,
+            display_title: "Recording".to_string(),
+            display_title_source: crate::managers::history::DisplayTitleSource::Timestamp,
+            summary: None,
+            speaker_status: crate::managers::history::SpeakerAnalysisStatus::NotAnalyzed,
+            speaker_error: None,
+            speaker_model_id: None,
+            speaker_analyzed_at: None,
+            speaker_count: None,
+            speaker_labels_visible: true,
+            speaker_segments_json: None,
+            speaker_transcript_text: None,
+            speaker_display_names_json: None,
         }
     }
 

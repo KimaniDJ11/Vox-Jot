@@ -59,7 +59,29 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN tts_status TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN screen_context_metadata TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN duration_ms INTEGER;"),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN display_title TEXT NOT NULL DEFAULT '';",
+    ),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN display_title_source TEXT NOT NULL DEFAULT 'timestamp';",
+    ),
+    M::up("ALTER TABLE transcription_history ADD COLUMN summary TEXT;"),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN speaker_status TEXT NOT NULL DEFAULT 'not_analyzed';",
+    ),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_error TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_model_id TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_analyzed_at INTEGER;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_count INTEGER;"),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN speaker_labels_visible BOOLEAN NOT NULL DEFAULT 1;",
+    ),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_segments_json TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_transcript_text TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN speaker_display_names_json TEXT;"),
 ];
+
+const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json";
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -70,6 +92,66 @@ pub enum FieldSnapshotStatus {
     Captured,
     Skipped,
     Failed,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayTitleSource {
+    #[default]
+    Timestamp,
+    Heuristic,
+    Llm,
+    User,
+}
+
+impl DisplayTitleSource {
+    fn as_db_str(&self) -> &'static str {
+        match self {
+            Self::Timestamp => "timestamp",
+            Self::Heuristic => "heuristic",
+            Self::Llm => "llm",
+            Self::User => "user",
+        }
+    }
+
+    fn from_db_str(value: Option<&str>) -> Self {
+        match value {
+            Some("heuristic") => Self::Heuristic,
+            Some("llm") => Self::Llm,
+            Some("user") => Self::User,
+            _ => Self::Timestamp,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SpeakerAnalysisStatus {
+    #[default]
+    NotAnalyzed,
+    Running,
+    Complete,
+    Failed,
+}
+
+impl SpeakerAnalysisStatus {
+    fn as_db_str(&self) -> &'static str {
+        match self {
+            Self::NotAnalyzed => "not_analyzed",
+            Self::Running => "running",
+            Self::Complete => "complete",
+            Self::Failed => "failed",
+        }
+    }
+
+    fn from_db_str(value: Option<&str>) -> Self {
+        match value {
+            Some("running") => Self::Running,
+            Some("complete") | Some("stale") => Self::Complete,
+            Some("failed") => Self::Failed,
+            _ => Self::NotAnalyzed,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -104,6 +186,18 @@ pub struct HistoryEntry {
     pub tts_status: Option<String>,
     pub screen_context_metadata: Option<ScreenContextHistoryMetadata>,
     pub duration_ms: Option<i64>,
+    pub display_title: String,
+    pub display_title_source: DisplayTitleSource,
+    pub summary: Option<String>,
+    pub speaker_status: SpeakerAnalysisStatus,
+    pub speaker_error: Option<String>,
+    pub speaker_model_id: Option<String>,
+    pub speaker_analyzed_at: Option<i64>,
+    pub speaker_count: Option<i64>,
+    pub speaker_labels_visible: bool,
+    pub speaker_segments_json: Option<String>,
+    pub speaker_transcript_text: Option<String>,
+    pub speaker_display_names_json: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -203,7 +297,223 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         tts_status: row.get("tts_status").unwrap_or(None),
         screen_context_metadata,
         duration_ms: row.get("duration_ms").unwrap_or(None),
+        display_title: row.get("display_title").unwrap_or_default(),
+        display_title_source: DisplayTitleSource::from_db_str(
+            row.get::<_, Option<String>>("display_title_source")
+                .unwrap_or(None)
+                .as_deref(),
+        ),
+        summary: row.get("summary").unwrap_or(None),
+        speaker_status: SpeakerAnalysisStatus::from_db_str(
+            row.get::<_, Option<String>>("speaker_status")
+                .unwrap_or(None)
+                .as_deref(),
+        ),
+        speaker_error: row.get("speaker_error").unwrap_or(None),
+        speaker_model_id: row.get("speaker_model_id").unwrap_or(None),
+        speaker_analyzed_at: row.get("speaker_analyzed_at").unwrap_or(None),
+        speaker_count: row.get("speaker_count").unwrap_or(None),
+        speaker_labels_visible: row.get("speaker_labels_visible").unwrap_or(true),
+        speaker_segments_json: row.get("speaker_segments_json").unwrap_or(None),
+        speaker_transcript_text: row.get("speaker_transcript_text").unwrap_or(None),
+        speaker_display_names_json: row.get("speaker_display_names_json").unwrap_or(None),
     }
+}
+
+const DISPLAY_TITLE_MAX_CHARS: usize = 72;
+
+fn is_meaningful_title_text(text: &str) -> bool {
+    let trimmed = text.trim();
+    !trimmed.is_empty() && trimmed.chars().any(|ch| ch.is_alphanumeric())
+}
+
+fn first_meaningful_sentence(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+    if !is_meaningful_title_text(trimmed) {
+        return None;
+    }
+
+    let end = trimmed
+        .find(['.', '!', '?', '\n'])
+        .map(|idx| idx + 1)
+        .unwrap_or(trimmed.len());
+    let sentence = trimmed[..end]
+        .trim()
+        .trim_end_matches(['.', '!', '?'])
+        .trim();
+    if !is_meaningful_title_text(sentence) {
+        return None;
+    }
+    Some(sentence.to_string())
+}
+
+fn truncate_title_at_word_boundary(text: &str, max_chars: usize) -> String {
+    let trimmed = text.trim();
+    if trimmed.chars().count() <= max_chars {
+        return trimmed.to_string();
+    }
+
+    let mut end = 0;
+    let mut last_space = None;
+    for (char_count, (idx, ch)) in trimmed.char_indices().enumerate() {
+        if char_count >= max_chars {
+            break;
+        }
+        end = idx + ch.len_utf8();
+        if ch.is_whitespace() {
+            last_space = Some(idx);
+        }
+    }
+
+    let cut = last_space.filter(|&idx| idx > 0).unwrap_or(end);
+    format!("{}…", trimmed[..cut].trim_end())
+}
+
+fn format_timestamp_title_value(timestamp: i64) -> String {
+    if let Some(utc_datetime) = DateTime::from_timestamp(timestamp, 0) {
+        let local_datetime = utc_datetime.with_timezone(&Local);
+        local_datetime.format("%B %e, %Y - %l:%M%p").to_string()
+    } else {
+        format!("Recording {}", timestamp)
+    }
+}
+
+fn format_duration_aware_title(
+    duration_ms: Option<i64>,
+    timestamp: i64,
+) -> (String, DisplayTitleSource) {
+    let Some(duration_ms) = duration_ms.filter(|value| *value > 0) else {
+        return (
+            format_timestamp_title_value(timestamp),
+            DisplayTitleSource::Timestamp,
+        );
+    };
+
+    let time_label = DateTime::from_timestamp(timestamp, 0)
+        .map(|dt| dt.with_timezone(&Local).format("%-l:%M %p").to_string())
+        .unwrap_or_else(|| "unknown time".to_string());
+
+    let total_seconds = (duration_ms + 500) / 1000;
+    let title = if total_seconds >= 60 {
+        let minutes = (total_seconds + 30) / 60;
+        format!("{minutes} min recording at {time_label}")
+    } else {
+        let seconds = total_seconds.max(1);
+        format!("{seconds} sec recording at {time_label}")
+    };
+
+    (title, DisplayTitleSource::Timestamp)
+}
+
+fn humanize_speaker_id(speaker_id: &str) -> String {
+    let trimmed = speaker_id.trim();
+    if trimmed.is_empty() {
+        return "Speaker".to_string();
+    }
+
+    let upper = trimmed.to_ascii_uppercase();
+    if let Some(rest) = upper.strip_prefix("SPEAKER_") {
+        if let Ok(index) = rest.parse::<i64>() {
+            return format!("Speaker {}", index + 1);
+        }
+    }
+    if let Some(rest) = upper.strip_prefix("SPEAKER") {
+        let digits = rest.trim_start_matches(|ch: char| !ch.is_ascii_digit());
+        if let Ok(index) = digits.parse::<i64>() {
+            return format!("Speaker {}", index + 1);
+        }
+    }
+    // Sortformer and similar models emit bare 0-based indices ("0", "1").
+    if trimmed.chars().all(|ch| ch.is_ascii_digit()) {
+        if let Ok(index) = trimmed.parse::<i64>() {
+            return format!("Speaker {}", index + 1);
+        }
+    }
+
+    trimmed.to_string()
+}
+
+/// Prefer the first meaningful sentence from pasted → post-processed → transcription.
+/// Falls back to a duration-aware timestamp title. Never returns an empty string.
+pub fn compute_display_title(
+    pasted: Option<&str>,
+    post_processed: Option<&str>,
+    transcription: &str,
+    duration_ms: Option<i64>,
+    timestamp: i64,
+) -> (String, DisplayTitleSource) {
+    for candidate in [pasted, post_processed, Some(transcription)]
+        .into_iter()
+        .flatten()
+    {
+        if let Some(sentence) = first_meaningful_sentence(candidate) {
+            let title = truncate_title_at_word_boundary(&sentence, DISPLAY_TITLE_MAX_CHARS);
+            if !title.trim().is_empty() {
+                return (title, DisplayTitleSource::Heuristic);
+            }
+        }
+    }
+
+    format_duration_aware_title(duration_ms, timestamp)
+}
+
+/// Format speaker-labeled transcript text and return unique speaker count.
+/// Single-speaker (or empty) results omit speaker prefixes.
+pub fn format_speaker_transcript(
+    segments: &[crate::speech_analysis::SpeakerLabeledSegment],
+    display_names: &std::collections::HashMap<String, String>,
+) -> (String, i64) {
+    let mut unique_speakers = std::collections::BTreeSet::new();
+    for segment in segments {
+        let speaker = segment.speaker_id.trim();
+        if !speaker.is_empty() {
+            unique_speakers.insert(speaker.to_string());
+        }
+    }
+    let unique_count = unique_speakers.len() as i64;
+
+    let texts: Vec<&str> = segments
+        .iter()
+        .map(|segment| segment.text.trim())
+        .filter(|text| !text.is_empty())
+        .collect();
+
+    if unique_count <= 1 {
+        return (texts.join(" "), unique_count);
+    }
+
+    let mut turns: Vec<(String, String)> = Vec::new();
+    for segment in segments {
+        let text = segment.text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        let speaker_id = segment.speaker_id.trim().to_string();
+        if let Some((previous_id, previous_text)) = turns.last_mut() {
+            if previous_id == &speaker_id {
+                previous_text.push(' ');
+                previous_text.push_str(text);
+                continue;
+            }
+        }
+        turns.push((speaker_id, text.to_string()));
+    }
+
+    let formatted = turns
+        .iter()
+        .map(|(speaker_id, text)| {
+            let name = display_names
+                .get(speaker_id)
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| humanize_speaker_id(speaker_id));
+            format!("{name}: {text}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    (formatted, unique_count)
 }
 
 fn read_wav_duration_ms(path: &Path) -> Option<i64> {
@@ -339,8 +649,27 @@ impl HistoryManager {
         }
 
         self.ensure_history_columns(&conn)?;
+        let recovered = Self::reset_interrupted_speaker_analyses_with_conn(&conn)?;
+        if recovered > 0 {
+            warn!(
+                "Reset {} interrupted speaker analysis job(s) so they can be retried",
+                recovered
+            );
+        }
 
         Ok(())
+    }
+
+    fn reset_interrupted_speaker_analyses_with_conn(conn: &Connection) -> Result<usize> {
+        Ok(conn.execute(
+            "UPDATE transcription_history
+             SET speaker_status = ?1, speaker_error = NULL
+             WHERE speaker_status = ?2",
+            params![
+                SpeakerAnalysisStatus::NotAnalyzed.as_db_str(),
+                SpeakerAnalysisStatus::Running.as_db_str()
+            ],
+        )?)
     }
 
     fn ensure_history_columns(&self, conn: &Connection) -> Result<()> {
@@ -380,6 +709,42 @@ impl HistoryManager {
             ("tts_trigger", "ALTER TABLE transcription_history ADD COLUMN tts_trigger TEXT"),
             ("tts_status", "ALTER TABLE transcription_history ADD COLUMN tts_status TEXT"),
             ("duration_ms", "ALTER TABLE transcription_history ADD COLUMN duration_ms INTEGER"),
+            (
+                "display_title",
+                "ALTER TABLE transcription_history ADD COLUMN display_title TEXT NOT NULL DEFAULT ''",
+            ),
+            (
+                "display_title_source",
+                "ALTER TABLE transcription_history ADD COLUMN display_title_source TEXT NOT NULL DEFAULT 'timestamp'",
+            ),
+            ("summary", "ALTER TABLE transcription_history ADD COLUMN summary TEXT"),
+            (
+                "speaker_status",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_status TEXT NOT NULL DEFAULT 'not_analyzed'",
+            ),
+            ("speaker_error", "ALTER TABLE transcription_history ADD COLUMN speaker_error TEXT"),
+            ("speaker_model_id", "ALTER TABLE transcription_history ADD COLUMN speaker_model_id TEXT"),
+            (
+                "speaker_analyzed_at",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_analyzed_at INTEGER",
+            ),
+            ("speaker_count", "ALTER TABLE transcription_history ADD COLUMN speaker_count INTEGER"),
+            (
+                "speaker_labels_visible",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_labels_visible BOOLEAN NOT NULL DEFAULT 1",
+            ),
+            (
+                "speaker_segments_json",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_segments_json TEXT",
+            ),
+            (
+                "speaker_transcript_text",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_transcript_text TEXT",
+            ),
+            (
+                "speaker_display_names_json",
+                "ALTER TABLE transcription_history ADD COLUMN speaker_display_names_json TEXT",
+            ),
         ];
 
         for (column_name, sql) in required_columns {
@@ -475,7 +840,14 @@ impl HistoryManager {
     ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("vox-jot-{}.wav", timestamp);
-        let title = self.format_timestamp_title(timestamp);
+        let title = format_timestamp_title_value(timestamp);
+        let (display_title, display_title_source) = compute_display_title(
+            pasted_text.as_deref(),
+            post_processed_text.as_deref(),
+            &transcription_text,
+            duration_ms,
+            timestamp,
+        );
 
         // Save WAV file
         let file_path = self.recordings_dir.join(&file_name);
@@ -495,6 +867,8 @@ impl HistoryManager {
             tts_context,
             screen_context_metadata,
             duration_ms,
+            display_title,
+            display_title_source,
         )?;
 
         // Clean up old entries
@@ -504,6 +878,12 @@ impl HistoryManager {
         if let Err(e) = self.app_handle.emit("history-updated", ()) {
             error!("Failed to emit history-updated event: {}", e);
         }
+
+        crate::commands::history::maybe_queue_auto_speaker_analysis(
+            &self.app_handle,
+            id,
+            duration_ms,
+        );
 
         Ok(id)
     }
@@ -522,6 +902,8 @@ impl HistoryManager {
         tts_context: TtsHistoryContext,
         screen_context_metadata: Option<ScreenContextHistoryMetadata>,
         duration_ms: Option<i64>,
+        display_title: String,
+        display_title_source: DisplayTitleSource,
     ) -> Result<i64> {
         let conn = self.get_connection()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
@@ -558,8 +940,12 @@ impl HistoryManager {
                 tts_trigger,
                 tts_status,
                 screen_context_metadata,
-                duration_ms
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)",
+                duration_ms,
+                display_title,
+                display_title_source,
+                speaker_status,
+                speaker_labels_visible
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29)",
             params![
                 file_name,
                 timestamp,
@@ -585,7 +971,11 @@ impl HistoryManager {
                 tts_context.tts_trigger,
                 tts_context.tts_status,
                 screen_context_metadata_json,
-                duration_ms
+                duration_ms,
+                display_title,
+                display_title_source.as_db_str(),
+                SpeakerAnalysisStatus::NotAnalyzed.as_db_str(),
+                true
             ],
         )?;
 
@@ -701,6 +1091,195 @@ impl HistoryManager {
             params![text, id],
         )?;
         debug!("Updated transcription text for history entry {}", id);
+        Ok(())
+    }
+
+    pub fn update_display_title(&self, id: i64, title: String) -> Result<()> {
+        let conn = self.get_connection()?;
+        let trimmed = title.trim();
+        let (title, title_source) = if trimmed.is_empty() {
+            let entry = conn.query_row(
+                &format!(
+                    "SELECT {HISTORY_SELECT_COLUMNS} FROM transcription_history WHERE id = ?1"
+                ),
+                params![id],
+                |row| Ok(row_to_history_entry(row)),
+            )?;
+            let (computed, source) = compute_display_title(
+                entry.pasted_text.as_deref(),
+                entry.post_processed_text.as_deref(),
+                &entry.transcription_text,
+                entry.duration_ms,
+                entry.timestamp,
+            );
+            (computed, source)
+        } else {
+            (
+                truncate_title_at_word_boundary(trimmed, 120),
+                DisplayTitleSource::User,
+            )
+        };
+
+        conn.execute(
+            "UPDATE transcription_history SET display_title = ?1, display_title_source = ?2 WHERE id = ?3",
+            params![title, title_source.as_db_str(), id],
+        )?;
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after display title update: {}",
+                e
+            );
+        }
+        Ok(())
+    }
+
+    pub fn update_speaker_labels_visible(&self, id: i64, visible: bool) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE transcription_history SET speaker_labels_visible = ?1 WHERE id = ?2",
+            params![visible, id],
+        )?;
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after speaker labels visibility update: {}",
+                e
+            );
+        }
+        Ok(())
+    }
+
+    pub fn update_speaker_display_names(&self, id: i64, names_json: String) -> Result<()> {
+        let conn = self.get_connection()?;
+        let display_names: std::collections::HashMap<String, String> =
+            serde_json::from_str(&names_json).unwrap_or_default();
+        let segments_json: Option<String> = conn
+            .query_row(
+                "SELECT speaker_segments_json FROM transcription_history WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
+
+        let speaker_transcript_text = segments_json.as_deref().and_then(|json| {
+            serde_json::from_str::<Vec<crate::speech_analysis::SpeakerLabeledSegment>>(json)
+                .ok()
+                .map(|segments| format_speaker_transcript(&segments, &display_names).0)
+        });
+
+        if let Some(transcript) = speaker_transcript_text {
+            conn.execute(
+                "UPDATE transcription_history SET speaker_display_names_json = ?1, speaker_transcript_text = ?2 WHERE id = ?3",
+                params![names_json, transcript, id],
+            )?;
+        } else {
+            conn.execute(
+                "UPDATE transcription_history SET speaker_display_names_json = ?1 WHERE id = ?2",
+                params![names_json, id],
+            )?;
+        }
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after speaker display names update: {}",
+                e
+            );
+        }
+        Ok(())
+    }
+
+    pub fn try_set_speaker_running(&self, id: i64) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let updated = conn.execute(
+            "UPDATE transcription_history
+             SET speaker_status = ?1, speaker_error = NULL
+             WHERE id = ?2 AND speaker_status <> ?1",
+            params![SpeakerAnalysisStatus::Running.as_db_str(), id],
+        )?;
+        if updated == 0 {
+            return Ok(false);
+        }
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after speaker running update: {}",
+                e
+            );
+        }
+        Ok(true)
+    }
+
+    pub fn set_speaker_failed(&self, id: i64, error: String) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE transcription_history SET speaker_status = ?1, speaker_error = ?2 WHERE id = ?3",
+            params![SpeakerAnalysisStatus::Failed.as_db_str(), error, id],
+        )?;
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after speaker failed update: {}",
+                e
+            );
+        }
+        Ok(())
+    }
+
+    pub fn set_speaker_complete(
+        &self,
+        id: i64,
+        model_id: String,
+        segments: Vec<crate::speech_analysis::SpeakerLabeledSegment>,
+        display_names: Option<std::collections::HashMap<String, String>>,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        let existing_names_json: Option<String> = conn
+            .query_row(
+                "SELECT speaker_display_names_json FROM transcription_history WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
+        let names = display_names.unwrap_or_else(|| {
+            existing_names_json
+                .as_deref()
+                .and_then(|json| serde_json::from_str(json).ok())
+                .unwrap_or_default()
+        });
+        let names_json = serde_json::to_string(&names).unwrap_or_else(|_| "{}".to_string());
+        let segments_json = serde_json::to_string(&segments).unwrap_or_else(|_| "[]".to_string());
+        let (speaker_transcript_text, speaker_count) = format_speaker_transcript(&segments, &names);
+        let analyzed_at = Utc::now().timestamp();
+
+        conn.execute(
+            "UPDATE transcription_history SET
+                speaker_status = ?1,
+                speaker_error = NULL,
+                speaker_model_id = ?2,
+                speaker_analyzed_at = ?3,
+                speaker_count = ?4,
+                speaker_segments_json = ?5,
+                speaker_transcript_text = ?6,
+                speaker_display_names_json = ?7
+             WHERE id = ?8",
+            params![
+                SpeakerAnalysisStatus::Complete.as_db_str(),
+                model_id,
+                analyzed_at,
+                speaker_count,
+                segments_json,
+                speaker_transcript_text,
+                names_json,
+                id
+            ],
+        )?;
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after speaker complete update: {}",
+                e
+            );
+        }
         Ok(())
     }
 
@@ -847,6 +1426,7 @@ impl HistoryManager {
         self.remove_missing_recording_entries_with_conn(&conn)?;
         let mut page = Self::get_history_entries_page_with_conn(&conn, offset, limit)?;
         self.hydrate_missing_durations_with_conn(&conn, &mut page.entries)?;
+        Self::hydrate_display_titles_with_conn(&conn, &mut page.entries)?;
         Ok(page)
     }
 
@@ -900,9 +1480,9 @@ impl HistoryManager {
             conn.query_row("SELECT COUNT(*) FROM transcription_history", [], |row| {
                 row.get(0)
             })?;
-        let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
-        )?;
+        let mut stmt = conn.prepare(&format!(
+            "SELECT {HISTORY_SELECT_COLUMNS} FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
+        ))?;
 
         let rows = stmt.query_map(params![limit as i64, offset as i64], |row| {
             Ok(row_to_history_entry(row))
@@ -929,17 +1509,18 @@ impl HistoryManager {
         let mut entry = Self::get_latest_entry_with_conn(&conn)?;
         if let Some(entry) = entry.as_mut() {
             self.hydrate_missing_duration_with_conn(&conn, entry)?;
+            Self::hydrate_display_title_with_conn(&conn, entry)?;
         }
         Ok(entry)
     }
 
     fn get_latest_entry_with_conn(conn: &Connection) -> Result<Option<HistoryEntry>> {
-        let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms
+        let mut stmt = conn.prepare(&format!(
+            "SELECT {HISTORY_SELECT_COLUMNS}
              FROM transcription_history
              ORDER BY timestamp DESC
-             LIMIT 1",
-        )?;
+             LIMIT 1"
+        ))?;
 
         let entry = stmt
             .query_row([], |row| Ok(row_to_history_entry(row)))
@@ -981,10 +1562,10 @@ impl HistoryManager {
 
     pub async fn get_entry_by_id(&self, id: i64) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
-        let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms
-             FROM transcription_history WHERE id = ?1",
-        )?;
+        let mut stmt = conn.prepare(&format!(
+            "SELECT {HISTORY_SELECT_COLUMNS}
+             FROM transcription_history WHERE id = ?1"
+        ))?;
 
         let mut entry = stmt
             .query_row([id], |row| Ok(row_to_history_entry(row)))
@@ -993,9 +1574,42 @@ impl HistoryManager {
 
         if let Some(entry) = entry.as_mut() {
             self.hydrate_missing_duration_with_conn(&conn, entry)?;
+            Self::hydrate_display_title_with_conn(&conn, entry)?;
         }
 
         Ok(entry)
+    }
+
+    fn hydrate_display_titles_with_conn(
+        conn: &Connection,
+        entries: &mut [HistoryEntry],
+    ) -> Result<()> {
+        for entry in entries {
+            Self::hydrate_display_title_with_conn(conn, entry)?;
+        }
+        Ok(())
+    }
+
+    fn hydrate_display_title_with_conn(conn: &Connection, entry: &mut HistoryEntry) -> Result<()> {
+        if !entry.display_title.trim().is_empty() {
+            return Ok(());
+        }
+
+        let (display_title, display_title_source) = compute_display_title(
+            entry.pasted_text.as_deref(),
+            entry.post_processed_text.as_deref(),
+            &entry.transcription_text,
+            entry.duration_ms,
+            entry.timestamp,
+        );
+
+        conn.execute(
+            "UPDATE transcription_history SET display_title = ?1, display_title_source = ?2 WHERE id = ?3",
+            params![display_title, display_title_source.as_db_str(), entry.id],
+        )?;
+        entry.display_title = display_title;
+        entry.display_title_source = display_title_source;
+        Ok(())
     }
 
     fn hydrate_missing_durations_with_conn(
@@ -1063,16 +1677,6 @@ impl HistoryManager {
 
         Ok(())
     }
-
-    fn format_timestamp_title(&self, timestamp: i64) -> String {
-        if let Some(utc_datetime) = DateTime::from_timestamp(timestamp, 0) {
-            // Convert UTC to local timezone
-            let local_datetime = utc_datetime.with_timezone(&Local);
-            local_datetime.format("%B %e, %Y - %l:%M%p").to_string()
-        } else {
-            format!("Recording {}", timestamp)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1113,7 +1717,19 @@ mod tests {
                 tts_trigger TEXT,
                 tts_status TEXT,
                 screen_context_metadata TEXT,
-                duration_ms INTEGER
+                duration_ms INTEGER,
+                display_title TEXT NOT NULL DEFAULT '',
+                display_title_source TEXT NOT NULL DEFAULT 'timestamp',
+                summary TEXT,
+                speaker_status TEXT NOT NULL DEFAULT 'not_analyzed',
+                speaker_error TEXT,
+                speaker_model_id TEXT,
+                speaker_analyzed_at INTEGER,
+                speaker_count INTEGER,
+                speaker_labels_visible BOOLEAN NOT NULL DEFAULT 1,
+                speaker_segments_json TEXT,
+                speaker_transcript_text TEXT,
+                speaker_display_names_json TEXT
             );",
         )
         .expect("create transcription_history table");
@@ -1121,9 +1737,13 @@ mod tests {
     }
 
     fn insert_entry(conn: &Connection, timestamp: i64, text: &str, post_processed: Option<&str>) {
+        let (display_title, display_title_source) =
+            compute_display_title(post_processed, post_processed, text, None, timestamp);
         conn.execute(
-            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO transcription_history (
+                file_name, timestamp, saved, title, transcription_text, post_processed_text,
+                post_process_prompt, dictionary_hits, pasted_text, display_title, display_title_source
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 format!("vox-jot-{}.wav", timestamp),
                 timestamp,
@@ -1133,7 +1753,9 @@ mod tests {
                 post_processed,
                 Option::<String>::None,
                 Option::<String>::None,
-                post_processed.map(|value| value.to_string())
+                post_processed.map(|value| value.to_string()),
+                display_title,
+                display_title_source.as_db_str()
             ],
         )
         .expect("insert history entry");
@@ -1175,8 +1797,8 @@ mod tests {
                 file_name, timestamp, saved, title, transcription_text, post_processed_text,
                 post_process_prompt, dictionary_hits, pasted_text,
                 tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status,
-                duration_ms
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                duration_ms, display_title, display_title_source
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
             params![
                 "tts.wav",
                 300,
@@ -1193,7 +1815,9 @@ mod tests {
                 Some("en-US".to_string()),
                 Some("auto_readback_dictation".to_string()),
                 Some("pending".to_string()),
-                Some(1_250_i64)
+                Some(1_250_i64),
+                "hello",
+                "heuristic"
             ],
         )
         .expect("insert history entry with tts metadata");
@@ -1286,5 +1910,130 @@ mod tests {
         assert!(!HistoryManager::is_recoverable_database_error(
             &anyhow::anyhow!("permission denied")
         ));
+    }
+
+    #[test]
+    fn compute_display_title_prefers_pasted_sentence() {
+        let (title, source) = compute_display_title(
+            Some("Hello world. Second sentence."),
+            Some("Ignored post."),
+            "Ignored transcription.",
+            Some(45_000),
+            1_700_000_000,
+        );
+        assert_eq!(title, "Hello world");
+        assert_eq!(source, DisplayTitleSource::Heuristic);
+    }
+
+    #[test]
+    fn compute_display_title_falls_back_to_duration() {
+        let (title, source) =
+            compute_display_title(None, None, "   ...   ", Some(1_320_000), 1_700_000_000);
+        assert!(title.contains("22 min recording at"));
+        assert_eq!(source, DisplayTitleSource::Timestamp);
+    }
+
+    #[test]
+    fn compute_display_title_never_empty() {
+        let (title, source) = compute_display_title(None, None, "", None, 1_700_000_000);
+        assert!(!title.trim().is_empty());
+        assert_eq!(source, DisplayTitleSource::Timestamp);
+    }
+
+    #[test]
+    fn truncate_title_counts_unicode_characters_instead_of_bytes() {
+        let title = "你好世界你好世界你好世界";
+        assert_eq!(
+            truncate_title_at_word_boundary(title, 8),
+            "你好世界你好世界…"
+        );
+    }
+
+    #[test]
+    fn format_speaker_transcript_single_speaker_omits_prefix() {
+        let segments = vec![
+            crate::speech_analysis::SpeakerLabeledSegment {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 0,
+                end_ms: 1_000,
+                text: "Hello".to_string(),
+                confidence: None,
+            },
+            crate::speech_analysis::SpeakerLabeledSegment {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 1_000,
+                end_ms: 2_000,
+                text: "there".to_string(),
+                confidence: None,
+            },
+        ];
+        let names = std::collections::HashMap::new();
+        let (text, count) = format_speaker_transcript(&segments, &names);
+        assert_eq!(text, "Hello there");
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn format_speaker_transcript_multi_speaker_uses_names() {
+        let segments = vec![
+            crate::speech_analysis::SpeakerLabeledSegment {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 0,
+                end_ms: 1_000,
+                text: "Hello".to_string(),
+                confidence: None,
+            },
+            crate::speech_analysis::SpeakerLabeledSegment {
+                speaker_id: "SPEAKER_00".to_string(),
+                start_ms: 1_000,
+                end_ms: 1_500,
+                text: "again".to_string(),
+                confidence: None,
+            },
+            crate::speech_analysis::SpeakerLabeledSegment {
+                speaker_id: "SPEAKER_01".to_string(),
+                start_ms: 1_500,
+                end_ms: 2_000,
+                text: "Hi".to_string(),
+                confidence: None,
+            },
+        ];
+        let mut names = std::collections::HashMap::new();
+        names.insert("SPEAKER_00".to_string(), "Alice".to_string());
+        let (text, count) = format_speaker_transcript(&segments, &names);
+        assert_eq!(text, "Alice: Hello again\nSpeaker 2: Hi");
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn humanize_speaker_id_handles_numeric_sortformer_ids() {
+        assert_eq!(humanize_speaker_id("0"), "Speaker 1");
+        assert_eq!(humanize_speaker_id("1"), "Speaker 2");
+        assert_eq!(humanize_speaker_id("SPEAKER_00"), "Speaker 1");
+    }
+
+    #[test]
+    fn interrupted_speaker_analysis_is_retryable_after_startup() {
+        let conn = setup_conn();
+        insert_entry(&conn, 100, "hello", None);
+        conn.execute(
+            "UPDATE transcription_history SET speaker_status = 'running'",
+            [],
+        )
+        .expect("mark analysis running");
+
+        assert_eq!(
+            HistoryManager::reset_interrupted_speaker_analyses_with_conn(&conn)
+                .expect("reset interrupted analysis"),
+            1
+        );
+        let status: String = conn
+            .query_row(
+                "SELECT speaker_status FROM transcription_history",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read status");
+        assert_eq!(status, "not_analyzed");
     }
 }

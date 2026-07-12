@@ -246,6 +246,12 @@ const settingUpdaters: {
   auto_submit_key: (value) =>
     commands.changeAutoSubmitKeySetting(value as string),
   history_limit: (value) => commands.updateHistoryLimit(value as number),
+  history_auto_analyze_speakers_long_recordings_enabled: (value) =>
+    commands.updateHistoryAutoAnalyzeSpeakersLongRecordingsEnabled(
+      value as boolean,
+    ),
+  history_auto_analyze_speakers_min_duration_ms: (value) =>
+    commands.updateHistoryAutoAnalyzeSpeakersMinDurationMs(value as number),
   post_process_enabled: (value) =>
     commands.changePostProcessEnabledSetting(value as boolean),
   local_privacy_mode: (value) =>

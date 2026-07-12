@@ -1062,7 +1062,10 @@
       "saveError": "Nie udało się zapisać nagrania w historii: {{error}}",
       "saveToggleError": "Nie udało się zaktualizować zapisanego stanu: {{error}}",
       "badges": {
-        "appA11y": "Zastosowanie: {{appName}}"
+        "appA11y": "Zastosowanie: {{appName}}",
+        "speakers": "{{count}} mówców",
+        "postProcessOn": "Po obróbce",
+        "dictionaryOn": "Słownik zastosowany"
       },
       "showRecordingInFolder": "Pokaż nagranie w folderze",
       "revealError": "Nie można wyświetlić nagrania: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "Zapisano „{{original}}” → „{{corrected}}” w Twoim słowniku",
         "saveError": "Nie udało się zapisać zmiany: {{error}}"
       },
-      "audioOnlyEntry": "Zapisano audio — transkrypcja nie została ukończona"
+      "audioOnlyEntry": "Zapisano audio — transkrypcja nie została ukończona",
+      "modes": {
+        "ariaLabel": "Widoki nagrania",
+        "transcript": "Transkrypcja",
+        "speakers": "Mówcy",
+        "summary": "Podsumowanie"
+      },
+      "displayTitle": {
+        "editLabel": "Edytuj tytuł nagrania",
+        "saveError": "Nie udało się zapisać tytułu: {{error}}"
+      },
+      "speakers": {
+        "title": "Mówcy",
+        "analyze": "Analizuj mówców",
+        "reanalyze": "Ponownie analizuj mówców",
+        "copy": "Kopiuj transkrypcję z mówcami",
+        "copied": "Skopiowano transkrypcję z mówcami",
+        "openModelHub": "Wybierz model",
+        "showLabels": "Pokaż etykiety mówców",
+        "renameHint": "Zmień nazwy mówców dla tego nagrania.",
+        "renameField": "Nazwa wyświetlana dla {{id}}",
+        "renamePlaceholder": "np. Ja, prawnik",
+        "saveNames": "Zapisz nazwy",
+        "namesSaved": "Nazwy mówców zapisane",
+        "namesError": "Nie udało się zapisać nazw mówców: {{error}}",
+        "labelsError": "Nie udało się zaktualizować widoczności etykiet: {{error}}",
+        "analyzeError": "Analiza mówców nie powiodła się: {{error}}",
+        "oneSpeakerHint": "Wykryto 1 mówcę. Etykiety są ukryte.",
+        "status": {
+          "notAnalyzed": "Przeanalizuj zapisane nagranie, aby zidentyfikować mówców.",
+          "modelRequired": "Najpierw wybierz model izolacji mówców.",
+          "running": "Analizowanie mówców…",
+          "complete": "Zidentyfikowano {{count}} mówców",
+          "completeEmpty": "Analiza mówców została zakończona, ale nie oznaczono żadnych mówców.",
+          "oneSpeaker": "Wykryto 1 mówcę",
+          "failed": "Analiza mówców nie powiodła się."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Automatycznie analizuj mówców w długich nagraniach",
+        "description": "W nagraniach trwających 2 minuty lub dłużej mówcy są wykrywani w tle po zapisaniu. Krótkie dyktowania pozostają bez zmian. Analizę mówców można zawsze uruchomić w szczegółach Historii."
+      }
     },
     "debug": {
       "title": "Debuguj",

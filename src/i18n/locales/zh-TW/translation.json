@@ -1062,7 +1062,10 @@
       "saveError": "無法將錄音儲存到歷史記錄：{{error}}",
       "saveToggleError": "無法更新已儲存的狀態：{{error}}",
       "badges": {
-        "appA11y": "應用：{{appName}}"
+        "appA11y": "應用：{{appName}}",
+        "speakers": "{{count}} 位說話者",
+        "postProcessOn": "已後處理",
+        "dictionaryOn": "已套用字典"
       },
       "showRecordingInFolder": "顯示資料夾中的錄音",
       "revealError": "無法顯示錄音：{{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "已將「{{original}}」→「{{corrected}}」儲存到你的字典",
         "saveError": "無法儲存你的變更：{{error}}"
       },
-      "audioOnlyEntry": "已儲存音訊 — 轉錄未完成"
+      "audioOnlyEntry": "已儲存音訊 — 轉錄未完成",
+      "modes": {
+        "ariaLabel": "錄音檢視",
+        "transcript": "逐字稿",
+        "speakers": "說話者",
+        "summary": "摘要"
+      },
+      "displayTitle": {
+        "editLabel": "編輯錄音標題",
+        "saveError": "無法儲存標題：{{error}}"
+      },
+      "speakers": {
+        "title": "說話者",
+        "analyze": "分析說話者",
+        "reanalyze": "重新分析說話者",
+        "copy": "複製按說話者標註的逐字稿",
+        "copied": "已複製按說話者標註的逐字稿",
+        "openModelHub": "選擇模型",
+        "showLabels": "顯示說話者標籤",
+        "renameHint": "為此錄音重新命名說話者。",
+        "renameField": "{{id}} 的顯示名稱",
+        "renamePlaceholder": "例如：我、律師",
+        "saveNames": "儲存名稱",
+        "namesSaved": "已儲存說話者名稱",
+        "namesError": "無法儲存說話者名稱：{{error}}",
+        "labelsError": "無法更新標籤可見性：{{error}}",
+        "analyzeError": "說話者分析失敗：{{error}}",
+        "oneSpeakerHint": "偵測到 1 位說話者。標籤已隱藏。",
+        "status": {
+          "notAnalyzed": "分析已儲存的錄音以識別說話者。",
+          "modelRequired": "請先選擇說話者分離模型。",
+          "running": "正在分析說話者…",
+          "complete": "已識別 {{count}} 位說話者",
+          "completeEmpty": "說話者分析已完成，但未標記任何說話者。",
+          "oneSpeaker": "偵測到 1 位說話者",
+          "failed": "說話者分析失敗。"
+        }
+      },
+      "autoAnalyze": {
+        "label": "自動分析長錄音中的說話者",
+        "description": "對於 2 分鐘或更長的錄音，儲存後會在背景偵測說話者。短聽寫保持不變。你隨時可以在歷史詳細資料中執行「分析說話者」。"
+      }
     },
     "debug": {
       "title": "偵錯",

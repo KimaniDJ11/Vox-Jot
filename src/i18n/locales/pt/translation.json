@@ -1062,7 +1062,10 @@
       "saveError": "Falha ao salvar a gravação no histórico: {{error}}",
       "saveToggleError": "Falha ao atualizar o status salvo: {{error}}",
       "badges": {
-        "appA11y": "Aplicação: {{appName}}"
+        "appA11y": "Aplicação: {{appName}}",
+        "speakers": "{{count}} falantes",
+        "postProcessOn": "Pós-processado",
+        "dictionaryOn": "Dicionário aplicado"
       },
       "showRecordingInFolder": "Mostrar gravação na pasta",
       "revealError": "Não foi possível mostrar a gravação: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvo no seu dicionário",
         "saveError": "Não foi possível salvar a alteração: {{error}}"
       },
-      "audioOnlyEntry": "Áudio salvo — a transcrição não foi concluída"
+      "audioOnlyEntry": "Áudio salvo — a transcrição não foi concluída",
+      "modes": {
+        "ariaLabel": "Visualizações da gravação",
+        "transcript": "Transcrição",
+        "speakers": "Falantes",
+        "summary": "Resumo"
+      },
+      "displayTitle": {
+        "editLabel": "Editar título da gravação",
+        "saveError": "Não foi possível salvar o título: {{error}}"
+      },
+      "speakers": {
+        "title": "Falantes",
+        "analyze": "Analisar falantes",
+        "reanalyze": "Reanalisar falantes",
+        "copy": "Copiar transcrição por falante",
+        "copied": "Transcrição por falante copiada",
+        "openModelHub": "Escolher modelo",
+        "showLabels": "Mostrar rótulos de falantes",
+        "renameHint": "Renomeie os falantes desta gravação.",
+        "renameField": "Nome de exibição para {{id}}",
+        "renamePlaceholder": "ex.: Eu, advogado",
+        "saveNames": "Salvar nomes",
+        "namesSaved": "Nomes de falantes salvos",
+        "namesError": "Não foi possível salvar nomes de falantes: {{error}}",
+        "labelsError": "Não foi possível atualizar a visibilidade dos rótulos: {{error}}",
+        "analyzeError": "Falha na análise de falantes: {{error}}",
+        "oneSpeakerHint": "1 falante detectado. Os rótulos estão ocultos.",
+        "status": {
+          "notAnalyzed": "Analise a gravação salva para identificar falantes.",
+          "modelRequired": "Escolha primeiro um modelo de isolamento de falantes.",
+          "running": "Analisando falantes…",
+          "complete": "{{count}} falantes identificados",
+          "completeEmpty": "A análise de falantes terminou, mas nenhum falante foi identificado.",
+          "oneSpeaker": "1 falante detectado",
+          "failed": "Falha na análise de falantes."
+        }
+      },
+      "autoAnalyze": {
+        "label": "Analisar automaticamente falantes em gravações longas",
+        "description": "Para gravações de 2 minutos ou mais, detecta falantes em segundo plano após salvar. Ditados curtos permanecem inalterados. Você sempre pode executar Analisar falantes nos detalhes do Histórico."
+      }
     },
     "debug": {
       "title": "Depurar",

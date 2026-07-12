@@ -1062,7 +1062,10 @@
       "saveError": "기록을 기록에 저장하지 못했습니다: {{error}}",
       "saveToggleError": "저장된 상태 업데이트 실패: {{error}}",
       "badges": {
-        "appA11y": "응용 프로그램: {{appName}}"
+        "appA11y": "응용 프로그램: {{appName}}",
+        "speakers": "화자 {{count}}명",
+        "postProcessOn": "후처리됨",
+        "dictionaryOn": "사전 적용됨"
       },
       "showRecordingInFolder": "폴더에 녹음 표시",
       "revealError": "녹음을 표시할 수 없습니다: {{error}}",
@@ -1082,7 +1085,48 @@
         "dictionaryAdded": "“{{original}}” → “{{corrected}}”을(를) 사전에 저장했습니다",
         "saveError": "변경 사항을 저장할 수 없습니다: {{error}}"
       },
-      "audioOnlyEntry": "오디오 저장됨 — 전사가 완료되지 않았습니다"
+      "audioOnlyEntry": "오디오 저장됨 — 전사가 완료되지 않았습니다",
+      "modes": {
+        "ariaLabel": "녹음 보기",
+        "transcript": "전사",
+        "speakers": "화자",
+        "summary": "요약"
+      },
+      "displayTitle": {
+        "editLabel": "녹음 제목 편집",
+        "saveError": "제목을 저장할 수 없음: {{error}}"
+      },
+      "speakers": {
+        "title": "화자",
+        "analyze": "화자 분석",
+        "reanalyze": "화자 다시 분석",
+        "copy": "화자별 전사 복사",
+        "copied": "화자별 전사를 복사했습니다",
+        "openModelHub": "모델 선택",
+        "showLabels": "화자 라벨 표시",
+        "renameHint": "이 녹음의 화자 이름을 바꿉니다.",
+        "renameField": "{{id}}의 표시 이름",
+        "renamePlaceholder": "예: 나, 변호사",
+        "saveNames": "이름 저장",
+        "namesSaved": "화자 이름 저장됨",
+        "namesError": "화자 이름을 저장할 수 없음: {{error}}",
+        "labelsError": "라벨 표시 여부를 업데이트할 수 없음: {{error}}",
+        "analyzeError": "화자 분석 실패: {{error}}",
+        "oneSpeakerHint": "화자 1명이 감지되었습니다. 라벨은 숨겨져 있습니다.",
+        "status": {
+          "notAnalyzed": "저장된 녹음을 분석하여 화자를 식별합니다.",
+          "modelRequired": "먼저 화자 분리 모델을 선택하세요.",
+          "running": "화자 분석 중…",
+          "complete": "화자 {{count}}명 식별됨",
+          "completeEmpty": "화자 분석이 완료되었지만 화자 라벨이 지정되지 않았습니다.",
+          "oneSpeaker": "화자 1명 감지됨",
+          "failed": "화자 분석에 실패했습니다."
+        }
+      },
+      "autoAnalyze": {
+        "label": "긴 녹음의 화자 자동 분석",
+        "description": "2분 이상의 녹음은 저장 후 백그라운드에서 화자를 감지합니다. 짧은 받아쓰기는 그대로 유지됩니다. 기록 상세에서 언제든지 화자 분석을 실행할 수 있습니다."
+      }
     },
     "debug": {
       "title": "디버그",

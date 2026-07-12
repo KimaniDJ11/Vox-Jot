@@ -722,6 +722,10 @@ pub struct AppSettings {
     pub word_correction_threshold: f64,
     #[serde(default = "default_history_limit")]
     pub history_limit: usize,
+    #[serde(default = "default_history_auto_analyze_speakers_long_recordings_enabled")]
+    pub history_auto_analyze_speakers_long_recordings_enabled: bool,
+    #[serde(default = "default_history_auto_analyze_speakers_min_duration_ms")]
+    pub history_auto_analyze_speakers_min_duration_ms: u32,
     #[serde(default = "default_recording_retention_period")]
     pub recording_retention_period: RecordingRetentionPeriod,
     #[serde(default)]
@@ -1103,6 +1107,14 @@ fn default_auto_submit() -> bool {
 
 fn default_history_limit() -> usize {
     5
+}
+
+fn default_history_auto_analyze_speakers_long_recordings_enabled() -> bool {
+    false
+}
+
+fn default_history_auto_analyze_speakers_min_duration_ms() -> u32 {
+    120000
 }
 
 fn default_recording_retention_period() -> RecordingRetentionPeriod {
@@ -2062,6 +2074,10 @@ pub fn get_default_settings() -> AppSettings {
         model_unload_timeout: ModelUnloadTimeout::Never,
         word_correction_threshold: default_word_correction_threshold(),
         history_limit: default_history_limit(),
+        history_auto_analyze_speakers_long_recordings_enabled:
+            default_history_auto_analyze_speakers_long_recordings_enabled(),
+        history_auto_analyze_speakers_min_duration_ms:
+            default_history_auto_analyze_speakers_min_duration_ms(),
         recording_retention_period: default_recording_retention_period(),
         paste_method: PasteMethod::default(),
         clipboard_handling: ClipboardHandling::default(),

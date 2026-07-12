@@ -2063,8 +2063,8 @@ input[type="range"]:disabled::-moz-range-thumb {
     left: 1rem;
     bottom: calc(100% + 0.6rem);
     z-index: 2;
-    width: clamp(8rem, 24vw, 18rem);
-    max-width: calc(100% - 1rem);
+    width: max-content;
+    max-width: calc(100% - 10.5rem);
   }
 
   .story-audio-waveform-hud__floating-controls {
@@ -2073,7 +2073,7 @@ input[type="range"]:disabled::-moz-range-thumb {
     bottom: calc(100% + 0.6rem);
     z-index: 2;
     display: flex;
-    max-width: calc(100% - clamp(8rem, 24vw, 18rem) - 2rem);
+    max-width: none;
     flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-end;
@@ -2088,7 +2088,7 @@ input[type="range"]:disabled::-moz-range-thumb {
 
     .story-audio-waveform-hud__floating-title {
       bottom: calc(100% + 3.75rem);
-      width: min(20rem, 100%);
+      width: max-content;
       max-width: 100%;
     }
 

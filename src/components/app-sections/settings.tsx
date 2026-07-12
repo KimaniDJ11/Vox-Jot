@@ -73,6 +73,7 @@ import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
 import { FeatureHealthCheckPanel } from "@/components/settings/FeatureHealthCheck";
 import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { HistoryLimit } from "@/components/settings/HistoryLimit";
+import { HistoryAutoAnalyzeSpeakers } from "@/components/settings/HistoryAutoAnalyzeSpeakers";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
 import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
@@ -1748,6 +1749,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
       <SettingsGroup title={t("appSections.privacy.historyGroupTitle")}>
         <HistoryLimit descriptionMode="inline" grouped={true} />
+        <HistoryAutoAnalyzeSpeakers descriptionMode="inline" grouped={true} />
         <RetentionTimelinePreview />
         <RecordingRetentionPeriodSelector
           descriptionMode="inline"

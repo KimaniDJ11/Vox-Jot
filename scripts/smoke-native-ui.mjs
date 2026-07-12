@@ -143,11 +143,7 @@ function main() {
       { x: () => 82, y: () => 170 },
     ],
     ["Reader", ["Reader"], { x: () => 82, y: () => 216 }],
-    [
-      "Enhance Audio",
-      ["Enhance Audio"],
-      { x: () => 82, y: () => 262 },
-    ],
+    ["Enhance Audio", ["Enhance Audio"], { x: () => 82, y: () => 262 }],
     ["Refine", ["Refine"], { x: (width) => width / 2, y: () => 24 }],
     [
       "Dictation Modes",
@@ -163,11 +159,7 @@ function main() {
     ["Voice Changer", ["Voice Changer"], { x: () => 82, y: () => 216 }],
     ["Generated Audio", ["Generated Audio"], { x: () => 82, y: () => 262 }],
     ["Settings", ["Settings"], { x: () => 82, y: (height) => height - 45 }],
-    [
-      "App & Dictation",
-      ["App & Dictation"],
-      { x: () => 82, y: () => 102 },
-    ],
+    ["App & Dictation", ["App & Dictation"], { x: () => 82, y: () => 102 }],
     ["Shortcuts", ["Shortcuts"], { x: () => 82, y: () => 154 }],
     [
       "Recording & Devices",
@@ -179,11 +171,7 @@ function main() {
     ["Models & AI", ["Models & AI"], { x: () => 82, y: () => 401 }],
     ["Testing", ["Testing"], { x: () => 82, y: () => 454 }],
     ["Screen Context", ["Screen Context"], { x: () => 82, y: () => 507 }],
-    [
-      "Privacy & Storage",
-      ["Privacy & Storage"],
-      { x: () => 82, y: () => 597 },
-    ],
+    ["Privacy & Storage", ["Privacy & Storage"], { x: () => 82, y: () => 597 }],
     [
       "Legal & Model Terms",
       ["Legal & Model Terms"],

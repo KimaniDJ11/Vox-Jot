@@ -32,7 +32,7 @@ Provider tradeoffs:
 | -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Lemon Squeezy        | Self-hosted software with tax handling, downloads, and optional license keys | Strong later if license keys or merchant-of-record handling become needed |
 | Stripe Payment Links | Lowest-friction checkout when taxes/compliance are handled separately        | Good fallback, especially if a Stripe account is already ready            |
-| Gumroad              | Fast creator-style digital downloads and pay-what-you-want pricing           | Current launch path for `$0+`, suggested `$27`                             |
+| Gumroad              | Fast creator-style digital downloads and pay-what-you-want pricing           | Current launch path for `$0+`, suggested `$27`                            |
 | Paddle               | More mature merchant-of-record SaaS billing                                  | Strong later, but more operationally heavy than the current launch needs  |
 | Apple StoreKit       | App Store unlocks and trials                                                 | Best only for a Mac App Store build                                       |
 

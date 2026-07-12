@@ -1056,9 +1056,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         dl?.stage === "preparing" ||
         dl?.stage === "runtime-installing",
       cancelling: cancellingDownloads.has(model.id),
-      onCancel: downloadActive && !runtimeStage
-        ? () => void cancelOcrDownload(model.id)
-        : undefined,
+      onCancel:
+        downloadActive && !runtimeStage
+          ? () => void cancelOcrDownload(model.id)
+          : undefined,
       onRetry: downloadRecoverable
         ? () =>
             void (needsRuntimeSetup

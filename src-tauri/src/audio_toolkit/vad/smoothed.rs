@@ -96,10 +96,50 @@ impl VoiceActivityDetector for SmoothedVad {
     }
 
     fn reset(&mut self) {
+        // The wrapped Silero model is recurrent. Resetting only this smoothing
+        // layer leaves its hidden state frozen at the end of the previous
+        // utterance, which can make a later short phrase look like noise.
+        self.inner_vad.reset();
         self.frame_buffer.clear();
         self.hangover_counter = 0;
         self.onset_counter = 0;
         self.in_speech = false;
         self.temp_out.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SmoothedVad;
+    use crate::audio_toolkit::vad::{VadFrame, VoiceActivityDetector};
+    use anyhow::Result;
+    use std::sync::{Arc, Mutex};
+
+    struct ResetTrackingVad {
+        reset_count: Arc<Mutex<usize>>,
+    }
+
+    impl VoiceActivityDetector for ResetTrackingVad {
+        fn push_frame<'a>(&'a mut self, frame: &'a [f32]) -> Result<VadFrame<'a>> {
+            Ok(VadFrame::Speech(frame))
+        }
+
+        fn reset(&mut self) {
+            let mut count = self.reset_count.lock().unwrap();
+            *count += 1;
+        }
+    }
+
+    #[test]
+    fn reset_propagates_to_the_recurrent_detector() {
+        let reset_count = Arc::new(Mutex::new(0));
+        let inner = ResetTrackingVad {
+            reset_count: Arc::clone(&reset_count),
+        };
+        let mut vad = SmoothedVad::new(Box::new(inner), 15, 15, 2);
+
+        vad.reset();
+
+        assert_eq!(*reset_count.lock().unwrap(), 1);
     }
 }

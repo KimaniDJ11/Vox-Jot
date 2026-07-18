@@ -49,4 +49,8 @@ impl VoiceActivityDetector for SileroVad {
             Ok(VadFrame::Noise)
         }
     }
+
+    fn reset(&mut self) {
+        self.engine.reset();
+    }
 }

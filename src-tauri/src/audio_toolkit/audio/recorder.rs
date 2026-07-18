@@ -16,6 +16,144 @@ use crate::audio_toolkit::{
     VoiceActivityDetector,
 };
 
+const VAD_FALLBACK_FRAME_SAMPLES: usize = constants::WHISPER_SAMPLE_RATE as usize * 30 / 1_000;
+const VAD_FALLBACK_MIN_FRAME_RMS: f32 = 0.0025;
+const VAD_FALLBACK_MIN_FRAME_PEAK: f32 = 0.02;
+const VAD_FALLBACK_MIN_ACTIVE_FRAMES: usize = 2;
+const VAD_FALLBACK_SILENCE_KEEP_SAMPLES: usize = VAD_FALLBACK_FRAME_SAMPLES * 67;
+const VAD_FALLBACK_SILENCE_COMPACT_SAMPLES: usize = VAD_FALLBACK_FRAME_SAMPLES * 134;
+
+struct VadFallbackAudio {
+    samples: Vec<f32>,
+    consecutive_active_frames: usize,
+    signal_detected: bool,
+}
+
+impl VadFallbackAudio {
+    fn new() -> Self {
+        Self {
+            samples: Vec::with_capacity(160_000),
+            consecutive_active_frames: 0,
+            signal_detected: false,
+        }
+    }
+
+    fn clear(&mut self) {
+        self.samples.clear();
+        self.consecutive_active_frames = 0;
+        self.signal_detected = false;
+    }
+
+    fn push_frame(&mut self, frame: &[f32]) {
+        if frame.iter().any(|sample| !sample.is_finite()) {
+            // Never let an invalid device/resampler frame poison the rescue
+            // buffer that may be sent directly to transcription at stop time.
+            self.clear();
+            return;
+        }
+
+        self.samples.extend_from_slice(frame);
+
+        if self.signal_detected {
+            return;
+        }
+
+        if frame_has_speech_like_energy(frame) {
+            self.consecutive_active_frames += 1;
+            if self.consecutive_active_frames >= VAD_FALLBACK_MIN_ACTIVE_FRAMES {
+                self.signal_detected = true;
+                return;
+            }
+        } else {
+            self.consecutive_active_frames = 0;
+        }
+
+        // A recording left open in silence must not grow this rescue buffer
+        // forever. Compact in batches to keep roughly two seconds of pre-roll
+        // without shifting the vector on every 30-ms frame.
+        if self.samples.len() > VAD_FALLBACK_SILENCE_COMPACT_SAMPLES {
+            let drop_count = self
+                .samples
+                .len()
+                .saturating_sub(VAD_FALLBACK_SILENCE_KEEP_SAMPLES);
+            self.samples.drain(..drop_count);
+        }
+    }
+
+    fn take_if_signal_detected(&mut self) -> Option<Vec<f32>> {
+        if !self.signal_detected {
+            self.clear();
+            return None;
+        }
+
+        self.consecutive_active_frames = 0;
+        self.signal_detected = false;
+        Some(std::mem::replace(
+            &mut self.samples,
+            Vec::with_capacity(160_000),
+        ))
+    }
+}
+
+struct FinalizedRecording {
+    samples: Vec<f32>,
+    used_vad_fallback: bool,
+}
+
+/// A neural VAD is a useful noise filter, but it must not turn an audible
+/// utterance into a silent no-op. Requiring both meaningful AC RMS energy and
+/// a clear peak keeps this rescue gate conservative for enhanced and plain
+/// resampled input while ignoring a steady microphone DC offset.
+fn frame_has_speech_like_energy(frame: &[f32]) -> bool {
+    if frame.is_empty() {
+        return false;
+    }
+
+    let mut sample_sum = 0.0f64;
+    let mut squared_sum = 0.0f64;
+    let mut peak = 0.0f32;
+    for sample in frame.iter().copied() {
+        if !sample.is_finite() {
+            return false;
+        }
+
+        sample_sum += f64::from(sample);
+        squared_sum += f64::from(sample) * f64::from(sample);
+        peak = peak.max(sample.abs());
+    }
+
+    let sample_count = frame.len() as f64;
+    let mean = sample_sum / sample_count;
+    let variance = (squared_sum / sample_count - mean * mean).max(0.0);
+    let ac_rms = variance.sqrt() as f32;
+    ac_rms >= VAD_FALLBACK_MIN_FRAME_RMS && peak >= VAD_FALLBACK_MIN_FRAME_PEAK
+}
+
+fn finalize_recording_samples(
+    vad_samples: &mut Vec<f32>,
+    fallback_audio: &mut VadFallbackAudio,
+) -> FinalizedRecording {
+    if !vad_samples.is_empty() {
+        fallback_audio.clear();
+        return FinalizedRecording {
+            samples: std::mem::take(vad_samples),
+            used_vad_fallback: false,
+        };
+    }
+
+    if let Some(samples) = fallback_audio.take_if_signal_detected() {
+        return FinalizedRecording {
+            samples,
+            used_vad_fallback: true,
+        };
+    }
+
+    FinalizedRecording {
+        samples: Vec::new(),
+        used_vad_fallback: false,
+    }
+}
+
 enum Cmd {
     Start,
     Stop(mpsc::Sender<Vec<f32>>),
@@ -419,6 +557,10 @@ fn run_consumer(
 ) {
     // Pre-allocate for ~10 seconds of audio at 16kHz to avoid repeated reallocs
     let mut processed_samples = Vec::<f32>::with_capacity(160_000);
+    // Retain enhanced/resampled audio only until VAD accepts its first frame.
+    // This keeps the normal hot path bounded while giving fully rejected
+    // utterances a conservative recovery path at stop time.
+    let mut vad_fallback_audio = VadFallbackAudio::new();
     let mut recording = false;
 
     // ---------- spectrum visualisation setup ---------------------------- //
@@ -437,18 +579,26 @@ fn run_consumer(
         recording: bool,
         vad: &Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
         out_buf: &mut Vec<f32>,
+        fallback_audio: &mut VadFallbackAudio,
     ) {
         if !recording {
             return;
         }
 
         if let Some(vad_arc) = vad {
+            if out_buf.is_empty() {
+                fallback_audio.push_frame(samples);
+            }
             let mut det = vad_arc.lock().unwrap_or_else(|e| e.into_inner());
             match det.push_frame(samples).unwrap_or(VadFrame::Speech(samples)) {
-                VadFrame::Speech(buf) => out_buf.extend_from_slice(buf),
+                VadFrame::Speech(buf) => {
+                    out_buf.extend_from_slice(buf);
+                    fallback_audio.clear();
+                }
                 VadFrame::Noise => {}
             }
         } else {
+            fallback_audio.clear();
             out_buf.extend_from_slice(samples);
         }
     }
@@ -474,11 +624,23 @@ fn run_consumer(
                 // ---------- existing pipeline ----------------------------- //
                 if let Some(enhancer) = enhancer.as_mut() {
                     enhancer.push(&raw, &mut |frame: &[f32]| {
-                        handle_frame(frame, recording, &vad, &mut processed_samples)
+                        handle_frame(
+                            frame,
+                            recording,
+                            &vad,
+                            &mut processed_samples,
+                            &mut vad_fallback_audio,
+                        )
                     });
                 } else {
                     frame_resampler.push(&raw, &mut |frame: &[f32]| {
-                        handle_frame(frame, recording, &vad, &mut processed_samples)
+                        handle_frame(
+                            frame,
+                            recording,
+                            &vad,
+                            &mut processed_samples,
+                            &mut vad_fallback_audio,
+                        )
                     });
                 }
             }
@@ -501,6 +663,7 @@ fn run_consumer(
             match cmd {
                 Cmd::Start => {
                     processed_samples.clear();
+                    vad_fallback_audio.clear();
                     recording = true;
                     visualizer.reset(); // Reset visualization buffer
                     if let Some(v) = &vad {
@@ -514,26 +677,57 @@ fn run_consumer(
                     while let Ok(remaining) = sample_rx.try_recv() {
                         if let Some(enhancer) = enhancer.as_mut() {
                             enhancer.push(&remaining, &mut |frame: &[f32]| {
-                                handle_frame(frame, true, &vad, &mut processed_samples)
+                                handle_frame(
+                                    frame,
+                                    true,
+                                    &vad,
+                                    &mut processed_samples,
+                                    &mut vad_fallback_audio,
+                                )
                             });
                         } else {
                             frame_resampler.push(&remaining, &mut |frame: &[f32]| {
-                                handle_frame(frame, true, &vad, &mut processed_samples)
+                                handle_frame(
+                                    frame,
+                                    true,
+                                    &vad,
+                                    &mut processed_samples,
+                                    &mut vad_fallback_audio,
+                                )
                             });
                         }
                     }
 
                     if let Some(enhancer) = enhancer.as_mut() {
                         enhancer.finish(&mut |frame: &[f32]| {
-                            handle_frame(frame, true, &vad, &mut processed_samples)
+                            handle_frame(
+                                frame,
+                                true,
+                                &vad,
+                                &mut processed_samples,
+                                &mut vad_fallback_audio,
+                            )
                         });
                     } else {
                         frame_resampler.finish(&mut |frame: &[f32]| {
-                            handle_frame(frame, true, &vad, &mut processed_samples)
+                            handle_frame(
+                                frame,
+                                true,
+                                &vad,
+                                &mut processed_samples,
+                                &mut vad_fallback_audio,
+                            )
                         });
                     }
 
-                    let _ = reply_tx.send(std::mem::take(&mut processed_samples));
+                    let finalized =
+                        finalize_recording_samples(&mut processed_samples, &mut vad_fallback_audio);
+                    if finalized.used_vad_fallback {
+                        log::warn!(
+                            "VAD rejected every frame; preserving audible enhanced audio for transcription"
+                        );
+                    }
+                    let _ = reply_tx.send(finalized.samples);
                 }
                 Cmd::Snapshot(reply_tx, max_samples) => {
                     let snapshot = if recording {
@@ -559,5 +753,164 @@ fn run_consumer(
                 Cmd::Shutdown => return,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        finalize_recording_samples, VadFallbackAudio, VAD_FALLBACK_FRAME_SAMPLES,
+        VAD_FALLBACK_SILENCE_COMPACT_SAMPLES,
+    };
+
+    fn voiced_frames(frame_count: usize) -> Vec<f32> {
+        let sample_rate = 16_000.0f32;
+        (0..frame_count * VAD_FALLBACK_FRAME_SAMPLES)
+            .map(|index| {
+                let phase = index as f32 * 2.0 * std::f32::consts::PI * 220.0 / sample_rate;
+                phase.sin() * 0.035
+            })
+            .collect()
+    }
+
+    fn push_frames(fallback_audio: &mut VadFallbackAudio, samples: &[f32]) {
+        for frame in samples.chunks(VAD_FALLBACK_FRAME_SAMPLES) {
+            fallback_audio.push_frame(frame);
+        }
+    }
+
+    #[test]
+    fn audible_audio_survives_when_vad_rejects_every_frame() {
+        let mut vad_samples = Vec::new();
+        let expected = voiced_frames(4);
+        let mut fallback_audio = VadFallbackAudio::new();
+        push_frames(&mut fallback_audio, &expected);
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(finalized.used_vad_fallback);
+        assert_eq!(finalized.samples, expected);
+    }
+
+    #[test]
+    fn silence_is_not_sent_to_the_transcription_engine() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        push_frames(
+            &mut fallback_audio,
+            &vec![0.0; VAD_FALLBACK_FRAME_SAMPLES * 20],
+        );
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert!(finalized.samples.is_empty());
+        assert!(fallback_audio.samples.is_empty());
+    }
+
+    #[test]
+    fn steady_low_level_noise_is_not_sent_to_the_transcription_engine() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        let low_noise = vec![0.01; VAD_FALLBACK_FRAME_SAMPLES * 20];
+        push_frames(&mut fallback_audio, &low_noise);
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert!(finalized.samples.is_empty());
+    }
+
+    #[test]
+    fn steady_loud_dc_offset_is_not_sent_to_the_transcription_engine() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        let dc_offset = vec![0.04; VAD_FALLBACK_FRAME_SAMPLES * 20];
+        push_frames(&mut fallback_audio, &dc_offset);
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert!(finalized.samples.is_empty());
+    }
+
+    #[test]
+    fn non_finite_frame_is_discarded_from_rescue_audio() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        let mut invalid = voiced_frames(4);
+        invalid[VAD_FALLBACK_FRAME_SAMPLES] = f32::NAN;
+        push_frames(&mut fallback_audio, &invalid);
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(finalized.used_vad_fallback);
+        assert_eq!(finalized.samples, invalid[VAD_FALLBACK_FRAME_SAMPLES * 2..]);
+        assert!(finalized.samples.iter().all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn one_isolated_loud_frame_is_treated_as_noise() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        for frame_index in 0..4 {
+            let frame = if frame_index == 1 {
+                voiced_frames(1)
+            } else {
+                vec![0.0; VAD_FALLBACK_FRAME_SAMPLES]
+            };
+            fallback_audio.push_frame(&frame);
+        }
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert!(finalized.samples.is_empty());
+    }
+
+    #[test]
+    fn separated_loud_frames_are_treated_as_noise() {
+        let mut vad_samples = Vec::new();
+        let mut fallback_audio = VadFallbackAudio::new();
+        for frame_index in 0..5 {
+            let frame = if matches!(frame_index, 1 | 3) {
+                voiced_frames(1)
+            } else {
+                vec![0.0; VAD_FALLBACK_FRAME_SAMPLES]
+            };
+            fallback_audio.push_frame(&frame);
+        }
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert!(finalized.samples.is_empty());
+    }
+
+    #[test]
+    fn accepted_vad_audio_always_wins_over_the_fallback() {
+        let expected = vec![0.1, -0.1, 0.2];
+        let mut vad_samples = expected.clone();
+        let mut fallback_audio = VadFallbackAudio::new();
+        push_frames(&mut fallback_audio, &voiced_frames(4));
+
+        let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
+
+        assert!(!finalized.used_vad_fallback);
+        assert_eq!(finalized.samples, expected);
+        assert!(fallback_audio.samples.is_empty());
+    }
+
+    #[test]
+    fn long_silence_keeps_the_rescue_buffer_bounded() {
+        let mut fallback_audio = VadFallbackAudio::new();
+        let silence = vec![0.0; VAD_FALLBACK_FRAME_SAMPLES];
+
+        for _ in 0..1_000 {
+            fallback_audio.push_frame(&silence);
+        }
+
+        assert!(fallback_audio.samples.len() <= VAD_FALLBACK_SILENCE_COMPACT_SAMPLES);
+        assert!(!fallback_audio.signal_detected);
     }
 }

@@ -1720,7 +1720,7 @@ mod tests {
     #[test]
     fn reader_unit_limits_reject_too_many_units() {
         let err = ensure_reader_units_within_limits(
-            std::iter::repeat("ok").take(READER_MAX_UNITS + 1),
+            std::iter::repeat_n("ok", READER_MAX_UNITS + 1),
             READER_MAX_UNITS + 1,
         )
         .unwrap_err();
@@ -1741,7 +1741,7 @@ mod tests {
         let unit = "x".repeat(READER_MAX_UNIT_CHARS);
         let count = (READER_MAX_TOTAL_CHARS / READER_MAX_UNIT_CHARS) + 1;
         let err =
-            ensure_reader_units_within_limits(std::iter::repeat(unit.as_str()).take(count), count)
+            ensure_reader_units_within_limits(std::iter::repeat_n(unit.as_str(), count), count)
                 .unwrap_err();
 
         assert!(err.contains("too large"));

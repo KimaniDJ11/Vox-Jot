@@ -54,7 +54,7 @@ const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
 const SPEECH_ANALYSIS_RUNTIME_MARKER: &str =
-    "speech-analysis-runtime-2026-07-05-py311-torch-211-transformers-530-hub-141-no-nemo-whisperx-funasr139-v1";
+    "speech-analysis-runtime-2026-07-18-py311-torch-213-torchaudio-211-torchvision-028-torchcodec-015-transformers-550-hub-150-onnx-122-no-nemo-whisperx342-funasr139-v2";
 const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
 const GEMMA_AUDIO_VENV_DIR: &str = "gemma-audio-venv";
 const GEMMA_AUDIO_VERSION_MARKER: &str = "gemma-audio.version";
@@ -1615,7 +1615,45 @@ fn command_line_has_python_module(command_line: &str, module: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{command_line_is_vox_jot_runtime, SidecarManager};
+    use super::{
+        command_line_is_vox_jot_runtime, SidecarManager, SPEECH_ANALYSIS_REQUIREMENTS,
+        SPEECH_ANALYSIS_RUNTIME_MARKER,
+    };
+
+    #[test]
+    fn speech_analysis_runtime_marker_tracks_security_pins() {
+        for pin in [
+            "torch==2.13.0",
+            "torchaudio==2.11.0",
+            "torchvision==0.28.0",
+            "torchcodec==0.15.0",
+            "transformers==5.5.0",
+            "huggingface-hub==1.5.0",
+            "onnx==1.22.0",
+        ] {
+            assert!(
+                SPEECH_ANALYSIS_REQUIREMENTS
+                    .lines()
+                    .any(|line| line.trim() == pin),
+                "missing managed speech-analysis pin: {pin}"
+            );
+        }
+
+        for marker_component in [
+            "torch-213",
+            "torchaudio-211",
+            "torchvision-028",
+            "torchcodec-015",
+            "transformers-550",
+            "hub-150",
+            "onnx-122",
+        ] {
+            assert!(
+                SPEECH_ANALYSIS_RUNTIME_MARKER.contains(marker_component),
+                "runtime marker is missing {marker_component}"
+            );
+        }
+    }
 
     #[test]
     fn command_line_matcher_accepts_vox_jot_runtimes() {

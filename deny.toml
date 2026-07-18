@@ -36,6 +36,4 @@ ignore = [
   { id = "RUSTSEC-2025-0098", reason = "Transitive tauri-utils urlpattern dependency; no app-level replacement path." },
   { id = "RUSTSEC-2025-0100", reason = "Transitive tauri-utils urlpattern dependency; no app-level replacement path." },
   { id = "RUSTSEC-2026-0192", reason = "Transitive lopdf/pdf-extract font parser dependency; pdf-extract 0.12.0 and lopdf 0.42.0 are current, and replacing Vox Jot's PDF text extraction stack is not a drop-in patch." },
-  { id = "RUSTSEC-2026-0194", reason = "Transitive Linux Wayland scanner proc-macro through tauri-plugin-clipboard-manager/arboard; wayland-scanner 0.31.10 is latest and still pins quick-xml 0.39, and this scanner consumes bundled protocol XML at build time rather than app/user data or macOS runtime input." },
-  { id = "RUSTSEC-2026-0195", reason = "Transitive Linux Wayland scanner proc-macro through tauri-plugin-clipboard-manager/arboard; wayland-scanner 0.31.10 is latest and still pins quick-xml 0.39, and this scanner consumes bundled protocol XML at build time rather than app/user data or macOS runtime input." },
 ]

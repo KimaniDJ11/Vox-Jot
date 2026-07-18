@@ -157,6 +157,12 @@ transcribe-rs = { version = "0.3.11", default-features = false, features = ["onn
 tempfile = "3"
 tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
 
+# crates.io 0.31.10 still pins vulnerable quick-xml 0.39.4. Upstream has
+# already moved to quick-xml 0.41; pin that reviewed revision until the next
+# wayland-scanner release carries the fix.
+[patch.crates-io]
+wayland-scanner = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
+
 [profile.release]
 lto = true
 codegen-units = 1

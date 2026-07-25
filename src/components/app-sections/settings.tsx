@@ -243,6 +243,7 @@ const GeneralHeroVisual: React.FC = () => {
 };
 
 const SettingsCoachPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -307,16 +308,18 @@ const SettingsCoachPanel: React.FC = () => {
       setActions(response.data.suggested_actions);
       setQuestion("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Settings Coach failed.");
+      setError(
+        err instanceof Error ? err.message : t("convo.settingsCoach.failed"),
+      );
     } finally {
       setIsSending(false);
     }
-  }, [isSending, question, sessionId]);
+  }, [isSending, question, sessionId, t]);
 
   return (
     <SettingsGroup
-      title="Settings Coach"
-      description="Ask where a Vox Jot setting lives, then jump directly to the recommended panel."
+      title={t("convo.settingsCoach.title")}
+      description={t("convo.settingsCoach.description")}
     >
       <div className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -329,8 +332,8 @@ const SettingsCoachPanel: React.FC = () => {
                 void askCoach();
               }
             }}
-            placeholder="How do I turn on push to talk?"
-            aria-label="Ask Settings Coach"
+            placeholder={t("convo.settingsCoach.placeholder")}
+            aria-label={t("convo.settingsCoach.inputAriaLabel")}
             disabled={isSending}
             className="min-w-0 flex-1"
           />
@@ -340,7 +343,9 @@ const SettingsCoachPanel: React.FC = () => {
             onClick={() => void askCoach()}
             disabled={!question.trim() || isSending}
           >
-            {isSending ? "Asking..." : "Ask"}
+            {isSending
+              ? t("convo.settingsCoach.asking")
+              : t("convo.settingsCoach.ask")}
           </Button>
         </div>
 
@@ -415,8 +420,8 @@ const RuntimeMemoryPanel: React.FC = () => {
 
   return (
     <SettingContainer
-      title="Runtime memory"
-      description="Shows current Vox Jot process memory plus the local audio sidecar when it is running."
+      title={t("settings.runtimeMemory.title")}
+      description={t("settings.runtimeMemory.description")}
       grouped
     >
       <div className="min-w-[220px] space-y-2" role="status" aria-live="polite">

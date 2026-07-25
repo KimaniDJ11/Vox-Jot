@@ -1,4 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
 import React, {
   useCallback,
   useEffect,
@@ -14,6 +13,7 @@ import {
   type ContextCaptureStatus,
   type ResolvedWriteRule,
 } from "@/bindings";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import i18n from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
@@ -314,135 +314,118 @@ const RecordingOverlay: React.FC = () => {
     }, SCREEN_CONTEXT_PULSE_MS);
   }, [clearScreenContextPulse]);
 
+  // Overlay events are subscribed on mount and never gated behind IPC:
+  // a slow or failing settings read must not delay or drop `show-overlay`.
+  useTauriEvent<ShowOverlayPayload>("show-overlay", (event) => {
+    const payload = event.payload;
+    setState(payload.state);
+    setStyle(payload.style);
+    setCorrection(null);
+    setIsVisible(true);
+  });
+
+  useTauriEvent<CorrectionOverlayPayload>(
+    "show-correction-overlay",
+    (event) => {
+      setCorrection(event.payload);
+      setStyle("detailed");
+      setIsVisible(true);
+    },
+  );
+
+  useTauriEvent("hide-overlay", () => {
+    setIsVisible(false);
+    setCorrection(null);
+    setPartialText("");
+    setMatchedRule(null);
+    clearScreenContextPulse();
+  });
+
+  useTauriEvent<number[]>("mic-level", (event) => {
+    writeLevelsRef.current(event.payload);
+  });
+
+  useTauriEvent<string>("partial-transcription", (event) => {
+    setPartialText(event.payload || "");
+  });
+
+  useTauriEvent<ResolvedWriteRule>("write-rule-matched", (event) => {
+    setMatchedRule(event.payload);
+  });
+
+  useTauriEvent("write-rule-cleared", () => {
+    setMatchedRule(null);
+  });
+
+  useTauriEvent<SettingsChangedPayload>("settings-changed", (event) => {
+    if (event.payload.setting !== "screen_context_enabled") {
+      return;
+    }
+    const nextEnabled = event.payload.value !== false;
+    screenContextEnabledRef.current = nextEnabled;
+    setScreenContextEnabled(nextEnabled);
+    if (!nextEnabled) {
+      screenContextStatusRef.current = "disabled";
+      setScreenContextStatus("disabled");
+      clearScreenContextPulse();
+    }
+  });
+
+  useTauriEvent<ContextCaptureStatus>("screen-context-status", (event) => {
+    const nextStatus = event.payload;
+    screenContextStatusRef.current = nextStatus;
+    setScreenContextStatus(nextStatus);
+    if (nextStatus === "disabled" || nextStatus === "excluded_app") {
+      clearScreenContextPulse();
+    }
+  });
+
+  useTauriEvent<ScreenContextCapturePayload>("screen-context-capture", () => {
+    const currentStatus = screenContextStatusRef.current;
+    if (
+      !screenContextEnabledRef.current ||
+      currentStatus === "disabled" ||
+      currentStatus === "excluded_app"
+    ) {
+      return;
+    }
+    pulseScreenContextCapture();
+  });
+
   useEffect(() => {
-    const setup = async () => {
-      const settingsResult = await commands.getAppSettings();
-      if (settingsResult.status === "ok") {
-        const nextEnabled = settingsResult.data.screen_context_enabled ?? true;
-        screenContextEnabledRef.current = nextEnabled;
-        setScreenContextEnabled(nextEnabled);
-      }
+    let cancelled = false;
 
-      const diagnosticsResult = await commands.getScreenContextDiagnostics();
-      if (diagnosticsResult.status === "ok") {
-        screenContextStatusRef.current = diagnosticsResult.data.status;
-        setScreenContextStatus(diagnosticsResult.data.status);
-      }
-
-      const unShow = await listen<ShowOverlayPayload>(
-        "show-overlay",
-        (event) => {
-          const payload = event.payload;
-          setState(payload.state);
-          setStyle(payload.style);
-          setCorrection(null);
-          setIsVisible(true);
-        },
-      );
-
-      const unCorrection = await listen<CorrectionOverlayPayload>(
-        "show-correction-overlay",
-        (event) => {
-          setCorrection(event.payload);
-          setStyle("detailed");
-          setIsVisible(true);
-        },
-      );
-
-      const unHide = await listen("hide-overlay", () => {
-        setIsVisible(false);
-        setCorrection(null);
-        setPartialText("");
-        setMatchedRule(null);
-        clearScreenContextPulse();
-      });
-
-      const unLevel = await listen<number[]>("mic-level", (event) => {
-        writeLevelsRef.current(event.payload);
-      });
-
-      const unPartial = await listen<string>(
-        "partial-transcription",
-        (event) => {
-          setPartialText((event.payload as string) || "");
-        },
-      );
-
-      const unRuleMatched = await listen<ResolvedWriteRule>(
-        "write-rule-matched",
-        (event) => {
-          setMatchedRule(event.payload);
-        },
-      );
-
-      const unRuleCleared = await listen("write-rule-cleared", () => {
-        setMatchedRule(null);
-      });
-
-      const unSettingsChanged = await listen<SettingsChangedPayload>(
-        "settings-changed",
-        (event) => {
-          if (event.payload.setting !== "screen_context_enabled") {
-            return;
-          }
-          const nextEnabled = event.payload.value !== false;
+    const loadScreenContextState = async () => {
+      try {
+        const settingsResult = await commands.getAppSettings();
+        if (!cancelled && settingsResult.status === "ok") {
+          const nextEnabled =
+            settingsResult.data.screen_context_enabled ?? true;
           screenContextEnabledRef.current = nextEnabled;
           setScreenContextEnabled(nextEnabled);
-          if (!nextEnabled) {
-            screenContextStatusRef.current = "disabled";
-            setScreenContextStatus("disabled");
-            clearScreenContextPulse();
-          }
-        },
-      );
+        }
+      } catch (error) {
+        console.error("Failed to read screen context setting:", error);
+      }
 
-      const unScreenContextStatus = await listen<ContextCaptureStatus>(
-        "screen-context-status",
-        (event) => {
-          const nextStatus = event.payload;
-          screenContextStatusRef.current = nextStatus;
-          setScreenContextStatus(nextStatus);
-          if (nextStatus === "disabled" || nextStatus === "excluded_app") {
-            clearScreenContextPulse();
-          }
-        },
-      );
-
-      const unScreenContextCapture = await listen<ScreenContextCapturePayload>(
-        "screen-context-capture",
-        () => {
-          const currentStatus = screenContextStatusRef.current;
-          if (
-            !screenContextEnabledRef.current ||
-            currentStatus === "disabled" ||
-            currentStatus === "excluded_app"
-          ) {
-            return;
-          }
-          pulseScreenContextCapture();
-        },
-      );
-
-      return () => {
-        unShow();
-        unCorrection();
-        unHide();
-        unLevel();
-        unPartial();
-        unRuleMatched();
-        unRuleCleared();
-        unSettingsChanged();
-        unScreenContextStatus();
-        unScreenContextCapture();
-      };
+      try {
+        const diagnosticsResult = await commands.getScreenContextDiagnostics();
+        if (!cancelled && diagnosticsResult.status === "ok") {
+          screenContextStatusRef.current = diagnosticsResult.data.status;
+          setScreenContextStatus(diagnosticsResult.data.status);
+        }
+      } catch (error) {
+        console.error("Failed to read screen context diagnostics:", error);
+      }
     };
 
-    const teardownPromise = setup();
+    void loadScreenContextState();
     return () => {
-      void teardownPromise.then((teardown) => teardown());
-      clearScreenContextPulse();
+      cancelled = true;
     };
-  }, [clearScreenContextPulse, pulseScreenContextCapture]);
+  }, []);
+
+  useEffect(() => clearScreenContextPulse, [clearScreenContextPulse]);
 
   const showScreenContextPulse =
     screenContextEnabled &&

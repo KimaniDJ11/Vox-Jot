@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "预览声音主题（播放开始然后停止）"
+    },
+    "runtimeMemory": {
+      "title": "运行内存",
+      "description": "显示当前 Vox Jot 进程内存，以及本地音频辅助进程运行时的内存占用。",
+      "active": "已占用 {{count}} MB",
+      "sidecarRunning": "辅助进程运行中",
+      "sidecarIdle": "辅助进程空闲",
+      "app": "应用 {{count}} MB",
+      "sidecar": "辅助进程 {{count}} MB"
     }
   },
   "footer": {
@@ -1731,7 +1740,13 @@
         "帮助我减少听写延迟",
         "解释后处理设置",
         "显示隐私相关设置"
-      ]
+      ],
+      "description": "询问 Vox Jot 设置的位置，然后直接跳转到推荐面板。",
+      "placeholder": "如何开启按住说话？",
+      "inputAriaLabel": "询问设置教练",
+      "ask": "询问",
+      "asking": "正在询问...",
+      "failed": "设置教练执行失败。"
     },
     "filesContext": {
       "label": "文件和上下文",
@@ -2107,7 +2122,20 @@
       },
       "overlayBadgeOpen": "在设置中打开个人资料",
       "editor": {
-        "namePlaceholder": "例如Slack 和 Discord 聊天"
+        "namePlaceholder": "例如Slack 和 Discord 聊天",
+        "back": "返回个人资料",
+        "newTitle": "新建个人资料",
+        "editTitle": "编辑个人资料",
+        "nameLabel": "个人资料名称",
+        "createNamePlaceholder": "为此个人资料命名",
+        "nameRequired": "请为该个人资料取一个简短、易懂的名称。",
+        "triggersHeading": "适用范围",
+        "triggersHelp": "选择此个人资料生效的应用程序和网址模式。两者都留空则匹配所有情况。",
+        "overridesHeading": "更改内容",
+        "overridesHelp": "仅覆盖你在此处添加的设置，其余设置沿用全局设置。",
+        "save": "保存个人资料",
+        "nonBrowserUrlConflict": "网址过滤器仅适用于浏览器。请移除非浏览器应用程序或删除网址过滤器。",
+        "urlDisabledByNonBrowserApp": "添加网址过滤器前，请先移除非浏览器应用程序。"
       },
       "row": {
         "disabled": "残疾人",

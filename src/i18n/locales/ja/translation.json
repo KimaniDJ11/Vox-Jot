@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "サウンドテーマのプレビュー (再生が開始してから停止します)"
+    },
+    "runtimeMemory": {
+      "title": "実行時メモリ",
+      "description": "Vox Jot プロセスの現在のメモリ使用量と、実行中のローカル音声サイドカーの使用量を表示します。",
+      "active": "{{count}} MB 使用中",
+      "sidecarRunning": "サイドカー実行中",
+      "sidecarIdle": "サイドカー待機中",
+      "app": "アプリ {{count}} MB",
+      "sidecar": "サイドカー {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "ディクテーションの待ち時間を短縮してください",
         "後処理セットアップの説明",
         "プライバシー関連の設定を表示する"
-      ]
+      ],
+      "description": "Vox Jot の設定がどこにあるかを質問すると、おすすめのパネルに直接移動できます。",
+      "placeholder": "プッシュトゥトークを有効にするには？",
+      "inputAriaLabel": "設定コーチに質問",
+      "ask": "質問",
+      "asking": "質問中...",
+      "failed": "設定コーチに失敗しました。"
     },
     "filesContext": {
       "label": "ファイルとコンテキスト",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "設定でプロフィールを開く",
       "editor": {
-        "namePlaceholder": "例: Slack と Discord チャット"
+        "namePlaceholder": "例: Slack と Discord チャット",
+        "back": "プロファイル一覧に戻る",
+        "newTitle": "新しいプロファイル",
+        "editTitle": "プロファイルを編集",
+        "nameLabel": "プロファイル名",
+        "createNamePlaceholder": "このプロファイルに名前を付ける",
+        "nameRequired": "プロファイルに短くわかりやすい名前を付けてください。",
+        "triggersHeading": "適用される場所",
+        "triggersHelp": "このプロファイルを適用するアプリと URL パターンを選択します。両方を空欄にすると、すべてに一致します。",
+        "overridesHeading": "変更される内容",
+        "overridesHelp": "ここで追加した設定のみが上書きされます。それ以外はグローバル設定のままです。",
+        "save": "プロファイルを保存",
+        "nonBrowserUrlConflict": "URL フィルターはブラウザーでのみ機能します。ブラウザー以外のアプリか URL フィルターを削除してください。",
+        "urlDisabledByNonBrowserApp": "URL フィルターを追加する前に、ブラウザー以外のアプリを削除してください。"
       },
       "row": {
         "disabled": "障害者",

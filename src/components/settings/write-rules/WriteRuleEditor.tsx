@@ -20,6 +20,7 @@
 //                sticky footer, anchored Cancel + Save.
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import {
   commands,
@@ -43,28 +44,9 @@ import {
   resetAllOverrides,
 } from "./lib/overrideRegistry";
 
-const backLabel = "Back to profiles";
-const newProfileTitle = "New mode";
-const editProfileTitle = "Edit mode";
-const nameLabel = "Mode name";
-const enabledLabel = "Enabled";
-const triggersHeading = "Where it runs";
-const triggersHelp =
-  "Pick the apps and URL patterns this mode fires on. Leave both blank to match anything.";
-const overridesHeading = "What it changes";
-const overridesHelp =
-  "Only the settings you add here are overridden — everything else keeps your global setting.";
-const cancelLabel = "Cancel";
-const saveLabel = "Save mode";
-const nameRequiredHelp = "Give the mode a short, descriptive name.";
-const createNamePlaceholder = "Name this mode";
 const templateLabels = new Set(
   PROFILE_TEMPLATES.map((template) => template.label),
 );
-const nonBrowserUrlConflictMessage =
-  "URL filters only work with browsers. Remove the non-browser app or remove the URL filter.";
-const urlDisabledByNonBrowserAppMessage =
-  "Remove the non-browser app before adding URL filters.";
 
 interface WriteRuleEditorProps {
   rule?: WriteRule;
@@ -105,6 +87,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   presentation = "page",
   titleId,
 }) => {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<WriteRule>(rule ?? createRule());
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<ProfileTemplateId | null>(null);
@@ -138,10 +121,12 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     () => countActiveOverrides(draft.overrides),
     [draft.overrides],
   );
-  const title = isNew ? newProfileTitle : trimmedName || editProfileTitle;
+  const title = isNew
+    ? t("refine.writeRules.editor.newTitle")
+    : trimmedName || t("refine.writeRules.editor.editTitle");
   const namePlaceholder = isNew
-    ? createNamePlaceholder
-    : "e.g. Slack & Discord chats";
+    ? t("refine.writeRules.editor.createNamePlaceholder")
+    : t("refine.writeRules.editor.namePlaceholder");
 
   const applyTemplate = (id: ProfileTemplateId) => {
     const template = PROFILE_TEMPLATES.find((entry) => entry.id === id);
@@ -176,7 +161,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
       onClick={() => onSave({ ...draft, name: trimmedName })}
       disabled={!canSave}
     >
-      {saveLabel}
+      {t("refine.writeRules.editor.save")}
     </Button>
   );
 
@@ -198,14 +183,16 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           <Input
             value={draft.name}
             placeholder={namePlaceholder}
-            aria-label={nameLabel}
+            aria-label={t("refine.writeRules.editor.nameLabel")}
             className="w-full"
             onChange={(event) =>
               setDraft({ ...draft, name: event.target.value })
             }
           />
           {!canSave && !isNew ? (
-            <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
+            <p className="text-xs text-[var(--muted)]">
+              {t("refine.writeRules.editor.nameRequired")}
+            </p>
           ) : null}
           {saveError ? (
             <p className="text-xs font-medium text-[var(--danger)]">
@@ -218,10 +205,10 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             <SwitchControl
               checked={draft.enabled}
               onChange={(enabled) => setDraft({ ...draft, enabled })}
-              ariaLabel={enabledLabel}
+              ariaLabel={t("common.enabled")}
             />
             <span className="text-sm font-medium text-[var(--text)]">
-              {enabledLabel}
+              {t("common.enabled")}
             </span>
           </div>
         ) : null}
@@ -232,9 +219,11 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-[var(--text)]">
-              {triggersHeading}
+              {t("refine.writeRules.editor.triggersHeading")}
             </h3>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">{triggersHelp}</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {t("refine.writeRules.editor.triggersHelp")}
+            </p>
           </div>
           <LiveMatchHint matchers={draft.matchers} />
         </header>
@@ -255,7 +244,9 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             patterns={selectedUrlPatterns}
             compact={isDialog}
             disabled={hasNonBrowserApp}
-            disabledReason={urlDisabledByNonBrowserAppMessage}
+            disabledReason={t(
+              "refine.writeRules.editor.urlDisabledByNonBrowserApp",
+            )}
             onChange={(url_patterns) =>
               setDraft({
                 ...draft,
@@ -271,7 +262,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-[var(--text)]">
-              {overridesHeading}
+              {t("refine.writeRules.editor.overridesHeading")}
               {overrideCount > 0 ? (
                 <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-foreground)]">
                   {overrideCount}
@@ -279,7 +270,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
               ) : null}
             </h3>
             <p className="mt-0.5 text-xs text-[var(--muted)]">
-              {overridesHelp}
+              {t("refine.writeRules.editor.overridesHelp")}
             </p>
           </div>
         </header>
@@ -310,7 +301,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         <footer className="flex shrink-0 justify-end border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-              {cancelLabel}
+              {t("common.cancel")}
             </Button>
             {saveButton}
           </div>
@@ -332,7 +323,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             className="text-[var(--muted)]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            {backLabel}
+            {t("refine.writeRules.editor.back")}
           </Button>
           <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
             {title}
@@ -343,7 +334,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
             size="sm"
             onClick={onCancel}
           >
-            {cancelLabel}
+            {t("common.cancel")}
           </Button>
           {saveButton}
         </div>
@@ -357,6 +348,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
 const StrictMatchWarning: React.FC<{
   matchers: WriteRule["matchers"];
 }> = ({ matchers }) => {
+  const { t } = useTranslation();
   const bundleIds = matchers.bundle_ids ?? [];
   const urlPatterns = matchers.url_patterns ?? [];
   if (bundleIds.length === 0 || urlPatterns.length === 0) return null;
@@ -366,7 +358,7 @@ const StrictMatchWarning: React.FC<{
 
   return (
     <div className="mb-3 rounded-xl border border-[color-mix(in_srgb,var(--warning),transparent_70%)] bg-[var(--warning-soft)] px-3 py-2 text-xs leading-5 text-[var(--warning)]">
-      {nonBrowserUrlConflictMessage}
+      {t("refine.writeRules.editor.nonBrowserUrlConflict")}
     </div>
   );
 };

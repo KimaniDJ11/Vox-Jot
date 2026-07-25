@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Xem trước chủ đề âm thanh (phát bắt đầu rồi dừng)"
+    },
+    "runtimeMemory": {
+      "title": "Bộ nhớ khi chạy",
+      "description": "Hiển thị bộ nhớ tiến trình Vox Jot hiện tại cùng với trình hỗ trợ âm thanh cục bộ khi nó đang chạy.",
+      "active": "{{count}} MB đang dùng",
+      "sidecarRunning": "Trình hỗ trợ đang chạy",
+      "sidecarIdle": "Trình hỗ trợ đang chờ",
+      "app": "Ứng dụng {{count}} MB",
+      "sidecar": "Trình hỗ trợ {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Giúp tôi giảm độ trễ khi đọc chính tả",
         "Giải thích thiết lập xử lý hậu kỳ",
         "Hiển thị cài đặt liên quan đến quyền riêng tư"
-      ]
+      ],
+      "description": "Hỏi xem một cài đặt của Vox Jot nằm ở đâu, rồi chuyển thẳng đến bảng được đề xuất.",
+      "placeholder": "Làm cách nào để bật nhấn để nói?",
+      "inputAriaLabel": "Hỏi Huấn luyện viên cài đặt",
+      "ask": "Hỏi",
+      "asking": "Đang hỏi...",
+      "failed": "Huấn luyện viên cài đặt đã thất bại."
     },
     "filesContext": {
       "label": "Tệp & Ngữ cảnh",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Mở hồ sơ trong cài đặt",
       "editor": {
-        "namePlaceholder": "ví dụ: Trò chuyện Slack & Discord"
+        "namePlaceholder": "ví dụ: Trò chuyện Slack & Discord",
+        "back": "Quay lại hồ sơ",
+        "newTitle": "Hồ sơ mới",
+        "editTitle": "Chỉnh sửa hồ sơ",
+        "nameLabel": "Tên hồ sơ",
+        "createNamePlaceholder": "Đặt tên cho hồ sơ này",
+        "nameRequired": "Hãy đặt cho hồ sơ một tên ngắn gọn, dễ hiểu.",
+        "triggersHeading": "Nơi áp dụng",
+        "triggersHelp": "Chọn các ứng dụng và mẫu URL mà hồ sơ này áp dụng. Để trống cả hai để khớp với mọi thứ.",
+        "overridesHeading": "Những gì thay đổi",
+        "overridesHelp": "Chỉ những cài đặt bạn thêm ở đây bị ghi đè — mọi thứ khác vẫn giữ cài đặt chung của bạn.",
+        "save": "Lưu hồ sơ",
+        "nonBrowserUrlConflict": "Bộ lọc URL chỉ hoạt động với trình duyệt. Hãy xóa ứng dụng không phải trình duyệt hoặc xóa bộ lọc URL.",
+        "urlDisabledByNonBrowserApp": "Hãy xóa ứng dụng không phải trình duyệt trước khi thêm bộ lọc URL."
       },
       "row": {
         "disabled": "Đã tắt",

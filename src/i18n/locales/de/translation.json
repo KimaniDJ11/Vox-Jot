@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Vorschau des Soundthemas (die Wiedergabe startet und stoppt dann)"
+    },
+    "runtimeMemory": {
+      "title": "Laufzeitspeicher",
+      "description": "Zeigt den aktuellen Speicherverbrauch von Vox Jot sowie des lokalen Audio-Helfers, sofern dieser läuft.",
+      "active": "{{count}} MB aktiv",
+      "sidecarRunning": "Helfer läuft",
+      "sidecarIdle": "Helfer inaktiv",
+      "app": "Anwendung {{count}} MB",
+      "sidecar": "Helfer {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Helfen Sie mir, die Diktatlatenz zu reduzieren",
         "Erklären Sie die Einrichtung der Nachbearbeitung",
         "Datenschutzbezogene Einstellungen anzeigen"
-      ]
+      ],
+      "description": "Fragen Sie, wo eine Vox Jot-Einstellung zu finden ist, und springen Sie direkt zum empfohlenen Bereich.",
+      "placeholder": "Wie aktiviere ich Push-to-Talk?",
+      "inputAriaLabel": "Einstellungstrainer fragen",
+      "ask": "Fragen",
+      "asking": "Frage läuft...",
+      "failed": "Einstellungstrainer fehlgeschlagen."
     },
     "filesContext": {
       "label": "Dateien und Kontext",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Profil in den Einstellungen öffnen",
       "editor": {
-        "namePlaceholder": "z.B. Slack- und Discord-Chats"
+        "namePlaceholder": "z.B. Slack- und Discord-Chats",
+        "back": "Zurück zu den Profilen",
+        "newTitle": "Neues Profil",
+        "editTitle": "Profil bearbeiten",
+        "nameLabel": "Profilname",
+        "createNamePlaceholder": "Diesem Profil einen Namen geben",
+        "nameRequired": "Geben Sie dem Profil einen kurzen, aussagekräftigen Namen.",
+        "triggersHeading": "Wo es gilt",
+        "triggersHelp": "Wählen Sie die Apps und URL-Muster, für die dieses Profil gilt. Lassen Sie beides leer, damit es überall greift.",
+        "overridesHeading": "Was es ändert",
+        "overridesHelp": "Nur die hier hinzugefügten Einstellungen werden überschrieben — alles andere behält Ihre globale Einstellung.",
+        "save": "Profil speichern",
+        "nonBrowserUrlConflict": "URL-Filter funktionieren nur mit Browsern. Entfernen Sie die Nicht-Browser-App oder den URL-Filter.",
+        "urlDisabledByNonBrowserApp": "Entfernen Sie die Nicht-Browser-App, bevor Sie URL-Filter hinzufügen."
       },
       "row": {
         "disabled": "Deaktiviert",

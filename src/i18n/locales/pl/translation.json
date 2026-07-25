@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Podgląd motywu dźwiękowego (odtwarzanie rozpoczyna się, a następnie kończy)"
+    },
+    "runtimeMemory": {
+      "title": "Pamięć w czasie działania",
+      "description": "Pokazuje bieżące zużycie pamięci procesu Vox Jot oraz lokalnego pomocnika audio, gdy jest uruchomiony.",
+      "active": "{{count}} MB w użyciu",
+      "sidecarRunning": "Pomocnik działa",
+      "sidecarIdle": "Pomocnik bezczynny",
+      "app": "Aplikacja {{count}} MB",
+      "sidecar": "Pomocnik {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Pomóż mi zmniejszyć opóźnienia w dyktowaniu",
         "Wyjaśnij konfigurację przetwarzania końcowego",
         "Pokaż ustawienia dotyczące prywatności"
-      ]
+      ],
+      "description": "Zapytaj, gdzie znajduje się ustawienie Vox Jot, i przejdź bezpośrednio do zalecanego panelu.",
+      "placeholder": "Jak włączyć naciśnij i mów?",
+      "inputAriaLabel": "Zapytaj trenera ustawień",
+      "ask": "Zapytaj",
+      "asking": "Pytanie...",
+      "failed": "Trener ustawień nie powiódł się."
     },
     "filesContext": {
       "label": "Pliki i kontekst",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Otwórz profil w ustawieniach",
       "editor": {
-        "namePlaceholder": "np. Czaty na Slacku i Discord"
+        "namePlaceholder": "np. Czaty na Slacku i Discord",
+        "back": "Powrót do profili",
+        "newTitle": "Nowy profil",
+        "editTitle": "Edytuj profil",
+        "nameLabel": "Nazwa profilu",
+        "createNamePlaceholder": "Nazwij ten profil",
+        "nameRequired": "Nadaj profilowi krótką, opisową nazwę.",
+        "triggersHeading": "Gdzie działa",
+        "triggersHelp": "Wybierz aplikacje i wzorce adresów URL, dla których ten profil ma działać. Pozostaw oba pola puste, aby pasował do wszystkiego.",
+        "overridesHeading": "Co zmienia",
+        "overridesHelp": "Nadpisywane są tylko ustawienia dodane tutaj — pozostałe zachowują ustawienie globalne.",
+        "save": "Zapisz profil",
+        "nonBrowserUrlConflict": "Filtry adresów URL działają tylko z przeglądarkami. Usuń aplikację niebędącą przeglądarką albo usuń filtr adresu URL.",
+        "urlDisabledByNonBrowserApp": "Usuń aplikację niebędącą przeglądarką, zanim dodasz filtry adresów URL."
       },
       "row": {
         "disabled": "Niepełnosprawny",

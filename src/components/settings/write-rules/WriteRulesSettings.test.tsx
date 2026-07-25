@@ -111,11 +111,13 @@ describe("Write Profiles rule UI", () => {
     await inputValue(nameInput, editedName);
 
     // The new editor has many buttons (sticky header + tabs + URL
-    // example chips), so we resolve "Save mode" by text. This also
-    // documents the contract: the editor's primary CTA must be labelled
-    // "Save mode" so the user can find it without scanning icons.
+    // example chips), so we resolve the save CTA by its label. This also
+    // documents the contract: the editor's primary CTA must carry the
+    // save-mode label so the user can find it without scanning icons.
+    // These tests render without an i18n provider, so `t()` yields keys.
     const saveButton = Array.from(view.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Save mode",
+      (button) =>
+        button.textContent?.trim() === "refine.writeRules.editor.save",
     ) as HTMLButtonElement | undefined;
     expect(saveButton).toBeDefined();
     await act(async () => {

@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Ses temasını önizleyin (çalmalar başlar ve durur)"
+    },
+    "runtimeMemory": {
+      "title": "Çalışma zamanı belleği",
+      "description": "Geçerli Vox Jot işlem belleğini ve çalışıyorsa yerel ses yardımcısının belleğini gösterir.",
+      "active": "{{count}} MB kullanımda",
+      "sidecarRunning": "Yardımcı çalışıyor",
+      "sidecarIdle": "Yardımcı boşta",
+      "app": "Uygulama {{count}} MB",
+      "sidecar": "Yardımcı {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Dikte gecikmesini azaltmama yardım et",
         "İşlem sonrası kurulumu açıklama",
         "Gizlilikle ilgili ayarları göster"
-      ]
+      ],
+      "description": "Bir Vox Jot ayarının nerede olduğunu sorun, önerilen panele doğrudan gidin.",
+      "placeholder": "Bas-konuş özelliğini nasıl açarım?",
+      "inputAriaLabel": "Ayarlar Koçu'na sor",
+      "ask": "Sor",
+      "asking": "Soruluyor...",
+      "failed": "Ayarlar Koçu başarısız oldu."
     },
     "filesContext": {
       "label": "Dosyalar ve İçerik",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Profili ayarlarda aç",
       "editor": {
-        "namePlaceholder": "örneğin Slack & Discord chats"
+        "namePlaceholder": "örneğin Slack & Discord chats",
+        "back": "Profillere dön",
+        "newTitle": "Yeni profil",
+        "editTitle": "Profili düzenle",
+        "nameLabel": "Profil adı",
+        "createNamePlaceholder": "Bu profile bir ad verin",
+        "nameRequired": "Profile kısa ve açıklayıcı bir ad verin.",
+        "triggersHeading": "Nerede çalışır",
+        "triggersHelp": "Bu profilin devreye gireceği uygulamaları ve URL desenlerini seçin. Her ikisini de boş bırakırsanız her yerde eşleşir.",
+        "overridesHeading": "Neyi değiştirir",
+        "overridesHelp": "Yalnızca burada eklediğiniz ayarlar geçersiz kılınır; diğer her şey genel ayarınızı korur.",
+        "save": "Profili kaydet",
+        "nonBrowserUrlConflict": "URL filtreleri yalnızca tarayıcılarla çalışır. Tarayıcı olmayan uygulamayı ya da URL filtresini kaldırın.",
+        "urlDisabledByNonBrowserApp": "URL filtreleri eklemeden önce tarayıcı olmayan uygulamayı kaldırın."
       },
       "row": {
         "disabled": "Devre dışı",

@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "사운드 테마 미리보기(재생 시작 후 중지)"
+    },
+    "runtimeMemory": {
+      "title": "런타임 메모리",
+      "description": "현재 Vox Jot 프로세스 메모리와 실행 중인 로컬 오디오 사이드카 메모리를 표시합니다.",
+      "active": "{{count}} MB 사용 중",
+      "sidecarRunning": "사이드카 실행 중",
+      "sidecarIdle": "사이드카 대기 중",
+      "app": "앱 {{count}} MB",
+      "sidecar": "사이드카 {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "받아쓰기 대기 시간을 줄이는 데 도움을 주세요",
         "후처리 설정 설명",
         "개인 정보 보호 관련 설정 표시"
-      ]
+      ],
+      "description": "Vox Jot 설정의 위치를 물어보고 추천 패널로 바로 이동하세요.",
+      "placeholder": "푸시 투 토크를 어떻게 켜나요?",
+      "inputAriaLabel": "설정 코치에게 질문",
+      "ask": "질문",
+      "asking": "질문 중...",
+      "failed": "설정 코치를 실행하지 못했습니다."
     },
     "filesContext": {
       "label": "파일 및 컨텍스트",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "설정에서 프로필 열기",
       "editor": {
-        "namePlaceholder": "예를 들어 Slack 및 Discord 채팅"
+        "namePlaceholder": "예를 들어 Slack 및 Discord 채팅",
+        "back": "프로필로 돌아가기",
+        "newTitle": "새 프로필",
+        "editTitle": "프로필 편집",
+        "nameLabel": "프로필 이름",
+        "createNamePlaceholder": "이 프로필의 이름을 입력하세요",
+        "nameRequired": "프로필에 짧고 알아보기 쉬운 이름을 지정하세요.",
+        "triggersHeading": "적용 대상",
+        "triggersHelp": "이 프로필이 적용될 앱과 URL 패턴을 선택하세요. 둘 다 비워 두면 모든 항목에 적용됩니다.",
+        "overridesHeading": "변경되는 항목",
+        "overridesHelp": "여기에 추가한 설정만 재정의되며, 나머지는 전역 설정을 그대로 사용합니다.",
+        "save": "프로필 저장",
+        "nonBrowserUrlConflict": "URL 필터는 브라우저에서만 작동합니다. 브라우저가 아닌 앱을 제거하거나 URL 필터를 삭제하세요.",
+        "urlDisabledByNonBrowserApp": "URL 필터를 추가하기 전에 브라우저가 아닌 앱을 제거하세요."
       },
       "row": {
         "disabled": "장애인",

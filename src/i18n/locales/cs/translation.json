@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Náhled zvukového motivu (přehrávání začne a poté se zastaví)"
+    },
+    "runtimeMemory": {
+      "title": "Paměť za běhu",
+      "description": "Zobrazuje aktuální paměť procesu Vox Jot a místního zvukového pomocníka, pokud běží.",
+      "active": "{{count}} MB aktivně",
+      "sidecarRunning": "Pomocník běží",
+      "sidecarIdle": "Pomocník nečinný",
+      "app": "Aplikace {{count}} MB",
+      "sidecar": "Pomocník {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Pomozte mi snížit latenci diktování",
         "Vysvětlete nastavení následného zpracování",
         "Zobrazit nastavení související s ochranou soukromí"
-      ]
+      ],
+      "description": "Zeptejte se, kde se nachází nastavení Vox Jot, a přejděte rovnou na doporučený panel.",
+      "placeholder": "Jak zapnu podržení pro mluvení?",
+      "inputAriaLabel": "Zeptat se trenéra nastavení",
+      "ask": "Zeptat se",
+      "asking": "Dotazuji se...",
+      "failed": "Trenér nastavení selhal."
     },
     "filesContext": {
       "label": "Soubory a kontext",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Otevřete profil v nastavení",
       "editor": {
-        "namePlaceholder": "např. Slack & Discord chaty"
+        "namePlaceholder": "např. Slack & Discord chaty",
+        "back": "Zpět na profily",
+        "newTitle": "Nový profil",
+        "editTitle": "Upravit profil",
+        "nameLabel": "Název profilu",
+        "createNamePlaceholder": "Pojmenujte tento profil",
+        "nameRequired": "Zadejte profilu krátký a výstižný název.",
+        "triggersHeading": "Kde se použije",
+        "triggersHelp": "Vyberte aplikace a vzory URL, na které se tento profil vztahuje. Ponechte obojí prázdné, aby odpovídal čemukoli.",
+        "overridesHeading": "Co mění",
+        "overridesHelp": "Přepíší se pouze nastavení, která zde přidáte — vše ostatní zůstane podle globálního nastavení.",
+        "save": "Uložit profil",
+        "nonBrowserUrlConflict": "Filtry URL fungují jen s prohlížeči. Odeberte aplikaci, která není prohlížeč, nebo odeberte filtr URL.",
+        "urlDisabledByNonBrowserApp": "Před přidáním filtrů URL odeberte aplikaci, která není prohlížeč."
       },
       "row": {
         "disabled": "Zakázáno",

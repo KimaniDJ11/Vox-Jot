@@ -41,7 +41,13 @@
         "Explain post-processing setup",
         "Show privacy-related settings"
       ],
-      "openFailed": "Couldn't open that settings section."
+      "openFailed": "Couldn't open that settings section.",
+      "description": "Ask where a Vox Jot setting lives, then jump directly to the recommended panel.",
+      "placeholder": "How do I turn on push to talk?",
+      "inputAriaLabel": "Ask Settings Coach",
+      "ask": "Ask",
+      "asking": "Asking...",
+      "failed": "Settings Coach failed."
     },
     "filesContext": {
       "label": "Files & Context",
@@ -176,7 +182,20 @@
       },
       "overlayBadgeOpen": "Open profile in settings",
       "editor": {
-        "namePlaceholder": "e.g. Slack & Discord chats"
+        "namePlaceholder": "e.g. Slack & Discord chats",
+        "back": "Back to profiles",
+        "newTitle": "New mode",
+        "editTitle": "Edit mode",
+        "nameLabel": "Mode name",
+        "createNamePlaceholder": "Name this mode",
+        "nameRequired": "Give the mode a short, descriptive name.",
+        "triggersHeading": "Where it runs",
+        "triggersHelp": "Pick the apps and URL patterns this mode fires on. Leave both blank to match anything.",
+        "overridesHeading": "What it changes",
+        "overridesHelp": "Only the settings you add here are overridden — everything else keeps your global setting.",
+        "save": "Save mode",
+        "nonBrowserUrlConflict": "URL filters only work with browsers. Remove the non-browser app or remove the URL filter.",
+        "urlDisabledByNonBrowserApp": "Remove the non-browser app before adding URL filters."
       },
       "row": {
         "disabled": "Disabled",
@@ -2100,6 +2119,15 @@
     },
     "soundPicker": {
       "preview": "Preview sound theme (plays start then stop)"
+    },
+    "runtimeMemory": {
+      "title": "Runtime memory",
+      "description": "Shows current Vox Jot process memory plus the local audio sidecar when it is running.",
+      "active": "{{count}} MB active",
+      "sidecarRunning": "Sidecar running",
+      "sidecarIdle": "Sidecar idle",
+      "app": "App {{count}} MB",
+      "sidecar": "Sidecar {{count}} MB"
     }
   },
   "modelHub": {

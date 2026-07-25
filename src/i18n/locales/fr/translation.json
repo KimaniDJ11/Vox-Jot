@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Aperçu du thème sonore (la lecture commence puis s'arrête)"
+    },
+    "runtimeMemory": {
+      "title": "Mémoire d'exécution",
+      "description": "Affiche la mémoire du processus Vox Jot ainsi que celle de l'assistant audio local lorsqu'il est actif.",
+      "active": "{{count}} Mo actifs",
+      "sidecarRunning": "Assistant actif",
+      "sidecarIdle": "Assistant inactif",
+      "app": "Application {{count}} Mo",
+      "sidecar": "Assistant {{count}} Mo"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Aidez-moi à réduire la latence des dictées",
         "Expliquer la configuration du post-traitement",
         "Afficher les paramètres liés à la confidentialité"
-      ]
+      ],
+      "description": "Demandez où se trouve un paramètre de Vox Jot, puis accédez directement au panneau recommandé.",
+      "placeholder": "Comment activer le mode appuyer pour parler ?",
+      "inputAriaLabel": "Interroger le coach Paramètres",
+      "ask": "Demander",
+      "asking": "Demande en cours...",
+      "failed": "Échec du coach Paramètres."
     },
     "filesContext": {
       "label": "Fichiers et contexte",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Ouvrir le profil dans les paramètres",
       "editor": {
-        "namePlaceholder": "par ex. Discussions Slack et Discord"
+        "namePlaceholder": "par ex. Discussions Slack et Discord",
+        "back": "Retour aux profils",
+        "newTitle": "Nouveau profil",
+        "editTitle": "Modifier le profil",
+        "nameLabel": "Nom du profil",
+        "createNamePlaceholder": "Nommez ce profil",
+        "nameRequired": "Donnez au profil un nom court et explicite.",
+        "triggersHeading": "Où il s'applique",
+        "triggersHelp": "Choisissez les applications et les motifs d'URL qui déclenchent ce profil. Laissez les deux vides pour tout faire correspondre.",
+        "overridesHeading": "Ce qu'il modifie",
+        "overridesHelp": "Seuls les paramètres ajoutés ici sont remplacés — tout le reste conserve votre réglage global.",
+        "save": "Enregistrer le profil",
+        "nonBrowserUrlConflict": "Les filtres d'URL ne fonctionnent qu'avec les navigateurs. Retirez l'application non navigateur ou supprimez le filtre d'URL.",
+        "urlDisabledByNonBrowserApp": "Retirez l'application non navigateur avant d'ajouter des filtres d'URL."
       },
       "row": {
         "disabled": "Désactivé",

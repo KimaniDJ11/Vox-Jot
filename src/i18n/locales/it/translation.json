@@ -1579,6 +1579,15 @@
     },
     "soundPicker": {
       "preview": "Anteprima del tema sonoro (la riproduzione inizia e poi si interrompe)"
+    },
+    "runtimeMemory": {
+      "title": "Memoria di runtime",
+      "description": "Mostra la memoria attuale del processo Vox Jot e dell'assistente audio locale quando è in esecuzione.",
+      "active": "{{count}} MB attivi",
+      "sidecarRunning": "Assistente in esecuzione",
+      "sidecarIdle": "Assistente inattivo",
+      "app": "Applicazione {{count}} MB",
+      "sidecar": "Assistente {{count}} MB"
     }
   },
   "footer": {
@@ -1735,7 +1744,13 @@
         "Aiutami a ridurre la latenza della dettatura",
         "Spiegare la configurazione della post-elaborazione",
         "Mostra le impostazioni relative alla privacy"
-      ]
+      ],
+      "description": "Chiedi dove si trova un'impostazione di Vox Jot e vai direttamente al pannello consigliato.",
+      "placeholder": "Come attivo premi per parlare?",
+      "inputAriaLabel": "Chiedi all'allenatore impostazioni",
+      "ask": "Chiedi",
+      "asking": "Richiesta in corso...",
+      "failed": "Allenatore impostazioni non riuscito."
     },
     "filesContext": {
       "label": "File e contesto",
@@ -2111,7 +2126,20 @@
       },
       "overlayBadgeOpen": "Apri il profilo nelle impostazioni",
       "editor": {
-        "namePlaceholder": "ad es. Chat Slack e Discord"
+        "namePlaceholder": "ad es. Chat Slack e Discord",
+        "back": "Torna ai profili",
+        "newTitle": "Nuovo profilo",
+        "editTitle": "Modifica profilo",
+        "nameLabel": "Nome del profilo",
+        "createNamePlaceholder": "Assegna un nome a questo profilo",
+        "nameRequired": "Assegna al profilo un nome breve e descrittivo.",
+        "triggersHeading": "Dove si applica",
+        "triggersHelp": "Scegli le app e i modelli di URL su cui si attiva questo profilo. Lascia entrambi vuoti per farlo valere ovunque.",
+        "overridesHeading": "Cosa modifica",
+        "overridesHelp": "Vengono sovrascritte solo le impostazioni aggiunte qui: tutto il resto mantiene l'impostazione globale.",
+        "save": "Salva profilo",
+        "nonBrowserUrlConflict": "I filtri URL funzionano solo con i browser. Rimuovi l'app non browser oppure elimina il filtro URL.",
+        "urlDisabledByNonBrowserApp": "Rimuovi l'app non browser prima di aggiungere filtri URL."
       },
       "row": {
         "disabled": "Disabilitato",

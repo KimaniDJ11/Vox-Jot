@@ -10,6 +10,9 @@ pub struct FrameResampler {
     in_buf: Vec<f32>,
     frame_samples: usize,
     pending: Vec<f32>,
+    /// Chunks Rubato refused to process. Dropping these silently truncates the
+    /// recording, so they are counted and reported instead.
+    dropped_chunks: u64,
 }
 
 impl FrameResampler {
@@ -51,7 +54,19 @@ impl FrameResampler {
             in_buf: Vec::with_capacity(chunk_in),
             frame_samples,
             pending: Vec::with_capacity(frame_samples),
+            dropped_chunks: 0,
         })
+    }
+
+    /// Log the first failure loudly and keep counting the rest, so a persistent
+    /// fault stays visible without flooding the log from the capture loop.
+    fn note_dropped_chunk(&mut self, error: &rubato::ResampleError) {
+        self.dropped_chunks += 1;
+        if self.dropped_chunks == 1 {
+            log::error!(
+                "Resampler failed to process an audio chunk; captured audio will be truncated: {error}"
+            );
+        }
     }
 
     pub fn push(&mut self, mut src: &[f32], mut emit: impl FnMut(&[f32])) {
@@ -67,16 +82,14 @@ impl FrameResampler {
             src = &src[take..];
 
             if self.in_buf.len() == self.chunk_in {
-                // let start = std::time::Instant::now();
-                if let Ok(out) = self
+                match self
                     .resampler
                     .as_mut()
                     .unwrap()
                     .process(&[&self.in_buf[..]], None)
                 {
-                    // let duration = start.elapsed();
-                    // log::debug!("Resampler took: {:?}", duration);
-                    self.emit_frames(&out[0], &mut emit);
+                    Ok(out) => self.emit_frames(&out[0], &mut emit),
+                    Err(e) => self.note_dropped_chunk(&e),
                 }
                 self.in_buf.clear();
             }
@@ -89,11 +102,19 @@ impl FrameResampler {
             if !self.in_buf.is_empty() {
                 // Pad with zeros to reach chunk size
                 self.in_buf.resize(self.chunk_in, 0.0);
-                if let Ok(out) = resampler.process(&[&self.in_buf[..]], None) {
-                    self.emit_frames(&out[0], &mut emit);
+                match resampler.process(&[&self.in_buf[..]], None) {
+                    Ok(out) => self.emit_frames(&out[0], &mut emit),
+                    Err(e) => self.note_dropped_chunk(&e),
                 }
                 self.in_buf.clear();
             }
+        }
+
+        if self.dropped_chunks > 0 {
+            log::error!(
+                "Resampler dropped {} audio chunk(s) during this pass",
+                self.dropped_chunks
+            );
         }
 
         // Emit any remaining pending frame (padded with zeros)

@@ -1849,6 +1849,45 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
 
 pub const SETTINGS_STORE_PATH: &str = "settings_store.json";
 
+/// Parsed, normalized settings shared by every reader.
+///
+/// `get_settings` sits on the dictation hot path (every shortcut press, plus
+/// the transcribe action, mic start, and mute), so re-parsing the whole
+/// settings JSON and re-running the `ensure_*_defaults` passes per call is
+/// wasted work. Every write goes through `write_settings`, which refreshes
+/// this snapshot, so readers can serve a clone instead.
+static SETTINGS_CACHE: std::sync::RwLock<Option<AppSettings>> = std::sync::RwLock::new(None);
+
+fn cached_settings() -> Option<AppSettings> {
+    SETTINGS_CACHE
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+}
+
+fn store_settings_cache(settings: &AppSettings) {
+    let mut cache = SETTINGS_CACHE
+        .write()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    *cache = Some(settings.clone());
+}
+
+/// Open the settings store, returning `None` instead of panicking.
+///
+/// A store failure must not take the app down from a keystroke-adjacent path,
+/// so callers fall back to defaults and log rather than unwinding.
+fn open_settings_store(
+    app: &AppHandle,
+) -> Option<std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>> {
+    match app.store(crate::portable::store_path(SETTINGS_STORE_PATH)) {
+        Ok(store) => Some(store),
+        Err(e) => {
+            error!("Failed to initialize settings store: {e}");
+            None
+        }
+    }
+}
+
 pub fn get_default_settings() -> AppSettings {
     #[cfg(target_os = "windows")]
     let default_shortcut = "ctrl+space";
@@ -2771,9 +2810,9 @@ fn migrate_legacy_post_process_api_keys(settings: &mut AppSettings) -> bool {
 
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     // Initialize store
-    let store = app
-        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
-        .expect("Failed to initialize store");
+    let Some(store) = open_settings_store(app) else {
+        return normalized_default_settings();
+    };
 
     let mut settings = if let Some(settings_value) = store.get("settings") {
         // Parse the entire settings object
@@ -2833,13 +2872,31 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         write_settings(app, settings.clone());
     }
 
+    store_settings_cache(&settings);
+    settings
+}
+
+/// Defaults put through the same normalization readers expect, used when the
+/// store cannot be opened at all.
+fn normalized_default_settings() -> AppSettings {
+    let mut settings = get_default_settings();
+    ensure_translation_defaults(&mut settings);
+    ensure_post_process_defaults(&mut settings);
+    ensure_model_platform_defaults(&mut settings);
+    ensure_tts_defaults(&mut settings);
+    ensure_http_api_defaults(&mut settings);
+    normalize_post_process_api_key_statuses(&mut settings);
     settings
 }
 
 pub fn get_settings(app: &AppHandle) -> AppSettings {
-    let store = app
-        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
-        .expect("Failed to initialize store");
+    if let Some(settings) = cached_settings() {
+        return settings;
+    }
+
+    let Some(store) = open_settings_store(app) else {
+        return normalized_default_settings();
+    };
 
     let mut settings = if let Some(settings_value) = store.get("settings") {
         serde_json::from_value::<AppSettings>(settings_value).unwrap_or_else(|_| {
@@ -2871,35 +2928,18 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         write_settings(app, settings.clone());
     }
 
+    store_settings_cache(&settings);
     settings
 }
 
-/// Read settings without hydrating provider API keys from the OS keychain.
+/// Read settings without the local HTTP API token.
 ///
-/// `get_settings` decrypts every configured API key on every call. Background
-/// pollers (e.g. the screen-context worker) only need plain-data fields, so
-/// hitting the keychain N times per second wastes cycles and can thrash
-/// credential-store caches. Use this variant when API keys are not needed.
+/// Background pollers (e.g. the screen-context worker) only need plain-data
+/// fields, so they should not carry the API token around. The token itself
+/// lives in the OS keychain, never in the settings store.
 pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
-    let store = app
-        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
-        .expect("Failed to initialize store");
-
-    let mut settings = if let Some(settings_value) = store.get("settings") {
-        serde_json::from_value::<AppSettings>(settings_value)
-            .unwrap_or_else(|_| get_default_settings())
-    } else {
-        get_default_settings()
-    };
-
-    ensure_translation_defaults(&mut settings);
-    ensure_post_process_defaults(&mut settings);
-    ensure_model_platform_defaults(&mut settings);
-    ensure_tts_defaults(&mut settings);
-    ensure_http_api_defaults(&mut settings);
-    normalize_post_process_api_key_statuses(&mut settings);
+    let mut settings = get_settings(app);
     settings.http_api_token.clear();
-
     settings
 }
 
@@ -2908,9 +2948,16 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
     settings.post_process_api_keys.clear();
     settings.http_api_token.clear();
     normalize_post_process_api_key_statuses(&mut settings);
-    let store = app
-        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
-        .expect("Failed to initialize store");
+
+    // Refresh the shared snapshot before persisting so concurrent readers
+    // never observe the pre-write value once this call returns.
+    store_settings_cache(&settings);
+
+    let Some(store) = open_settings_store(app) else {
+        error!("Settings change could not be persisted; keeping it in memory only");
+        let _ = app.emit("settings-changed", ());
+        return;
+    };
 
     store.set("settings", serde_json::to_value(&settings).unwrap());
 

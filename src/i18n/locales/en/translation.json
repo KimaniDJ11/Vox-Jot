@@ -1105,6 +1105,23 @@
           "lowConfidenceTitle": "At least one correction has enough observations but low confidence.",
           "learning": "Learning",
           "learningTitle": "Waiting for more confirmations before auto-applying."
+        },
+        "entryStatus": {
+          "manual": "Manual",
+          "manualTitle": "Manually approved. Applies whenever enabled.",
+          "auto": "Auto",
+          "autoTitle": "Auto-learned and eligible to apply.",
+          "needs": "Needs {{count}}",
+          "needsTitle": "Needs {{count}} more confirmation(s) before auto-applying.",
+          "learning": "Learning",
+          "learningTitle": "Still learning before auto-applying.",
+          "lowConfidence": "Low conf",
+          "lowConfidenceTitle": "Seen enough times, but confidence is below the auto-apply threshold.",
+          "review": "Review",
+          "reviewTitle": "Will not auto-apply because it looks like a rewrite, partial capture, or unsafe correction.",
+          "off": "Off",
+          "offTitle": "Disabled. This correction will not apply.",
+          "unknownTitle": "Learning status unavailable."
         }
       }
     },
@@ -1318,7 +1335,26 @@
       "disabledStatus": "App language changes will stay separate from speech settings.",
       "defaultStatus": "Use this when you want the whole app to re-align with the current app language.",
       "done": "Language sync finished.",
-      "failed": "Language sync failed."
+      "failed": "Language sync failed.",
+      "messages": {
+        "stillLoading": "Settings are still loading, so language sync could not run yet.",
+        "sttUnchanged": "Speech recognition stayed as-is.",
+        "ttsUnchanged": "Speech output stayed as-is.",
+        "sttSwitchedAuto": "Speech recognition switched to Auto.",
+        "sttSwitched": "Speech recognition switched to {{language}}.",
+        "sttSyncFailedDetail": "Speech recognition could not sync: {{error}}",
+        "sttSyncFailed": "Speech recognition could not sync.",
+        "sttStayedAuto": "Speech recognition stayed on Auto.",
+        "sttStayed": "Speech recognition stayed on {{language}}.",
+        "ttsDisabled": "Speech output stayed as-is because Speak Output is turned off.",
+        "ttsNoModel": "No compatible speech output model is ready for {{language}}, so the current voice was kept.",
+        "ttsUsing": "Speech output is using {{model}} with {{voice}}.",
+        "ttsKept": "Speech output kept {{model}}.",
+        "ttsSwitched": "Speech output switched to {{model}}.",
+        "ttsSyncFailedDetail": "Speech output could not fully sync: {{error}}",
+        "ttsSyncFailed": "Speech output could not fully sync.",
+        "appLanguageSyncOff": "App language updated. Global Language Sync is off, so speech settings were left alone."
+      }
     },
     "sound": {
       "title": "Sound",
@@ -2805,7 +2841,16 @@
       "noModelSelected": "No model selected",
       "openGenerated": "Open Generated Audio",
       "generate": "Generate Sound",
-      "generating": "Generating"
+      "generating": "Generating",
+      "toast": {
+        "catalogFailed": "Could not check creative audio models.",
+        "saved": "Sound saved to this project.",
+        "generateFailed": "Could not generate sound.",
+        "previewFailed": "Could not preview sound.",
+        "renameFailed": "Could not rename sound.",
+        "deleteFailed": "Could not delete sound."
+      },
+      "deleteAriaLabel": "Delete sound"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2842,7 +2887,13 @@
     "lineInstruction": "Line instruction",
     "lineInstructionPlaceholder": "Describe how this line should be performed.",
     "closeExpressionControls": "Close expression controls",
-    "pauseBetweenLines": "Pause between lines"
+    "pauseBetweenLines": "Pause between lines",
+    "errors": {
+      "loadVoicePresets": "Could not load saved voice presets.",
+      "loadProjectSounds": "Could not load project sounds.",
+      "renderFailed": "Story render failed."
+    },
+    "effectTooltip": "Apply an audio effect to the rendered story. Clean keeps the original voice. Voice Polish smooths artifacts. Radio adds vintage broadcast warmth. Warm Room adds natural reverb."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Story audio title",
     "errors": {
       "load": "Could not load story audio.",
-      "copyScript": "Could not copy story script."
+      "copyScript": "Could not copy story script.",
+      "loadGenerated": "Could not load generated story audio.",
+      "loadQueue": "Could not load story render queue.",
+      "reveal": "Could not reveal story audio.",
+      "update": "Could not update story audio.",
+      "rename": "Could not rename story audio.",
+      "delete": "Could not delete story audio.",
+      "cancelRender": "Could not cancel story render.",
+      "play": "Could not play generated audio.",
+      "saveProcessed": "Could not save processed audio."
     },
     "actions": {
       "copyScript": "Copy script",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Generating line {{current}} of {{total}}",
       "generating": "Generating",
       "queuePosition": "Queue #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Processed audio saved.",
+      "deleted": "Story audio deleted.",
+      "renderCancelled": "Story render cancelled."
     }
   },
   "detail": {

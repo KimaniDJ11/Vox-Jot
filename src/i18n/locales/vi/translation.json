@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "Ít nhất một lần điều chỉnh có đủ quan sát nhưng độ tin cậy thấp.",
           "learning": "học tập",
           "learningTitle": "Đang chờ thêm xác nhận trước khi tự động áp dụng."
+        },
+        "entryStatus": {
+          "manual": "Thủ công",
+          "manualTitle": "Đã duyệt thủ công. Áp dụng bất cứ khi nào được bật.",
+          "auto": "Tự động",
+          "autoTitle": "Đã tự động học và đủ điều kiện áp dụng.",
+          "needs": "Cần {{count}}",
+          "needsTitle": "Cần thêm {{count}} lần xác nhận trước khi tự động áp dụng.",
+          "learning": "Đang học",
+          "learningTitle": "Vẫn đang học trước khi tự động áp dụng.",
+          "lowConfidence": "Độ tin cậy thấp",
+          "lowConfidenceTitle": "Đã gặp đủ số lần, nhưng độ tin cậy thấp hơn ngưỡng tự động áp dụng.",
+          "review": "Cần xem lại",
+          "reviewTitle": "Sẽ không tự động áp dụng vì trông giống việc viết lại, ghi nhận một phần hoặc sửa lỗi không an toàn.",
+          "off": "Tắt",
+          "offTitle": "Đã tắt. Sửa lỗi này sẽ không được áp dụng.",
+          "unknownTitle": "Không có trạng thái học."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "Các thay đổi về ngôn ngữ của ứng dụng sẽ tách biệt với cài đặt giọng nói.",
       "defaultStatus": "Sử dụng tùy chọn này khi bạn muốn toàn bộ ứng dụng điều chỉnh lại với ngôn ngữ ứng dụng hiện tại.",
       "done": "Đồng bộ hóa ngôn ngữ đã hoàn tất.",
-      "failed": "Đồng bộ hóa ngôn ngữ không thành công."
+      "failed": "Đồng bộ hóa ngôn ngữ không thành công.",
+      "messages": {
+        "stillLoading": "Cài đặt vẫn đang tải nên chưa thể chạy đồng bộ ngôn ngữ.",
+        "sttUnchanged": "Nhận dạng giọng nói được giữ nguyên.",
+        "ttsUnchanged": "Đầu ra giọng nói được giữ nguyên.",
+        "sttSwitchedAuto": "Đã chuyển nhận dạng giọng nói sang Tự động.",
+        "sttSwitched": "Đã chuyển nhận dạng giọng nói sang {{language}}.",
+        "sttSyncFailedDetail": "Không thể đồng bộ nhận dạng giọng nói: {{error}}",
+        "sttSyncFailed": "Không thể đồng bộ nhận dạng giọng nói.",
+        "sttStayedAuto": "Nhận dạng giọng nói vẫn ở chế độ Tự động.",
+        "sttStayed": "Nhận dạng giọng nói vẫn ở {{language}}.",
+        "ttsDisabled": "Đầu ra giọng nói được giữ nguyên vì Đọc đầu ra đang tắt.",
+        "ttsNoModel": "Không có mô hình đầu ra giọng nói tương thích nào sẵn sàng cho {{language}}, nên giọng hiện tại được giữ lại.",
+        "ttsUsing": "Đầu ra giọng nói đang dùng {{model}} với {{voice}}.",
+        "ttsKept": "Đầu ra giọng nói vẫn dùng {{model}}.",
+        "ttsSwitched": "Đã chuyển đầu ra giọng nói sang {{model}}.",
+        "ttsSyncFailedDetail": "Không thể đồng bộ hoàn toàn đầu ra giọng nói: {{error}}",
+        "ttsSyncFailed": "Không thể đồng bộ hoàn toàn đầu ra giọng nói.",
+        "appLanguageSyncOff": "Đã cập nhật ngôn ngữ ứng dụng. Đồng bộ ngôn ngữ toàn cục đang tắt nên các cài đặt giọng nói được giữ nguyên."
+      }
     },
     "refineModels": {
       "title": "Tinh chỉnh mô hình",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Chưa chọn mô hình",
       "openGenerated": "Mở âm thanh đã tạo",
       "generate": "Tạo âm thanh",
-      "generating": "Đang tạo"
+      "generating": "Đang tạo",
+      "toast": {
+        "catalogFailed": "Không thể kiểm tra các mô hình âm thanh sáng tạo.",
+        "saved": "Đã lưu âm thanh vào dự án này.",
+        "generateFailed": "Không thể tạo âm thanh.",
+        "previewFailed": "Không thể nghe thử âm thanh.",
+        "renameFailed": "Không thể đổi tên âm thanh.",
+        "deleteFailed": "Không thể xóa âm thanh."
+      },
+      "deleteAriaLabel": "Xóa âm thanh"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Không thể tải các cài đặt giọng nói đã lưu.",
+      "loadProjectSounds": "Không thể tải âm thanh của dự án.",
+      "renderFailed": "Kết xuất câu chuyện thất bại."
+    },
+    "effectTooltip": "Áp dụng hiệu ứng âm thanh cho câu chuyện đã kết xuất. Clean giữ nguyên giọng gốc. Voice Polish làm mượt tạp âm. Radio thêm nét ấm của phát thanh xưa. Warm Room thêm tiếng vang tự nhiên."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Tiêu đề âm thanh câu chuyện",
     "errors": {
       "load": "Không thể tải âm thanh câu chuyện.",
-      "copyScript": "Không thể sao chép kịch bản câu chuyện."
+      "copyScript": "Không thể sao chép kịch bản câu chuyện.",
+      "loadGenerated": "Không thể tải âm thanh câu chuyện đã tạo.",
+      "loadQueue": "Không thể tải hàng đợi kết xuất câu chuyện.",
+      "reveal": "Không thể hiển thị âm thanh câu chuyện.",
+      "update": "Không thể cập nhật âm thanh câu chuyện.",
+      "rename": "Không thể đổi tên âm thanh câu chuyện.",
+      "delete": "Không thể xóa âm thanh câu chuyện.",
+      "cancelRender": "Không thể hủy kết xuất câu chuyện.",
+      "play": "Không thể phát âm thanh đã tạo.",
+      "saveProcessed": "Không thể lưu âm thanh đã xử lý."
     },
     "actions": {
       "copyScript": "Sao chép tập lệnh",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Dây tạo {{current}} của {{total}}",
       "generating": "Đang tạo",
       "queuePosition": "Hàng đợi #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Đã lưu âm thanh đã xử lý.",
+      "deleted": "Đã xóa âm thanh câu chuyện.",
+      "renderCancelled": "Đã hủy kết xuất câu chuyện."
     }
   },
   "detail": {

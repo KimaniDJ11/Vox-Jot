@@ -6,9 +6,9 @@ import React, {
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import type { TFunction } from "i18next";
 import {
   AlertCircle,
@@ -33,11 +33,7 @@ import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
 
 export type StorySoundMode =
-  | "sfx"
-  | "ambience"
-  | "music"
-  | "song"
-  | "composition";
+  "sfx" | "ambience" | "music" | "song" | "composition";
 
 export type StoryAudioKind = "story_render" | "sound";
 
@@ -88,10 +84,7 @@ interface SoundDesignPanelProps {
 }
 
 type ProjectSoundGenerationStatus =
-  | "queued"
-  | "generating"
-  | "failed"
-  | "cancelled";
+  "queued" | "generating" | "failed" | "cancelled";
 
 interface ProjectSoundGenerationJob {
   renderId: string;
@@ -161,6 +154,11 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   const [soundJobs, setSoundJobs] = useState<ProjectSoundGenerationJob[]>([]);
   const soundJobsRef = useRef<ProjectSoundGenerationJob[]>([]);
   const soundGenerationWorkerRunningRef = useRef(false);
+  // The queue worker reschedules itself through a timer and drives state via
+  // refs, so it would keep starting new renders after the panel unmounts.
+  // These let unmount stop the worker instead of leaving it running untracked.
+  const soundWorkerDisposedRef = useRef(false);
+  const soundWorkerTimerRef = useRef<number | null>(null);
 
   const selectedModel = useMemo(() => {
     const models = catalog?.models ?? [];
@@ -240,7 +238,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
     } catch (error) {
       console.error("Failed to load creative audio catalog:", error);
       if (showError) {
-        toast.error("Could not check creative audio models.");
+        toast.error(t("storyStudio.sound.toast.catalogFailed"));
       }
     } finally {
       setIsLoadingCatalog(false);
@@ -251,17 +249,9 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
     void refreshCatalog();
   }, [refreshCatalog]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen("creative-audio-selection-changed", () => {
-        void refreshCatalog(false);
-      });
-    })();
-    return () => {
-      unlisten?.();
-    };
-  }, [refreshCatalog]);
+  useTauriEvent("creative-audio-selection-changed", () => {
+    void refreshCatalog(false);
+  });
 
   useRefreshOnWindowFocus(() => refreshCatalog(false), {
     minIntervalMs: 5000,
@@ -285,6 +275,7 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   }, [soundJobs]);
 
   const startNextSoundJob = useCallback(() => {
+    if (soundWorkerDisposedRef.current) return;
     if (soundGenerationWorkerRunningRef.current) return;
     const nextJob = soundJobsRef.current.find((job) => job.status === "queued");
     if (!nextJob) return;
@@ -318,11 +309,15 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
         const removeCompleted = (jobs: ProjectSoundGenerationJob[]) =>
           jobs.filter((job) => job.renderId !== nextJob.renderId);
         soundJobsRef.current = removeCompleted(soundJobsRef.current);
+        if (soundWorkerDisposedRef.current) return;
         setSoundJobs(removeCompleted);
         onSoundsChanged();
-        toast.success("Sound saved to this project.");
+        toast.success(t("storyStudio.sound.toast.saved"));
       } catch (error) {
-        const message = normalizeError(error, "Could not generate sound.");
+        const message = normalizeError(
+          error,
+          t("storyStudio.sound.toast.generateFailed"),
+        );
         const wasCancelled = message.toLowerCase().includes("cancelled");
         const markFinished = (
           jobs: ProjectSoundGenerationJob[],
@@ -337,13 +332,19 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
               : job,
           );
         soundJobsRef.current = markFinished(soundJobsRef.current);
+        if (soundWorkerDisposedRef.current) return;
         setSoundJobs(markFinished);
         if (!wasCancelled) {
           toast.error(message);
         }
       } finally {
         soundGenerationWorkerRunningRef.current = false;
-        window.setTimeout(() => startNextSoundJob(), 0);
+        if (!soundWorkerDisposedRef.current) {
+          soundWorkerTimerRef.current = window.setTimeout(() => {
+            soundWorkerTimerRef.current = null;
+            startNextSoundJob();
+          }, 0);
+        }
       }
     })();
   }, [onSoundsChanged, projectId]);
@@ -351,6 +352,17 @@ export const SoundDesignPanel: React.FC<SoundDesignPanelProps> = ({
   useEffect(() => {
     startNextSoundJob();
   }, [soundJobs, startNextSoundJob]);
+
+  useEffect(() => {
+    soundWorkerDisposedRef.current = false;
+    return () => {
+      soundWorkerDisposedRef.current = true;
+      if (soundWorkerTimerRef.current !== null) {
+        window.clearTimeout(soundWorkerTimerRef.current);
+        soundWorkerTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const generate = useCallback(async () => {
     const trimmedPrompt = prompt.trim();
@@ -822,7 +834,7 @@ const ProjectSoundRow: React.FC<{
     } catch (error) {
       if (!expectedStopRef.current) {
         console.error("Failed to preview project sound:", error);
-        toast.error("Could not preview sound.");
+        toast.error(t("storyStudio.sound.toast.previewFailed"));
       }
     } finally {
       if (playbackRunIdRef.current === runId) {
@@ -843,7 +855,7 @@ const ProjectSoundRow: React.FC<{
       setIsRenaming(false);
     } catch (error) {
       console.error("Failed to rename project sound:", error);
-      toast.error("Could not rename sound.");
+      toast.error(t("storyStudio.sound.toast.renameFailed"));
     } finally {
       setIsBusy(false);
     }
@@ -858,7 +870,7 @@ const ProjectSoundRow: React.FC<{
       setShowDeleteConfirm(false);
     } catch (error) {
       console.error("Failed to delete project sound:", error);
-      toast.error("Could not delete sound.");
+      toast.error(t("storyStudio.sound.toast.deleteFailed"));
     } finally {
       setIsBusy(false);
     }
@@ -988,7 +1000,7 @@ const ProjectSoundRow: React.FC<{
             tone="danger"
             onClick={() => setShowDeleteConfirm(true)}
             disabled={isBusy}
-            aria-label="Delete sound"
+            aria-label={t("storyStudio.sound.deleteAriaLabel")}
           >
             <Trash2 aria-hidden />
           </ActionIconButton>

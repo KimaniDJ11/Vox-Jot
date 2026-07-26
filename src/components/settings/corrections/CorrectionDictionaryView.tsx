@@ -133,47 +133,59 @@ const getEntryAutoStatus = (
   return getEntryAutoApply(entry).status;
 };
 
-const getEntryStatusLabel = (entry: StoredCorrection): string => {
+const ENTRY_STATUS_PREFIX = "settings.corrections.dictionary.entryStatus";
+
+const getEntryStatusLabel = (
+  entry: StoredCorrection,
+  t: ReturnType<typeof useTranslation>["t"],
+): string => {
   const status = getEntryAutoStatus(entry);
   switch (status) {
     case "manual":
-      return "Manual";
+      return t(`${ENTRY_STATUS_PREFIX}.manual`);
     case "active":
-      return "Auto";
-    case "candidate":
-      return getEntryAutoApply(entry).confirmations_remaining > 0
-        ? `Needs ${getEntryAutoApply(entry).confirmations_remaining}`
-        : "Learning";
+      return t(`${ENTRY_STATUS_PREFIX}.auto`);
+    case "candidate": {
+      const remaining = getEntryAutoApply(entry).confirmations_remaining;
+      return remaining > 0
+        ? t(`${ENTRY_STATUS_PREFIX}.needs`, { count: remaining })
+        : t(`${ENTRY_STATUS_PREFIX}.learning`);
+    }
     case "low_confidence":
-      return "Low conf";
+      return t(`${ENTRY_STATUS_PREFIX}.lowConfidence`);
     case "blocked":
-      return "Review";
+      return t(`${ENTRY_STATUS_PREFIX}.review`);
     case "disabled":
-      return "Off";
+      return t(`${ENTRY_STATUS_PREFIX}.off`);
     default:
-      return "Learning";
+      return t(`${ENTRY_STATUS_PREFIX}.learning`);
   }
 };
 
-const getEntryStatusTitle = (entry: StoredCorrection): string => {
+const getEntryStatusTitle = (
+  entry: StoredCorrection,
+  t: ReturnType<typeof useTranslation>["t"],
+): string => {
   const status = getEntryAutoStatus(entry);
   switch (status) {
     case "manual":
-      return "Manually approved. Applies whenever enabled.";
+      return t(`${ENTRY_STATUS_PREFIX}.manualTitle`);
     case "active":
-      return "Auto-learned and eligible to apply.";
-    case "candidate":
-      return getEntryAutoApply(entry).confirmations_remaining > 0
-        ? `Needs ${getEntryAutoApply(entry).confirmations_remaining} more confirmation(s) before auto-applying.`
-        : "Still learning before auto-applying.";
+      return t(`${ENTRY_STATUS_PREFIX}.autoTitle`);
+    case "candidate": {
+      const remaining = getEntryAutoApply(entry).confirmations_remaining;
+      return remaining > 0
+        ? t(`${ENTRY_STATUS_PREFIX}.needsTitle`, { count: remaining })
+        : t(`${ENTRY_STATUS_PREFIX}.learningTitle`);
+    }
     case "low_confidence":
-      return "Seen enough times, but confidence is below the auto-apply threshold.";
+      return t(`${ENTRY_STATUS_PREFIX}.lowConfidenceTitle`);
     case "blocked":
-      return "Will not auto-apply because it looks like a rewrite, partial capture, or unsafe correction.";
+      return t(`${ENTRY_STATUS_PREFIX}.reviewTitle`);
     case "disabled":
-      return "Disabled. This correction will not apply.";
+      return t(`${ENTRY_STATUS_PREFIX}.offTitle`);
     default:
-      return "Learning status unavailable.";
+      return t(`${ENTRY_STATUS_PREFIX}.unknownTitle`);
   }
 };
 
@@ -485,8 +497,10 @@ export const CorrectionDictionaryView: React.FC<
   const handleDisableForCurrentApp = async (group: CorrectionGroup) => {
     try {
       const result = await commands.getFrontmostAppForExclusion();
-      if (result.status === "error") {
-        throw new Error(result.error);
+      if (result.status === "error" || !result.data) {
+        throw new Error(
+          result.status === "error" ? result.error : "No frontmost app found",
+        );
       }
 
       const bundleId = result.data.bundle_id.trim();
@@ -1718,9 +1732,9 @@ const OriginalChip: React.FC<{
       </button>
       <span
         className={`ml-1 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getEntryStatusClassName(entry)}`}
-        title={getEntryStatusTitle(entry)}
+        title={getEntryStatusTitle(entry, t)}
       >
-        {getEntryStatusLabel(entry)}
+        {getEntryStatusLabel(entry, t)}
       </span>
       <span
         className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--muted)]"

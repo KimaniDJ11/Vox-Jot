@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "少なくとも 1 つの補正には十分な観測値がありますが、信頼性が低いです。",
           "learning": "学習",
           "learningTitle": "自動適用する前にさらに確認を待っています。"
+        },
+        "entryStatus": {
+          "manual": "手動",
+          "manualTitle": "手動で承認済み。有効な場合は常に適用されます。",
+          "auto": "自動",
+          "autoTitle": "自動学習済みで、適用可能です。",
+          "needs": "あと {{count}}",
+          "needsTitle": "自動適用まであと {{count}} 回の確認が必要です。",
+          "learning": "学習中",
+          "learningTitle": "自動適用の前にまだ学習中です。",
+          "lowConfidence": "信頼度低",
+          "lowConfidenceTitle": "十分な回数観測されましたが、信頼度が自動適用のしきい値を下回っています。",
+          "review": "要確認",
+          "reviewTitle": "書き換え、部分的な取得、または安全でない修正に見えるため、自動適用されません。",
+          "off": "オフ",
+          "offTitle": "無効です。この修正は適用されません。",
+          "unknownTitle": "学習状況を取得できません。"
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "アプリの言語の変更は音声設定とは別に行われます。",
       "defaultStatus": "アプリ全体を現在のアプリ言語に再調整する場合にこれを使用します。",
       "done": "言語の同期が完了しました。",
-      "failed": "言語の同期に失敗しました。"
+      "failed": "言語の同期に失敗しました。",
+      "messages": {
+        "stillLoading": "設定を読み込み中のため、言語同期をまだ実行できませんでした。",
+        "sttUnchanged": "音声認識は変更されていません。",
+        "ttsUnchanged": "音声出力は変更されていません。",
+        "sttSwitchedAuto": "音声認識を自動に切り替えました。",
+        "sttSwitched": "音声認識を {{language}} に切り替えました。",
+        "sttSyncFailedDetail": "音声認識を同期できませんでした: {{error}}",
+        "sttSyncFailed": "音声認識を同期できませんでした。",
+        "sttStayedAuto": "音声認識は自動のままです。",
+        "sttStayed": "音声認識は {{language}} のままです。",
+        "ttsDisabled": "「出力を読み上げる」がオフのため、音声出力は変更されていません。",
+        "ttsNoModel": "{{language}} に対応した音声出力モデルが利用できないため、現在の音声を維持しました。",
+        "ttsUsing": "音声出力は {{model}} と {{voice}} を使用しています。",
+        "ttsKept": "音声出力は {{model}} を維持しました。",
+        "ttsSwitched": "音声出力を {{model}} に切り替えました。",
+        "ttsSyncFailedDetail": "音声出力を完全に同期できませんでした: {{error}}",
+        "ttsSyncFailed": "音声出力を完全に同期できませんでした。",
+        "appLanguageSyncOff": "アプリの言語を更新しました。グローバル言語同期がオフのため、音声設定は変更していません。"
+      }
     },
     "refineModels": {
       "title": "モデルを改良する",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "モデルが選択されていません",
       "openGenerated": "生成済み音声を開く",
       "generate": "サウンドを生成",
-      "generating": "生成中"
+      "generating": "生成中",
+      "toast": {
+        "catalogFailed": "クリエイティブオーディオモデルを確認できませんでした。",
+        "saved": "サウンドをこのプロジェクトに保存しました。",
+        "generateFailed": "サウンドを生成できませんでした。",
+        "previewFailed": "サウンドをプレビューできませんでした。",
+        "renameFailed": "サウンドの名前を変更できませんでした。",
+        "deleteFailed": "サウンドを削除できませんでした。"
+      },
+      "deleteAriaLabel": "サウンドを削除"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "保存された音声プリセットを読み込めませんでした。",
+      "loadProjectSounds": "プロジェクトのサウンドを読み込めませんでした。",
+      "renderFailed": "ストーリーのレンダリングに失敗しました。"
+    },
+    "effectTooltip": "レンダリングしたストーリーにオーディオエフェクトを適用します。Clean は元の声を保ちます。Voice Polish はノイズを滑らかにします。Radio はビンテージ放送の温かみを加えます。Warm Room は自然なリバーブを加えます。"
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "ストーリー音声のタイトル",
     "errors": {
       "load": "ストーリーの音声を読み込めませんでした。",
-      "copyScript": "ストーリー スクリプトをコピーできませんでした。"
+      "copyScript": "ストーリー スクリプトをコピーできませんでした。",
+      "loadGenerated": "生成されたストーリー音声を読み込めませんでした。",
+      "loadQueue": "ストーリーのレンダリングキューを読み込めませんでした。",
+      "reveal": "ストーリー音声の場所を表示できませんでした。",
+      "update": "ストーリー音声を更新できませんでした。",
+      "rename": "ストーリー音声の名前を変更できませんでした。",
+      "delete": "ストーリー音声を削除できませんでした。",
+      "cancelRender": "ストーリーのレンダリングをキャンセルできませんでした。",
+      "play": "生成された音声を再生できませんでした。",
+      "saveProcessed": "処理済みの音声を保存できませんでした。"
     },
     "actions": {
       "copyScript": "スクリプトのコピー",
@@ -3629,6 +3689,11 @@
       "generatingLine": "{{total}} のライン {{current}} を生成しています",
       "generating": "生成中",
       "queuePosition": "キュー #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "処理済みの音声を保存しました。",
+      "deleted": "ストーリー音声を削除しました。",
+      "renderCancelled": "ストーリーのレンダリングをキャンセルしました。"
     }
   },
   "detail": {

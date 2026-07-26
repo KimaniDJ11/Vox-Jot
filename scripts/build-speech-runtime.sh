@@ -19,6 +19,10 @@ BUILD_DIR="$ROOT_DIR/tmp/speech-runtime-build"
 
 PYTHON_BIN="${SPEECH_RUNTIME_PYTHON:-python3.11}"
 PYTHON_VERSION="${SPEECH_RUNTIME_PYTHON_VERSION:-3.11}"
+# Pin the python-build-standalone release instead of tracking "latest": this
+# interpreter ships inside the signed app, so the build must be reproducible and
+# the download verified against the release's published SHA256SUMS.
+PYTHON_BUILD_RELEASE="${SPEECH_RUNTIME_PYTHON_BUILD_RELEASE:-20260718}"
 export PYTHONDONTWRITEBYTECODE=1
 
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
@@ -75,14 +79,18 @@ tar -C "$RUNTIME_SRC" \
 PYTHON_ARCHIVE="${SPEECH_RUNTIME_STANDALONE_PYTHON_ARCHIVE:-$ROOT_DIR/tmp/python-build-standalone-${PYTHON_VERSION}-${PYTHON_TARGET}.tar.gz}"
 if [[ ! -f "$PYTHON_ARCHIVE" ]]; then
   mkdir -p "$(dirname "$PYTHON_ARCHIVE")"
-  "$PYTHON_BIN" - "$PYTHON_VERSION" "$PYTHON_TARGET" "$PYTHON_ARCHIVE" <<'PY'
+  "$PYTHON_BIN" - "$PYTHON_VERSION" "$PYTHON_TARGET" "$PYTHON_ARCHIVE" "$PYTHON_BUILD_RELEASE" <<'PY'
+import hashlib
 import json
 import pathlib
 import sys
 import urllib.request
 
-python_version, target, destination = sys.argv[1:4]
-api = "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest"
+python_version, target, destination, release_tag = sys.argv[1:5]
+api = (
+    "https://api.github.com/repos/astral-sh/python-build-standalone/releases/tags/"
+    f"{release_tag}"
+)
 with urllib.request.urlopen(api) as response:
     release = json.load(response)
 
@@ -98,18 +106,47 @@ for suffix in ("install_only_stripped.tar.gz", "install_only.tar.gz"):
         break
 if asset is None:
     raise SystemExit(
-        f"No python-build-standalone asset for Python {python_version} / {target}"
+        f"No python-build-standalone asset for Python {python_version} / {target} "
+        f"in release {release_tag}"
     )
+
+checksums_asset = next(
+    (item for item in release["assets"] if item["name"] == "SHA256SUMS"), None
+)
+if checksums_asset is None:
+    raise SystemExit(f"Release {release_tag} does not publish SHA256SUMS")
+with urllib.request.urlopen(checksums_asset["browser_download_url"]) as response:
+    checksums = response.read().decode("utf-8")
+expected = next(
+    (
+        line.split()[0]
+        for line in checksums.splitlines()
+        if line.strip().endswith(f" {asset['name']}")
+    ),
+    None,
+)
+if expected is None:
+    raise SystemExit(f"No published checksum for {asset['name']}")
 
 url = asset["browser_download_url"]
 path = pathlib.Path(destination)
 print(f"Downloading {asset['name']} from {url}", flush=True)
+digest = hashlib.sha256()
 with urllib.request.urlopen(url) as response, path.open("wb") as out:
     while True:
         chunk = response.read(1024 * 1024)
         if not chunk:
             break
+        digest.update(chunk)
         out.write(chunk)
+
+actual = digest.hexdigest()
+if actual != expected:
+    path.unlink(missing_ok=True)
+    raise SystemExit(
+        f"Checksum mismatch for {asset['name']}: expected {expected}, got {actual}"
+    )
+print(f"Verified {asset['name']} (sha256)", flush=True)
 PY
 fi
 

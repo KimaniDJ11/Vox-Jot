@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "Pelo menos uma correção tem observações suficientes, mas baixa confiança.",
           "learning": "Aprendizagem",
           "learningTitle": "Aguardando mais confirmações antes de aplicar automaticamente."
+        },
+        "entryStatus": {
+          "manual": "Manual",
+          "manualTitle": "Aprovado manualmente. Aplica-se sempre que estiver habilitado.",
+          "auto": "Auto",
+          "autoTitle": "Aprendido automaticamente e pronto para ser aplicado.",
+          "needs": "Faltam {{count}}",
+          "needsTitle": "Precisa de mais {{count}} confirmação(ões) antes da aplicação automática.",
+          "learning": "Aprendendo",
+          "learningTitle": "Ainda aprendendo antes da aplicação automática.",
+          "lowConfidence": "Baixa conf.",
+          "lowConfidenceTitle": "Visto vezes suficientes, mas a confiança está abaixo do limite de aplicação automática.",
+          "review": "Revisar",
+          "reviewTitle": "Não será aplicado automaticamente porque parece uma reescrita, uma captura parcial ou uma correção insegura.",
+          "off": "Desativado",
+          "offTitle": "Desativado. Esta correção não será aplicada.",
+          "unknownTitle": "Status de aprendizado indisponível."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "As alterações de idioma do aplicativo permanecerão separadas das configurações de fala.",
       "defaultStatus": "Use isto quando quiser que todo o aplicativo seja realinhado com o idioma atual do aplicativo.",
       "done": "Sincronização de idioma concluída.",
-      "failed": "Falha na sincronização do idioma."
+      "failed": "Falha na sincronização do idioma.",
+      "messages": {
+        "stillLoading": "As configurações ainda estão carregando, então a sincronização de idioma ainda não pôde ser executada.",
+        "sttUnchanged": "O reconhecimento de fala permaneceu como estava.",
+        "ttsUnchanged": "A saída de voz permaneceu como estava.",
+        "sttSwitchedAuto": "O reconhecimento de fala mudou para Automático.",
+        "sttSwitched": "O reconhecimento de fala mudou para {{language}}.",
+        "sttSyncFailedDetail": "Não foi possível sincronizar o reconhecimento de fala: {{error}}",
+        "sttSyncFailed": "Não foi possível sincronizar o reconhecimento de fala.",
+        "sttStayedAuto": "O reconhecimento de fala permaneceu em Automático.",
+        "sttStayed": "O reconhecimento de fala permaneceu em {{language}}.",
+        "ttsDisabled": "A saída de voz permaneceu como estava porque Falar saída está desativado.",
+        "ttsNoModel": "Nenhum modelo de saída de voz compatível está pronto para {{language}}, então a voz atual foi mantida.",
+        "ttsUsing": "A saída de voz está usando {{model}} com {{voice}}.",
+        "ttsKept": "A saída de voz manteve {{model}}.",
+        "ttsSwitched": "A saída de voz mudou para {{model}}.",
+        "ttsSyncFailedDetail": "Não foi possível sincronizar totalmente a saída de voz: {{error}}",
+        "ttsSyncFailed": "Não foi possível sincronizar totalmente a saída de voz.",
+        "appLanguageSyncOff": "Idioma do app atualizado. A Sincronização Global de Idioma está desativada, então as configurações de voz não foram alteradas."
+      }
     },
     "refineModels": {
       "title": "Refinar modelos",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Nenhum modelo selecionado",
       "openGenerated": "Abrir áudio gerado",
       "generate": "Gerar som",
-      "generating": "Gerando"
+      "generating": "Gerando",
+      "toast": {
+        "catalogFailed": "Não foi possível verificar os modelos de áudio criativo.",
+        "saved": "Som salvo neste projeto.",
+        "generateFailed": "Não foi possível gerar o som.",
+        "previewFailed": "Não foi possível pré-visualizar o som.",
+        "renameFailed": "Não foi possível renomear o som.",
+        "deleteFailed": "Não foi possível excluir o som."
+      },
+      "deleteAriaLabel": "Excluir som"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Não foi possível carregar as predefinições de voz salvas.",
+      "loadProjectSounds": "Não foi possível carregar os sons do projeto.",
+      "renderFailed": "Falha ao renderizar a história."
+    },
+    "effectTooltip": "Aplique um efeito de áudio à história renderizada. Clean mantém a voz original. Voice Polish suaviza artefatos. Radio adiciona o calor de transmissões antigas. Warm Room adiciona reverberação natural."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Título do áudio da história",
     "errors": {
       "load": "Não foi possível carregar o áudio da história.",
-      "copyScript": "Não foi possível copiar o roteiro da história."
+      "copyScript": "Não foi possível copiar o roteiro da história.",
+      "loadGenerated": "Não foi possível carregar o áudio gerado da história.",
+      "loadQueue": "Não foi possível carregar a fila de renderização de histórias.",
+      "reveal": "Não foi possível exibir o áudio da história.",
+      "update": "Não foi possível atualizar o áudio da história.",
+      "rename": "Não foi possível renomear o áudio da história.",
+      "delete": "Não foi possível excluir o áudio da história.",
+      "cancelRender": "Não foi possível cancelar a renderização da história.",
+      "play": "Não foi possível reproduzir o áudio gerado.",
+      "saveProcessed": "Não foi possível salvar o áudio processado."
     },
     "actions": {
       "copyScript": "Copiar roteiro",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Gerando linha {{current}} de {{total}}",
       "generating": "Gerando",
       "queuePosition": "Fila #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Áudio processado salvo.",
+      "deleted": "Áudio da história excluído.",
+      "renderCancelled": "Renderização da história cancelada."
     }
   },
   "detail": {

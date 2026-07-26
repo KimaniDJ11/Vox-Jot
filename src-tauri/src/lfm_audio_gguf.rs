@@ -151,18 +151,7 @@ impl LfmAudioGgufContext {
             )
         })?;
 
-        let status = Command::new("unzip")
-            .args(["-o", "-q"])
-            .arg(&zip_path)
-            .arg("-d")
-            .arg(&runner_dir)
-            .status()
-            .map_err(|err| format!("Failed to spawn unzip: {err}"))?;
-        if !status.success() {
-            return Err(format!(
-                "Failed to extract LFM Audio runner: unzip exited with {status}"
-            ));
-        }
+        extract_runner_zip(&zip_path, &runner_dir)?;
 
         // Some zips include a top-level wrapper directory — flatten it if so.
         flatten_runner_dir(&runner_dir)?;
@@ -251,6 +240,67 @@ fn ensure_executable(_path: &Path) {}
 
 /// If unzip produced `runner/<wrapper>/llama-liquid-audio-cli`, lift the inner
 /// contents up so the CLI sits at `runner/llama-liquid-audio-cli`.
+/// Extract the runner zip in-process so every entry path is validated.
+///
+/// Shelling out to `unzip` would happily follow `../` entries or symlinks in a
+/// tampered archive and write outside `runner_dir`.
+fn extract_runner_zip(zip_path: &Path, runner_dir: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(zip_path)
+        .map_err(|err| format!("Failed to open runner zip {}: {err}", zip_path.display()))?;
+    let mut archive =
+        zip::ZipArchive::new(file).map_err(|err| format!("Failed to read runner zip: {err}"))?;
+
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|err| format!("Failed to read runner zip entry: {err}"))?;
+
+        #[cfg(unix)]
+        if entry
+            .unix_mode()
+            .map(|mode| (mode & 0o170000) == 0o120000)
+            .unwrap_or(false)
+        {
+            return Err("LFM Audio runner zip contains unsupported symlinks.".into());
+        }
+
+        let relative_path = entry.enclosed_name().ok_or_else(|| {
+            format!(
+                "LFM Audio runner zip contains unsafe path: {}",
+                entry.name()
+            )
+        })?;
+        if relative_path.as_os_str().is_empty() {
+            continue;
+        }
+
+        let destination = runner_dir.join(&relative_path);
+        if entry.is_dir() {
+            std::fs::create_dir_all(&destination)
+                .map_err(|err| format!("Failed to create runner directory: {err}"))?;
+            continue;
+        }
+        if let Some(parent) = destination.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|err| format!("Failed to create runner directory: {err}"))?;
+        }
+
+        let mut output = std::fs::File::create(&destination)
+            .map_err(|err| format!("Failed to create runner file: {err}"))?;
+        std::io::copy(&mut entry, &mut output)
+            .map_err(|err| format!("Failed to extract runner zip entry: {err}"))?;
+
+        #[cfg(unix)]
+        if let Some(mode) = entry.unix_mode() {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&destination, std::fs::Permissions::from_mode(mode & 0o777))
+                .map_err(|err| format!("Failed to set runner file permissions: {err}"))?;
+        }
+    }
+
+    Ok(())
+}
+
 fn flatten_runner_dir(runner_dir: &Path) -> Result<(), String> {
     let cli = runner_dir.join(CLI_BINARY);
     if cli.exists() {

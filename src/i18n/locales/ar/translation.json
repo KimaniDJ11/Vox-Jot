@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "هناك تصحيح واحد على الأقل يحتوي على ما يكفي من الملاحظات ولكن الثقة منخفضة.",
           "learning": "التعلم",
           "learningTitle": "في انتظار المزيد من التأكيدات قبل التقديم التلقائي."
+        },
+        "entryStatus": {
+          "manual": "يدوي",
+          "manualTitle": "تمت الموافقة عليه يدويًا. يُطبَّق كلما كان مفعّلًا.",
+          "auto": "تلقائي",
+          "autoTitle": "تم تعلّمه تلقائيًا وهو مؤهل للتطبيق.",
+          "needs": "يحتاج {{count}}",
+          "needsTitle": "يحتاج إلى {{count}} تأكيد إضافي قبل التطبيق التلقائي.",
+          "learning": "قيد التعلّم",
+          "learningTitle": "لا يزال قيد التعلّم قبل التطبيق التلقائي.",
+          "lowConfidence": "ثقة منخفضة",
+          "lowConfidenceTitle": "شوهد مرات كافية، لكن الثقة أقل من عتبة التطبيق التلقائي.",
+          "review": "مراجعة",
+          "reviewTitle": "لن يُطبَّق تلقائيًا لأنه يبدو إعادة صياغة أو التقاطًا جزئيًا أو تصحيحًا غير آمن.",
+          "off": "متوقف",
+          "offTitle": "معطّل. لن يُطبَّق هذا التصحيح.",
+          "unknownTitle": "حالة التعلّم غير متاحة."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "ستظل تغييرات لغة التطبيق منفصلة عن إعدادات الكلام.",
       "defaultStatus": "استخدم هذا عندما تريد إعادة محاذاة التطبيق بالكامل مع لغة التطبيق الحالية.",
       "done": "انتهت مزامنة اللغة.",
-      "failed": "فشلت مزامنة اللغة."
+      "failed": "فشلت مزامنة اللغة.",
+      "messages": {
+        "stillLoading": "لا تزال الإعدادات قيد التحميل، لذا تعذّر تشغيل مزامنة اللغة بعد.",
+        "sttUnchanged": "بقي التعرف على الكلام كما هو.",
+        "ttsUnchanged": "بقي خرج الكلام كما هو.",
+        "sttSwitchedAuto": "تم تبديل التعرف على الكلام إلى تلقائي.",
+        "sttSwitched": "تم تبديل التعرف على الكلام إلى {{language}}.",
+        "sttSyncFailedDetail": "تعذّرت مزامنة التعرف على الكلام: {{error}}",
+        "sttSyncFailed": "تعذّرت مزامنة التعرف على الكلام.",
+        "sttStayedAuto": "بقي التعرف على الكلام على الوضع التلقائي.",
+        "sttStayed": "بقي التعرف على الكلام على {{language}}.",
+        "ttsDisabled": "بقي خرج الكلام كما هو لأن نطق الخرج معطّل.",
+        "ttsNoModel": "لا يوجد نموذج خرج كلام متوافق جاهز للغة {{language}}، لذا تم الإبقاء على الصوت الحالي.",
+        "ttsUsing": "يستخدم خرج الكلام {{model}} مع {{voice}}.",
+        "ttsKept": "أبقى خرج الكلام على {{model}}.",
+        "ttsSwitched": "تم تبديل خرج الكلام إلى {{model}}.",
+        "ttsSyncFailedDetail": "تعذّرت مزامنة خرج الكلام بالكامل: {{error}}",
+        "ttsSyncFailed": "تعذّرت مزامنة خرج الكلام بالكامل.",
+        "appLanguageSyncOff": "تم تحديث لغة التطبيق. مزامنة اللغة العامة معطّلة، لذا لم تتغيّر إعدادات الكلام."
+      }
     },
     "refineModels": {
       "title": "صقل النماذج",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "لم يتم اختيار نموذج",
       "openGenerated": "فتح الصوت المنشأ",
       "generate": "إنشاء الصوت",
-      "generating": "جار الإنشاء"
+      "generating": "جار الإنشاء",
+      "toast": {
+        "catalogFailed": "تعذّر التحقق من نماذج الصوت الإبداعي.",
+        "saved": "تم حفظ الصوت في هذا المشروع.",
+        "generateFailed": "تعذّر توليد الصوت.",
+        "previewFailed": "تعذّر تشغيل معاينة الصوت.",
+        "renameFailed": "تعذّرت إعادة تسمية الصوت.",
+        "deleteFailed": "تعذّر حذف الصوت."
+      },
+      "deleteAriaLabel": "حذف الصوت"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "تعذّر تحميل إعدادات الصوت المحفوظة.",
+      "loadProjectSounds": "تعذّر تحميل أصوات المشروع.",
+      "renderFailed": "فشل عرض القصة."
+    },
+    "effectTooltip": "طبّق تأثيرًا صوتيًا على القصة المعروضة. يحافظ Clean على الصوت الأصلي. ويخفف Voice Polish التشوهات. ويضيف Radio دفء البث القديم. ويضيف Warm Room صدى طبيعيًا."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "عنوان القصة الصوتية",
     "errors": {
       "load": "تعذر تحميل القصة الصوتية.",
-      "copyScript": "لا يمكن نسخ نص القصة."
+      "copyScript": "لا يمكن نسخ نص القصة.",
+      "loadGenerated": "تعذّر تحميل صوت القصة المولَّد.",
+      "loadQueue": "تعذّر تحميل قائمة انتظار عرض القصة.",
+      "reveal": "تعذّر إظهار ملف صوت القصة.",
+      "update": "تعذّر تحديث صوت القصة.",
+      "rename": "تعذّرت إعادة تسمية صوت القصة.",
+      "delete": "تعذّر حذف صوت القصة.",
+      "cancelRender": "تعذّر إلغاء عرض القصة.",
+      "play": "تعذّر تشغيل الصوت المولَّد.",
+      "saveProcessed": "تعذّر حفظ الصوت المعالَج."
     },
     "actions": {
       "copyScript": "نسخ البرنامج النصي",
@@ -3629,6 +3689,11 @@
       "generatingLine": "خط التوليد {{current}} من {{total}}",
       "generating": "توليد",
       "queuePosition": "قائمة الانتظار #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "تم حفظ الصوت المعالَج.",
+      "deleted": "تم حذف صوت القصة.",
+      "renderCancelled": "تم إلغاء عرض القصة."
     }
   },
   "detail": {

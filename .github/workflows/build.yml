@@ -88,18 +88,19 @@ jobs:
           fi
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
       - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
         with:
+          toolchain: stable
           # Install only the requested macOS target. x86_64 macOS is not part of
           # the production matrix because ONNX Runtime no longer ships a
           # compatible prebuilt used by transcribe-rs on that target.
           targets: ${{ contains(inputs.platform, 'macos') && inputs.target || '' }}
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: "./src-tauri -> target"
           key: ${{ inputs.platform }}-${{ inputs.target }}
@@ -124,7 +125,7 @@ jobs:
 
       - name: Install Vulkan SDK (Windows x64)
         if: contains(inputs.platform, 'windows') && !contains(inputs.target, 'aarch64')
-        uses: humbletim/install-vulkan-sdk@v1.2
+        uses: humbletim/install-vulkan-sdk@30ba978f977e81b72d091fc8888feb1fb26f9aff # v1.2
         with:
           version: 1.4.309.0
           cache: true
@@ -164,7 +165,7 @@ jobs:
 
       - name: Build Vulkan SDK headers and libs (Windows ARM64)
         if: contains(inputs.platform, 'windows') && contains(inputs.target, 'aarch64')
-        uses: humbletim/setup-vulkan-sdk@v1.2.1
+        uses: humbletim/setup-vulkan-sdk@c25f41106918cde0bf347e6f201277392b3a9e9d # v1.2.1
         with:
           vulkan-query-version: 1.4.309.0
           vulkan-components: Vulkan-Headers, Vulkan-Loader
@@ -204,7 +205,7 @@ jobs:
 
       - name: Prepare Vulkan SDK for Ubuntu ARM64
         if: contains(inputs.platform, 'ubuntu') && contains(inputs.platform, 'arm')
-        uses: jakoch/install-vulkan-sdk-action@v1
+        uses: jakoch/install-vulkan-sdk-action@37effcfa045411f8bfbbda26df2fd1b3bf3436fa # v1
         with:
           vulkan_version: 1.4.335.0
           cache: true
@@ -305,7 +306,7 @@ jobs:
 
       - name: Build with Tauri (unsigned test)
         if: ${{ !inputs.sign-binaries && inputs.release-id == '' }}
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: "-"
@@ -320,7 +321,7 @@ jobs:
 
       - name: Build with Tauri (unsigned release)
         if: ${{ !inputs.sign-binaries && inputs.release-id != '' }}
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: "-"
@@ -338,7 +339,7 @@ jobs:
 
       - name: Build with Tauri (signed)
         if: ${{ inputs.sign-binaries }}
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -450,7 +451,18 @@ jobs:
               APPIMAGETOOL_ARCH="x86_64"
             fi
 
-            wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${APPIMAGETOOL_ARCH}.AppImage"
+            # Pin a tagged appimagetool release and verify it before executing:
+            # this binary produces the shipped artifact, so a swapped "continuous"
+            # build would silently compromise the release.
+            APPIMAGETOOL_VERSION="1.9.1"
+            case "$APPIMAGETOOL_ARCH" in
+              x86_64)  APPIMAGETOOL_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0" ;;
+              aarch64) APPIMAGETOOL_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158" ;;
+              *) echo "No pinned appimagetool checksum for $APPIMAGETOOL_ARCH" >&2; exit 1 ;;
+            esac
+
+            wget -q "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-${APPIMAGETOOL_ARCH}.AppImage"
+            echo "${APPIMAGETOOL_SHA256}  appimagetool-${APPIMAGETOOL_ARCH}.AppImage" | sha256sum -c -
             chmod +x "appimagetool-${APPIMAGETOOL_ARCH}.AppImage"
 
             # Repackage AppImage with no-appstream to avoid warnings

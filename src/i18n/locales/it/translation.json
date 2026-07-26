@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "Almeno una correzione presenta un numero sufficiente di osservazioni ma un livello di confidenza basso.",
           "learning": "Apprendimento",
           "learningTitle": "Attendo ulteriori conferme prima di auto-applicarsi."
+        },
+        "entryStatus": {
+          "manual": "Manuale",
+          "manualTitle": "Approvato manualmente. Si applica quando è abilitato.",
+          "auto": "Auto",
+          "autoTitle": "Appreso automaticamente e pronto per essere applicato.",
+          "needs": "Mancano {{count}}",
+          "needsTitle": "Servono ancora {{count}} conferma/e prima dell'applicazione automatica.",
+          "learning": "In apprendimento",
+          "learningTitle": "Sta ancora imparando prima dell'applicazione automatica.",
+          "lowConfidence": "Bassa affid.",
+          "lowConfidenceTitle": "Visto abbastanza volte, ma l'affidabilità è sotto la soglia di applicazione automatica.",
+          "review": "Da rivedere",
+          "reviewTitle": "Non verrà applicato automaticamente perché sembra una riscrittura, un'acquisizione parziale o una correzione non sicura.",
+          "off": "Disattivato",
+          "offTitle": "Disattivato. Questa correzione non verrà applicata.",
+          "unknownTitle": "Stato di apprendimento non disponibile."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "Le modifiche alla lingua dell'app rimarranno separate dalle impostazioni vocali.",
       "defaultStatus": "Utilizzalo quando desideri che l'intera app si allinei alla lingua corrente dell'app.",
       "done": "Sincronizzazione della lingua completata.",
-      "failed": "Sincronizzazione della lingua non riuscita."
+      "failed": "Sincronizzazione della lingua non riuscita.",
+      "messages": {
+        "stillLoading": "Le impostazioni sono ancora in caricamento, quindi la sincronizzazione della lingua non è ancora stata eseguita.",
+        "sttUnchanged": "Il riconoscimento vocale è rimasto invariato.",
+        "ttsUnchanged": "L'uscita vocale è rimasta invariata.",
+        "sttSwitchedAuto": "Il riconoscimento vocale è passato ad Automatico.",
+        "sttSwitched": "Il riconoscimento vocale è passato a {{language}}.",
+        "sttSyncFailedDetail": "Impossibile sincronizzare il riconoscimento vocale: {{error}}",
+        "sttSyncFailed": "Impossibile sincronizzare il riconoscimento vocale.",
+        "sttStayedAuto": "Il riconoscimento vocale è rimasto su Automatico.",
+        "sttStayed": "Il riconoscimento vocale è rimasto su {{language}}.",
+        "ttsDisabled": "L'uscita vocale è rimasta invariata perché Leggi output è disattivato.",
+        "ttsNoModel": "Nessun modello di uscita vocale compatibile è pronto per {{language}}, quindi è stata mantenuta la voce attuale.",
+        "ttsUsing": "L'uscita vocale usa {{model}} con {{voice}}.",
+        "ttsKept": "L'uscita vocale ha mantenuto {{model}}.",
+        "ttsSwitched": "L'uscita vocale è passata a {{model}}.",
+        "ttsSyncFailedDetail": "Impossibile sincronizzare completamente l'uscita vocale: {{error}}",
+        "ttsSyncFailed": "Impossibile sincronizzare completamente l'uscita vocale.",
+        "appLanguageSyncOff": "Lingua dell'app aggiornata. La sincronizzazione globale della lingua è disattivata, quindi le impostazioni vocali non sono state modificate."
+      }
     },
     "refineModels": {
       "title": "Perfezionare i modelli",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Nessun modello selezionato",
       "openGenerated": "Apri audio generato",
       "generate": "Genera suono",
-      "generating": "Generazione"
+      "generating": "Generazione",
+      "toast": {
+        "catalogFailed": "Impossibile controllare i modelli di audio creativo.",
+        "saved": "Suono salvato in questo progetto.",
+        "generateFailed": "Impossibile generare il suono.",
+        "previewFailed": "Impossibile ascoltare l'anteprima del suono.",
+        "renameFailed": "Impossibile rinominare il suono.",
+        "deleteFailed": "Impossibile eliminare il suono."
+      },
+      "deleteAriaLabel": "Elimina suono"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Impossibile caricare i preset vocali salvati.",
+      "loadProjectSounds": "Impossibile caricare i suoni del progetto.",
+      "renderFailed": "Rendering della storia non riuscito."
+    },
+    "effectTooltip": "Applica un effetto audio alla storia generata. Clean mantiene la voce originale. Voice Polish attenua gli artefatti. Radio aggiunge il calore delle vecchie trasmissioni. Warm Room aggiunge un riverbero naturale."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Titolo audio della storia",
     "errors": {
       "load": "Impossibile caricare l'audio della storia.",
-      "copyScript": "Impossibile copiare la sceneggiatura della storia."
+      "copyScript": "Impossibile copiare la sceneggiatura della storia.",
+      "loadGenerated": "Impossibile caricare l'audio generato della storia.",
+      "loadQueue": "Impossibile caricare la coda di rendering delle storie.",
+      "reveal": "Impossibile mostrare l'audio della storia.",
+      "update": "Impossibile aggiornare l'audio della storia.",
+      "rename": "Impossibile rinominare l'audio della storia.",
+      "delete": "Impossibile eliminare l'audio della storia.",
+      "cancelRender": "Impossibile annullare il rendering della storia.",
+      "play": "Impossibile riprodurre l'audio generato.",
+      "saveProcessed": "Impossibile salvare l'audio elaborato."
     },
     "actions": {
       "copyScript": "Copia copione",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Linea generatrice {{current}} di {{total}}",
       "generating": "Generazione",
       "queuePosition": "Coda #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Audio elaborato salvato.",
+      "deleted": "Audio della storia eliminato.",
+      "renderCancelled": "Rendering della storia annullato."
     }
   },
   "detail": {

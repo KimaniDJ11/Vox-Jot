@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "至少一項修正有足夠的觀察結果，但置信度較低。",
           "learning": "學習",
           "learningTitle": "在自動申請之前等待更多確認。"
+        },
+        "entryStatus": {
+          "manual": "手動",
+          "manualTitle": "已手動核准。啟用時一律套用。",
+          "auto": "自動",
+          "autoTitle": "已自動學習，可以套用。",
+          "needs": "還需 {{count}}",
+          "needsTitle": "自動套用前還需 {{count}} 次確認。",
+          "learning": "學習中",
+          "learningTitle": "自動套用前仍在學習。",
+          "lowConfidence": "低信心度",
+          "lowConfidenceTitle": "出現次數足夠，但信心度低於自動套用門檻。",
+          "review": "需審核",
+          "reviewTitle": "不會自動套用，因為看起來像改寫、部分擷取或不安全的更正。",
+          "off": "關閉",
+          "offTitle": "已停用。此更正不會套用。",
+          "unknownTitle": "無法取得學習狀態。"
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "應用程式語言變更將與語音設定分開。",
       "defaultStatus": "當您希望整個應用程式重新與目前應用程式語言保持一致時，請使用此選項。",
       "done": "語言同步完成。",
-      "failed": "語言同步失敗。"
+      "failed": "語言同步失敗。",
+      "messages": {
+        "stillLoading": "設定仍在載入中，因此語言同步尚未執行。",
+        "sttUnchanged": "語音辨識保持不變。",
+        "ttsUnchanged": "語音輸出保持不變。",
+        "sttSwitchedAuto": "語音辨識已切換為自動。",
+        "sttSwitched": "語音辨識已切換為 {{language}}。",
+        "sttSyncFailedDetail": "無法同步語音辨識：{{error}}",
+        "sttSyncFailed": "無法同步語音辨識。",
+        "sttStayedAuto": "語音辨識保持為自動。",
+        "sttStayed": "語音辨識保持為 {{language}}。",
+        "ttsDisabled": "由於「朗讀輸出」已關閉，語音輸出保持不變。",
+        "ttsNoModel": "沒有適用於 {{language}} 的語音輸出模型，因此保留了目前語音。",
+        "ttsUsing": "語音輸出正在使用 {{model}} 與 {{voice}}。",
+        "ttsKept": "語音輸出保留了 {{model}}。",
+        "ttsSwitched": "語音輸出已切換為 {{model}}。",
+        "ttsSyncFailedDetail": "無法完全同步語音輸出：{{error}}",
+        "ttsSyncFailed": "無法完全同步語音輸出。",
+        "appLanguageSyncOff": "已更新應用程式語言。全域語言同步已關閉，因此語音設定保持不變。"
+      }
     },
     "refineModels": {
       "title": "完善模型",
@@ -2794,7 +2830,16 @@
       "noModelSelected": "未選取模型",
       "openGenerated": "開啟已產生音訊",
       "generate": "產生聲音",
-      "generating": "正在產生"
+      "generating": "正在產生",
+      "toast": {
+        "catalogFailed": "無法檢查創意音訊模型。",
+        "saved": "音效已儲存到此專案。",
+        "generateFailed": "無法產生音效。",
+        "previewFailed": "無法預覽音效。",
+        "renameFailed": "無法重新命名音效。",
+        "deleteFailed": "無法刪除音效。"
+      },
+      "deleteAriaLabel": "刪除音效"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2822,7 +2867,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "無法載入已儲存的語音預設。",
+      "loadProjectSounds": "無法載入專案音效。",
+      "renderFailed": "故事算繪失敗。"
+    },
+    "effectTooltip": "為算繪後的故事套用音訊效果。Clean 保留原始人聲。Voice Polish 平滑雜訊。Radio 增添復古廣播的溫暖感。Warm Room 增添自然殘響。"
   },
   "appSections": {
     "common": {
@@ -3585,7 +3636,16 @@
     "titleAriaLabel": "故事音訊標題",
     "errors": {
       "load": "無法載入故事音訊。",
-      "copyScript": "無法複製故事腳本。"
+      "copyScript": "無法複製故事腳本。",
+      "loadGenerated": "無法載入產生的故事音訊。",
+      "loadQueue": "無法載入故事算繪佇列。",
+      "reveal": "無法顯示故事音訊。",
+      "update": "無法更新故事音訊。",
+      "rename": "無法重新命名故事音訊。",
+      "delete": "無法刪除故事音訊。",
+      "cancelRender": "無法取消故事算繪。",
+      "play": "無法播放產生的音訊。",
+      "saveProcessed": "無法儲存處理後的音訊。"
     },
     "actions": {
       "copyScript": "複製腳本",
@@ -3625,6 +3685,11 @@
       "generatingLine": "{{total}}的生成線{{current}}",
       "generating": "產生",
       "queuePosition": "隊列#{{position}}"
+    },
+    "toast": {
+      "processedSaved": "已儲存處理後的音訊。",
+      "deleted": "已刪除故事音訊。",
+      "renderCancelled": "已取消故事算繪。"
     }
   },
   "detail": {

@@ -18,15 +18,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TESS_DIR="$ROOT_DIR/src-tauri/resources/tesseract"
 TESSDATA_DIR="$TESS_DIR/tessdata"
-TESSDATA_URL="https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata"
+# Pin the tessdata release rather than tracking `main`, and verify the digest so
+# a moved tag or a tampered mirror cannot swap the model out from under us.
+TESSDATA_VERSION="4.1.0"
+TESSDATA_URL="https://github.com/tesseract-ocr/tessdata_fast/raw/${TESSDATA_VERSION}/eng.traineddata"
+TESSDATA_SHA256="7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
 WINDOWS_DIR="$TESS_DIR/windows-x64"
 LINUX_DIR="$TESS_DIR/linux-x64"
 
 # UB Mannheim is the canonical pre-built Tesseract distribution for Windows.
 # Pin a specific version so reproducible builds aren't broken by upstream
-# silently retiring an installer.
-WIN_VERSION="5.5.0.20241111"
+# silently retiring an installer. The mirror does drop old builds, so bump
+# WIN_VERSION and WIN_INSTALLER_SHA256 together when that happens.
+WIN_VERSION="5.4.0.20240606"
 WIN_INSTALLER_URL="https://digi.bib.uni-mannheim.de/tesseract/tesseract-ocr-w64-setup-${WIN_VERSION}.exe"
+WIN_INSTALLER_SHA256="c885fff6998e0608ba4bb8ab51436e1c6775c2bafc2559a19b423e18678b60c9"
 
 mode_platform=""
 fetch_tessdata=1
@@ -74,6 +80,28 @@ download() {
   fi
 }
 
+verify_sha256() {
+  local file="$1"
+  local expected="$2"
+  local actual
+  if command -v shasum >/dev/null 2>&1; then
+    actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+  elif command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$file" | awk '{print $1}')"
+  else
+    echo "Neither shasum nor sha256sum is installed; cannot verify $file." >&2
+    exit 1
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    rm -f "$file"
+    echo "Checksum mismatch for $(basename "$file")." >&2
+    echo "  expected: $expected" >&2
+    echo "  actual:   $actual" >&2
+    exit 1
+  fi
+  echo "✓ Verified $(basename "$file") (sha256)"
+}
+
 fetch_tessdata_eng() {
   local target="$TESSDATA_DIR/eng.traineddata"
   if [[ -f "$target" ]]; then
@@ -81,6 +109,7 @@ fetch_tessdata_eng() {
     return
   fi
   download "$TESSDATA_URL" "$target"
+  verify_sha256 "$target" "$TESSDATA_SHA256"
 }
 
 fetch_windows() {
@@ -106,6 +135,7 @@ EOF
 
   local installer="$tmp/tesseract-installer.exe"
   download "$WIN_INSTALLER_URL" "$installer"
+  verify_sha256 "$installer" "$WIN_INSTALLER_SHA256"
 
   echo "→ Extracting Windows tesseract..."
   "$sevenzip" x -y -o"$tmp/extracted" "$installer" >/dev/null

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { listen } from "@tauri-apps/api/event";
+import i18n from "@/i18n";
 import type {
   AppSettings as Settings,
   AudioDevice,
@@ -30,8 +31,7 @@ import {
 } from "@/lib/languageSync";
 
 type CommandResult<T> =
-  | { status: "ok"; data: T }
-  | { status: "error"; error: string };
+  { status: "ok"; data: T } | { status: "error"; error: string };
 
 export interface LanguageSyncResult {
   message: string;
@@ -195,6 +195,8 @@ const settingUpdaters: {
     commands.changeTranslationRoutePreferenceSetting(value as string),
   translation_provider_id: (value) =>
     commands.setTranslationProvider(value as string),
+  translation_model_ids: (value) =>
+    commands.changeTranslationModelIdsSetting(value as Record<string, string>),
   translation_bilingual_layout: (value) =>
     commands.changeTranslationBilingualLayoutSetting(value as string),
   translation_translate_snippets: (value) =>
@@ -234,6 +236,8 @@ const settingUpdaters: {
   show_technical_features: (value) =>
     commands.changeShowTechnicalFeaturesSetting(value as boolean),
   custom_words: (value) => commands.updateCustomWords(value as string[]),
+  custom_filler_words: (value) =>
+    commands.changeCustomFillerWordsSetting(value as string[] | null),
   word_correction_threshold: (value) =>
     commands.changeWordCorrectionThresholdSetting(value as number),
   paste_method: (value) => commands.changePasteMethodSetting(value as string),
@@ -268,6 +272,8 @@ const settingUpdaters: {
     commands.changeContextCaptureModeSetting(value as string),
   screen_context_ocr_quality: (value) =>
     commands.changeScreenContextOcrQualitySetting(value as string),
+  screen_context_ocr_engine: (value) =>
+    commands.changeScreenContextOcrEngineSetting(value as string),
   screen_context_ocr_neural_model_id: (value) =>
     commands.setOcrModelSelection((value as string | null) ?? null),
   screen_context_ocr_timeout_ms: (value) =>
@@ -317,6 +323,10 @@ const settingUpdaters: {
   snippets_enabled: (value) =>
     commands.changeSnippetsEnabledSetting(value as boolean),
   snippets: (value) => commands.updateSnippets(value as Snippet[]),
+  model_unload_timeout: (value) =>
+    commands.setModelUnloadTimeout(
+      value as NonNullable<Settings["model_unload_timeout"]>,
+    ),
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -454,7 +464,7 @@ export const useSettingsStore = create<SettingsStore>()(
             updater(value) as Promise<CommandResult<unknown>>,
           );
         } else if (key !== "bindings" && key !== "selected_model") {
-          console.warn(`No handler for setting: ${String(key)}`);
+          throw new Error(`No handler for setting: ${String(key)}`);
         }
       } catch (error) {
         console.error("Failed to update setting:", {
@@ -487,7 +497,7 @@ export const useSettingsStore = create<SettingsStore>()(
       const activePreset = getActiveTtsPreset(settings);
       const nextVoiceLabel = normalizedVoiceId
         ? (voice?.label ?? normalizedVoiceId)
-        : "Automatic voice";
+        : i18n.t("listen.createVoices.automaticVoice");
       const nextLocale = normalizedVoiceId ? (voice?.locale ?? null) : null;
 
       setUpdating(updateKey, true);
@@ -547,8 +557,7 @@ export const useSettingsStore = create<SettingsStore>()(
       const { settings, refreshSettings, setUpdating } = get();
       if (!settings) {
         return {
-          message:
-            "Settings are still loading, so language sync could not run yet.",
+          message: i18n.t("settings.globalLanguageSync.messages.stillLoading"),
         };
       }
 
@@ -557,8 +566,12 @@ export const useSettingsStore = create<SettingsStore>()(
 
       const targetSttLanguage = appLanguageToSttLanguage(appLanguage);
       const targetTtsLanguage = appLanguageToTtsTarget(appLanguage);
-      let sttMessage = "Speech recognition stayed as-is.";
-      let ttsMessage = "Speech output stayed as-is.";
+      let sttMessage = i18n.t(
+        "settings.globalLanguageSync.messages.sttUnchanged",
+      );
+      let ttsMessage = i18n.t(
+        "settings.globalLanguageSync.messages.ttsUnchanged",
+      );
 
       try {
         const overview = await getModelPlatformOverview();
@@ -586,8 +599,10 @@ export const useSettingsStore = create<SettingsStore>()(
             );
             sttMessage =
               nextSttLanguage === "auto"
-                ? "Speech recognition switched to Auto."
-                : `Speech recognition switched to ${nextSttLanguage}.`;
+                ? i18n.t("settings.globalLanguageSync.messages.sttSwitchedAuto")
+                : i18n.t("settings.globalLanguageSync.messages.sttSwitched", {
+                    language: nextSttLanguage,
+                  });
           } catch (error) {
             set((state) => ({
               settings: state.settings
@@ -596,19 +611,25 @@ export const useSettingsStore = create<SettingsStore>()(
             }));
             sttMessage =
               error instanceof Error
-                ? `Speech recognition could not sync: ${error.message}`
-                : "Speech recognition could not sync.";
+                ? i18n.t(
+                    "settings.globalLanguageSync.messages.sttSyncFailedDetail",
+                    { error: error.message },
+                  )
+                : i18n.t("settings.globalLanguageSync.messages.sttSyncFailed");
           }
         } else {
           sttMessage =
             nextSttLanguage === "auto"
-              ? "Speech recognition stayed on Auto."
-              : `Speech recognition stayed on ${nextSttLanguage}.`;
+              ? i18n.t("settings.globalLanguageSync.messages.sttStayedAuto")
+              : i18n.t("settings.globalLanguageSync.messages.sttStayed", {
+                  language: nextSttLanguage,
+                });
         }
 
         if (!settings.tts_enabled) {
-          ttsMessage =
-            "Speech output stayed as-is because Speak Output is turned off.";
+          ttsMessage = i18n.t(
+            "settings.globalLanguageSync.messages.ttsDisabled",
+          );
           return { message: `${sttMessage} ${ttsMessage}` };
         }
 
@@ -619,9 +640,11 @@ export const useSettingsStore = create<SettingsStore>()(
           trigger,
         );
         if (!selectedModel) {
-          return {
-            message: `${sttMessage} No compatible speech output model is ready for ${targetTtsLanguage}, so the current voice was kept.`,
-          };
+          const noModelMessage = i18n.t(
+            "settings.globalLanguageSync.messages.ttsNoModel",
+            { language: targetTtsLanguage },
+          );
+          return { message: `${sttMessage} ${noModelMessage}` };
         }
 
         const currentProviderId = overview.selection.selected_tts_provider_id;
@@ -660,15 +683,25 @@ export const useSettingsStore = create<SettingsStore>()(
           }
 
           ttsMessage = recommendedVoice
-            ? `Speech output is using ${selectedModel.label} with ${recommendedVoice.label}.`
+            ? i18n.t("settings.globalLanguageSync.messages.ttsUsing", {
+                model: selectedModel.label,
+                voice: recommendedVoice.label,
+              })
             : keepCurrentModel
-              ? `Speech output kept ${selectedModel.label}.`
-              : `Speech output switched to ${selectedModel.label}.`;
+              ? i18n.t("settings.globalLanguageSync.messages.ttsKept", {
+                  model: selectedModel.label,
+                })
+              : i18n.t("settings.globalLanguageSync.messages.ttsSwitched", {
+                  model: selectedModel.label,
+                });
         } catch (error) {
           ttsMessage =
             error instanceof Error
-              ? `Speech output could not fully sync: ${error.message}`
-              : "Speech output could not fully sync.";
+              ? i18n.t(
+                  "settings.globalLanguageSync.messages.ttsSyncFailedDetail",
+                  { error: error.message },
+                )
+              : i18n.t("settings.globalLanguageSync.messages.ttsSyncFailed");
         }
 
         return { message: `${sttMessage} ${ttsMessage}` };
@@ -697,8 +730,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
         if (!syncEnabled) {
           return {
-            message:
-              "App language updated. Global Language Sync is off, so speech settings were left alone.",
+            message: i18n.t(
+              "settings.globalLanguageSync.messages.appLanguageSyncOff",
+            ),
           };
         }
 

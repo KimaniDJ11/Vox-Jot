@@ -190,7 +190,7 @@ export const StoryStudioSection: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load voice presets:", error);
-      toast.error("Could not load saved voice presets.");
+      toast.error(t("storyStudio.errors.loadVoicePresets"));
     } finally {
       setIsLoadingPresets(false);
     }
@@ -301,7 +301,7 @@ export const StoryStudioSection: React.FC = () => {
         );
       } catch (error) {
         console.error("Failed to load project sounds:", error);
-        toast.error("Could not load project sounds.");
+        toast.error(t("storyStudio.errors.loadProjectSounds"));
       } finally {
         if (showLoading) {
           setIsLoadingProjectSounds(false);
@@ -680,7 +680,10 @@ export const StoryStudioSection: React.FC = () => {
         `Story audio queued${result.queue_position > 1 ? ` at position ${result.queue_position}` : ""}. Open Generated Audio to track it.`,
       );
     } catch (error) {
-      const message = normalizeError(error, "Story render failed.");
+      const message = normalizeError(
+        error,
+        t("storyStudio.errors.renderFailed"),
+      );
       if (!message.toLocaleLowerCase().includes("cancelled")) {
         toast.error(message);
       }
@@ -841,10 +844,7 @@ export const StoryStudioSection: React.FC = () => {
             <>
               {expressionTagControl}
               {soundTagControl}
-              <div
-                className="shrink-0"
-                title="Apply an audio effect to the rendered story. Clean keeps the original voice. Voice Polish smooths artifacts. Radio adds vintage broadcast warmth. Warm Room adds natural reverb."
-              >
+              <div className="shrink-0" title={t("storyStudio.effectTooltip")}>
                 <SegmentedControl<StoryAudioEffectPreset>
                   value={audioEffect}
                   onChange={setAudioEffect}

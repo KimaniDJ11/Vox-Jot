@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "Alespoň jedna oprava má dostatek pozorování, ale nízkou spolehlivost.",
           "learning": "Učení",
           "learningTitle": "Před automatickým použitím čeká na další potvrzení."
+        },
+        "entryStatus": {
+          "manual": "Ruční",
+          "manualTitle": "Ručně schváleno. Použije se vždy, když je zapnuto.",
+          "auto": "Automaticky",
+          "autoTitle": "Naučeno automaticky a připraveno k použití.",
+          "needs": "Chybí {{count}}",
+          "needsTitle": "Před automatickým použitím potřebuje ještě {{count}} potvrzení.",
+          "learning": "Učení",
+          "learningTitle": "Před automatickým použitím se stále učí.",
+          "lowConfidence": "Nízká jistota",
+          "lowConfidenceTitle": "Bylo viděno dostatečně často, ale jistota je pod prahem pro automatické použití.",
+          "review": "Ke kontrole",
+          "reviewTitle": "Nepoužije se automaticky, protože vypadá jako přepis, částečné zachycení nebo nebezpečná oprava.",
+          "off": "Vypnuto",
+          "offTitle": "Vypnuto. Tato oprava se nepoužije.",
+          "unknownTitle": "Stav učení není k dispozici."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "Změny jazyka aplikace zůstanou oddělené od nastavení řeči.",
       "defaultStatus": "Toto použijte, když chcete, aby se celá aplikace znovu sladila s aktuálním jazykem aplikace.",
       "done": "Synchronizace jazyka dokončena.",
-      "failed": "Synchronizace jazyka se nezdařila."
+      "failed": "Synchronizace jazyka se nezdařila.",
+      "messages": {
+        "stillLoading": "Nastavení se stále načítá, takže synchronizaci jazyka zatím nelze spustit.",
+        "sttUnchanged": "Rozpoznávání řeči zůstalo beze změny.",
+        "ttsUnchanged": "Hlasový výstup zůstal beze změny.",
+        "sttSwitchedAuto": "Rozpoznávání řeči bylo přepnuto na Automaticky.",
+        "sttSwitched": "Rozpoznávání řeči bylo přepnuto na {{language}}.",
+        "sttSyncFailedDetail": "Rozpoznávání řeči se nepodařilo synchronizovat: {{error}}",
+        "sttSyncFailed": "Rozpoznávání řeči se nepodařilo synchronizovat.",
+        "sttStayedAuto": "Rozpoznávání řeči zůstalo na Automaticky.",
+        "sttStayed": "Rozpoznávání řeči zůstalo na {{language}}.",
+        "ttsDisabled": "Hlasový výstup zůstal beze změny, protože Číst výstup je vypnuté.",
+        "ttsNoModel": "Pro jazyk {{language}} není připraven žádný kompatibilní model hlasového výstupu, proto byl zachován současný hlas.",
+        "ttsUsing": "Hlasový výstup používá {{model}} s hlasem {{voice}}.",
+        "ttsKept": "Hlasový výstup zachoval {{model}}.",
+        "ttsSwitched": "Hlasový výstup byl přepnut na {{model}}.",
+        "ttsSyncFailedDetail": "Hlasový výstup se nepodařilo plně synchronizovat: {{error}}",
+        "ttsSyncFailed": "Hlasový výstup se nepodařilo plně synchronizovat.",
+        "appLanguageSyncOff": "Jazyk aplikace byl aktualizován. Globální synchronizace jazyka je vypnutá, takže nastavení řeči zůstalo beze změny."
+      }
     },
     "refineModels": {
       "title": "Upřesnit modely",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Není vybrán model",
       "openGenerated": "Otevřít vygenerované audio",
       "generate": "Generovat zvuk",
-      "generating": "Generuje se"
+      "generating": "Generuje se",
+      "toast": {
+        "catalogFailed": "Nepodařilo se zkontrolovat modely kreativního zvuku.",
+        "saved": "Zvuk byl uložen do tohoto projektu.",
+        "generateFailed": "Nepodařilo se vygenerovat zvuk.",
+        "previewFailed": "Nepodařilo se přehrát náhled zvuku.",
+        "renameFailed": "Nepodařilo se přejmenovat zvuk.",
+        "deleteFailed": "Nepodařilo se smazat zvuk."
+      },
+      "deleteAriaLabel": "Smazat zvuk"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Nepodařilo se načíst uložené předvolby hlasu.",
+      "loadProjectSounds": "Nepodařilo se načíst zvuky projektu.",
+      "renderFailed": "Vykreslení příběhu selhalo."
+    },
+    "effectTooltip": "Použijte na vykreslený příběh zvukový efekt. Clean zachová původní hlas. Voice Polish vyhladí artefakty. Radio přidá teplo starého rozhlasu. Warm Room přidá přirozený dozvuk."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Zvukový název příběhu",
     "errors": {
       "load": "Zvuk příběhu nelze načíst.",
-      "copyScript": "Skript příběhu se nepodařilo zkopírovat."
+      "copyScript": "Skript příběhu se nepodařilo zkopírovat.",
+      "loadGenerated": "Nepodařilo se načíst vygenerovaný zvuk příběhu.",
+      "loadQueue": "Nepodařilo se načíst frontu vykreslování příběhu.",
+      "reveal": "Nepodařilo se zobrazit zvuk příběhu ve složce.",
+      "update": "Nepodařilo se aktualizovat zvuk příběhu.",
+      "rename": "Nepodařilo se přejmenovat zvuk příběhu.",
+      "delete": "Nepodařilo se smazat zvuk příběhu.",
+      "cancelRender": "Nepodařilo se zrušit vykreslování příběhu.",
+      "play": "Nepodařilo se přehrát vygenerovaný zvuk.",
+      "saveProcessed": "Nepodařilo se uložit zpracovaný zvuk."
     },
     "actions": {
       "copyScript": "Kopírovat skript",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Generování řádku {{current}} ze {{total}}",
       "generating": "Generování",
       "queuePosition": "Fronta #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Zpracovaný zvuk byl uložen.",
+      "deleted": "Zvuk příběhu byl smazán.",
+      "renderCancelled": "Vykreslování příběhu bylo zrušeno."
     }
   },
   "detail": {

@@ -23,6 +23,8 @@ const EXACT_VALUE_ALLOWLIST = new Set([
   "GGUF",
   "JSON",
   "LLM",
+  // Singular cognate: identical in English, Spanish, and Portuguese.
+  "Manual",
   "Model Hub",
   "OCR",
   "Ollama",

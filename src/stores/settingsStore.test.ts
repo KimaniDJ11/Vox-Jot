@@ -5,7 +5,11 @@ const commandMocks = vi.hoisted(() => ({
   getDefaultSettings: vi.fn(),
   checkCustomSounds: vi.fn(),
   changeAppThemeSetting: vi.fn(),
+  changeCustomFillerWordsSetting: vi.fn(),
   changePostProcessApiKeySetting: vi.fn(),
+  changeScreenContextOcrEngineSetting: vi.fn(),
+  changeTranslationModelIdsSetting: vi.fn(),
+  setModelUnloadTimeout: vi.fn(),
 }));
 
 vi.mock("@/bindings", () => ({
@@ -130,6 +134,76 @@ describe("settings store", () => {
     expect(settings?.app_theme).toBe("dark");
     expect(settings?.selected_language).toBe("fr");
     expect(useSettingsStore.getState().isUpdatingKey("app_theme")).toBe(false);
+  });
+
+  it("persists every audited setting through its native command", async () => {
+    useSettingsStore.setState({
+      settings: {
+        custom_filler_words: null,
+        model_unload_timeout: "never",
+        screen_context_ocr_engine: "native_then_backup",
+        translation_model_ids: { openai: "old-model" },
+      } as never,
+      isLoading: false,
+    });
+
+    const success = { status: "ok" as const, data: null };
+    commandMocks.changeCustomFillerWordsSetting.mockResolvedValue(success);
+    commandMocks.changeScreenContextOcrEngineSetting.mockResolvedValue(success);
+    commandMocks.changeTranslationModelIdsSetting.mockResolvedValue(success);
+    commandMocks.setModelUnloadTimeout.mockResolvedValue(success);
+
+    await useSettingsStore
+      .getState()
+      .updateSetting("custom_filler_words", ["well", "you know"]);
+    await useSettingsStore
+      .getState()
+      .updateSetting("screen_context_ocr_engine", "native_only");
+    await useSettingsStore
+      .getState()
+      .updateSetting("translation_model_ids", { openai: "gpt-4.1-mini" });
+    await useSettingsStore
+      .getState()
+      .updateSetting("model_unload_timeout", "min_5");
+
+    expect(commandMocks.changeCustomFillerWordsSetting).toHaveBeenCalledWith([
+      "well",
+      "you know",
+    ]);
+    expect(
+      commandMocks.changeScreenContextOcrEngineSetting,
+    ).toHaveBeenCalledWith("native_only");
+    expect(commandMocks.changeTranslationModelIdsSetting).toHaveBeenCalledWith({
+      openai: "gpt-4.1-mini",
+    });
+    expect(commandMocks.setModelUnloadTimeout).toHaveBeenCalledWith("min_5");
+  });
+
+  it("rolls back an optimistically displayed setting without a handler", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    useSettingsStore.setState({
+      settings: {
+        selected_llm_model_id: "before",
+      } as never,
+      isLoading: false,
+    });
+
+    await expect(
+      useSettingsStore
+        .getState()
+        .updateSetting("selected_llm_model_id", "after"),
+    ).resolves.toBeUndefined();
+
+    expect(useSettingsStore.getState().settings?.selected_llm_model_id).toBe(
+      "before",
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to update setting:",
+      expect.objectContaining({ key: "selected_llm_model_id" }),
+    );
+    consoleError.mockRestore();
   });
 
   it("preserves secure API key status from backend settings", async () => {

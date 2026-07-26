@@ -83,12 +83,7 @@ interface StoryProjectMetadata {
 }
 
 type StoryRenderJobStatus =
-  | "queued"
-  | "rendering"
-  | "assembling"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "queued" | "rendering" | "assembling" | "completed" | "failed" | "cancelled";
 
 interface StoryRenderJobSummary {
   render_id: string;
@@ -290,6 +285,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
 };
 
 export const StoryAudioSidebar: React.FC = () => {
+  const { t } = useTranslation();
   const [items, setItems] = useState<StoryAudioItem[]>([]);
   const [jobs, setJobs] = useState<StoryRenderJobSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -297,30 +293,33 @@ export const StoryAudioSidebar: React.FC = () => {
   const [view, setView] = useState<StoryAudioView>("timeline");
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
 
-  const loadItems = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setIsLoading(true);
-    }
-    try {
-      const nextItems = await invoke<StoryAudioItem[]>("list_story_audio");
-      const sortedItems = sortStoryAudioItems(
-        nextItems.filter((item) => item.kind !== "sound"),
-      );
-      setItems(sortedItems);
-      setSelectedAudioId((current) =>
-        current && sortedItems.some((item) => item.id === current)
-          ? current
-          : (sortedItems[0]?.id ?? null),
-      );
-    } catch (error) {
-      console.error("Failed to load generated story audio:", error);
-      toast.error("Could not load generated story audio.");
-    } finally {
+  const loadItems = useCallback(
+    async (showLoading = true) => {
       if (showLoading) {
-        setIsLoading(false);
+        setIsLoading(true);
       }
-    }
-  }, []);
+      try {
+        const nextItems = await invoke<StoryAudioItem[]>("list_story_audio");
+        const sortedItems = sortStoryAudioItems(
+          nextItems.filter((item) => item.kind !== "sound"),
+        );
+        setItems(sortedItems);
+        setSelectedAudioId((current) =>
+          current && sortedItems.some((item) => item.id === current)
+            ? current
+            : (sortedItems[0]?.id ?? null),
+        );
+      } catch (error) {
+        console.error("Failed to load generated story audio:", error);
+        toast.error(t("storyAudio.errors.loadGenerated"));
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     void loadItems();
@@ -336,9 +335,9 @@ export const StoryAudioSidebar: React.FC = () => {
       setJobs(sortStoryRenderJobs(nextJobs));
     } catch (error) {
       console.error("Failed to load story render jobs:", error);
-      toast.error("Could not load story render queue.");
+      toast.error(t("storyAudio.errors.loadQueue"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadJobs();
@@ -399,35 +398,41 @@ export const StoryAudioSidebar: React.FC = () => {
     [],
   );
 
-  const handleReveal = useCallback(async (item: StoryAudioItem) => {
-    try {
-      await invoke("reveal_story_audio", { path: item.output_path });
-    } catch (error) {
-      console.error("Failed to reveal story audio:", error);
-      toast.error("Could not reveal story audio.");
-    }
-  }, []);
+  const handleReveal = useCallback(
+    async (item: StoryAudioItem) => {
+      try {
+        await invoke("reveal_story_audio", { path: item.output_path });
+      } catch (error) {
+        console.error("Failed to reveal story audio:", error);
+        toast.error(t("storyAudio.errors.reveal"));
+      }
+    },
+    [t],
+  );
 
-  const handleToggleStarred = useCallback(async (item: StoryAudioItem) => {
-    try {
-      const updated = await invoke<StoryAudioItem>(
-        "toggle_story_audio_starred",
-        {
-          id: item.id,
-        },
-      );
-      setItems((current) =>
-        sortStoryAudioItems(
-          current.map((currentItem) =>
-            currentItem.id === updated.id ? updated : currentItem,
+  const handleToggleStarred = useCallback(
+    async (item: StoryAudioItem) => {
+      try {
+        const updated = await invoke<StoryAudioItem>(
+          "toggle_story_audio_starred",
+          {
+            id: item.id,
+          },
+        );
+        setItems((current) =>
+          sortStoryAudioItems(
+            current.map((currentItem) =>
+              currentItem.id === updated.id ? updated : currentItem,
+            ),
           ),
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to update story audio:", error);
-      toast.error("Could not update story audio.");
-    }
-  }, []);
+        );
+      } catch (error) {
+        console.error("Failed to update story audio:", error);
+        toast.error(t("storyAudio.errors.update"));
+      }
+    },
+    [t],
+  );
 
   const handleRename = useCallback(
     async (item: StoryAudioItem, title: string) => {
@@ -445,33 +450,36 @@ export const StoryAudioSidebar: React.FC = () => {
         );
       } catch (error) {
         console.error("Failed to rename story audio:", error);
-        toast.error("Could not rename story audio.");
+        toast.error(t("storyAudio.errors.rename"));
         throw error;
       }
     },
-    [],
+    [t],
   );
 
-  const handleDelete = useCallback(async (item: StoryAudioItem) => {
-    try {
-      await invoke("delete_story_audio", { id: item.id });
-      setItems((current) => {
-        const nextItems = current.filter(
-          (currentItem) => currentItem.id !== item.id,
-        );
-        setSelectedAudioId((currentSelectedId) =>
-          currentSelectedId === item.id
-            ? (nextItems[0]?.id ?? null)
-            : currentSelectedId,
-        );
-        return nextItems;
-      });
-      toast.message("Story audio deleted.");
-    } catch (error) {
-      console.error("Failed to delete story audio:", error);
-      toast.error("Could not delete story audio.");
-    }
-  }, []);
+  const handleDelete = useCallback(
+    async (item: StoryAudioItem) => {
+      try {
+        await invoke("delete_story_audio", { id: item.id });
+        setItems((current) => {
+          const nextItems = current.filter(
+            (currentItem) => currentItem.id !== item.id,
+          );
+          setSelectedAudioId((currentSelectedId) =>
+            currentSelectedId === item.id
+              ? (nextItems[0]?.id ?? null)
+              : currentSelectedId,
+          );
+          return nextItems;
+        });
+        toast.message(t("storyAudio.toast.deleted"));
+      } catch (error) {
+        console.error("Failed to delete story audio:", error);
+        toast.error(t("storyAudio.errors.delete"));
+      }
+    },
+    [t],
+  );
 
   const handleCancelJob = useCallback(
     async (job: StoryRenderJobSummary) => {
@@ -487,14 +495,14 @@ export const StoryAudioSidebar: React.FC = () => {
       setNowMs(Date.now());
       try {
         await invoke("cancel_story_render", { renderId: job.render_id });
-        toast.message("Story render cancelled.");
+        toast.message(t("storyAudio.toast.renderCancelled"));
       } catch (error) {
         console.error("Failed to cancel story render:", error);
-        toast.error("Could not cancel story render.");
+        toast.error(t("storyAudio.errors.cancelRender"));
         void loadJobs();
       }
     },
-    [loadJobs],
+    [loadJobs, t],
   );
 
   const handleCreateProcessed = useCallback(
@@ -519,17 +527,17 @@ export const StoryAudioSidebar: React.FC = () => {
         setItems((current) => sortStoryAudioItems([...current, processed]));
         setSelectedAudioId(processed.id);
         setView("player");
-        toast.success("Processed audio saved.");
+        toast.success(t("storyAudio.toast.processedSaved"));
       } catch (error) {
         console.error("Failed to save processed story audio:", error);
         toast.error(
           error instanceof Error
             ? error.message
-            : "Could not save processed audio.",
+            : t("storyAudio.errors.saveProcessed"),
         );
       }
     },
-    [],
+    [t],
   );
 
   return (
@@ -827,7 +835,7 @@ const StoryAudioPlayerView: React.FC<{
   const [isSaving, setIsSaving] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   const hasScript = Boolean(item?.script_text.trim());
 
@@ -897,7 +905,7 @@ const StoryAudioPlayerView: React.FC<{
       return nextSrc;
     } catch (error) {
       console.error("Failed to load story audio:", error);
-      toast.error("Could not load story audio.");
+      toast.error(t("storyAudio.errors.load"));
       return null;
     } finally {
       setIsLoadingAudio(false);
@@ -918,7 +926,7 @@ const StoryAudioPlayerView: React.FC<{
       await audio.play();
     } catch (error) {
       console.error("Playback failed:", error);
-      toast.error("Could not play generated audio.");
+      toast.error(t("storyAudio.errors.play"));
     }
   };
 
@@ -1055,7 +1063,7 @@ const StoryAudioPlayerView: React.FC<{
 
 interface DockedStoryAudioPlayerProps {
   item: StoryAudioItem;
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   audioSrc: string | null;
   isPlaying: boolean;
   isLoadingAudio: boolean;

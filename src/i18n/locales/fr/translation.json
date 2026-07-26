@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "Au moins une correction contient suffisamment d'observations mais un faible niveau de confiance.",
           "learning": "Apprentissage",
           "learningTitle": "En attente de plus de confirmations avant de postuler automatiquement."
+        },
+        "entryStatus": {
+          "manual": "Manuel",
+          "manualTitle": "Approuvé manuellement. S'applique dès qu'il est activé.",
+          "auto": "Auto",
+          "autoTitle": "Appris automatiquement et prêt à s'appliquer.",
+          "needs": "Encore {{count}}",
+          "needsTitle": "Nécessite encore {{count}} confirmation(s) avant l'application automatique.",
+          "learning": "Apprentissage",
+          "learningTitle": "Encore en apprentissage avant l'application automatique.",
+          "lowConfidence": "Faible conf.",
+          "lowConfidenceTitle": "Vu suffisamment de fois, mais la confiance reste sous le seuil d'application automatique.",
+          "review": "À vérifier",
+          "reviewTitle": "Ne sera pas appliqué automatiquement car cela ressemble à une réécriture, une capture partielle ou une correction risquée.",
+          "off": "Désactivé",
+          "offTitle": "Désactivé. Cette correction ne sera pas appliquée.",
+          "unknownTitle": "Statut d'apprentissage indisponible."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "Les modifications de langue de l’application resteront distinctes des paramètres vocaux.",
       "defaultStatus": "Utilisez-le lorsque vous souhaitez que l'ensemble de l'application se réaligne sur la langue actuelle de l'application.",
       "done": "Synchronisation des langues terminée.",
-      "failed": "La synchronisation de la langue a échoué."
+      "failed": "La synchronisation de la langue a échoué.",
+      "messages": {
+        "stillLoading": "Les paramètres sont encore en cours de chargement : la synchronisation de la langue n'a pas encore pu s'exécuter.",
+        "sttUnchanged": "La reconnaissance vocale est restée inchangée.",
+        "ttsUnchanged": "La synthèse vocale est restée inchangée.",
+        "sttSwitchedAuto": "La reconnaissance vocale est passée en mode Auto.",
+        "sttSwitched": "La reconnaissance vocale est passée à {{language}}.",
+        "sttSyncFailedDetail": "La reconnaissance vocale n'a pas pu se synchroniser : {{error}}",
+        "sttSyncFailed": "La reconnaissance vocale n'a pas pu se synchroniser.",
+        "sttStayedAuto": "La reconnaissance vocale est restée en mode Auto.",
+        "sttStayed": "La reconnaissance vocale est restée sur {{language}}.",
+        "ttsDisabled": "La synthèse vocale est restée inchangée car Lire la sortie est désactivé.",
+        "ttsNoModel": "Aucun modèle de synthèse vocale compatible n'est prêt pour {{language}} : la voix actuelle a été conservée.",
+        "ttsUsing": "La synthèse vocale utilise {{model}} avec {{voice}}.",
+        "ttsKept": "La synthèse vocale a conservé {{model}}.",
+        "ttsSwitched": "La synthèse vocale est passée à {{model}}.",
+        "ttsSyncFailedDetail": "La synthèse vocale n'a pas pu se synchroniser complètement : {{error}}",
+        "ttsSyncFailed": "La synthèse vocale n'a pas pu se synchroniser complètement.",
+        "appLanguageSyncOff": "Langue de l'application mise à jour. La synchronisation globale de la langue est désactivée : les paramètres vocaux n'ont pas été modifiés."
+      }
     },
     "refineModels": {
       "title": "Affiner les modèles",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Aucun modèle sélectionné",
       "openGenerated": "Ouvrir l’audio généré",
       "generate": "Générer le son",
-      "generating": "Génération en cours"
+      "generating": "Génération en cours",
+      "toast": {
+        "catalogFailed": "Impossible de vérifier les modèles audio créatifs.",
+        "saved": "Son enregistré dans ce projet.",
+        "generateFailed": "Impossible de générer le son.",
+        "previewFailed": "Impossible de prévisualiser le son.",
+        "renameFailed": "Impossible de renommer le son.",
+        "deleteFailed": "Impossible de supprimer le son."
+      },
+      "deleteAriaLabel": "Supprimer le son"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Impossible de charger les préréglages de voix enregistrés.",
+      "loadProjectSounds": "Impossible de charger les sons du projet.",
+      "renderFailed": "Échec du rendu de l'histoire."
+    },
+    "effectTooltip": "Appliquez un effet audio à l'histoire rendue. Clean conserve la voix d'origine. Voice Polish lisse les artefacts. Radio ajoute la chaleur d'une diffusion vintage. Warm Room ajoute une réverbération naturelle."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Titre audio de l'histoire",
     "errors": {
       "load": "Impossible de charger l'audio de l'histoire.",
-      "copyScript": "Impossible de copier le script de l'histoire."
+      "copyScript": "Impossible de copier le script de l'histoire.",
+      "loadGenerated": "Impossible de charger l'audio généré de l'histoire.",
+      "loadQueue": "Impossible de charger la file de rendu des histoires.",
+      "reveal": "Impossible d'afficher l'audio de l'histoire.",
+      "update": "Impossible de mettre à jour l'audio de l'histoire.",
+      "rename": "Impossible de renommer l'audio de l'histoire.",
+      "delete": "Impossible de supprimer l'audio de l'histoire.",
+      "cancelRender": "Impossible d'annuler le rendu de l'histoire.",
+      "play": "Impossible de lire l'audio généré.",
+      "saveProcessed": "Impossible d'enregistrer l'audio traité."
     },
     "actions": {
       "copyScript": "Copier le script",
@@ -3629,6 +3689,11 @@
       "generatingLine": "Ligne de production {{current}} de {{total}}",
       "generating": "Génération",
       "queuePosition": "File d'attente #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "Audio traité enregistré.",
+      "deleted": "Audio de l'histoire supprimé.",
+      "renderCancelled": "Rendu de l'histoire annulé."
     }
   },
   "detail": {

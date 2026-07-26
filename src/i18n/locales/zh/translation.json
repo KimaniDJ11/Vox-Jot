@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "至少一项修正有足够的观察结果，但置信度较低。",
           "learning": "学习",
           "learningTitle": "在自动申请之前等待更多确认。"
+        },
+        "entryStatus": {
+          "manual": "手动",
+          "manualTitle": "已手动批准。启用时始终应用。",
+          "auto": "自动",
+          "autoTitle": "已自动学习，可以应用。",
+          "needs": "还需 {{count}}",
+          "needsTitle": "自动应用前还需 {{count}} 次确认。",
+          "learning": "学习中",
+          "learningTitle": "自动应用前仍在学习。",
+          "lowConfidence": "低置信度",
+          "lowConfidenceTitle": "出现次数足够，但置信度低于自动应用阈值。",
+          "review": "需审核",
+          "reviewTitle": "不会自动应用，因为它看起来像改写、部分捕获或不安全的更正。",
+          "off": "关闭",
+          "offTitle": "已禁用。此更正不会应用。",
+          "unknownTitle": "无法获取学习状态。"
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "应用程序语言更改将与语音设置分开。",
       "defaultStatus": "当您希望整个应用程序重新与当前应用程序语言保持一致时，请使用此选项。",
       "done": "语言同步完成。",
-      "failed": "语言同步失败。"
+      "failed": "语言同步失败。",
+      "messages": {
+        "stillLoading": "设置仍在加载中，因此语言同步尚未运行。",
+        "sttUnchanged": "语音识别保持不变。",
+        "ttsUnchanged": "语音输出保持不变。",
+        "sttSwitchedAuto": "语音识别已切换为自动。",
+        "sttSwitched": "语音识别已切换为 {{language}}。",
+        "sttSyncFailedDetail": "无法同步语音识别：{{error}}",
+        "sttSyncFailed": "无法同步语音识别。",
+        "sttStayedAuto": "语音识别保持为自动。",
+        "sttStayed": "语音识别保持为 {{language}}。",
+        "ttsDisabled": "由于“朗读输出”已关闭，语音输出保持不变。",
+        "ttsNoModel": "没有适用于 {{language}} 的语音输出模型，因此保留了当前语音。",
+        "ttsUsing": "语音输出正在使用 {{model}} 和 {{voice}}。",
+        "ttsKept": "语音输出保留了 {{model}}。",
+        "ttsSwitched": "语音输出已切换为 {{model}}。",
+        "ttsSyncFailedDetail": "无法完全同步语音输出：{{error}}",
+        "ttsSyncFailed": "无法完全同步语音输出。",
+        "appLanguageSyncOff": "已更新应用语言。全局语言同步已关闭，因此语音设置保持不变。"
+      }
     },
     "refineModels": {
       "title": "完善模型",
@@ -2794,7 +2830,16 @@
       "noModelSelected": "未选择模型",
       "openGenerated": "打开已生成音频",
       "generate": "生成声音",
-      "generating": "正在生成"
+      "generating": "正在生成",
+      "toast": {
+        "catalogFailed": "无法检查创意音频模型。",
+        "saved": "声音已保存到此项目。",
+        "generateFailed": "无法生成声音。",
+        "previewFailed": "无法预览声音。",
+        "renameFailed": "无法重命名声音。",
+        "deleteFailed": "无法删除声音。"
+      },
+      "deleteAriaLabel": "删除声音"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2822,7 +2867,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "无法加载已保存的语音预设。",
+      "loadProjectSounds": "无法加载项目声音。",
+      "renderFailed": "故事渲染失败。"
+    },
+    "effectTooltip": "为渲染后的故事应用音频效果。Clean 保留原始人声。Voice Polish 平滑杂音。Radio 增添复古广播的温暖感。Warm Room 增添自然混响。"
   },
   "appSections": {
     "common": {
@@ -3585,7 +3636,16 @@
     "titleAriaLabel": "故事音频标题",
     "errors": {
       "load": "无法加载故事音频。",
-      "copyScript": "无法复制故事脚本。"
+      "copyScript": "无法复制故事脚本。",
+      "loadGenerated": "无法加载生成的故事音频。",
+      "loadQueue": "无法加载故事渲染队列。",
+      "reveal": "无法显示故事音频。",
+      "update": "无法更新故事音频。",
+      "rename": "无法重命名故事音频。",
+      "delete": "无法删除故事音频。",
+      "cancelRender": "无法取消故事渲染。",
+      "play": "无法播放生成的音频。",
+      "saveProcessed": "无法保存处理后的音频。"
     },
     "actions": {
       "copyScript": "复制脚本",
@@ -3625,6 +3685,11 @@
       "generatingLine": "{{total}}的生成线{{current}}",
       "generating": "生成",
       "queuePosition": "队列#{{position}}"
+    },
+    "toast": {
+      "processedSaved": "已保存处理后的音频。",
+      "deleted": "已删除故事音频。",
+      "renderCancelled": "已取消故事渲染。"
     }
   },
   "detail": {

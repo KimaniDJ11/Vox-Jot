@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "En az bir düzeltmenin yeterli gözlemi var ancak güveni düşük.",
           "learning": "Öğrenme",
           "learningTitle": "Otomatik başvurudan önce daha fazla onay bekleniyor."
+        },
+        "entryStatus": {
+          "manual": "Elle",
+          "manualTitle": "Elle onaylandı. Etkin olduğu sürece uygulanır.",
+          "auto": "Otomatik",
+          "autoTitle": "Otomatik öğrenildi ve uygulanmaya hazır.",
+          "needs": "{{count}} gerekli",
+          "needsTitle": "Otomatik uygulanmadan önce {{count}} onay daha gerekiyor.",
+          "learning": "Öğreniyor",
+          "learningTitle": "Otomatik uygulanmadan önce hâlâ öğreniyor.",
+          "lowConfidence": "Düşük güven",
+          "lowConfidenceTitle": "Yeterince görüldü, ancak güven düzeyi otomatik uygulama eşiğinin altında.",
+          "review": "İncele",
+          "reviewTitle": "Yeniden yazma, kısmi yakalama veya güvenli olmayan bir düzeltme gibi göründüğü için otomatik uygulanmayacak.",
+          "off": "Kapalı",
+          "offTitle": "Devre dışı. Bu düzeltme uygulanmayacak.",
+          "unknownTitle": "Öğrenme durumu kullanılamıyor."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "Uygulama dili değişiklikleri konuşma ayarlarından ayrı kalacaktır.",
       "defaultStatus": "Tüm uygulamanın mevcut uygulama diliyle yeniden hizalanmasını istediğinizde bunu kullanın.",
       "done": "Dil senkronizasyonu tamamlandı.",
-      "failed": "Dil senkronizasyonu başarısız oldu."
+      "failed": "Dil senkronizasyonu başarısız oldu.",
+      "messages": {
+        "stillLoading": "Ayarlar hâlâ yükleniyor, bu yüzden dil eşitlemesi henüz çalıştırılamadı.",
+        "sttUnchanged": "Konuşma tanıma olduğu gibi kaldı.",
+        "ttsUnchanged": "Konuşma çıkışı olduğu gibi kaldı.",
+        "sttSwitchedAuto": "Konuşma tanıma Otomatik olarak değiştirildi.",
+        "sttSwitched": "Konuşma tanıma {{language}} diline değiştirildi.",
+        "sttSyncFailedDetail": "Konuşma tanıma eşitlenemedi: {{error}}",
+        "sttSyncFailed": "Konuşma tanıma eşitlenemedi.",
+        "sttStayedAuto": "Konuşma tanıma Otomatik olarak kaldı.",
+        "sttStayed": "Konuşma tanıma {{language}} dilinde kaldı.",
+        "ttsDisabled": "Çıkışı Seslendir kapalı olduğu için konuşma çıkışı olduğu gibi kaldı.",
+        "ttsNoModel": "{{language}} için uygun bir konuşma çıkışı modeli hazır değil, bu yüzden geçerli ses korundu.",
+        "ttsUsing": "Konuşma çıkışı {{model}} modelini {{voice}} sesiyle kullanıyor.",
+        "ttsKept": "Konuşma çıkışı {{model}} modelini korudu.",
+        "ttsSwitched": "Konuşma çıkışı {{model}} modeline değiştirildi.",
+        "ttsSyncFailedDetail": "Konuşma çıkışı tamamen eşitlenemedi: {{error}}",
+        "ttsSyncFailed": "Konuşma çıkışı tamamen eşitlenemedi.",
+        "appLanguageSyncOff": "Uygulama dili güncellendi. Genel Dil Eşitlemesi kapalı olduğu için konuşma ayarlarına dokunulmadı."
+      }
     },
     "refineModels": {
       "title": "Modelleri Hassaslaştır",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "Model seçilmedi",
       "openGenerated": "Üretilen sesi aç",
       "generate": "Ses üret",
-      "generating": "Üretiliyor"
+      "generating": "Üretiliyor",
+      "toast": {
+        "catalogFailed": "Yaratıcı ses modelleri denetlenemedi.",
+        "saved": "Ses bu projeye kaydedildi.",
+        "generateFailed": "Ses oluşturulamadı.",
+        "previewFailed": "Ses önizlemesi çalınamadı.",
+        "renameFailed": "Sesin adı değiştirilemedi.",
+        "deleteFailed": "Ses silinemedi."
+      },
+      "deleteAriaLabel": "Sesi sil"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "Kaydedilmiş ses ön ayarları yüklenemedi.",
+      "loadProjectSounds": "Proje sesleri yüklenemedi.",
+      "renderFailed": "Hikâye işleme başarısız oldu."
+    },
+    "effectTooltip": "İşlenmiş hikâyeye bir ses efekti uygulayın. Clean özgün sesi korur. Voice Polish bozulmaları yumuşatır. Radio eski yayın sıcaklığı katar. Warm Room doğal yankı ekler."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "Hikaye ses başlığı",
     "errors": {
       "load": "Hikaye sesi yüklenemedi.",
-      "copyScript": "Hikaye komut dosyası kopyalanamadı."
+      "copyScript": "Hikaye komut dosyası kopyalanamadı.",
+      "loadGenerated": "Oluşturulan hikâye sesi yüklenemedi.",
+      "loadQueue": "Hikâye işleme kuyruğu yüklenemedi.",
+      "reveal": "Hikâye sesi klasörde gösterilemedi.",
+      "update": "Hikâye sesi güncellenemedi.",
+      "rename": "Hikâye sesinin adı değiştirilemedi.",
+      "delete": "Hikâye sesi silinemedi.",
+      "cancelRender": "Hikâye işleme iptal edilemedi.",
+      "play": "Oluşturulan ses çalınamadı.",
+      "saveProcessed": "İşlenmiş ses kaydedilemedi."
     },
     "actions": {
       "copyScript": "Komut dosyasını kopyala",
@@ -3629,6 +3689,11 @@
       "generatingLine": "{{total}}'nun {{current}} hattı oluşturuluyor",
       "generating": "Üretiliyor",
       "queuePosition": "Sıra #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "İşlenmiş ses kaydedildi.",
+      "deleted": "Hikâye sesi silindi.",
+      "renderCancelled": "Hikâye işleme iptal edildi."
     }
   },
   "detail": {

@@ -1316,6 +1316,23 @@
           "lowConfidenceTitle": "하나 이상의 수정에 관측값은 충분하지만 신뢰도는 낮습니다.",
           "learning": "학습",
           "learningTitle": "자동 적용 전 추가 확인을 기다리는 중입니다."
+        },
+        "entryStatus": {
+          "manual": "수동",
+          "manualTitle": "수동으로 승인되었습니다. 활성화되어 있으면 항상 적용됩니다.",
+          "auto": "자동",
+          "autoTitle": "자동으로 학습되었으며 적용할 수 있습니다.",
+          "needs": "{{count}}회 필요",
+          "needsTitle": "자동 적용까지 {{count}}회 더 확인이 필요합니다.",
+          "learning": "학습 중",
+          "learningTitle": "자동 적용 전까지 아직 학습 중입니다.",
+          "lowConfidence": "낮은 신뢰도",
+          "lowConfidenceTitle": "충분히 관찰되었지만 신뢰도가 자동 적용 기준에 미치지 못합니다.",
+          "review": "검토 필요",
+          "reviewTitle": "다시 쓰기, 부분 캡처 또는 안전하지 않은 교정으로 보이므로 자동 적용되지 않습니다.",
+          "off": "끔",
+          "offTitle": "비활성화되었습니다. 이 교정은 적용되지 않습니다.",
+          "unknownTitle": "학습 상태를 확인할 수 없습니다."
         }
       }
     },
@@ -1340,7 +1357,26 @@
       "disabledStatus": "앱 언어 변경은 음성 설정과 별도로 유지됩니다.",
       "defaultStatus": "전체 앱을 현재 앱 언어에 맞게 다시 정렬하려면 이 기능을 사용하세요.",
       "done": "언어 동기화가 완료되었습니다.",
-      "failed": "언어 동기화에 실패했습니다."
+      "failed": "언어 동기화에 실패했습니다.",
+      "messages": {
+        "stillLoading": "설정을 아직 불러오는 중이라 언어 동기화를 실행하지 못했습니다.",
+        "sttUnchanged": "음성 인식은 그대로 유지되었습니다.",
+        "ttsUnchanged": "음성 출력은 그대로 유지되었습니다.",
+        "sttSwitchedAuto": "음성 인식을 자동으로 전환했습니다.",
+        "sttSwitched": "음성 인식을 {{language}}(으)로 전환했습니다.",
+        "sttSyncFailedDetail": "음성 인식을 동기화할 수 없습니다: {{error}}",
+        "sttSyncFailed": "음성 인식을 동기화할 수 없습니다.",
+        "sttStayedAuto": "음성 인식은 자동으로 유지되었습니다.",
+        "sttStayed": "음성 인식은 {{language}}(으)로 유지되었습니다.",
+        "ttsDisabled": "출력 읽어주기가 꺼져 있어 음성 출력은 그대로 유지되었습니다.",
+        "ttsNoModel": "{{language}}에 사용할 수 있는 음성 출력 모델이 없어 현재 음성을 유지했습니다.",
+        "ttsUsing": "음성 출력이 {{model}}과(와) {{voice}}을(를) 사용합니다.",
+        "ttsKept": "음성 출력이 {{model}}을(를) 유지했습니다.",
+        "ttsSwitched": "음성 출력을 {{model}}(으)로 전환했습니다.",
+        "ttsSyncFailedDetail": "음성 출력을 완전히 동기화할 수 없습니다: {{error}}",
+        "ttsSyncFailed": "음성 출력을 완전히 동기화할 수 없습니다.",
+        "appLanguageSyncOff": "앱 언어를 업데이트했습니다. 전역 언어 동기화가 꺼져 있어 음성 설정은 변경하지 않았습니다."
+      }
     },
     "refineModels": {
       "title": "모델 개선",
@@ -2798,7 +2834,16 @@
       "noModelSelected": "선택된 모델 없음",
       "openGenerated": "생성된 오디오 열기",
       "generate": "사운드 생성",
-      "generating": "생성 중"
+      "generating": "생성 중",
+      "toast": {
+        "catalogFailed": "크리에이티브 오디오 모델을 확인할 수 없습니다.",
+        "saved": "이 프로젝트에 사운드를 저장했습니다.",
+        "generateFailed": "사운드를 생성할 수 없습니다.",
+        "previewFailed": "사운드를 미리 들을 수 없습니다.",
+        "renameFailed": "사운드 이름을 변경할 수 없습니다.",
+        "deleteFailed": "사운드를 삭제할 수 없습니다."
+      },
+      "deleteAriaLabel": "사운드 삭제"
     },
     "featureCards": {
       "ariaLabel": "Studio capabilities",
@@ -2826,7 +2871,13 @@
     "soundTags": "Sounds",
     "soundTagsDescription": "Insert cues from this project's generated sounds.",
     "noProjectSoundsForTags": "Generate sounds in the Sound tab first, then insert them into your script.",
-    "openSoundTab": "Open Sound tab"
+    "openSoundTab": "Open Sound tab",
+    "errors": {
+      "loadVoicePresets": "저장된 음성 프리셋을 불러올 수 없습니다.",
+      "loadProjectSounds": "프로젝트 사운드를 불러올 수 없습니다.",
+      "renderFailed": "스토리 렌더링에 실패했습니다."
+    },
+    "effectTooltip": "렌더링된 스토리에 오디오 효과를 적용합니다. Clean은 원래 음성을 유지합니다. Voice Polish는 잡음을 다듬습니다. Radio는 빈티지 방송의 따뜻함을 더합니다. Warm Room은 자연스러운 잔향을 더합니다."
   },
   "appSections": {
     "common": {
@@ -3589,7 +3640,16 @@
     "titleAriaLabel": "스토리 오디오 제목",
     "errors": {
       "load": "스토리 오디오를 로드할 수 없습니다.",
-      "copyScript": "스토리 스크립트를 복사할 수 없습니다."
+      "copyScript": "스토리 스크립트를 복사할 수 없습니다.",
+      "loadGenerated": "생성된 스토리 오디오를 불러올 수 없습니다.",
+      "loadQueue": "스토리 렌더링 대기열을 불러올 수 없습니다.",
+      "reveal": "스토리 오디오를 표시할 수 없습니다.",
+      "update": "스토리 오디오를 업데이트할 수 없습니다.",
+      "rename": "스토리 오디오 이름을 변경할 수 없습니다.",
+      "delete": "스토리 오디오를 삭제할 수 없습니다.",
+      "cancelRender": "스토리 렌더링을 취소할 수 없습니다.",
+      "play": "생성된 오디오를 재생할 수 없습니다.",
+      "saveProcessed": "처리된 오디오를 저장할 수 없습니다."
     },
     "actions": {
       "copyScript": "스크립트 복사",
@@ -3629,6 +3689,11 @@
       "generatingLine": "{{total}}의 {{current}} 라인 생성",
       "generating": "생성 중",
       "queuePosition": "대기열 #{{position}}"
+    },
+    "toast": {
+      "processedSaved": "처리된 오디오를 저장했습니다.",
+      "deleted": "스토리 오디오를 삭제했습니다.",
+      "renderCancelled": "스토리 렌더링을 취소했습니다."
     }
   },
   "detail": {

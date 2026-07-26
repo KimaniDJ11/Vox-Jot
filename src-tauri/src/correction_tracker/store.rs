@@ -320,8 +320,9 @@ impl CorrectionStore {
     }
 
     /// Get corrections that should be applied during dictionary normalization.
-    /// User-approved entries are always included, while auto-learned entries
-    /// still respect the configured thresholds.
+    /// User-approved entries are always included. Safe edits observed directly
+    /// in the verified destination field apply after one observation, while
+    /// background/legacy auto-learned entries still require repeated evidence.
     pub fn get_dictionary_entries(
         &self,
         include_auto_learned: bool,
@@ -331,7 +332,7 @@ impl CorrectionStore {
     ) -> Result<Vec<DictionaryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT original, corrected, frequency, confidence, exact_only, user_approved, disabled_bundle_ids
+            "SELECT original, corrected, frequency, confidence, exact_only, user_approved, source_kind, disabled_bundle_ids
              FROM auto_corrections
              WHERE is_active = 1
              ORDER BY user_approved DESC, frequency DESC, confidence DESC, last_seen DESC",
@@ -345,6 +346,7 @@ impl CorrectionStore {
                 row.get::<_, f64>("confidence")?,
                 row.get::<_, bool>("exact_only")?,
                 row.get::<_, bool>("user_approved")?,
+                row.get::<_, String>("source_kind")?,
                 row.get::<_, String>("disabled_bundle_ids")?,
             ))
         })?;
@@ -358,6 +360,7 @@ impl CorrectionStore {
                 confidence,
                 exact_only,
                 user_approved,
+                source_kind,
                 disabled_bundle_ids,
             ) = row?;
 
@@ -380,7 +383,12 @@ impl CorrectionStore {
             let should_include = if user_approved {
                 true
             } else if include_auto_learned {
-                frequency >= min_frequency
+                let required_frequency = if source_kind == "observed_edit" {
+                    1
+                } else {
+                    min_frequency
+                };
+                frequency >= required_frequency
                     && effective_confidence >= min_confidence
                     && auto_score.is_some()
             } else {
@@ -440,6 +448,7 @@ impl CorrectionStore {
                     confidence,
                     is_active,
                     user_approved,
+                    &source_kind,
                 ),
                 original,
                 corrected,
@@ -605,9 +614,10 @@ impl CorrectionStore {
     }
 
     /// Add or update a correction directly observed from the user editing the
-    /// pasted text in another app. Destination-field edits are still learned
-    /// corrections, not manual dictionary entries, so they remain unapproved
-    /// until the user promotes them or they satisfy auto-apply thresholds.
+    /// pasted text in another app. Destination-field edits remain reviewable
+    /// learned corrections rather than manual dictionary entries. Because the
+    /// monitor verifies the exact destination field, a plausible observed edit
+    /// is eligible after one observation.
     pub fn add_observed_user_correction(&self, pair: &CorrectionPair) -> Result<Option<f64>> {
         let normalized_original = pair.original.trim();
         let normalized_corrected = pair.corrected.trim();
@@ -822,10 +832,15 @@ fn evaluate_auto_apply(
     confidence: f64,
     is_active: bool,
     user_approved: bool,
+    source_kind: &CorrectionSourceKind,
 ) -> CorrectionAutoApply {
     use crate::settings::correction_defaults;
 
-    let min_frequency = correction_defaults::MIN_FREQUENCY;
+    let min_frequency = if matches!(source_kind, CorrectionSourceKind::ObservedEdit) {
+        1
+    } else {
+        correction_defaults::MIN_FREQUENCY
+    };
     let min_confidence = correction_defaults::MIN_CONFIDENCE;
     let confirmations_remaining = min_frequency.saturating_sub(frequency);
 
@@ -1071,7 +1086,7 @@ mod tests {
     }
 
     #[test]
-    fn test_observed_user_correction_is_learned_but_not_dictionary() {
+    fn test_observed_user_correction_is_reviewable_and_applies_after_one_edit() {
         let (store, _dir) = setup_store();
         let pair = CorrectionPair {
             original: "Cheyene".to_string(),
@@ -1094,15 +1109,22 @@ mod tests {
         assert_eq!(all[0].source_kind, CorrectionSourceKind::ObservedEdit);
         assert!(matches!(
             all[0].auto_apply.status,
-            CorrectionAutoApplyStatus::Candidate
+            CorrectionAutoApplyStatus::Active
         ));
+        assert!(all[0].auto_apply.eligible);
+        assert_eq!(all[0].auto_apply.confirmations_remaining, 0);
         assert!(all[0].confidence >= pair.confidence);
 
-        let entries = store.get_dictionary_entries(false, 3, 0.74, None).unwrap();
+        let disabled_entries = store.get_dictionary_entries(false, 3, 0.74, None).unwrap();
         assert!(
-            entries.is_empty(),
-            "Observed field edits should appear in Corrections, not Dictionary"
+            disabled_entries.is_empty(),
+            "Turning correction tracking off should prevent observed edits from applying"
         );
+
+        let entries = store.get_dictionary_entries(true, 3, 0.74, None).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].spoken, "Cheyene");
+        assert_eq!(entries[0].written, "Cheyenne");
     }
 
     #[test]

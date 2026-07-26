@@ -8,7 +8,8 @@ use super::diff::extract_corrections;
 use super::recent_input::{RecentInputSignals, RecentInputTracker};
 use super::span::InsertedSpan;
 use super::store::CorrectionStore;
-use tauri::AppHandle;
+use serde::Serialize;
+use tauri::{AppHandle, Emitter};
 
 /// Trait for platform-specific text field reading.
 pub trait FieldTextReader: Send + Sync {
@@ -79,6 +80,7 @@ struct ObservationState {
     last_non_empty_snapshot: Option<String>,
     previous_snapshot_len: Option<usize>,
     previous_normalized_snapshot: Option<String>,
+    readable_snapshot_count: u32,
     edited_snapshot_count: u32,
     repeated_edited_snapshot_count: u32,
     saw_shrink_before_clear: bool,
@@ -200,6 +202,14 @@ async fn monitor_for_corrections_with_params(
                 }
                 None => {
                     info!("Could not read field text after monitoring period");
+                    if state.readable_snapshot_count == 0 {
+                        emit_learning_status(
+                            app_handle.as_ref(),
+                            "unavailable",
+                            span.app_name.as_deref(),
+                            0,
+                        );
+                    }
                     return;
                 }
             },
@@ -249,6 +259,13 @@ async fn monitor_for_corrections_with_params(
     if let (Some((first_pair, confidence)), Some(app_handle)) =
         (approved_pairs.first(), app_handle.as_ref())
     {
+        let _ = app_handle.emit("corrections-updated", ());
+        emit_learning_status(
+            Some(app_handle),
+            "captured",
+            span.app_name.as_deref(),
+            approved_pairs.len(),
+        );
         crate::overlay::show_correction_overlay(
             app_handle,
             &first_pair.original,
@@ -299,6 +316,7 @@ async fn capture_snapshot(
 
     let normalized = current_text.trim().to_string();
     let current_len = normalized.len();
+    state.readable_snapshot_count = state.readable_snapshot_count.saturating_add(1);
 
     if current_len == 0 {
         let clear_kind = if state.saw_shrink_before_clear {
@@ -343,6 +361,34 @@ async fn capture_snapshot(
         state.previous_normalized_snapshot = Some(normalized);
         SnapshotOutcome::Continue
     }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CorrectionLearningStatus<'a> {
+    status: &'a str,
+    app_name: Option<&'a str>,
+    corrections_added: usize,
+}
+
+fn emit_learning_status(
+    app_handle: Option<&AppHandle>,
+    status: &str,
+    app_name: Option<&str>,
+    corrections_added: usize,
+) {
+    let Some(app_handle) = app_handle else {
+        return;
+    };
+
+    let _ = app_handle.emit(
+        "correction-learning-status",
+        CorrectionLearningStatus {
+            status,
+            app_name,
+            corrections_added,
+        },
+    );
 }
 
 fn classify_clear_handling(

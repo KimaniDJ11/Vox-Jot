@@ -3,14 +3,6 @@
   "identifier": "recording-overlay",
   "description": "Minimal capability for the recording overlay window.",
   "windows": ["recording_overlay"],
-  "remote": {
-    "urls": [
-      "http://127.0.0.1:47635",
-      "http://127.0.0.1:47641",
-      "http://127.0.0.1:47653",
-      "http://127.0.0.1:47667"
-    ]
-  },
   "permissions": [
     "core:default",
     "store:default",

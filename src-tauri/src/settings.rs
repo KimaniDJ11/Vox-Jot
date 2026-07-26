@@ -1691,7 +1691,9 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
 /// Internal constants for correction behavior — no longer user-configurable.
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
-    /// Minimum times a correction must be seen before auto-applying.
+    /// Minimum times a background/legacy correction must be seen before
+    /// auto-applying. Plausible edits observed in the verified destination
+    /// field use one direct observation.
     pub const MIN_FREQUENCY: u32 = 3;
     /// Minimum confidence score (0.0–1.0) for auto-applying a correction.
     pub const MIN_CONFIDENCE: f64 = 0.74;

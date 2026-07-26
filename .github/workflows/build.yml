@@ -178,28 +178,17 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      - name: Install trusted-signing-cli
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
-        run: cargo install trusted-signing-cli
-
-      - name: Validate Windows Trusted Signing secrets
+      # Windows code signing is intentionally not configured: the upstream
+      # cjpais-dev Azure Trusted Signing account was removed because this
+      # repository must not ship binaries signed under a third party's
+      # certificate. Provision repo-owned signing (signCommand in
+      # tauri.conf.json plus the matching CI steps) before enabling
+      # sign-binaries for Windows.
+      - name: Block signed Windows builds (no signing configured)
         if: contains(inputs.platform, 'windows') && inputs.sign-binaries
         shell: pwsh
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
-          $ErrorActionPreference = "Stop"
-          $missing = @()
-          foreach ($name in @("AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID")) {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              $missing += $name
-            }
-          }
-          if ($missing.Count -gt 0) {
-            throw "Windows Trusted Signing is enabled, but these GitHub Actions secrets are missing: $($missing -join ', ')"
-          }
+          throw "Windows code signing is not configured for this repository. Provision repo-owned signing before enabling sign-binaries on Windows."
 
       - name: Prepare Vulkan SDK for Ubuntu 24.04
         if: contains(inputs.platform, 'ubuntu-24.04') && !contains(inputs.platform, 'arm')
@@ -298,17 +287,6 @@ jobs:
           fi
           echo "platform=${patched_platform}" >> "$GITHUB_OUTPUT"
 
-      - name: Disable Windows signing for unsigned builds
-        if: ${{ contains(inputs.platform, 'windows') && !inputs.sign-binaries }}
-        shell: pwsh
-        run: |
-          $configPath = "src-tauri/tauri.conf.json"
-          $config = Get-Content $configPath -Raw | ConvertFrom-Json
-          if ($config.bundle.windows.PSObject.Properties.Name -contains "signCommand") {
-            $config.bundle.windows.PSObject.Properties.Remove("signCommand")
-          }
-          $config | ConvertTo-Json -Depth 100 | Set-Content $configPath -Encoding utf8
-
       - name: Sign bundled macOS resource binaries
         if: contains(inputs.platform, 'macos') && inputs.sign-binaries
         shell: bash
@@ -371,9 +349,6 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -385,42 +360,6 @@ jobs:
           releaseId: ${{ inputs.release-id }}
           assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
           args: ${{ inputs.build-args }}
-
-      - name: Verify Windows Authenticode signatures
-        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $profile = "${{ steps.build-profile.outputs.profile }}"
-          $target = "${{ inputs.target }}"
-          if ($target -and $target -ne "x86_64-pc-windows-msvc") {
-            $bundleRoot = Join-Path "src-tauri/target" (Join-Path $target (Join-Path $profile "bundle"))
-          } else {
-            $bundleRoot = Join-Path "src-tauri/target" (Join-Path $profile "bundle")
-          }
-
-          $artifacts = @()
-          foreach ($bundleType in @("msi", "nsis")) {
-            $dir = Join-Path $bundleRoot $bundleType
-            if (Test-Path $dir) {
-              $artifacts += Get-ChildItem -Path $dir -File -Include *.msi,*.exe -Recurse
-            }
-          }
-
-          if ($artifacts.Count -eq 0) {
-            throw "No Windows MSI/EXE artifacts found under $bundleRoot"
-          }
-
-          foreach ($artifact in $artifacts) {
-            $signature = Get-AuthenticodeSignature -FilePath $artifact.FullName
-            Write-Host "$($artifact.Name): $($signature.Status) / $($signature.SignerCertificate.Subject)"
-            if ($signature.Status -ne "Valid") {
-              throw "Invalid Authenticode signature for $($artifact.FullName): $($signature.Status) $($signature.StatusMessage)"
-            }
-            if ($signature.SignerCertificate.Subject -notmatch "Kimani James|Irie|CJ|cjpais") {
-              throw "Unexpected Windows signing certificate subject for $($artifact.FullName): $($signature.SignerCertificate.Subject)"
-            }
-          }
 
       - name: Upload artifacts (macOS)
         if: inputs.upload-artifacts && contains(inputs.platform, 'macos')

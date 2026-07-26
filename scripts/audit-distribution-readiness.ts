@@ -138,10 +138,19 @@ if (!tauriConfig.bundle?.macOS?.entitlements) {
   add("fail", "macOS entitlements file is not configured.");
 }
 
-if (
-  !tauriConfig.bundle?.windows?.signCommand?.includes("trusted-signing-cli")
-) {
-  add("fail", "Windows Trusted Signing command is not configured.");
+const windowsSignCommand = tauriConfig.bundle?.windows?.signCommand ?? "";
+if (/cjpais|CJ-Signing/i.test(windowsSignCommand)) {
+  add(
+    "fail",
+    "Windows signCommand references the upstream cjpais-dev Trusted Signing account.",
+    "Binaries must not be signed under a third party's certificate; remove it or replace it with repo-owned signing.",
+  );
+} else if (!windowsSignCommand) {
+  add(
+    "warn",
+    "Windows code signing is not configured.",
+    "Windows is not a current distribution target. Provision repo-owned signing (signCommand + CI steps) before distributing Windows builds.",
+  );
 }
 
 if (!releaseWorkflow) {

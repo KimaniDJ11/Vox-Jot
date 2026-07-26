@@ -30,6 +30,8 @@ mod http_api;
 mod input;
 mod lfm_audio_gguf;
 mod llm_client;
+#[cfg(target_os = "macos")]
+mod loopback_capability;
 mod managers;
 mod mcp;
 mod model_platform;

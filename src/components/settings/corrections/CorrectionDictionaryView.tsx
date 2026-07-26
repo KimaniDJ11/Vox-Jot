@@ -22,6 +22,7 @@ import {
   SpellCheck,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { InstalledApp, StoredCorrection } from "@/bindings";
@@ -42,8 +43,20 @@ import {
   subscribeInstalledApps,
 } from "@/lib/installedApps";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
+import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 type CorrectionViewMode = "corrections" | "dictionary";
+
+type CorrectionLearningStatusPayload = {
+  status: "captured" | "unavailable";
+  appName?: string | null;
+  correctionsAdded: number;
+};
+
+type CorrectionLearningNotice = {
+  status: CorrectionLearningStatusPayload["status"];
+  message: string;
+};
 
 const DICTIONARY_IMPORT_EXTENSIONS = [
   "json",
@@ -131,6 +144,16 @@ const getEntryAutoStatus = (
   entry: StoredCorrection,
 ): CorrectionAutoApply["status"] => {
   return getEntryAutoApply(entry).status;
+};
+
+const correctionBelongsInDictionary = (entry: StoredCorrection): boolean => {
+  const autoApply = getEntryAutoApply(entry);
+  return (
+    entry.user_approved ||
+    autoApply.eligible ||
+    (autoApply.status === "disabled" &&
+      autoApply.confirmations_remaining === 0)
+  );
 };
 
 const ENTRY_STATUS_PREFIX = "settings.corrections.dictionary.entryStatus";
@@ -318,6 +341,9 @@ export const CorrectionDictionaryView: React.FC<
   const [searchQuery, setSearchQuery] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
+  const [loadError, setLoadError] = useState("");
+  const [learningNotice, setLearningNotice] =
+    useState<CorrectionLearningNotice | null>(null);
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
   const [importing, setImporting] = useState(false);
@@ -342,17 +368,82 @@ export const CorrectionDictionaryView: React.FC<
       const result = await commands.getCorrections();
       if (result.status === "ok") {
         setCorrections(result.data);
+        setLoadError("");
+      } else {
+        setLoadError(
+          t("settings.corrections.dictionary.loadFailed", {
+            error: result.error,
+            defaultValue: "Could not load corrections: {{error}}",
+          }),
+        );
       }
     } catch (error) {
       console.error("Failed to load corrections:", error);
+      setLoadError(
+        t("settings.corrections.dictionary.loadFailed", {
+          error: String(error),
+          defaultValue: "Could not load corrections: {{error}}",
+        }),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    loadCorrections();
+    void loadCorrections();
   }, [loadCorrections]);
+
+  useRefreshOnWindowFocus(loadCorrections);
+
+  useEffect(() => {
+    const unlistenCorrections = listen("corrections-updated", () => {
+      void loadCorrections();
+    });
+    const unlistenLearningStatus = listen<CorrectionLearningStatusPayload>(
+      "correction-learning-status",
+      (event) => {
+        if (event.payload.status === "captured") {
+          const count = Math.max(1, event.payload.correctionsAdded);
+          setLearningNotice({
+            status: "captured",
+            message: t("settings.corrections.dictionary.learningCaptured", {
+              count,
+              defaultValue:
+                count === 1
+                  ? "Learned one correction. It is active in your Dictionary."
+                  : "Learned {{count}} corrections. They are active in your Dictionary.",
+            }),
+          });
+          void loadCorrections();
+          return;
+        }
+
+        const appName = event.payload.appName?.trim();
+        setLearningNotice({
+          status: "unavailable",
+          message: appName
+            ? t(
+                "settings.corrections.dictionary.learningUnavailableForApp",
+                {
+                  appName,
+                  defaultValue:
+                    "Vox Jot could not read the text field in {{appName}}, so edits there may not be learned. You can still add the correction with Add new.",
+                },
+              )
+            : t("settings.corrections.dictionary.learningUnavailable", {
+                defaultValue:
+                  "Vox Jot could not read the destination text field, so edits there may not be learned. You can still add the correction with Add new.",
+              }),
+        });
+      },
+    );
+
+    return () => {
+      void unlistenCorrections.then((unlisten) => unlisten());
+      void unlistenLearningStatus.then((unlisten) => unlisten());
+    };
+  }, [loadCorrections, t]);
 
   useEffect(() => {
     const unsubscribe = subscribeInstalledApps(setInstalledApps);
@@ -735,11 +826,13 @@ export const CorrectionDictionaryView: React.FC<
 
   const visibleCorrections = useMemo(
     () =>
-      corrections.filter((correction) =>
-        viewMode === "dictionary"
-          ? correction.user_approved
-          : !correction.user_approved,
-      ),
+      corrections.filter((correction) => {
+        const belongsInDictionary =
+          correctionBelongsInDictionary(correction);
+        return viewMode === "dictionary"
+          ? belongsInDictionary
+          : !belongsInDictionary;
+      }),
     [corrections, viewMode],
   );
   const groups = useMemo(
@@ -759,6 +852,13 @@ export const CorrectionDictionaryView: React.FC<
       new Map(installedApps.map((app) => [app.bundle_id.toLowerCase(), app])),
     [installedApps],
   );
+  const pendingCorrectionCount = useMemo(
+    () =>
+      corrections.filter(
+        (correction) => !correctionBelongsInDictionary(correction),
+      ).length,
+    [corrections],
+  );
 
   const viewItems = useMemo(
     () => [
@@ -770,12 +870,12 @@ export const CorrectionDictionaryView: React.FC<
       },
       {
         value: "corrections" as const,
-        label: t("settings.corrections.dictionary.views.corrections", {
+        label: `${t("settings.corrections.dictionary.views.corrections", {
           defaultValue: "Corrections",
-        }),
+        })}${pendingCorrectionCount > 0 ? ` (${pendingCorrectionCount})` : ""}`,
       },
     ],
-    [t],
+    [pendingCorrectionCount, t],
   );
   const viewDescription =
     viewMode === "dictionary"
@@ -1716,6 +1816,34 @@ export const CorrectionDictionaryView: React.FC<
       {importError ? (
         <div className="px-1 text-xs text-[var(--danger)]" role="alert">
           {importError}
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="px-1 text-xs text-[var(--danger)]" role="alert">
+          {loadError}
+        </div>
+      ) : null}
+      {learningNotice ? (
+        <div
+          className={`mx-1 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs font-medium leading-5 text-[var(--text)] ${
+            learningNotice.status === "captured"
+              ? "border-[var(--success)] bg-[var(--success-soft)]"
+              : "border-[var(--warning)] bg-[var(--warning-soft)]"
+          }`}
+          role={learningNotice.status === "unavailable" ? "alert" : "status"}
+        >
+          {learningNotice.status === "captured" ? (
+            <CheckCircle2
+              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]"
+              aria-hidden
+            />
+          ) : (
+            <Info
+              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]"
+              aria-hidden
+            />
+          )}
+          <span>{learningNotice.message}</span>
         </div>
       ) : null}
       {renderContent()}

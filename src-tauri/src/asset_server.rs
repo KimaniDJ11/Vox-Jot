@@ -21,9 +21,9 @@ use tiny_http::{Header, Request, Response, Server};
 
 /// Ports the asset server may bind, in order of preference.
 ///
-/// IPC capability grants for remote origins match exact URLs, so every entry
-/// here must also be listed under `remote.urls` in `capabilities/default.json`
-/// and `capabilities/recording-overlay.json`.
+/// IPC is granted at runtime to exactly the port that binds (see
+/// `loopback_capability`), so candidate ports that another process claimed
+/// first never hold IPC authority.
 const CANDIDATE_PORTS: [u16; 4] = [47635, 47641, 47653, 47667];
 
 static ACTIVE_PORT: OnceLock<u16> = OnceLock::new();
@@ -41,6 +41,10 @@ pub fn active_port() -> u16 {
 pub fn start(app: &AppHandle) -> anyhow::Result<u16> {
     let (listener, port) = bind_first_free_port()?;
     let _ = ACTIVE_PORT.set(port);
+
+    // Windows load http://127.0.0.1:<port> as a remote origin, so IPC must
+    // be granted to it explicitly — and only to the port that actually bound.
+    crate::loopback_capability::grant_to_port(app, port)?;
 
     let resolver = app.asset_resolver();
     std::thread::Builder::new()

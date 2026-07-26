@@ -7,9 +7,15 @@ use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const DICTIONARY_IMPORT_MAX_BYTES: u64 = 10 * 1024 * 1024;
+
+fn emit_corrections_updated(app: &AppHandle) {
+    if let Err(error) = app.emit("corrections-updated", ()) {
+        log::debug!("Failed to emit corrections-updated: {}", error);
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DictionaryImportSummary {
@@ -37,7 +43,9 @@ pub fn get_corrections(app: AppHandle) -> Result<Vec<StoredCorrection>, String> 
 #[specta::specta]
 pub fn delete_correction(app: AppHandle, id: i64) -> Result<(), String> {
     let store = app.state::<Arc<CorrectionStore>>();
-    store.delete_correction(id).map_err(|e| e.to_string())
+    store.delete_correction(id).map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Update the original and corrected text for a learned correction.
@@ -52,7 +60,9 @@ pub fn update_correction(
     let store = app.state::<Arc<CorrectionStore>>();
     store
         .update_correction(id, &original, &corrected)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Toggle the active state of a correction.
@@ -60,7 +70,9 @@ pub fn update_correction(
 #[specta::specta]
 pub fn toggle_correction(app: AppHandle, id: i64, active: bool) -> Result<(), String> {
     let store = app.state::<Arc<CorrectionStore>>();
-    store.set_active(id, active).map_err(|e| e.to_string())
+    store.set_active(id, active).map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Update the apps where a correction should be disabled.
@@ -74,7 +86,9 @@ pub fn set_correction_disabled_apps(
     let store = app.state::<Arc<CorrectionStore>>();
     store
         .set_disabled_bundle_ids(id, &bundle_ids)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Clear all stored corrections.
@@ -82,7 +96,9 @@ pub fn set_correction_disabled_apps(
 #[specta::specta]
 pub fn clear_all_corrections(app: AppHandle) -> Result<(), String> {
     let store = app.state::<Arc<CorrectionStore>>();
-    store.clear_all().map_err(|e| e.to_string())
+    store.clear_all().map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Export all corrections as a JSON string.
@@ -109,7 +125,9 @@ pub fn add_manual_correction(
         .as_secs() as i64;
     store
         .add_manual_correction(&original, &corrected, exact_only, now)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    emit_corrections_updated(&app);
+    Ok(())
 }
 
 /// Add a dictionary correction learned from a transcript word edit, but only
@@ -128,9 +146,13 @@ pub fn add_transcript_word_correction(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64;
-    store
+    let added = store
         .add_correction_if_plausible(&original, &corrected, now)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    if added {
+        emit_corrections_updated(&app);
+    }
+    Ok(added)
 }
 
 /// Import corrections from a JSON string.
@@ -138,7 +160,11 @@ pub fn add_transcript_word_correction(
 #[specta::specta]
 pub fn import_corrections(app: AppHandle, json: String) -> Result<usize, String> {
     let store = app.state::<Arc<CorrectionStore>>();
-    store.import_json(&json).map_err(|e| e.to_string())
+    let imported = store.import_json(&json).map_err(|e| e.to_string())?;
+    if imported > 0 {
+        emit_corrections_updated(&app);
+    }
+    Ok(imported)
 }
 
 /// Import a dictionary file selected by the frontend file picker.
@@ -207,6 +233,10 @@ pub fn import_dictionary_file(
                 skipped += 1;
             }
         }
+    }
+
+    if imported > 0 {
+        emit_corrections_updated(&app);
     }
 
     Ok(DictionaryImportSummary { imported, skipped })

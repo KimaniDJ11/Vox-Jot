@@ -135,7 +135,7 @@ window-vibrancy = "0.5"
 apple-native-keyring-store = { version = "1", features = ["keychain"] }
 transcribe-rs = { version = "0.3.11", default-features = false, features = ["onnx", "whisper-cpp", "whisper-metal"], optional = true }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
-accessibility = "0.1"
+accessibility = "0.2"
 accessibility-sys = "0.1"
 core-foundation = { version = "0.10", features = ["mac_os_10_8_features"] }
 core-graphics = "0.24"

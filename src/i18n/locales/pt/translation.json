@@ -538,7 +538,8 @@
           "restore": "Falha ao restaurar o atalho original",
           "set": "Falha ao definir atalho: {{error}}",
           "reset": "Falha ao redefinir o atalho para o valor original"
-        }
+        },
+        "confirmReset": "Redefinir"
       },
       "language": {
         "title": "Idioma",
@@ -1333,7 +1334,9 @@
           "off": "Desativado",
           "offTitle": "Desativado. Esta correção não será aplicada.",
           "unknownTitle": "Status de aprendizado indisponível."
-        }
+        },
+        "clearAllConfirm": "Excluir todas as entradas do dicionário?",
+        "clearAllFailed": "Não foi possível limpar o dicionário."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Progresso do download",
     "downloadProgressForItem": "Progresso do download de {{id}}",
     "percentComplete": "{{percentage}}% concluído",
-    "downloadingCount": "{{count}} baixando..."
+    "downloadingCount": "{{count}} baixando...",
+    "confirmAction": "Confirmar ação"
   },
   "accessibility": {
     "permissionsRequired": "Permissões de acessibilidade necessárias",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Nome do tom",
         "instructionLabel": "Instrução",
         "save": "Salvar tom",
-        "createFailed": "Não foi possível criar o tom."
+        "createFailed": "Não foi possível criar o tom.",
+        "namePlaceholder": "Voz de fundador",
+        "instructionPlaceholder": "Reescreva com um tom acolhedor e conciso. Preserve os termos técnicos e evite exageros."
       },
       "overrideGroups": {
         "speech": "Discurso",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Remover substituição",
         "removeOverrideAria": "Remover substituição {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Nenhuma opção disponível — configure primeiro o valor global."
+        "notAvailable": "Nenhuma opção disponível — configure primeiro o valor global.",
+        "confirmRemoveOverride": "Confirmar remoção da substituição",
+        "confirmRemoveOverrideAria": "Confirmar a remoção da substituição {{label}}",
+        "confirmResetAll": "Redefinir todas as substituições?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Seção desconhecida: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Falha ao carregar os modelos: {{detail}}",
+      "switchModel": "Falha ao alternar para o modelo: {{detail}}",
+      "downloadModel": "Falha ao baixar o modelo: {{detail}}",
+      "cancelDownload": "Falha ao cancelar o download: {{detail}}",
+      "deleteModel": "Falha ao excluir o modelo: {{detail}}",
+      "extractModel": "Falha ao extrair o modelo: {{detail}}"
+    }
   }
 }

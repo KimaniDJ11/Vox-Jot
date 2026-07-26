@@ -140,10 +140,28 @@ pub fn default_hf_file_filter(path: &str) -> bool {
         && !path.starts_with(".git/")
 }
 
+/// Percent-encode each path segment of a Hugging Face repo-relative path.
+///
+/// Segments are encoded individually so `/` stays a separator. Anything outside
+/// the unreserved set is escaped, since filenames containing `#`, `?`, or `%`
+/// would otherwise produce a malformed URL and a failed download.
 pub fn encode_hf_path(rel_path: &str) -> String {
+    fn encode_segment(segment: &str) -> String {
+        let mut encoded = String::with_capacity(segment.len());
+        for byte in segment.as_bytes() {
+            match byte {
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                    encoded.push(*byte as char)
+                }
+                _ => encoded.push_str(&format!("%{byte:02X}")),
+            }
+        }
+        encoded
+    }
+
     rel_path
         .split('/')
-        .map(|seg| seg.replace(' ', "%20"))
+        .map(encode_segment)
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -860,7 +878,7 @@ async fn sha256_file(path: &Path) -> Result<String, String> {
         }
         hasher.update(&buffer[..bytes_read]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hex::encode(hasher.finalize()))
 }
 
 #[cfg(test)]
@@ -878,6 +896,31 @@ mod tests {
             encode_hf_path("a dir/model file.bin"),
             "a%20dir/model%20file.bin"
         );
+    }
+
+    #[test]
+    fn hf_path_encoding_escapes_url_delimiters() {
+        // `#`, `?`, and `%` would otherwise truncate or corrupt the URL.
+        assert_eq!(encode_hf_path("weights#1.bin"), "weights%231.bin");
+        assert_eq!(encode_hf_path("q?uery.bin"), "q%3Fuery.bin");
+        assert_eq!(encode_hf_path("100%.bin"), "100%25.bin");
+        assert_eq!(
+            encode_hf_path("dir/sub dir/a+b&c.bin"),
+            "dir/sub%20dir/a%2Bb%26c.bin"
+        );
+    }
+
+    #[test]
+    fn hf_path_encoding_leaves_unreserved_characters_alone() {
+        assert_eq!(
+            encode_hf_path("Model-v1_2.3~final/weights.safetensors"),
+            "Model-v1_2.3~final/weights.safetensors"
+        );
+    }
+
+    #[test]
+    fn hf_path_encoding_escapes_non_ascii_as_utf8() {
+        assert_eq!(encode_hf_path("modèle.bin"), "mod%C3%A8le.bin");
     }
 
     #[test]

@@ -576,7 +576,8 @@
           "restore": "Не удалось восстановить исходный ярлык.",
           "set": "Не удалось установить ярлык: {{error}}.",
           "reset": "Не удалось сбросить ярлык до исходного значения."
-        }
+        },
+        "confirmReset": "Сбросить"
       },
       "language": {
         "title": "Язык",
@@ -1333,7 +1334,9 @@
           "off": "Выкл.",
           "offTitle": "Отключено. Это исправление не будет применено.",
           "unknownTitle": "Статус обучения недоступен."
-        }
+        },
+        "clearAllConfirm": "Удалить все записи словаря?",
+        "clearAllFailed": "Не удалось очистить словарь."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Ход загрузки",
     "downloadProgressForItem": "Ход загрузки для {{id}}",
     "percentComplete": "Готово {{percentage}}%",
-    "downloadingCount": "Загружается: {{count}}..."
+    "downloadingCount": "Загружается: {{count}}...",
+    "confirmAction": "Подтвердите действие"
   },
   "accessibility": {
     "permissionsRequired": "Требуются разрешения на доступность",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Название тона",
         "instructionLabel": "Инструкция",
         "save": "Сохранить тон",
-        "createFailed": "Не удалось создать тон."
+        "createFailed": "Не удалось создать тон.",
+        "namePlaceholder": "Голос основателя",
+        "instructionPlaceholder": "Перепиши тёплым и кратким тоном. Сохрани технические термины и избегай преувеличений."
       },
       "overrideGroups": {
         "speech": "Речь",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Удалить переопределение",
         "removeOverrideAria": "Удалить переопределение {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Нет доступных вариантов — сначала установите глобальное значение."
+        "notAvailable": "Нет доступных вариантов — сначала установите глобальное значение.",
+        "confirmRemoveOverride": "Подтвердите удаление переопределения",
+        "confirmRemoveOverrideAria": "Подтвердите удаление переопределения {{label}}",
+        "confirmResetAll": "Сбросить все переопределения?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Неизвестный раздел: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Не удалось загрузить модели: {{detail}}",
+      "switchModel": "Не удалось переключиться на модель: {{detail}}",
+      "downloadModel": "Не удалось скачать модель: {{detail}}",
+      "cancelDownload": "Не удалось отменить загрузку: {{detail}}",
+      "deleteModel": "Не удалось удалить модель: {{detail}}",
+      "extractModel": "Не удалось распаковать модель: {{detail}}"
+    }
   }
 }

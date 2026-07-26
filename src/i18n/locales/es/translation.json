@@ -576,7 +576,8 @@
           "restore": "No se pudo restaurar el acceso directo original",
           "set": "No se pudo establecer el acceso directo: {{error}}",
           "reset": "No se pudo restablecer el acceso directo al valor original"
-        }
+        },
+        "confirmReset": "Restablecer"
       },
       "language": {
         "title": "Idioma",
@@ -1333,7 +1334,9 @@
           "off": "Desactivado",
           "offTitle": "Desactivado. Esta corrección no se aplicará.",
           "unknownTitle": "Estado de aprendizaje no disponible."
-        }
+        },
+        "clearAllConfirm": "¿Eliminar todas las entradas del diccionario?",
+        "clearAllFailed": "No se pudo borrar el diccionario."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Progreso de descarga",
     "downloadProgressForItem": "Progreso de descarga de {{id}}",
     "percentComplete": "{{percentage}}% completado",
-    "downloadingCount": "{{count}} descargándose..."
+    "downloadingCount": "{{count}} descargándose...",
+    "confirmAction": "Confirmar acción"
   },
   "accessibility": {
     "permissionsRequired": "Permisos de accesibilidad requeridos",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Nombre del tono",
         "instructionLabel": "Instrucción",
         "save": "Guardar tono",
-        "createFailed": "No se pudo crear el tono."
+        "createFailed": "No se pudo crear el tono.",
+        "namePlaceholder": "Voz de fundador",
+        "instructionPlaceholder": "Reescribe con un tono cálido y conciso. Conserva los términos técnicos y evita la exageración."
       },
       "overrideGroups": {
         "speech": "discurso",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Eliminar anulación",
         "removeOverrideAria": "Eliminar la anulación de {{label}}",
         "notAvailableShort": "n/d",
-        "notAvailable": "No hay opciones disponibles: primero configure el valor global."
+        "notAvailable": "No hay opciones disponibles: primero configure el valor global.",
+        "confirmRemoveOverride": "Confirmar quitar anulación",
+        "confirmRemoveOverrideAria": "Confirmar que se quita la anulación de {{label}}",
+        "confirmResetAll": "¿Restablecer todas las anulaciones?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Sección desconocida: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "No se pudieron cargar los modelos: {{detail}}",
+      "switchModel": "No se pudo cambiar de modelo: {{detail}}",
+      "downloadModel": "No se pudo descargar el modelo: {{detail}}",
+      "cancelDownload": "No se pudo cancelar la descarga: {{detail}}",
+      "deleteModel": "No se pudo eliminar el modelo: {{detail}}",
+      "extractModel": "No se pudo extraer el modelo: {{detail}}"
+    }
   }
 }

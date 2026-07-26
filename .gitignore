@@ -102,3 +102,9 @@ scratch/
 # Claude Code runtime state (per-machine, never commit)
 .claude/scheduled_tasks.lock
 .claude/projects/
+
+# Local working spreadsheet; the authoritative catalog lives in the Rust/TS catalogs
+/VoxJot_Model_Registry.xlsx
+
+# App-support directory the app creates when it is launched with the repo as cwd
+/Vox Jot/

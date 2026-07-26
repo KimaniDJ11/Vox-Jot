@@ -24,19 +24,30 @@ const HEALTH_MLX: u8 = 3;
 const SPEECH_RUNTIME_HEALTH_ATTEMPTS: usize = 120;
 const MLX_AUDIO_HEALTH_ATTEMPTS: usize = 60;
 
-fn health_client() -> &'static reqwest::blocking::Client {
-    // Reuse a single blocking client: builds TLS/connection pool once so
-    // repeated health probes don't pay builder/TCP setup cost each call.
-    // Keep health-check timeouts short because these probes run on startup
-    // and model-load paths where multi-second waits feel like app freezes.
-    static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        reqwest::blocking::Client::builder()
-            .connect_timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
-            .timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
-            .build()
-            .expect("failed to build sidecar health reqwest client")
-    })
+/// Shared client for sidecar health probes, or `None` if it could not be built.
+///
+/// Reuse a single blocking client: builds TLS/connection pool once so repeated
+/// health probes don't pay builder/TCP setup cost each call. Keep health-check
+/// timeouts short because these probes run on startup and model-load paths where
+/// multi-second waits feel like app freezes. A build failure reports the sidecar
+/// as not running rather than panicking on first probe.
+fn health_client() -> Option<&'static reqwest::blocking::Client> {
+    static CLIENT: OnceLock<Option<reqwest::blocking::Client>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            match reqwest::blocking::Client::builder()
+                .connect_timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
+                .timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
+                .build()
+            {
+                Ok(client) => Some(client),
+                Err(err) => {
+                    log::error!("Failed to build the sidecar health HTTP client: {err}");
+                    None
+                }
+            }
+        })
+        .as_ref()
 }
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
@@ -326,7 +337,10 @@ impl SidecarManager {
     }
 
     pub fn is_mlx_audio_running(&self) -> bool {
-        health_client()
+        let Some(client) = health_client() else {
+            return false;
+        };
+        client
             .get(format!("http://127.0.0.1:{MLX_AUDIO_PORT}/v1/models"))
             .send()
             .map(|resp| resp.status().is_success())
@@ -337,7 +351,10 @@ impl SidecarManager {
     /// server currently listening on the sidecar port.  The speech-runtime
     /// exposes `/listen/prepare` which `mlx_audio.server` does not.
     pub fn is_speech_runtime_running(&self) -> bool {
-        health_client()
+        let Some(client) = health_client() else {
+            return false;
+        };
+        client
             .post(format!(
                 "http://127.0.0.1:{SPEECH_RUNTIME_PORT}/listen/prepare"
             ))

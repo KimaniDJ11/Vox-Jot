@@ -576,7 +576,8 @@
           "restore": "Orijinal kısayol geri yüklenemedi",
           "set": "Kısayol ayarlanamadı: {{error}}",
           "reset": "Kısayol orijinal değerine sıfırlanamadı"
-        }
+        },
+        "confirmReset": "Sıfırla"
       },
       "language": {
         "title": "Dil",
@@ -1333,7 +1334,9 @@
           "off": "Kapalı",
           "offTitle": "Devre dışı. Bu düzeltme uygulanmayacak.",
           "unknownTitle": "Öğrenme durumu kullanılamıyor."
-        }
+        },
+        "clearAllConfirm": "Tüm sözlük girdileri silinsin mi?",
+        "clearAllFailed": "Sözlük temizlenemedi."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "İndirme ilerlemesi",
     "downloadProgressForItem": "{{id}} için indirme ilerlemesi",
     "percentComplete": "%{{percentage}} tamamlandı",
-    "downloadingCount": "{{count}} indiriliyor..."
+    "downloadingCount": "{{count}} indiriliyor...",
+    "confirmAction": "İşlemi onayla"
   },
   "accessibility": {
     "permissionsRequired": "Erişilebilirlik İzinleri Gerekli",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Ton adı",
         "instructionLabel": "Talimat",
         "save": "Tonu kaydet",
-        "createFailed": "Ton oluşturulamadı."
+        "createFailed": "Ton oluşturulamadı.",
+        "namePlaceholder": "Kurucu sesi",
+        "instructionPlaceholder": "Sıcak ve öz bir tonla yeniden yaz. Teknik terimleri koru ve abartıdan kaçın."
       },
       "overrideGroups": {
         "speech": "Konuşma",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Geçersiz kılmayı kaldır",
         "removeOverrideAria": "{{label}} geçersiz kılmayı kaldır",
         "notAvailableShort": "n/a",
-        "notAvailable": "Kullanılabilir seçenek yok; önce global değeri ayarlayın."
+        "notAvailable": "Kullanılabilir seçenek yok; önce global değeri ayarlayın.",
+        "confirmRemoveOverride": "Geçersiz kılmayı kaldırmayı onayla",
+        "confirmRemoveOverrideAria": "{{label}} geçersiz kılmasını kaldırmayı onayla",
+        "confirmResetAll": "Tüm geçersiz kılmalar sıfırlansın mı?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Bilinmeyen bölüm: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Modeller yüklenemedi: {{detail}}",
+      "switchModel": "Modele geçilemedi: {{detail}}",
+      "downloadModel": "Model indirilemedi: {{detail}}",
+      "cancelDownload": "İndirme iptal edilemedi: {{detail}}",
+      "deleteModel": "Model silinemedi: {{detail}}",
+      "extractModel": "Model çıkarılamadı: {{detail}}"
+    }
   }
 }

@@ -1,5 +1,7 @@
 import { ask } from "@tauri-apps/plugin-dialog";
 
+import i18n from "@/i18n";
+
 type ConfirmDestructiveActionOptions = {
   title?: string;
   okLabel?: string;
@@ -12,10 +14,10 @@ export async function confirmDestructiveAction(
 ): Promise<boolean> {
   try {
     return await ask(message, {
-      title: options.title ?? "Confirm action",
+      title: options.title ?? i18n.t("common.confirmAction"),
       kind: "warning",
-      okLabel: options.okLabel ?? "Delete",
-      cancelLabel: options.cancelLabel ?? "Cancel",
+      okLabel: options.okLabel ?? i18n.t("common.delete"),
+      cancelLabel: options.cancelLabel ?? i18n.t("common.cancel"),
     });
   } catch (error) {
     console.error("Failed to show destructive action confirmation:", error);

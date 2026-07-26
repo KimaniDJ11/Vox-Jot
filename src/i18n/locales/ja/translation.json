@@ -576,7 +576,8 @@
           "restore": "元のショートカットの復元に失敗しました",
           "set": "ショートカットの設定に失敗しました: {{error}}",
           "reset": "ショートカットを元の値にリセットできませんでした"
-        }
+        },
+        "confirmReset": "リセット"
       },
       "language": {
         "title": "言語",
@@ -1333,7 +1334,9 @@
           "off": "オフ",
           "offTitle": "無効です。この修正は適用されません。",
           "unknownTitle": "学習状況を取得できません。"
-        }
+        },
+        "clearAllConfirm": "辞書のすべての項目を削除しますか？",
+        "clearAllFailed": "辞書を消去できませんでした。"
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "ダウンロード進行状況",
     "downloadProgressForItem": "{{id}} のダウンロード進行状況",
     "percentComplete": "{{percentage}}% 完了",
-    "downloadingCount": "{{count}} 件をダウンロード中..."
+    "downloadingCount": "{{count}} 件をダウンロード中...",
+    "confirmAction": "操作の確認"
   },
   "accessibility": {
     "permissionsRequired": "アクセシビリティ権限が必要です",
@@ -2232,7 +2236,9 @@
         "nameLabel": "トーン名",
         "instructionLabel": "指示",
         "save": "トーンを保存",
-        "createFailed": "トーンを作成できませんでした。"
+        "createFailed": "トーンを作成できませんでした。",
+        "namePlaceholder": "創業者の語り口",
+        "instructionPlaceholder": "温かく簡潔な文体で書き直してください。専門用語は保ち、誇張は避けてください。"
       },
       "overrideGroups": {
         "speech": "スピーチ",
@@ -2247,7 +2253,10 @@
         "removeOverride": "オーバーライドを削除",
         "removeOverrideAria": "{{label}} オーバーライドを削除",
         "notAvailableShort": "n/a",
-        "notAvailable": "使用可能なオプションはありません。最初にグローバル値を設定してください。"
+        "notAvailable": "使用可能なオプションはありません。最初にグローバル値を設定してください。",
+        "confirmRemoveOverride": "上書きの削除を確認",
+        "confirmRemoveOverrideAria": "{{label}} の上書きの削除を確認",
+        "confirmResetAll": "すべての上書きをリセットしますか？"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "不明なセクション: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "モデルの読み込みに失敗しました: {{detail}}",
+      "switchModel": "モデルの切り替えに失敗しました: {{detail}}",
+      "downloadModel": "モデルのダウンロードに失敗しました: {{detail}}",
+      "cancelDownload": "ダウンロードのキャンセルに失敗しました: {{detail}}",
+      "deleteModel": "モデルの削除に失敗しました: {{detail}}",
+      "extractModel": "モデルの展開に失敗しました: {{detail}}"
+    }
   }
 }

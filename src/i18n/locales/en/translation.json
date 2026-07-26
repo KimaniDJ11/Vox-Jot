@@ -267,7 +267,9 @@
         "nameLabel": "Tone name",
         "instructionLabel": "Instruction",
         "save": "Save tone",
-        "createFailed": "Couldn't create tone."
+        "createFailed": "Couldn't create tone.",
+        "namePlaceholder": "Founder voice",
+        "instructionPlaceholder": "Rewrite in a warm, concise voice. Preserve technical terms and avoid hype."
       },
       "overrideGroups": {
         "speech": "Speech",
@@ -282,7 +284,10 @@
         "removeOverride": "Remove override",
         "removeOverrideAria": "Remove {{label}} override",
         "notAvailableShort": "n/a",
-        "notAvailable": "No options available — set up the global value first."
+        "notAvailable": "No options available — set up the global value first.",
+        "confirmRemoveOverride": "Confirm remove override",
+        "confirmRemoveOverrideAria": "Confirm removing the {{label}} override",
+        "confirmResetAll": "Reset every override?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -1122,7 +1127,9 @@
           "off": "Off",
           "offTitle": "Disabled. This correction will not apply.",
           "unknownTitle": "Learning status unavailable."
-        }
+        },
+        "clearAllConfirm": "Delete every dictionary entry?",
+        "clearAllFailed": "Could not clear the dictionary."
       }
     },
     "snippets": {
@@ -1251,7 +1258,8 @@
           "restore": "Failed to restore original shortcut",
           "set": "Failed to set shortcut: {{error}}",
           "reset": "Failed to reset shortcut to original value"
-        }
+        },
+        "confirmReset": "Reset"
       },
       "language": {
         "title": "Language",
@@ -2405,7 +2413,8 @@
     "downloadProgress": "Download progress",
     "downloadProgressForItem": "Download progress for {{id}}",
     "percentComplete": "{{percentage}}% complete",
-    "downloadingCount": "{{count}} downloading..."
+    "downloadingCount": "{{count}} downloading...",
+    "confirmAction": "Confirm action"
   },
   "accessibility": {
     "permissionsRequired": "Accessibility Permissions Required",
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Unknown section: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Failed to load models: {{detail}}",
+      "switchModel": "Failed to switch to model: {{detail}}",
+      "downloadModel": "Failed to download model: {{detail}}",
+      "cancelDownload": "Failed to cancel download: {{detail}}",
+      "deleteModel": "Failed to delete model: {{detail}}",
+      "extractModel": "Failed to extract model: {{detail}}"
+    }
   }
 }

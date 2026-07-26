@@ -576,7 +576,8 @@
           "restore": "Původní zástupce se nepodařilo obnovit",
           "set": "Nepodařilo se nastavit zástupce: {{error}}",
           "reset": "Obnovení zástupce na původní hodnotu se nezdařilo"
-        }
+        },
+        "confirmReset": "Obnovit"
       },
       "language": {
         "title": "Jazyk",
@@ -1333,7 +1334,9 @@
           "off": "Vypnuto",
           "offTitle": "Vypnuto. Tato oprava se nepoužije.",
           "unknownTitle": "Stav učení není k dispozici."
-        }
+        },
+        "clearAllConfirm": "Smazat všechny položky slovníku?",
+        "clearAllFailed": "Slovník se nepodařilo vymazat."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Průběh stahování",
     "downloadProgressForItem": "Průběh stahování pro {{id}}",
     "percentComplete": "{{percentage}} % dokončeno",
-    "downloadingCount": "Stahuje se {{count}}..."
+    "downloadingCount": "Stahuje se {{count}}...",
+    "confirmAction": "Potvrdit akci"
   },
   "accessibility": {
     "permissionsRequired": "Jsou vyžadována oprávnění k usnadnění",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Název tónu",
         "instructionLabel": "Instrukce",
         "save": "Uložit tón",
-        "createFailed": "Tón se nepodařilo vytvořit."
+        "createFailed": "Tón se nepodařilo vytvořit.",
+        "namePlaceholder": "Hlas zakladatele",
+        "instructionPlaceholder": "Přepiš vřelým a stručným tónem. Zachovej technické termíny a vyhni se nadsázce."
       },
       "overrideGroups": {
         "speech": "Řeč",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Odebrat přepsání",
         "removeOverrideAria": "Odstraňte přepsání {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Nejsou k dispozici žádné možnosti – nejprve nastavte globální hodnotu."
+        "notAvailable": "Nejsou k dispozici žádné možnosti – nejprve nastavte globální hodnotu.",
+        "confirmRemoveOverride": "Potvrdit odebrání přepisu",
+        "confirmRemoveOverrideAria": "Potvrďte odebrání přepisu {{label}}",
+        "confirmResetAll": "Obnovit všechny přepisy?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Neznámá sekce: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Načtení modelů se nezdařilo: {{detail}}",
+      "switchModel": "Přepnutí na model se nezdařilo: {{detail}}",
+      "downloadModel": "Stažení modelu se nezdařilo: {{detail}}",
+      "cancelDownload": "Zrušení stahování se nezdařilo: {{detail}}",
+      "deleteModel": "Smazání modelu se nezdařilo: {{detail}}",
+      "extractModel": "Rozbalení modelu se nezdařilo: {{detail}}"
+    }
   }
 }

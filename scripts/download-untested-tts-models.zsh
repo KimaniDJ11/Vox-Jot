@@ -1,5 +1,8 @@
 #!/bin/zsh
-set -u
+# `-e` so setup failures (log dir, status file, missing store) abort instead of
+# running the queue against a broken environment; per-model download failures are
+# still tolerated and recorded, see download_model below.
+set -euo pipefail
 
 APP_SUPPORT="${APP_SUPPORT:-$HOME/Library/Application Support/com.iriedinamik.voxjot}"
 STORE="${VOX_JOT_TTS_MLX_STORE:-$APP_SUPPORT/models/tts/store/MLX}"
@@ -32,8 +35,10 @@ download_model() {
   echo "$id	started	$repo	$local_dir	$(date -Iseconds)" >> "$STATUS_FILE"
   mkdir -p "$local_dir"
 
-  "$HF" download "$repo" --local-dir "$local_dir" --max-workers 4
-  local exit_code=$?
+  # A single model failing must not abort the rest of the queue, so the exit
+  # code is captured explicitly rather than letting `set -e` unwind.
+  local exit_code=0
+  "$HF" download "$repo" --local-dir "$local_dir" --max-workers 4 || exit_code=$?
 
   if [[ "$exit_code" -eq 0 ]]; then
     echo "[$(date)] DONE $id"

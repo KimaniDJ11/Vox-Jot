@@ -415,10 +415,14 @@ pub struct ConvoAudioCapture {
     worker: Mutex<Option<std::thread::JoinHandle<()>>>,
 }
 
-// Safety: ConvoAudioCapture only contains Mutex-wrapped Send types.
-// The cpal::Stream lives entirely on the worker thread and is never stored here.
-unsafe impl Send for ConvoAudioCapture {}
-unsafe impl Sync for ConvoAudioCapture {}
+// Every field is a Mutex over a Send type — the `!Send` cpal::Stream lives
+// entirely on the worker thread and is never stored here — so Send + Sync are
+// derived automatically. Asserting them keeps that a compile error rather than a
+// silent regression if a non-Send field is ever added.
+const _: fn() = || {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<ConvoAudioCapture>();
+};
 
 impl ConvoAudioCapture {
     pub fn new() -> Self {

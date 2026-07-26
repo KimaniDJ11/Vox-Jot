@@ -576,7 +576,8 @@
           "restore": "Nie udało się przywrócić oryginalnego skrótu",
           "set": "Nie udało się ustawić skrótu: {{error}}",
           "reset": "Nie udało się zresetować skrótu do oryginalnej wartości"
-        }
+        },
+        "confirmReset": "Zresetuj"
       },
       "language": {
         "title": "Język",
@@ -1333,7 +1334,9 @@
           "off": "Wyłączone",
           "offTitle": "Wyłączone. Ta poprawka nie zostanie zastosowana.",
           "unknownTitle": "Stan uczenia niedostępny."
-        }
+        },
+        "clearAllConfirm": "Usunąć wszystkie wpisy słownika?",
+        "clearAllFailed": "Nie udało się wyczyścić słownika."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Postęp pobierania",
     "downloadProgressForItem": "Postęp pobierania dla {{id}}",
     "percentComplete": "Ukończono {{percentage}}%",
-    "downloadingCount": "Pobieranie: {{count}}..."
+    "downloadingCount": "Pobieranie: {{count}}...",
+    "confirmAction": "Potwierdź działanie"
   },
   "accessibility": {
     "permissionsRequired": "Wymagane uprawnienia dostępu",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Nazwa tonu",
         "instructionLabel": "Instrukcja",
         "save": "Zapisz ton",
-        "createFailed": "Nie można utworzyć tonu."
+        "createFailed": "Nie można utworzyć tonu.",
+        "namePlaceholder": "Głos założyciela",
+        "instructionPlaceholder": "Przepisz ciepłym, zwięzłym tonem. Zachowaj terminy techniczne i unikaj przesady."
       },
       "overrideGroups": {
         "speech": "Mowa",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Usuń zastąpienie",
         "removeOverrideAria": "Usuń nadpisanie {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Brak dostępnych opcji — najpierw skonfiguruj wartość globalną."
+        "notAvailable": "Brak dostępnych opcji — najpierw skonfiguruj wartość globalną.",
+        "confirmRemoveOverride": "Potwierdź usunięcie nadpisania",
+        "confirmRemoveOverrideAria": "Potwierdź usunięcie nadpisania {{label}}",
+        "confirmResetAll": "Zresetować wszystkie nadpisania?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Nieznana sekcja: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Nie udało się wczytać modeli: {{detail}}",
+      "switchModel": "Nie udało się przełączyć modelu: {{detail}}",
+      "downloadModel": "Nie udało się pobrać modelu: {{detail}}",
+      "cancelDownload": "Nie udało się anulować pobierania: {{detail}}",
+      "deleteModel": "Nie udało się usunąć modelu: {{detail}}",
+      "extractModel": "Nie udało się wypakować modelu: {{detail}}"
+    }
   }
 }

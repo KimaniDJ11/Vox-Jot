@@ -8,7 +8,7 @@ use crate::utils;
 use log::{debug, error, info, warn};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Instant;
 use tauri::{Emitter, Manager};
 
@@ -195,6 +195,25 @@ const WHISPER_SAMPLE_RATE: usize = 16000;
 /// actually done.
 const ON_DEMAND_STREAM_LINGER: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// Pending deferred close, coalesced into one long-lived worker thread.
+///
+/// Each dictation stop/cancel used to spawn its own thread that slept out the
+/// linger window, so rapid dictation accumulated short-lived threads. The worker
+/// waits on `signal` for the latest deadline instead, and a newer stop simply
+/// moves the deadline.
+#[derive(Default)]
+struct StreamLinger {
+    state: Mutex<StreamLingerState>,
+    signal: Condvar,
+}
+
+#[derive(Default)]
+struct StreamLingerState {
+    /// Deadline plus the stream epoch the close applies to.
+    pending: Option<(Instant, u64)>,
+    worker_started: bool,
+}
+
 /* ──────────────────────────────────────────────────────────────── */
 
 #[derive(Clone, Debug)]
@@ -319,6 +338,7 @@ pub struct AudioRecordingManager {
     /// disappeared). The next open tears the dead stream down and rebuilds.
     stream_failed: Arc<AtomicBool>,
     stream_epoch: Arc<AtomicU64>,
+    stream_linger: Arc<StreamLinger>,
     audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
     mute_restore_state: Arc<Mutex<Option<bool>>>,
@@ -347,6 +367,7 @@ impl AudioRecordingManager {
             is_recording: Arc::new(AtomicBool::new(false)),
             stream_failed: Arc::new(AtomicBool::new(false)),
             stream_epoch: Arc::new(AtomicU64::new(0)),
+            stream_linger: Arc::new(StreamLinger::default()),
             audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
             mute_restore_state: Arc::new(Mutex::new(None)),
@@ -554,6 +575,81 @@ impl AudioRecordingManager {
         debug!("Microphone stream stopped");
     }
 
+    /// Queue the on-demand stream close for `ON_DEMAND_STREAM_LINGER` from now.
+    ///
+    /// Repeated calls just move the deadline, so back-to-back dictations keep the
+    /// warm stream without spawning a thread each time.
+    fn schedule_on_demand_stream_close(&self) {
+        let deadline = Instant::now() + ON_DEMAND_STREAM_LINGER;
+        let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
+
+        let mut state = self
+            .stream_linger
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        state.pending = Some((deadline, expected_epoch));
+
+        if !state.worker_started {
+            let manager = self.clone();
+            match std::thread::Builder::new()
+                .name("mic-stream-linger".to_string())
+                .spawn(move || manager.run_stream_linger_worker())
+            {
+                Ok(_) => state.worker_started = true,
+                Err(error) => {
+                    // Leave `pending` set and the flag clear so the next stop
+                    // retries; the epoch guard keeps a late close safe.
+                    error!("Failed to start the microphone linger worker: {error}");
+                }
+            }
+        }
+        drop(state);
+
+        self.stream_linger.signal.notify_all();
+    }
+
+    /// Single worker that performs whichever deferred close is currently queued.
+    fn run_stream_linger_worker(&self) {
+        let mut state = self
+            .stream_linger
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        loop {
+            let Some((deadline, expected_epoch)) = state.pending else {
+                state = self
+                    .stream_linger
+                    .signal
+                    .wait(state)
+                    .unwrap_or_else(|e| e.into_inner());
+                continue;
+            };
+
+            let now = Instant::now();
+            if now < deadline {
+                // A newer stop can move the deadline while we wait; re-read it.
+                state = self
+                    .stream_linger
+                    .signal
+                    .wait_timeout(state, deadline - now)
+                    .unwrap_or_else(|e| e.into_inner())
+                    .0;
+                continue;
+            }
+
+            state.pending = None;
+            drop(state);
+            self.stop_microphone_stream_if_epoch(expected_epoch);
+            state = self
+                .stream_linger
+                .state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+        }
+    }
+
     fn stop_microphone_stream_if_epoch(&self, expected_epoch: u64) {
         if !matches!(
             *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
@@ -719,12 +815,7 @@ impl AudioRecordingManager {
                     *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                     MicrophoneMode::OnDemand
                 ) {
-                    let manager = self.clone();
-                    let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
-                    std::thread::spawn(move || {
-                        std::thread::sleep(ON_DEMAND_STREAM_LINGER);
-                        manager.stop_microphone_stream_if_epoch(expected_epoch);
-                    });
+                    self.schedule_on_demand_stream_close();
                 }
 
                 // Pad if very short
@@ -800,12 +891,7 @@ impl AudioRecordingManager {
                 *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                 MicrophoneMode::OnDemand
             ) {
-                let manager = self.clone();
-                let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
-                std::thread::spawn(move || {
-                    std::thread::sleep(ON_DEMAND_STREAM_LINGER);
-                    manager.stop_microphone_stream_if_epoch(expected_epoch);
-                });
+                self.schedule_on_demand_stream_close();
             }
         }
     }

@@ -321,6 +321,8 @@ export const CorrectionDictionaryView: React.FC<
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
   const [importing, setImporting] = useState(false);
+  const [confirmingClearAll, setConfirmingClearAll] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const disablePopoverRef = useRef<HTMLDivElement>(null);
   const originalsPopoverRef = useRef<HTMLDivElement>(null);
@@ -707,6 +709,30 @@ export const CorrectionDictionaryView: React.FC<
     }
   }, [loadCorrections, t]);
 
+  const handleClearAll = useCallback(async () => {
+    setImportError("");
+    setImportMessage("");
+    setClearingAll(true);
+    try {
+      const result = await commands.clearAllCorrections();
+      if (result.status === "ok") {
+        setConfirmingClearAll(false);
+        await loadCorrections();
+      } else {
+        setImportError(result.error);
+      }
+    } catch (error) {
+      console.error("Failed to clear corrections:", error);
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : t("settings.corrections.dictionary.clearAllFailed"),
+      );
+    } finally {
+      setClearingAll(false);
+    }
+  }, [loadCorrections, t]);
+
   const visibleCorrections = useMemo(
     () =>
       corrections.filter((correction) =>
@@ -893,6 +919,40 @@ export const CorrectionDictionaryView: React.FC<
           >
             <FileInput className="h-4 w-4" aria-hidden />
           </button>
+        ) : null}
+        {corrections.length > 0 ? (
+          confirmingClearAll ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--text)]">
+                {t("settings.corrections.dictionary.clearAllConfirm")}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmingClearAll(false)}
+                disabled={clearingAll}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => void handleClearAll()}
+                disabled={clearingAll}
+              >
+                {t("settings.corrections.dictionary.clearAll")}
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--danger),transparent_72%)] bg-[var(--panel-bg)] text-[var(--text)] shadow-[var(--segmented-control-shadow)] transition-colors hover:border-[color-mix(in_srgb,var(--danger),transparent_50%)] hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)] [&>svg]:stroke-[2.75]"
+              onClick={() => setConfirmingClearAll(true)}
+              aria-label={t("settings.corrections.dictionary.clearAll")}
+              title={t("settings.corrections.dictionary.clearAll")}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </button>
+          )
         ) : null}
       </div>
     </div>

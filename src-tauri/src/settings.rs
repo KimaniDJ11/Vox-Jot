@@ -2889,6 +2889,12 @@ fn normalized_default_settings() -> AppSettings {
     settings
 }
 
+/// Read the current settings.
+///
+/// Served from `SETTINGS_CACHE` after the first call, so this is cheap enough for
+/// the dictation path. The OS keychain is *not* consulted here: API keys are read
+/// on demand elsewhere, and the keychain is only touched by the one-time legacy
+/// key migration below.
 pub fn get_settings(app: &AppHandle) -> AppSettings {
     if let Some(settings) = cached_settings() {
         return settings;

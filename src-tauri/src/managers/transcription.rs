@@ -83,23 +83,39 @@ static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
 const GEMMA_AUDIO_STT_PORT: u16 = 8028;
 const GEMMA_AUDIO_STT_SERVER_SOURCE: &str = include_str!("../../../scripts/gemma4_stt_server.py");
 const GEMMA_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
-static GEMMA_AUDIO_STT_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
-    reqwest::blocking::Client::builder()
-        .connect_timeout(Duration::from_secs(5))
-        .timeout(GEMMA_AUDIO_STT_REQUEST_TIMEOUT)
-        .build()
-        .expect("failed to build Gemma audio STT client")
-});
+// Held as a Result rather than unwrapped: a TLS-backend init failure should
+// surface as a transcription error, not panic on first use.
+static GEMMA_AUDIO_STT_CLIENT: LazyLock<Result<reqwest::blocking::Client, String>> =
+    LazyLock::new(|| {
+        reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(GEMMA_AUDIO_STT_REQUEST_TIMEOUT)
+            .build()
+            .map_err(|err| format!("Failed to build the Gemma audio STT HTTP client: {err}"))
+    });
+
+fn gemma_audio_stt_client() -> Result<&'static reqwest::blocking::Client> {
+    GEMMA_AUDIO_STT_CLIENT
+        .as_ref()
+        .map_err(|err| anyhow::anyhow!("{err}"))
+}
 const HIGGS_AUDIO_STT_PORT: u16 = 8038;
 const HIGGS_AUDIO_STT_SERVER_SOURCE: &str = include_str!("../../../scripts/higgs_stt_server.py");
 const HIGGS_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
-static HIGGS_AUDIO_STT_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
-    reqwest::blocking::Client::builder()
-        .connect_timeout(Duration::from_secs(5))
-        .timeout(HIGGS_AUDIO_STT_REQUEST_TIMEOUT)
-        .build()
-        .expect("failed to build Higgs audio STT client")
-});
+static HIGGS_AUDIO_STT_CLIENT: LazyLock<Result<reqwest::blocking::Client, String>> =
+    LazyLock::new(|| {
+        reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(HIGGS_AUDIO_STT_REQUEST_TIMEOUT)
+            .build()
+            .map_err(|err| format!("Failed to build the Higgs audio STT HTTP client: {err}"))
+    });
+
+fn higgs_audio_stt_client() -> Result<&'static reqwest::blocking::Client> {
+    HIGGS_AUDIO_STT_CLIENT
+        .as_ref()
+        .map_err(|err| anyhow::anyhow!("{err}"))
+}
 
 struct FinalTranscriptionPendingGuard {
     flag: Arc<AtomicBool>,
@@ -321,7 +337,7 @@ impl GemmaAudioSttEngine {
         sample_rate: u32,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
-        let response = GEMMA_AUDIO_STT_CLIENT
+        let response = gemma_audio_stt_client()?
             .post(format!(
                 "{}/v1/audio/transcriptions",
                 self.base_url.trim_end_matches('/')
@@ -407,6 +423,12 @@ impl GemmaAudioSttEngine {
 
     fn wait_until_ready(&mut self) -> Result<()> {
         for _ in 0..600 {
+            // Don't hold quit for the remainder of the 300 s budget.
+            if crate::app_shutdown_started() {
+                return Err(anyhow::anyhow!(
+                    "Gemma audio sidecar startup aborted: the app is shutting down."
+                ));
+            }
             if gemma_audio_server_matches(&self.base_url, &self.model_source, self.backend) {
                 return Ok(());
             }
@@ -480,7 +502,7 @@ impl HiggsAudioSttEngine {
     }
 
     fn send_wav_bytes(&self, wav_bytes: &[u8]) -> Result<MlxAudioTranscriptionResponse> {
-        let response = HIGGS_AUDIO_STT_CLIENT
+        let response = higgs_audio_stt_client()?
             .post(format!(
                 "{}/v1/audio/transcriptions",
                 self.base_url.trim_end_matches('/')
@@ -569,6 +591,11 @@ impl HiggsAudioSttEngine {
 
     fn wait_until_ready(&mut self) -> Result<()> {
         for _ in 0..600 {
+            if crate::app_shutdown_started() {
+                return Err(anyhow::anyhow!(
+                    "Higgs audio sidecar startup aborted: the app is shutting down."
+                ));
+            }
             if higgs_audio_server_matches(&self.base_url, &self.model_source) {
                 return Ok(());
             }
@@ -617,7 +644,10 @@ fn higgs_audio_stt_server_path(app_handle: &AppHandle) -> Result<PathBuf> {
 }
 
 fn higgs_audio_server_matches(base_url: &str, model_source: &str) -> bool {
-    let Ok(response) = HIGGS_AUDIO_STT_CLIENT
+    let Ok(client) = higgs_audio_stt_client() else {
+        return false;
+    };
+    let Ok(response) = client
         .get(format!("{}/health", base_url.trim_end_matches('/')))
         .send()
     else {
@@ -688,7 +718,10 @@ fn gemma_audio_stt_server_path(app_handle: &AppHandle) -> Result<PathBuf> {
 }
 
 fn gemma_audio_server_matches(base_url: &str, model_source: &str, backend: &str) -> bool {
-    let Ok(response) = GEMMA_AUDIO_STT_CLIENT
+    let Ok(client) = gemma_audio_stt_client() else {
+        return false;
+    };
+    let Ok(response) = client
         .get(format!("{}/health", base_url.trim_end_matches('/')))
         .send()
     else {

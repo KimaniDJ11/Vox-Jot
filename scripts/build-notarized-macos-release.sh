@@ -182,6 +182,11 @@ import_certificate() {
 
   require_env "APPLE_CERTIFICATE_PASSWORD"
 
+  # `security` takes these passwords only via argv (its alternative is an
+  # interactive prompt, which this non-interactive path cannot use), so they are
+  # briefly visible in the local process list. The keychain itself is ephemeral
+  # and deleted on exit; prefer the stored `voxjot-notary` profile plus an
+  # already-installed Developer ID identity on shared machines.
   /usr/bin/security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_NAME}"
   /usr/bin/security set-keychain-settings -lut 21600 "${KEYCHAIN_NAME}"
   /usr/bin/security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_NAME}"

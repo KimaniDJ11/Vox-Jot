@@ -538,7 +538,8 @@
           "restore": "Не вдалося відновити оригінальний ярлик",
           "set": "Не вдалося встановити ярлик: {{error}}",
           "reset": "Не вдалося скинути початкове значення ярлика"
-        }
+        },
+        "confirmReset": "Скинути"
       },
       "language": {
         "title": "Мова",
@@ -1333,7 +1334,9 @@
           "off": "Вимк.",
           "offTitle": "Вимкнено. Це виправлення не застосовуватиметься.",
           "unknownTitle": "Статус навчання недоступний."
-        }
+        },
+        "clearAllConfirm": "Видалити всі записи словника?",
+        "clearAllFailed": "Не вдалося очистити словник."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Перебіг завантаження",
     "downloadProgressForItem": "Перебіг завантаження для {{id}}",
     "percentComplete": "Завершено {{percentage}}%",
-    "downloadingCount": "{{count}} завантажується..."
+    "downloadingCount": "{{count}} завантажується...",
+    "confirmAction": "Підтвердьте дію"
   },
   "accessibility": {
     "permissionsRequired": "Потрібні дозволи на доступність",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Назва тону",
         "instructionLabel": "Інструкція",
         "save": "Зберегти тон",
-        "createFailed": "Не вдалося створити тон."
+        "createFailed": "Не вдалося створити тон.",
+        "namePlaceholder": "Голос засновника",
+        "instructionPlaceholder": "Перепиши теплим і стислим тоном. Збережи технічні терміни й уникай перебільшень."
       },
       "overrideGroups": {
         "speech": "Виступ",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Видалити перевизначення",
         "removeOverrideAria": "Видалити перевизначення {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Немає доступних опцій — спочатку встановіть глобальне значення."
+        "notAvailable": "Немає доступних опцій — спочатку встановіть глобальне значення.",
+        "confirmRemoveOverride": "Підтвердьте видалення перевизначення",
+        "confirmRemoveOverrideAria": "Підтвердьте видалення перевизначення {{label}}",
+        "confirmResetAll": "Скинути всі перевизначення?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Невідомий розділ: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Не вдалося завантажити моделі: {{detail}}",
+      "switchModel": "Не вдалося перейти на модель: {{detail}}",
+      "downloadModel": "Не вдалося завантажити модель: {{detail}}",
+      "cancelDownload": "Не вдалося скасувати завантаження: {{detail}}",
+      "deleteModel": "Не вдалося видалити модель: {{detail}}",
+      "extractModel": "Не вдалося розпакувати модель: {{detail}}"
+    }
   }
 }

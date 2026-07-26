@@ -17,7 +17,7 @@
 // the empty-state hint so the user knows what's happening.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, X } from "lucide-react";
+import { Check, RotateCcw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
   LLMPrompt,
@@ -75,6 +75,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation();
+  const [confirmingResetAll, setConfirmingResetAll] = useState(false);
   const ctx = useMemo(
     () => ({ models, tones, prompts }),
     [models, tones, prompts],
@@ -116,14 +117,40 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
           onChange={onChange}
         />
         {activeCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => onChange(resetAllOverrides(overrides))}
-            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:text-[var(--danger)]"
-          >
-            <RotateCcw className="h-3 w-3" aria-hidden />
-            {t("refine.writeRules.overridesEditor.resetAll")}
-          </button>
+          confirmingResetAll ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--text)]">
+                {t("refine.writeRules.overridesEditor.confirmResetAll")}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmingResetAll(false)}
+              >
+                {t("common.cancel", { defaultValue: "Cancel" })}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  onChange(resetAllOverrides(overrides));
+                  setConfirmingResetAll(false);
+                }}
+              >
+                {t("refine.writeRules.overridesEditor.resetAll")}
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingResetAll(true)}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:text-[var(--danger)]"
+            >
+              <RotateCcw className="h-3 w-3" aria-hidden />
+              {t("refine.writeRules.overridesEditor.resetAll")}
+            </button>
+          )
         ) : null}
       </div>
     </div>
@@ -146,6 +173,7 @@ const OverrideRow: React.FC<{
 }> = ({ spec, overrides, context, onCreateTone, onChange }) => {
   const { t } = useTranslation();
   const [isCreatingCustomTone, setIsCreatingCustomTone] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const modelById = useMemo(
     () => new Map(context.models.map((model) => [model.id, model])),
     [context.models],
@@ -190,19 +218,47 @@ const OverrideRow: React.FC<{
               className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
             />
           )}
-          <ActionIconButton
-            tone="danger"
-            onClick={() => onChange(spec.reset(overrides))}
-            aria-label={t(
-              "refine.writeRules.overridesEditor.removeOverrideAria",
-              {
-                label: specLabel,
-              },
-            )}
-            title={t("refine.writeRules.overridesEditor.removeOverride")}
-          >
-            <X aria-hidden />
-          </ActionIconButton>
+          {confirmingRemove ? (
+            <>
+              <ActionIconButton
+                tone="confirm"
+                onClick={() => {
+                  onChange(spec.reset(overrides));
+                  setConfirmingRemove(false);
+                }}
+                aria-label={t(
+                  "refine.writeRules.overridesEditor.confirmRemoveOverrideAria",
+                  { label: specLabel },
+                )}
+                title={t(
+                  "refine.writeRules.overridesEditor.confirmRemoveOverride",
+                )}
+              >
+                <Check aria-hidden />
+              </ActionIconButton>
+              <ActionIconButton
+                onClick={() => setConfirmingRemove(false)}
+                aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+                title={t("common.cancel", { defaultValue: "Cancel" })}
+              >
+                <X aria-hidden />
+              </ActionIconButton>
+            </>
+          ) : (
+            <ActionIconButton
+              tone="danger"
+              onClick={() => setConfirmingRemove(true)}
+              aria-label={t(
+                "refine.writeRules.overridesEditor.removeOverrideAria",
+                {
+                  label: specLabel,
+                },
+              )}
+              title={t("refine.writeRules.overridesEditor.removeOverride")}
+            >
+              <X aria-hidden />
+            </ActionIconButton>
+          )}
         </div>
       </div>
       {spec.key === "tone_id" && onCreateTone ? (
@@ -278,7 +334,7 @@ const CustomToneCreator: React.FC<{
           </span>
           <Input
             value={label}
-            placeholder="Founder voice"
+            placeholder={t("refine.writeRules.customTone.namePlaceholder")}
             variant="compact"
             className="w-full"
             onChange={(event) => setLabel(event.target.value)}
@@ -290,7 +346,9 @@ const CustomToneCreator: React.FC<{
           </span>
           <Textarea
             value={instruction}
-            placeholder="Rewrite in a warm, concise voice. Preserve technical terms and avoid hype."
+            placeholder={t(
+              "refine.writeRules.customTone.instructionPlaceholder",
+            )}
             variant="compact"
             onChange={(event) => setInstruction(event.target.value)}
             className="min-h-[72px] w-full"

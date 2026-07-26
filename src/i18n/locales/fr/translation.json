@@ -576,7 +576,8 @@
           "restore": "Échec de la restauration du raccourci d'origine",
           "set": "Échec de la définition du raccourci : {{error}}",
           "reset": "Échec de la réinitialisation du raccourci à la valeur d'origine"
-        }
+        },
+        "confirmReset": "Réinitialiser"
       },
       "language": {
         "title": "Langue",
@@ -1333,7 +1334,9 @@
           "off": "Désactivé",
           "offTitle": "Désactivé. Cette correction ne sera pas appliquée.",
           "unknownTitle": "Statut d'apprentissage indisponible."
-        }
+        },
+        "clearAllConfirm": "Supprimer toutes les entrées du dictionnaire ?",
+        "clearAllFailed": "Impossible d'effacer le dictionnaire."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Progression du téléchargement",
     "downloadProgressForItem": "Progression du téléchargement de {{id}}",
     "percentComplete": "{{percentage}} % terminé",
-    "downloadingCount": "{{count}} en téléchargement..."
+    "downloadingCount": "{{count}} en téléchargement...",
+    "confirmAction": "Confirmer l'action"
   },
   "accessibility": {
     "permissionsRequired": "Autorisations d'accessibilité requises",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Nom du ton",
         "instructionLabel": "Consigne",
         "save": "Enregistrer le ton",
-        "createFailed": "Impossible de créer le ton."
+        "createFailed": "Impossible de créer le ton.",
+        "namePlaceholder": "Voix de fondateur",
+        "instructionPlaceholder": "Réécris d'une voix chaleureuse et concise. Conserve les termes techniques et évite l'emphase."
       },
       "overrideGroups": {
         "speech": "Discours",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Supprimer le remplacement",
         "removeOverrideAria": "Supprimer le remplacement {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Aucune option disponible : configurez d'abord la valeur globale."
+        "notAvailable": "Aucune option disponible : configurez d'abord la valeur globale.",
+        "confirmRemoveOverride": "Confirmer la suppression du remplacement",
+        "confirmRemoveOverrideAria": "Confirmer la suppression du remplacement {{label}}",
+        "confirmResetAll": "Réinitialiser tous les remplacements ?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Section inconnue : {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Échec du chargement des modèles : {{detail}}",
+      "switchModel": "Échec du changement de modèle : {{detail}}",
+      "downloadModel": "Échec du téléchargement du modèle : {{detail}}",
+      "cancelDownload": "Échec de l'annulation du téléchargement : {{detail}}",
+      "deleteModel": "Échec de la suppression du modèle : {{detail}}",
+      "extractModel": "Échec de l'extraction du modèle : {{detail}}"
+    }
   }
 }

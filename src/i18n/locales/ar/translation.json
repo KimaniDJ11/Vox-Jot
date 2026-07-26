@@ -443,7 +443,8 @@
           "restore": "فشل في استعادة الاختصار الأصلي",
           "set": "فشل تعيين الاختصار: {{error}}",
           "reset": "فشل في إعادة تعيين الاختصار إلى القيمة الأصلية"
-        }
+        },
+        "confirmReset": "إعادة التعيين"
       },
       "language": {
         "title": "اللغة",
@@ -1333,7 +1334,9 @@
           "off": "متوقف",
           "offTitle": "معطّل. لن يُطبَّق هذا التصحيح.",
           "unknownTitle": "حالة التعلّم غير متاحة."
-        }
+        },
+        "clearAllConfirm": "حذف كل مدخلات القاموس؟",
+        "clearAllFailed": "تعذّر مسح القاموس."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "تقدم التنزيل",
     "downloadProgressForItem": "تقدم تنزيل {{id}}",
     "percentComplete": "اكتمل {{percentage}}%",
-    "downloadingCount": "{{count}} قيد التنزيل..."
+    "downloadingCount": "{{count}} قيد التنزيل...",
+    "confirmAction": "تأكيد الإجراء"
   },
   "accessibility": {
     "permissionsRequired": "أذونات الوصول مطلوبة",
@@ -2232,7 +2236,9 @@
         "nameLabel": "اسم النبرة",
         "instructionLabel": "التعليمات",
         "save": "حفظ النبرة",
-        "createFailed": "تعذر إنشاء النبرة."
+        "createFailed": "تعذر إنشاء النبرة.",
+        "namePlaceholder": "صوت المؤسس",
+        "instructionPlaceholder": "أعد الكتابة بأسلوب ودود وموجز. احتفظ بالمصطلحات التقنية وتجنّب المبالغة."
       },
       "overrideGroups": {
         "speech": "خطاب",
@@ -2247,7 +2253,10 @@
         "removeOverride": "إزالة التجاوز",
         "removeOverrideAria": "إزالة تجاوز {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "لا توجد خيارات متاحة — قم بإعداد القيمة العالمية أولاً."
+        "notAvailable": "لا توجد خيارات متاحة — قم بإعداد القيمة العالمية أولاً.",
+        "confirmRemoveOverride": "تأكيد إزالة التجاوز",
+        "confirmRemoveOverrideAria": "تأكيد إزالة تجاوز {{label}}",
+        "confirmResetAll": "إعادة تعيين كل التجاوزات؟"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "قسم غير معروف: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "تعذّر تحميل النماذج: {{detail}}",
+      "switchModel": "تعذّر التبديل إلى النموذج: {{detail}}",
+      "downloadModel": "تعذّر تنزيل النموذج: {{detail}}",
+      "cancelDownload": "تعذّر إلغاء التنزيل: {{detail}}",
+      "deleteModel": "تعذّر حذف النموذج: {{detail}}",
+      "extractModel": "تعذّر فك ضغط النموذج: {{detail}}"
+    }
   }
 }

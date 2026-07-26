@@ -34,21 +34,30 @@ fi
 TEAM_ID="${TEAM_ID:-${DEFAULT_TEAM_ID}}"
 
 APP_SPECIFIC_PASSWORD="${APPLE_APP_SPECIFIC_PASSWORD:-}"
-if [[ -z "${APP_SPECIFIC_PASSWORD}" ]]; then
-  read -r -s -p "App-specific password: " APP_SPECIFIC_PASSWORD
-  echo
-fi
 
-if [[ -z "${APPLE_ID_EMAIL}" || -z "${TEAM_ID}" || -z "${APP_SPECIFIC_PASSWORD}" ]]; then
-  echo "Apple ID email, Team ID, and app-specific password are required." >&2
+if [[ -z "${APPLE_ID_EMAIL}" || -z "${TEAM_ID}" ]]; then
+  echo "Apple ID email and Team ID are required." >&2
   exit 1
 fi
 
-/usr/bin/xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" \
-  --apple-id "${APPLE_ID_EMAIL}" \
-  --team-id "${TEAM_ID}" \
-  --password "${APP_SPECIFIC_PASSWORD}" \
-  --keychain "${LOGIN_KEYCHAIN}"
+if [[ -n "${APP_SPECIFIC_PASSWORD}" ]]; then
+  # Non-interactive path only. notarytool has no stdin option for the password,
+  # so it has to go through argv here; it is briefly visible in the local
+  # process list. Prefer the interactive path below on a shared machine.
+  /usr/bin/xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" \
+    --apple-id "${APPLE_ID_EMAIL}" \
+    --team-id "${TEAM_ID}" \
+    --password "${APP_SPECIFIC_PASSWORD}" \
+    --keychain "${LOGIN_KEYCHAIN}"
+else
+  # With Apple ID and Team ID supplied and --password omitted, notarytool gives
+  # its own secure prompt, so the password never enters argv or a shell variable.
+  echo "No APPLE_APP_SPECIFIC_PASSWORD set; notarytool will prompt securely."
+  /usr/bin/xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" \
+    --apple-id "${APPLE_ID_EMAIL}" \
+    --team-id "${TEAM_ID}" \
+    --keychain "${LOGIN_KEYCHAIN}"
+fi
 
 echo "Verifying stored notarytool profile..."
 /usr/bin/xcrun notarytool history \

@@ -576,7 +576,8 @@
           "restore": "无法恢复原始快捷方式",
           "set": "设置快捷键失败：{{error}}",
           "reset": "无法将快捷方式重置为原始值"
-        }
+        },
+        "confirmReset": "重置"
       },
       "language": {
         "title": "语言",
@@ -1333,7 +1334,9 @@
           "off": "关闭",
           "offTitle": "已禁用。此更正不会应用。",
           "unknownTitle": "无法获取学习状态。"
-        }
+        },
+        "clearAllConfirm": "删除所有词典条目？",
+        "clearAllFailed": "无法清空词典。"
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "下载进度",
     "downloadProgressForItem": "{{id}} 的下载进度",
     "percentComplete": "已完成 {{percentage}}%",
-    "downloadingCount": "{{count}} 个正在下载..."
+    "downloadingCount": "{{count}} 个正在下载...",
+    "confirmAction": "确认操作"
   },
   "accessibility": {
     "permissionsRequired": "所需的辅助功能权限",
@@ -2228,7 +2232,9 @@
         "nameLabel": "语气名称",
         "instructionLabel": "说明",
         "save": "保存语气",
-        "createFailed": "无法创建语气。"
+        "createFailed": "无法创建语气。",
+        "namePlaceholder": "创始人语气",
+        "instructionPlaceholder": "用温和简洁的语气重写。保留技术术语，避免夸张。"
       },
       "overrideGroups": {
         "speech": "演讲",
@@ -2243,7 +2249,10 @@
         "removeOverride": "删除覆盖",
         "removeOverrideAria": "删除 {{label}} 覆盖",
         "notAvailableShort": "n/a",
-        "notAvailable": "无可用选项 — 首先设置全局值。"
+        "notAvailable": "无可用选项 — 首先设置全局值。",
+        "confirmRemoveOverride": "确认移除覆盖",
+        "confirmRemoveOverrideAria": "确认移除 {{label}} 覆盖",
+        "confirmResetAll": "重置所有覆盖？"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3694,5 +3703,15 @@
   },
   "detail": {
     "unknownSection": "未知部分：{{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "加载模型失败：{{detail}}",
+      "switchModel": "切换模型失败：{{detail}}",
+      "downloadModel": "下载模型失败：{{detail}}",
+      "cancelDownload": "取消下载失败：{{detail}}",
+      "deleteModel": "删除模型失败：{{detail}}",
+      "extractModel": "解压模型失败：{{detail}}"
+    }
   }
 }

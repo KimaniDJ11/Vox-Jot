@@ -6,6 +6,10 @@
     <true/>
     <key>com.apple.security.device.audio-input</key>
     <true/>
+    <!-- Required to load the bundled ONNX Runtime, whisper.cpp, and Python
+         runtime dylibs, which are not signed by this team. It weakens the
+         hardened runtime: any validly-signed dylib may load into the process.
+         Remove this if every bundled dylib is ever re-signed by this team. -->
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
   </dict>

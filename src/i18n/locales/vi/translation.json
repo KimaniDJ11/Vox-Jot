@@ -576,7 +576,8 @@
           "restore": "Không thể khôi phục lối tắt ban đầu",
           "set": "Không đặt được phím tắt: {{error}}",
           "reset": "Không thể đặt lại phím tắt về giá trị ban đầu"
-        }
+        },
+        "confirmReset": "Đặt lại"
       },
       "language": {
         "title": "Ngôn ngữ",
@@ -1333,7 +1334,9 @@
           "off": "Tắt",
           "offTitle": "Đã tắt. Sửa lỗi này sẽ không được áp dụng.",
           "unknownTitle": "Không có trạng thái học."
-        }
+        },
+        "clearAllConfirm": "Xoá mọi mục từ điển?",
+        "clearAllFailed": "Không thể xoá từ điển."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Tiến trình tải xuống",
     "downloadProgressForItem": "Tiến trình tải xuống cho {{id}}",
     "percentComplete": "Hoàn tất {{percentage}}%",
-    "downloadingCount": "{{count}} đang tải xuống..."
+    "downloadingCount": "{{count}} đang tải xuống...",
+    "confirmAction": "Xác nhận hành động"
   },
   "accessibility": {
     "permissionsRequired": "Cần có quyền truy cập",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Tên giọng điệu",
         "instructionLabel": "Hướng dẫn",
         "save": "Lưu giọng điệu",
-        "createFailed": "Không thể tạo giọng điệu."
+        "createFailed": "Không thể tạo giọng điệu.",
+        "namePlaceholder": "Giọng nhà sáng lập",
+        "instructionPlaceholder": "Viết lại bằng giọng ấm áp, ngắn gọn. Giữ thuật ngữ kỹ thuật và tránh thổi phồng."
       },
       "overrideGroups": {
         "speech": "Bài phát biểu",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Xóa ghi đè",
         "removeOverrideAria": "Xóa ghi đè {{label}}",
         "notAvailableShort": "n/a",
-        "notAvailable": "Không có tùy chọn nào - trước tiên hãy thiết lập giá trị chung."
+        "notAvailable": "Không có tùy chọn nào - trước tiên hãy thiết lập giá trị chung.",
+        "confirmRemoveOverride": "Xác nhận xoá ghi đè",
+        "confirmRemoveOverrideAria": "Xác nhận xoá ghi đè {{label}}",
+        "confirmResetAll": "Đặt lại mọi ghi đè?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Phần không xác định: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Không tải được mô hình: {{detail}}",
+      "switchModel": "Không chuyển được sang mô hình: {{detail}}",
+      "downloadModel": "Không tải xuống được mô hình: {{detail}}",
+      "cancelDownload": "Không huỷ được tải xuống: {{detail}}",
+      "deleteModel": "Không xoá được mô hình: {{detail}}",
+      "extractModel": "Không giải nén được mô hình: {{detail}}"
+    }
   }
 }

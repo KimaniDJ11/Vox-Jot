@@ -7,6 +7,15 @@
 #   [target.aarch64-apple-darwin]
 #   runner = "scripts/codesign-runner.sh"
 
+# `-e` is deliberately omitted: re-signing is best-effort and a codesign failure
+# must still let the binary run. Everything else is strict.
+set -uo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: codesign-runner.sh <binary> [args...]" >&2
+  exit 64
+fi
+
 BINARY="$1"
 shift
 

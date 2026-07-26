@@ -576,7 +576,8 @@
           "restore": "Die ursprüngliche Verknüpfung konnte nicht wiederhergestellt werden",
           "set": "Verknüpfung konnte nicht festgelegt werden: {{error}}",
           "reset": "Die Verknüpfung konnte nicht auf den ursprünglichen Wert zurückgesetzt werden"
-        }
+        },
+        "confirmReset": "Zurücksetzen"
       },
       "language": {
         "title": "Sprache",
@@ -1333,7 +1334,9 @@
           "off": "Aus",
           "offTitle": "Deaktiviert. Diese Korrektur wird nicht angewendet.",
           "unknownTitle": "Lernstatus nicht verfügbar."
-        }
+        },
+        "clearAllConfirm": "Alle Wörterbucheinträge löschen?",
+        "clearAllFailed": "Wörterbuch konnte nicht geleert werden."
       }
     },
     "dataPrivacy": {
@@ -1684,7 +1687,8 @@
     "downloadProgress": "Downloadfortschritt",
     "downloadProgressForItem": "Downloadfortschritt für {{id}}",
     "percentComplete": "{{percentage}} % abgeschlossen",
-    "downloadingCount": "{{count}} wird heruntergeladen..."
+    "downloadingCount": "{{count}} wird heruntergeladen...",
+    "confirmAction": "Aktion bestätigen"
   },
   "accessibility": {
     "permissionsRequired": "Barrierefreiheitsberechtigungen erforderlich",
@@ -2232,7 +2236,9 @@
         "nameLabel": "Tonname",
         "instructionLabel": "Anweisung",
         "save": "Ton speichern",
-        "createFailed": "Ton konnte nicht erstellt werden."
+        "createFailed": "Ton konnte nicht erstellt werden.",
+        "namePlaceholder": "Gründerstimme",
+        "instructionPlaceholder": "Schreibe warm und knapp um. Behalte Fachbegriffe bei und vermeide Übertreibung."
       },
       "overrideGroups": {
         "speech": "Rede",
@@ -2247,7 +2253,10 @@
         "removeOverride": "Überschreibung entfernen",
         "removeOverrideAria": "Entfernen Sie die {{label}}-Überschreibung",
         "notAvailableShort": "n/v",
-        "notAvailable": "Keine Optionen verfügbar – richten Sie zuerst den globalen Wert ein."
+        "notAvailable": "Keine Optionen verfügbar – richten Sie zuerst den globalen Wert ein.",
+        "confirmRemoveOverride": "Überschreibung entfernen bestätigen",
+        "confirmRemoveOverrideAria": "Entfernen der Überschreibung {{label}} bestätigen",
+        "confirmResetAll": "Alle Überschreibungen zurücksetzen?"
       },
       "overrideOptions": {
         "translate_to_english": {
@@ -3698,5 +3707,15 @@
   },
   "detail": {
     "unknownSection": "Unbekannter Abschnitt: {{section}}"
+  },
+  "modelStore": {
+    "errors": {
+      "loadModels": "Modelle konnten nicht geladen werden: {{detail}}",
+      "switchModel": "Wechsel zum Modell fehlgeschlagen: {{detail}}",
+      "downloadModel": "Modell konnte nicht heruntergeladen werden: {{detail}}",
+      "cancelDownload": "Download konnte nicht abgebrochen werden: {{detail}}",
+      "deleteModel": "Modell konnte nicht gelöscht werden: {{detail}}",
+      "extractModel": "Modell konnte nicht entpackt werden: {{detail}}"
+    }
   }
 }

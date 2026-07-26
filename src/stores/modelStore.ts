@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { produce } from "immer";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import i18n from "@/i18n";
 import { commands, type ModelInfo } from "@/bindings";
 
 interface DownloadProgress {
@@ -162,10 +163,14 @@ export const useModelStore = create<ModelsStore>()(
             }),
           );
         } else {
-          set({ error: `Failed to load models: ${result.error}` });
+          set({
+            error: i18n.t("modelStore.errors.loadModels", {
+              detail: result.error,
+            }),
+          });
         }
       } catch (err) {
-        set({ error: `Failed to load models: ${err}` });
+        set({ error: i18n.t("modelStore.errors.loadModels", { detail: err }) });
       } finally {
         set({ loading: false });
       }
@@ -209,11 +214,17 @@ export const useModelStore = create<ModelsStore>()(
           });
           return true;
         } else {
-          set({ error: `Failed to switch to model: ${result.error}` });
+          set({
+            error: i18n.t("modelStore.errors.switchModel", {
+              detail: result.error,
+            }),
+          });
           return false;
         }
       } catch (err) {
-        set({ error: `Failed to switch to model: ${err}` });
+        set({
+          error: i18n.t("modelStore.errors.switchModel", { detail: err }),
+        });
         return false;
       }
     },
@@ -266,7 +277,11 @@ export const useModelStore = create<ModelsStore>()(
           await get().loadModels();
           return true;
         } else {
-          set({ error: `Failed to download model: ${result.error}` });
+          set({
+            error: i18n.t("modelStore.errors.downloadModel", {
+              detail: result.error,
+            }),
+          });
           set(
             produce((state) => {
               delete state.downloadingModels[modelId];
@@ -277,7 +292,9 @@ export const useModelStore = create<ModelsStore>()(
           return false;
         }
       } catch (err) {
-        set({ error: `Failed to download model: ${err}` });
+        set({
+          error: i18n.t("modelStore.errors.downloadModel", { detail: err }),
+        });
         set(
           produce((state) => {
             delete state.downloadingModels[modelId];
@@ -306,11 +323,17 @@ export const useModelStore = create<ModelsStore>()(
           await get().loadModels();
           return true;
         } else {
-          set({ error: `Failed to cancel download: ${result.error}` });
+          set({
+            error: i18n.t("modelStore.errors.cancelDownload", {
+              detail: result.error,
+            }),
+          });
           return false;
         }
       } catch (err) {
-        set({ error: `Failed to cancel download: ${err}` });
+        set({
+          error: i18n.t("modelStore.errors.cancelDownload", { detail: err }),
+        });
         return false;
       }
     },
@@ -324,11 +347,17 @@ export const useModelStore = create<ModelsStore>()(
           await get().loadCurrentModel();
           return true;
         } else {
-          set({ error: `Failed to delete model: ${result.error}` });
+          set({
+            error: i18n.t("modelStore.errors.deleteModel", {
+              detail: result.error,
+            }),
+          });
           return false;
         }
       } catch (err) {
-        set({ error: `Failed to delete model: ${err}` });
+        set({
+          error: i18n.t("modelStore.errors.deleteModel", { detail: err }),
+        });
         return false;
       }
     },
@@ -445,7 +474,9 @@ export const useModelStore = create<ModelsStore>()(
               set(
                 produce((state) => {
                   delete state.extractingModels[modelId];
-                  state.error = `Failed to extract model: ${event.payload.error}`;
+                  state.error = i18n.t("modelStore.errors.extractModel", {
+                    detail: event.payload.error,
+                  });
                 }),
               );
             },

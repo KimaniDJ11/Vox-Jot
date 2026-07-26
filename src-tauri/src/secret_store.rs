@@ -140,6 +140,40 @@ pub fn clear_hugging_face_token() -> Result<(), String> {
     store().clear_secret(HUGGING_FACE_TOKEN_ACCOUNT)
 }
 
+/// Last known loopback API token.
+///
+/// Every authenticated Local API request needs this value, and hitting the OS
+/// credential store per request is both slow and noisy (macOS keychain I/O). The
+/// token only changes through `rotate_http_api_token`, so it is safe to keep the
+/// resolved value in memory and refresh the cache on rotation.
+static HTTP_API_TOKEN_CACHE: Mutex<Option<String>> = Mutex::new(None);
+
+fn cache_http_api_token(token: &str) {
+    *HTTP_API_TOKEN_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(token.to_owned());
+}
+
+/// Only needed by tests: production code either populates the cache or replaces
+/// it wholesale through `rotate_http_api_token`.
+#[cfg(test)]
+fn invalidate_http_api_token_cache() {
+    *HTTP_API_TOKEN_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+}
+
+/// The cached token, if one has already been resolved this session.
+///
+/// Returns `None` on a cold cache so the caller can fall back to the full
+/// (store-reading, legacy-migrating) path.
+pub fn cached_http_api_token() -> Option<String> {
+    HTTP_API_TOKEN_CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+}
+
 pub fn generate_http_api_token() -> String {
     format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
@@ -158,7 +192,10 @@ pub fn get_or_create_http_api_token(legacy_token: Option<&str>) -> Result<String
         .map(ToOwned::to_owned);
 
     match store.get_secret(HTTP_API_TOKEN_ACCOUNT) {
-        Ok(Some(token)) if !token.trim().is_empty() => return Ok(token),
+        Ok(Some(token)) if !token.trim().is_empty() => {
+            cache_http_api_token(&token);
+            return Ok(token);
+        }
         Ok(_) => {}
         Err(read_error) => {
             let token = legacy_token.unwrap_or_else(generate_http_api_token);
@@ -168,18 +205,21 @@ pub fn get_or_create_http_api_token(legacy_token: Option<&str>) -> Result<String
                 )
             })?;
             log::warn!("Recovered unreadable Local API token credential after keychain read failure: {read_error}");
+            cache_http_api_token(&token);
             return Ok(token);
         }
     }
 
     let token = legacy_token.unwrap_or_else(generate_http_api_token);
     store.set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
+    cache_http_api_token(&token);
     Ok(token)
 }
 
 pub fn rotate_http_api_token() -> Result<String, String> {
     let token = generate_http_api_token();
     store().set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
+    cache_http_api_token(&token);
     Ok(token)
 }
 
@@ -270,9 +310,17 @@ impl SecretStore for TestSecretStore {
     }
 }
 
+/// Serializes tests that swap the process-global store, so two of them running
+/// in parallel cannot install over each other and then assert against a store
+/// that is no longer installed.
+#[cfg(test)]
+static TEST_STORE_SERIALIZER: Mutex<()> = Mutex::new(());
+
 #[cfg(test)]
 pub struct TestSecretStoreGuard {
     previous: Arc<dyn SecretStore>,
+    /// Held for the guard's lifetime; released after `previous` is restored.
+    _serialized: std::sync::MutexGuard<'static, ()>,
 }
 
 #[cfg(test)]
@@ -281,17 +329,30 @@ impl Drop for TestSecretStoreGuard {
         *SECRET_STORE
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = self.previous.clone();
+        invalidate_http_api_token_cache();
     }
 }
 
 #[cfg(test)]
 pub fn install_test_secret_store(store_impl: Arc<dyn SecretStore>) -> TestSecretStoreGuard {
+    let serialized = TEST_STORE_SERIALIZER
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
     let mut guard = SECRET_STORE
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let previous = guard.clone();
     *guard = store_impl;
-    TestSecretStoreGuard { previous }
+    drop(guard);
+    // Swapping the backing store must not let a token cached from the previous
+    // store leak into the test (or vice versa).
+    invalidate_http_api_token_cache();
+
+    TestSecretStoreGuard {
+        previous,
+        _serialized: serialized,
+    }
 }
 
 #[cfg(test)]

@@ -164,6 +164,14 @@ use crate::tts::TtsManager;
 pub static FILE_LOG_LEVEL: AtomicU8 = AtomicU8::new(log::LevelFilter::Debug as u8);
 static APP_SHUTDOWN_STARTED: AtomicBool = AtomicBool::new(false);
 
+/// Whether app shutdown has begun.
+///
+/// Long blocking waits (sidecar readiness polls, for example) check this so quit
+/// isn't held up by a loop that would otherwise run to its full timeout.
+pub fn app_shutdown_started() -> bool {
+    APP_SHUTDOWN_STARTED.load(Ordering::SeqCst)
+}
+
 #[derive(Default)]
 struct MainWindowVisibilityIntent {
     visible: AtomicBool,

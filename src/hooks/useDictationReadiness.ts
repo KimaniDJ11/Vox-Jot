@@ -84,43 +84,56 @@ export function useDictationReadiness(): DictationReadiness {
   const [loadedModel, setLoadedModel] = useState<string | null>(null);
   const [checkedAt, setCheckedAt] = useState(() => Date.now());
 
-  const refresh = useCallback(async () => {
-    const os = platform();
-    if (os === "macos") {
-      const [microphone, accessibility, inputMonitoring] = await Promise.all([
-        checkMicrophonePermission().catch(() => false),
-        checkAccessibilityPermission().catch(() => false),
-        checkInputMonitoringPermission().catch(() => false),
-      ]);
-      setPermissions({ microphone, accessibility, inputMonitoring });
-    } else if (os === "windows") {
-      const status = await commands
-        .getWindowsMicrophonePermissionStatus()
-        .catch(() => null);
-      setPermissions({
-        microphone: status ? status.overall_access !== "denied" : false,
-        accessibility: true,
-        inputMonitoring: true,
-      });
-    } else {
-      setPermissions({
-        microphone: true,
-        accessibility: true,
-        inputMonitoring: true,
-      });
-    }
+  // `isCancelled` lets an unmount stop this mid-flight so the permission and
+  // model IPC results are dropped instead of landing on a dead component.
+  const refresh = useCallback(
+    async (isCancelled: () => boolean = () => false) => {
+      const os = platform();
+      if (os === "macos") {
+        const [microphone, accessibility, inputMonitoring] = await Promise.all([
+          checkMicrophonePermission().catch(() => false),
+          checkAccessibilityPermission().catch(() => false),
+          checkInputMonitoringPermission().catch(() => false),
+        ]);
+        if (isCancelled()) return;
+        setPermissions({ microphone, accessibility, inputMonitoring });
+      } else if (os === "windows") {
+        const status = await commands
+          .getWindowsMicrophonePermissionStatus()
+          .catch(() => null);
+        if (isCancelled()) return;
+        setPermissions({
+          microphone: status ? status.overall_access !== "denied" : false,
+          accessibility: true,
+          inputMonitoring: true,
+        });
+      } else {
+        setPermissions({
+          microphone: true,
+          accessibility: true,
+          inputMonitoring: true,
+        });
+      }
 
-    const modelStatus = await commands
-      .getTranscriptionModelStatus()
-      .catch(() => ({ status: "error" as const, error: "model status" }));
-    setLoadedModel(modelStatus.status === "ok" ? modelStatus.data : null);
-    setCheckedAt(Date.now());
-  }, []);
+      const modelStatus = await commands
+        .getTranscriptionModelStatus()
+        .catch(() => ({ status: "error" as const, error: "model status" }));
+      if (isCancelled()) return;
+      setLoadedModel(modelStatus.status === "ok" ? modelStatus.data : null);
+      setCheckedAt(Date.now());
+    },
+    [],
+  );
 
   useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), 30_000);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    const isCancelled = () => cancelled;
+    void refresh(isCancelled);
+    const id = window.setInterval(() => void refresh(isCancelled), 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, [refresh]);
 
   return useMemo(() => {

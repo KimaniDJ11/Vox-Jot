@@ -1,6 +1,9 @@
 use std::{
     io::Error,
-    sync::{mpsc, Arc, Mutex},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        mpsc, Arc, Mutex,
+    },
     time::Duration,
 };
 
@@ -229,6 +232,11 @@ impl AudioRecorder {
         }
 
         let (sample_tx, sample_rx) = mpsc::channel::<Vec<f32>>();
+        // Buffers travel back to the capture callback here so the audio thread
+        // can reuse allocations instead of cloning a Vec per callback.
+        let (recycled_tx, recycled_rx) = mpsc::channel::<Vec<f32>>();
+        let dropped_chunks = Arc::new(AtomicU64::new(0));
+        let callback_dropped_chunks = dropped_chunks.clone();
         let (cmd_tx, cmd_rx) = mpsc::channel::<Cmd>();
         let (error_tx, error_rx) = mpsc::channel::<String>();
         let (init_tx, init_rx) = mpsc::sync_channel::<Result<(), String>>(1);
@@ -272,6 +280,8 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        recycled_rx,
+                        callback_dropped_chunks,
                         error_tx,
                         channels,
                     )
@@ -280,6 +290,8 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        recycled_rx,
+                        callback_dropped_chunks,
                         error_tx,
                         channels,
                     )
@@ -288,6 +300,8 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        recycled_rx,
+                        callback_dropped_chunks,
                         error_tx,
                         channels,
                     )
@@ -296,6 +310,8 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        recycled_rx,
+                        callback_dropped_chunks,
                         error_tx,
                         channels,
                     )
@@ -304,6 +320,8 @@ impl AudioRecorder {
                         &thread_device,
                         &config,
                         sample_tx,
+                        recycled_rx,
+                        callback_dropped_chunks,
                         error_tx,
                         channels,
                     )
@@ -348,6 +366,8 @@ impl AudioRecorder {
                         enhancer,
                         frame_resampler,
                         sample_rx,
+                        recycled_tx,
+                        dropped_chunks,
                         cmd_rx,
                         error_rx,
                         level_cb,
@@ -436,10 +456,13 @@ impl AudioRecorder {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn build_stream<T>(
         device: &cpal::Device,
         config: &cpal::SupportedStreamConfig,
         sample_tx: mpsc::Sender<Vec<f32>>,
+        recycled_rx: mpsc::Receiver<Vec<f32>>,
+        dropped_chunks: Arc<AtomicU64>,
         error_tx: mpsc::Sender<String>,
         channels: usize,
     ) -> Result<cpal::Stream, cpal::BuildStreamError>
@@ -447,10 +470,21 @@ impl AudioRecorder {
         T: Sample + SizedSample + Send + 'static,
         f32: cpal::FromSample<T>,
     {
-        let mut output_buffer = Vec::new();
-
+        // This closure runs on the OS audio thread, so it must avoid work that
+        // can block or take an unbounded amount of time. Buffers are taken from
+        // the consumer's recycle channel instead of being cloned per callback,
+        // and a failed send bumps a counter that the consumer logs, because
+        // `log::` takes a lock and formats a string.
         let stream_cb = move |data: &[T], _: &cpal::InputCallbackInfo| {
-            output_buffer.clear();
+            let mut output_buffer = match recycled_rx.try_recv() {
+                Ok(mut buffer) => {
+                    buffer.clear();
+                    buffer
+                }
+                // Only allocates while the pool warms up (or if the consumer has
+                // fallen behind); recycled buffers keep their capacity.
+                Err(_) => Vec::with_capacity(data.len() / channels.max(1)),
+            };
 
             if channels == 1 {
                 // Direct conversion without intermediate Vec
@@ -470,8 +504,8 @@ impl AudioRecorder {
                 }
             }
 
-            if sample_tx.send(output_buffer.clone()).is_err() {
-                log::error!("Failed to send samples");
+            if sample_tx.send(output_buffer).is_err() {
+                dropped_chunks.fetch_add(1, Ordering::Relaxed);
             }
         };
 
@@ -550,6 +584,8 @@ fn run_consumer(
     mut enhancer: Option<AudioEnhancer>,
     mut frame_resampler: FrameResampler,
     sample_rx: mpsc::Receiver<Vec<f32>>,
+    recycled_tx: mpsc::Sender<Vec<f32>>,
+    dropped_chunks: Arc<AtomicU64>,
     cmd_rx: mpsc::Receiver<Cmd>,
     error_rx: mpsc::Receiver<String>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
@@ -604,6 +640,7 @@ fn run_consumer(
     }
 
     let mut stream_error_reported = false;
+    let mut reported_dropped_chunks = 0u64;
 
     loop {
         // Block briefly for samples, but wake up regularly so commands are
@@ -643,9 +680,26 @@ fn run_consumer(
                         )
                     });
                 }
+
+                // Hand the buffer back so the audio thread can refill it.
+                // A closed channel just means we are shutting down.
+                let mut raw = raw;
+                raw.clear();
+                let _ = recycled_tx.send(raw);
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
+        }
+
+        // The capture callback cannot log (it runs on the audio thread), so
+        // report its dropped-chunk count from here instead.
+        let dropped = dropped_chunks.load(Ordering::Relaxed);
+        if dropped > reported_dropped_chunks {
+            log::error!(
+                "Capture callback dropped {} audio chunk(s); the consumer channel is closed",
+                dropped - reported_dropped_chunks
+            );
+            reported_dropped_chunks = dropped;
         }
 
         // Surface the first stream failure to the registered callback.

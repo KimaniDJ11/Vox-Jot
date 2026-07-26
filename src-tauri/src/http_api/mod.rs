@@ -4525,19 +4525,12 @@ pub(crate) fn require_api_token(
     app: &AppHandle,
     headers: &HeaderMap,
 ) -> Result<(), Box<axum::response::Response>> {
-    let mut settings = get_settings(app);
-    let expected =
-        match crate::secret_store::get_or_create_http_api_token(Some(&settings.http_api_token)) {
-            Ok(token) => token,
-            Err(err) => {
-                warn!("Local API token unavailable: {err}");
-                String::new()
-            }
-        };
-    if !settings.http_api_token.trim().is_empty() {
-        settings.http_api_token.clear();
-        write_settings(app, settings);
-    }
+    // Fast path: the token is stable for the session, so avoid re-reading
+    // settings and hitting the OS credential store on every request.
+    let expected = match crate::secret_store::cached_http_api_token() {
+        Some(token) => token,
+        None => resolve_api_token_uncached(app),
+    };
     if api_token_authorized(&expected, headers) {
         return Ok(());
     }
@@ -4553,13 +4546,47 @@ pub(crate) fn require_api_token(
     ))
 }
 
+/// Cold path: read the credential store and migrate a token that still lives in
+/// settings from an older build. Runs once per session (and after rotation).
+fn resolve_api_token_uncached(app: &AppHandle) -> String {
+    let mut settings = get_settings(app);
+    let token =
+        match crate::secret_store::get_or_create_http_api_token(Some(&settings.http_api_token)) {
+            Ok(token) => token,
+            Err(err) => {
+                warn!("Local API token unavailable: {err}");
+                String::new()
+            }
+        };
+    if !settings.http_api_token.trim().is_empty() {
+        settings.http_api_token.clear();
+        write_settings(app, settings);
+    }
+    token
+}
+
 fn api_token_authorized(expected: &str, headers: &HeaderMap) -> bool {
     let expected = expected.trim();
     if expected.is_empty() {
         return false;
     }
 
-    provided_api_tokens(headers).any(|provided| provided == expected)
+    provided_api_tokens(headers).any(|provided| tokens_match(provided, expected))
+}
+
+/// Compare in time independent of how many leading bytes match, so a caller
+/// cannot recover the token byte-by-byte from response timing. Length is not
+/// secret here (tokens are fixed-width), so an early length check is fine.
+fn tokens_match(provided: &str, expected: &str) -> bool {
+    let (provided, expected) = (provided.as_bytes(), expected.as_bytes());
+    if provided.len() != expected.len() {
+        return false;
+    }
+    provided
+        .iter()
+        .zip(expected.iter())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
 }
 
 fn provided_api_tokens(headers: &HeaderMap) -> impl Iterator<Item = &str> {
@@ -4658,6 +4685,18 @@ mod tests {
             "secret",
             &headers(&[(axum::http::header::AUTHORIZATION.as_str(), "Basic secret")])
         ));
+    }
+
+    #[test]
+    fn token_comparison_matches_only_on_exact_equality() {
+        assert!(tokens_match("secret", "secret"));
+        // Length mismatch and prefix matches must both fail: the fold-based
+        // compare has to keep behaving like a normal equality check.
+        assert!(!tokens_match("secre", "secret"));
+        assert!(!tokens_match("secrett", "secret"));
+        assert!(!tokens_match("Secret", "secret"));
+        assert!(!tokens_match("", "secret"));
+        assert!(tokens_match("", ""));
     }
 
     #[test]

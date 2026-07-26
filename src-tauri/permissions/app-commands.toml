@@ -1,3 +1,10 @@
+# Granted by capabilities/default.json to the "main", "detail-view", and
+# "model-hub-view" windows. It is an explicit enumeration (no wildcards), but it
+# is one flat set shared by all three, so there is no privilege separation
+# between the settings UI and the smaller windows. That is accepted for now
+# because all three are first-party views in the same trust domain; splitting it
+# per window changes what those windows can invoke and needs validation on a
+# notarized release build before it ships.
 [[permission]]
 identifier = "app-commands"
 description = "Allows Vox Jot webviews to invoke the app command surface."

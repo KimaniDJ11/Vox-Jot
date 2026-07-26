@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const listenMock = vi.hoisted(() => vi.fn());
+// Matches the real `listen` contract (a promise resolving to an unlisten fn) so
+// module-scope listeners — the store's own and i18n's — can attach a `.catch`.
+const listenMock = vi.hoisted(() =>
+  vi.fn(
+    (
+      _eventName: string,
+      _callback: (event: { payload: unknown }) => void,
+    ): Promise<() => void> => Promise.resolve(() => {}),
+  ),
+);
 const commandMocks = vi.hoisted(() => ({
   getAvailableModels: vi.fn(),
   getCurrentModel: vi.fn(),

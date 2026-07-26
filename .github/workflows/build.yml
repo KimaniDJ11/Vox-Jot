@@ -44,10 +44,17 @@ on:
         type: boolean
         default: false
 
+env:
+  # Pinned digest of https://packages.lunarg.com/lunarg-signing-key-pub.asc.
+  # Bump deliberately if LunarG rotates the key; a mismatch must fail the build.
+  LUNARG_SIGNING_KEY_SHA256: "aa1c3c29673140e77f0d6a9aaeed5d9b5621e305ead51c59fae4458bbb4df92b"
+
 jobs:
   build:
+    # Read-only: GitHub Release publishing is blocked for this repo (see the
+    # "Block GitHub Release publishing" step), so this job never needs write.
     permissions:
-      contents: write
+      contents: read
     runs-on: ${{ inputs.platform }}
     steps:
       - name: Checkout repository
@@ -196,8 +203,15 @@ jobs:
 
       - name: Prepare Vulkan SDK for Ubuntu 24.04
         if: contains(inputs.platform, 'ubuntu-24.04') && !contains(inputs.platform, 'arm')
+        env:
+          LUNARG_KEY_SHA256: ${{ env.LUNARG_SIGNING_KEY_SHA256 }}
         run: |
-          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          # Verify the apt signing key before trusting it: installing it
+          # unverified would let a compromised mirror sign arbitrary packages.
+          wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc
+          echo "${LUNARG_KEY_SHA256}  lunarg-signing-key-pub.asc" | sha256sum -c -
+          sudo cp lunarg-signing-key-pub.asc /etc/apt/trusted.gpg.d/lunarg.asc
+          rm -f lunarg-signing-key-pub.asc
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.290-noble.list https://packages.lunarg.com/vulkan/1.3.290/lunarg-vulkan-1.3.290-noble.list
           sudo apt update
           sudo apt install vulkan-sdk -y
@@ -218,8 +232,13 @@ jobs:
 
       - name: Prepare Vulkan SDK for Ubuntu 22.04
         if: contains(inputs.platform, 'ubuntu-22.04') && !contains(inputs.platform, 'arm')
+        env:
+          LUNARG_KEY_SHA256: ${{ env.LUNARG_SIGNING_KEY_SHA256 }}
         run: |
-          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc
+          echo "${LUNARG_KEY_SHA256}  lunarg-signing-key-pub.asc" | sha256sum -c -
+          sudo cp lunarg-signing-key-pub.asc /etc/apt/trusted.gpg.d/lunarg.asc
+          rm -f lunarg-signing-key-pub.asc
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.290-jammy.list https://packages.lunarg.com/vulkan/1.3.290/lunarg-vulkan-1.3.290-jammy.list
           sudo apt update
           sudo apt install vulkan-sdk -y
@@ -265,14 +284,19 @@ jobs:
         id: patch-release-name
         shell: bash
         if: ${{ inputs.release-id != '' && inputs.asset-name-pattern != '' }}
+        # Inputs arrive through env rather than template interpolation so a
+        # caller-supplied value cannot be spliced into this shell script.
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          ASSET_NAME_PATTERN: ${{ inputs.asset-name-pattern }}
+          ASSET_PREFIX: ${{ inputs.asset-prefix }}
         run: |
-          platform="${{ inputs.platform }}"
-          replacement="$(echo ${platform} | sed -E 's/-latest//')"
-          patched_platform=$(echo '${{ inputs.asset-name-pattern }}' | sed -E "s/\[platform\]/${replacement}/")
-          if [[ -n "${{ inputs.asset-prefix }}" ]]; then
-            patched_platform="${{ inputs.asset-prefix }}_${patched_platform}"
+          replacement="${PLATFORM//-latest/}"
+          patched_platform="${ASSET_NAME_PATTERN//\[platform\]/${replacement}}"
+          if [[ -n "$ASSET_PREFIX" ]]; then
+            patched_platform="${ASSET_PREFIX}_${patched_platform}"
           fi
-          echo "platform=${patched_platform}" >> $GITHUB_OUTPUT
+          echo "platform=${patched_platform}" >> "$GITHUB_OUTPUT"
 
       - name: Disable Windows signing for unsigned builds
         if: ${{ contains(inputs.platform, 'windows') && !inputs.sign-binaries }}

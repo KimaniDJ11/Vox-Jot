@@ -424,10 +424,17 @@ function App() {
   const lastSectionByView = useRef<Partial<Record<RootView, string>>>({
     dictate: "history",
   });
+  // Mirrors of the current view/section for the stable nav callbacks below.
+  // Written in an effect rather than during render so a re-render that React
+  // throws away cannot leave these pointing at state that was never committed.
   const activeRootViewRef = useRef<RootView>(activeRootView);
-  activeRootViewRef.current = activeRootView;
   const activeSectionIdRef = useRef(activeSectionId);
-  activeSectionIdRef.current = activeSectionId;
+  useEffect(() => {
+    activeRootViewRef.current = activeRootView;
+  }, [activeRootView]);
+  useEffect(() => {
+    activeSectionIdRef.current = activeSectionId;
+  }, [activeSectionId]);
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
@@ -1127,7 +1134,9 @@ function App() {
   };
 
   const sectionsByViewRef = useRef(sectionsByView);
-  sectionsByViewRef.current = sectionsByView;
+  useEffect(() => {
+    sectionsByViewRef.current = sectionsByView;
+  }, [sectionsByView]);
 
   const handleModeSelect = useCallback((mode: PrimaryMode) => {
     lastSectionByView.current[activeRootViewRef.current] =

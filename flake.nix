@@ -1,5 +1,5 @@
 {
-  description = "Handy - A free, open source, and extensible speech-to-text application that works completely offline";
+  description = "Vox Jot - local-first, extensible speech-to-text and voice tooling";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -41,8 +41,8 @@
           lib = pkgs.lib;
         in
         {
-          handy = pkgs.rustPlatform.buildRustPackage {
-            pname = "handy";
+          vox-jot = pkgs.rustPlatform.buildRustPackage {
+            pname = "vox-jot";
             inherit version;
             src = self;
 
@@ -189,15 +189,15 @@
             '';
 
             meta = {
-              description = "A free, open source, and extensible speech-to-text application that works completely offline";
-              homepage = "https://github.com/cjpais/Handy";
+              description = "Local-first, extensible speech-to-text and voice tooling";
+              homepage = "https://github.com/KimaniDJ11/Vox-Jot";
               license = lib.licenses.mit;
-              mainProgram = "handy";
+              mainProgram = "vox_jot";
               platforms = supportedSystems;
             };
           };
 
-          default = self.packages.${system}.handy;
+          default = self.packages.${system}.vox-jot;
         }
       );
 
@@ -257,7 +257,7 @@
             XDG_DATA_DIRS = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:${pkgs.hicolor-icon-theme}/share";
 
             shellHook = ''
-              echo "Handy development environment"
+              echo "Vox Jot development environment"
               bun install
               echo "Run 'bun run tauri dev' to start"
             '';

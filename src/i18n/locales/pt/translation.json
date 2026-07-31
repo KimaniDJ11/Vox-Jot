@@ -3046,7 +3046,9 @@
       "previewCleanup": "Limpeza",
       "previewProvider": "Provedor",
       "crashReportingLabel": "Enviar relatórios de falhas anônimos",
-      "crashReportingDescription": "Ajude a melhorar o Vox Jot enviando relatórios de falhas anônimos e stack traces para o Sentry. Nenhuma transcrição, áudio ou conteúdo pessoal é enviado. Desativado por padrão."
+      "crashReportingDescription": "Ajude a melhorar o Vox Jot enviando relatórios de falhas anônimos e stack traces para o Sentry. Nenhuma transcrição, áudio ou conteúdo pessoal é enviado. Desativado por padrão.",
+      "usageAnalyticsLabel": "Enviar métricas de uso anônimas",
+      "usageAnalyticsDescription": "Ajude a medir se o Vox Jot é útil enviando somente eventos de abertura do app e do primeiro ditado bem-sucedido da sessão ao serviço de métricas agregadas da Irie Dinamik. Nenhuma transcrição, áudio, prompt, conteúdo da tela, detalhe de tempo, ID de conta ou identificador de publicidade é enviado. Desativado por padrão."
     },
     "diagnostics": {
       "debugRevealNotice": "Pressione Cmd/Ctrl + Shift + D para revelar as ferramentas de depuração mais profundas quando precisar delas.",

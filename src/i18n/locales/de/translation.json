@@ -3046,7 +3046,9 @@
       "previewCleanup": "Aufräumen",
       "previewProvider": "Anbieter",
       "crashReportingLabel": "Anonyme Absturzberichte senden",
-      "crashReportingDescription": "Hilf, Vox Jot zu verbessern, indem du anonyme Absturzberichte und Stacktraces an Sentry sendest. Es werden niemals Transkripte, Audio oder persönliche Inhalte gesendet. Standardmäßig deaktiviert."
+      "crashReportingDescription": "Hilf, Vox Jot zu verbessern, indem du anonyme Absturzberichte und Stacktraces an Sentry sendest. Es werden niemals Transkripte, Audio oder persönliche Inhalte gesendet. Standardmäßig deaktiviert.",
+      "usageAnalyticsLabel": "Anonyme Nutzungsmetriken senden",
+      "usageAnalyticsDescription": "Hilf zu messen, ob Vox Jot nützlich ist, indem nur Ereignisse zum App-Start und zum ersten erfolgreichen Diktat einer Sitzung an den aggregierten Metrikdienst von Irie Dinamik gesendet werden. Es werden keine Transkripte, Audiodaten, Prompts, Bildschirminhalte, Zeitangaben, Konto-IDs oder Werbe-IDs gesendet. Standardmäßig deaktiviert."
     },
     "diagnostics": {
       "debugRevealNotice": "Drücken Sie Befehl/Strg + Umschalt + D, um bei Bedarf die tiefergehenden Debug-Tools anzuzeigen.",

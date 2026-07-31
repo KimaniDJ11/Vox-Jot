@@ -81,8 +81,12 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/mlx-community/diar_sortformer_4spk-v1-fp16.
 - Rev.ai Reverb Diarization V2 - custom/gated terms; gated before download.
   Source: https://huggingface.co/Revai/reverb-diarization-v2.
-- Polyvoice ONNX diarization uses WeSpeaker embeddings and Silero VAD assets.
-  WeSpeaker source: https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34.
+- Polyvoice ONNX diarization binary - MIT, Copyright (c) 2026 Evgeny
+  Khodzitsky. Its exact upstream license is bundled next to the executable as
+  `LICENSE.polyvoice.txt`. Source: https://github.com/ekhodzitsky/polyvoice.
+  Polyvoice uses WeSpeaker embeddings and Silero VAD model assets under their
+  respective upstream terms. WeSpeaker source:
+  https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34.
 - emotion2vec+ Large (emotion2vec-family) - custom FunASR Model License;
   attribution and license link required. Runs through FunASR. Upstream:
   https://github.com/ddlBoJack/emotion2vec. Source:

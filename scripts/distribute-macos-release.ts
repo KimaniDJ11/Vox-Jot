@@ -369,6 +369,15 @@ async function main(): Promise<void> {
   const versionedDmgPath = path.join(releaseRoot, versionedDmgName);
   const versionedShaPath = path.join(releaseRoot, `${versionedDmgName}.sha256`);
   const latestShaPath = path.join(releaseRoot, `${latestDmgName}.sha256`);
+  const noticeSourcePath = path.join(
+    repoRoot,
+    "src-tauri",
+    "resources",
+    "THIRD_PARTY_NOTICES.txt",
+  );
+  const versionedNoticeName = `Vox-Jot_${version}_THIRD_PARTY_NOTICES.txt`;
+  const latestNoticeName = "Vox-Jot-latest-THIRD_PARTY_NOTICES.txt";
+  const versionedNoticePath = path.join(releaseRoot, versionedNoticeName);
   const updaterDir = path.join(releaseRoot, "updater");
   const updaterArchiveName = `Vox.Jot_${arch}.app.tar.gz`;
   const updaterArchivePath = path.join(updaterDir, updaterArchiveName);
@@ -376,6 +385,7 @@ async function main(): Promise<void> {
   const r2ManifestPath = path.join(releaseRoot, "latest.r2.json");
   const latestDmgUrl = `${downloadsBaseUrl}/${r2Prefix}/latest/${latestDmgName}`;
   const latestShaUrl = `${downloadsBaseUrl}/${r2Prefix}/latest/${latestDmgName}.sha256`;
+  const latestNoticeUrl = `${downloadsBaseUrl}/${r2Prefix}/latest/${latestNoticeName}`;
 
   console.log(`Preparing Vox Jot ${version} local macOS distribution.`);
 
@@ -395,10 +405,12 @@ async function main(): Promise<void> {
 
   await ensureFile(appPath, "Signed app bundle");
   await ensureFile(localDmgPath, "Notarized DMG");
+  await ensureFile(noticeSourcePath, "Third-party notice bundle");
 
   await mkdir(releaseRoot, { recursive: true });
   await mkdir(updaterDir, { recursive: true });
   await copyFile(localDmgPath, versionedDmgPath);
+  await copyFile(noticeSourcePath, versionedNoticePath);
 
   const dmgHash = await sha256(versionedDmgPath);
   await writeFile(versionedShaPath, `${dmgHash}  ${versionedDmgName}\n`);
@@ -472,6 +484,20 @@ async function main(): Promise<void> {
       "text/plain; charset=utf-8",
       shortCache,
     );
+    await uploadR2Object(
+      r2Bucket,
+      `${r2Prefix}/releases/${tag}/${versionedNoticeName}`,
+      versionedNoticePath,
+      "text/plain; charset=utf-8",
+      longCache,
+    );
+    await uploadR2Object(
+      r2Bucket,
+      `${r2Prefix}/latest/${latestNoticeName}`,
+      versionedNoticePath,
+      "text/plain; charset=utf-8",
+      shortCache,
+    );
 
     if (!options.skipUpdater && r2Manifest) {
       await uploadR2Object(
@@ -499,6 +525,7 @@ async function main(): Promise<void> {
 
     await headOk(latestDmgUrl);
     await headOk(latestShaUrl);
+    await headOk(latestNoticeUrl);
   }
 
   if (!options.skipHf && !options.skipUpdater && hfManifest) {

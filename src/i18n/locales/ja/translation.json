@@ -3046,7 +3046,9 @@
       "previewCleanup": "クリーンアップ",
       "previewProvider": "プロバイダー",
       "crashReportingLabel": "匿名のクラッシュレポートを送信",
-      "crashReportingDescription": "Sentry に匿名のクラッシュレポートとスタックトレースを送信して Vox Jot の改善にご協力ください。文字起こし・音声・個人的なコンテンツは一切送信されません。デフォルトはオフです。"
+      "crashReportingDescription": "Sentry に匿名のクラッシュレポートとスタックトレースを送信して Vox Jot の改善にご協力ください。文字起こし・音声・個人的なコンテンツは一切送信されません。デフォルトはオフです。",
+      "usageAnalyticsLabel": "匿名の利用状況メトリクスを送信",
+      "usageAnalyticsDescription": "Vox Jot が役立っているかを測定するため、アプリ起動とセッション内の最初の音声入力成功イベントのみを Irie Dinamik の集計メトリクスサービスに送信します。文字起こし、音声、プロンプト、画面内容、処理時間、アカウント ID、広告 ID は送信されません。デフォルトではオフです。"
     },
     "diagnostics": {
       "debugRevealNotice": "必要に応じて Cmd/Ctrl + Shift + D を押すと、より詳細なデバッグ ツールが表示されます。",

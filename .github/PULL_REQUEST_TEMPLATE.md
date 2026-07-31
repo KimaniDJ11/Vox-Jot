@@ -1,71 +1,50 @@
-## Before Submitting This PR
+## What problem does this solve?
 
-<!--
-HANDY IS UNDERGOING A FEATURE FREEZE. IF YOU ARE SUBMITTING A PR WHICH IS A NEW FEATURE THAT THE COMMUNITY HAS NOT ASKED FOR: PREPARE TO BE REJECTED. IF THE COMMUNITY HAS ASKED FOR IT, OR YOU HAVE EXPLICITLY GATEHRED SUPPORT IT MAY STILL BE CONSIDERED.
+<!-- Explain the user or maintainer problem in your own words. -->
 
-BUG FIXES ARE THE TOP PRIORITY. THERE ARE 60+ ISSUES TO FIX.
--->
+## What changed?
 
-**Please confirm you have done the following:**
+<!-- Summarize the behavior and important implementation choices. -->
 
-- [ ] I have searched [existing issues](https://github.com/KimaniDJ11/Vox-Jot/issues) and [pull requests](https://github.com/KimaniDJ11/Vox-Jot/pulls) (including closed ones) to ensure this isn't a duplicate
-- [ ] I have read [CONTRIBUTING.md](https://github.com/KimaniDJ11/Vox-Jot/blob/main/CONTRIBUTING.md)
+## Related work
 
-**If this is a feature or change that was previously closed/rejected:**
+<!-- Link issues, discussions, or prior PRs. -->
 
-- [ ] I have explained in the description below why this should be reconsidered
-- [ ] I have gathered community feedback (link to discussion below)
+Closes #
 
-## Human Written Description
+## Verification
 
-<!-- Describe your changes clearly and concisely
+<!-- List exact commands and manual flows, with results. -->
 
-Please write 2-3 sentences in your own words explaining:
-- What problem you noticed or idea you had
-- Why you think this change matters
+- [ ] Relevant frontend tests
+- [ ] Relevant Rust tests
+- [ ] `bun run lint`
+- [ ] `bun run build`
+- [ ] UI/installed-app flow when behavior is user-visible
 
-This section should be YOUR thinking, not AI-generated text. Even if AI helped write the code, we want to hear from you directly. Your perspective as a human is what makes contributions meaningful. Your PR may be rejected if you do not
-include a human-written description.
--->
+Not run or blocked:
 
-## Related Issues/Discussions
+## Product checks
 
-<!-- Link to related issues, discussions, or previous PRs -->
-<!-- If reopening something previously closed, explain why this should be reconsidered -->
+- [ ] No recording, transcription, paste, overlay, or startup latency regression
+- [ ] No new cloud transmission without explicit user choice
+- [ ] Keyboard, focus, contrast, status, and error states checked for UI changes
+- [ ] Destructive actions have visible in-app confirmation
+- [ ] Model/runtime changes include license, download, app-path, and benchmark evidence
+- [ ] No credentials, private recordings/transcripts, local absolute paths, or generated artifacts added
+- [ ] Existing copyright, attribution, and license notices preserved
 
-Fixes #
-Discussion:
+## Screenshots or recording
 
-## Community Feedback
+<!-- Required for visible UI changes. Use synthetic or privacy-safe content. -->
 
-<!--
-PRs with community support are much more likely to be merged.
+## AI assistance
 
-For features: Link to a discussion where community members have expressed interest.
-For bug fixes: Link to the issue where others have confirmed the bug.
+- [ ] No AI assistance was used
+- [ ] AI assistance was used and reviewed
 
-If you haven't gathered feedback yet, consider starting a discussion first:
-https://github.com/KimaniDJ11/Vox-Jot/discussions
+Tools and extent:
 
-It is not explicitly required to gather feedback, but it certainly helps your PR get merged.
--->
+## Remaining risk
 
-## Testing
-
-<!-- Describe how you tested your changes and if you need help getting additional testing -->
-
-## Screenshots/Videos (if applicable)
-
-<!-- Add screenshots or videos demonstrating the change -->
-
-## AI Assistance
-
-<!-- AI-assisted PRs are welcome! Just let us know so we can review appropriately. -->
-
-- [ ] No AI was used in this PR
-- [ ] AI was used (please describe below)
-
-**If AI was used:**
-
-- Tools used:
-- How extensively:
+<!-- State incomplete, uncertain, platform-specific, or unverified paths plainly. -->

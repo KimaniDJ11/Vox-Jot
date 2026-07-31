@@ -10,10 +10,7 @@ type EventCallback = (event: { payload: unknown }) => void;
 const mockState = vi.hoisted(() => ({
   getCorrections: vi.fn(),
   listeners: new Map<string, Set<EventCallback>>(),
-  t: (
-    _key: string,
-    options?: Record<string, string | number | undefined>,
-  ) => {
+  t: (_key: string, options?: Record<string, string | number | undefined>) => {
     let value = String(options?.defaultValue ?? _key);
     for (const [name, replacement] of Object.entries(options ?? {})) {
       value = value.split(`{{${name}}}`).join(String(replacement));
@@ -114,10 +111,7 @@ const renderView = async () => {
 
   await act(async () => {
     root?.render(
-      <CorrectionDictionaryView
-        sectionTitle="Dictionary"
-        showHeaderTitle
-      />,
+      <CorrectionDictionaryView sectionTitle="Dictionary" showHeaderTitle />,
     );
   });
   await act(async () => {

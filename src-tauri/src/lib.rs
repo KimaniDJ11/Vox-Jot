@@ -1036,6 +1036,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_global_language_sync_enabled_setting,
         shortcut::change_update_checks_setting,
         shortcut::change_crash_reporting_setting,
+        shortcut::change_usage_analytics_setting,
         shortcut::change_keyboard_implementation_setting,
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
@@ -1439,6 +1440,8 @@ pub fn run(cli_args: CliArgs) {
 
             // Activate the crash-reporting gate now that settings are reachable.
             telemetry::set_crash_reporting_enabled(settings.enable_crash_reporting);
+            telemetry::set_usage_analytics_enabled(settings.enable_usage_analytics);
+            telemetry::track_usage_event("app_launch");
 
             // macOS release builds load every window from the loopback asset
             // server, so it must be running before any webview is created.

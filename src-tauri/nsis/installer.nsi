@@ -217,7 +217,7 @@ Function PageLeaveInstallType
   ${NSD_GetState} $InstallTypeRadioPortable $0
   ${If} $0 = ${BST_CHECKED}
     StrCpy $PortableMode 1
-    ; --- PORTABLE MODE --- Switch default directory to Desktop\Handy for portable
+    ; --- PORTABLE MODE --- Switch the default directory for portable installs
     ${If} $INSTDIR == "${PLACEHOLDER_INSTALL_DIR}"
     ${OrIf} $INSTDIR == "$LOCALAPPDATA\${PRODUCTNAME}"
       StrCpy $INSTDIR "$DESKTOP\${PRODUCTNAME}"

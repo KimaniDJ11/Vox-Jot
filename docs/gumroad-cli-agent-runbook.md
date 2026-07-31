@@ -4,12 +4,11 @@ This repo is set up to use the `gumroad` CLI for Gumroad operations instead of b
 
 ## Local Setup
 
-- CLI: `gumroad` 0.19.0 installed via Homebrew.
-- Auth: local seller OAuth is stored in the CLI config for `Irie Dinamik <kimani@iriedinamik.org>`.
-- Agent skill:
-  - `/Users/dinamikjames/.agents/skills/gumroad/SKILL.md`
-  - `/Users/dinamikjames/.claude/skills/gumroad`
-  - `/Users/dinamikjames/.codex/skills/gumroad/SKILL.md`
+- CLI: install the current `gumroad` CLI and verify it with `gumroad --version`.
+- Auth: use the CLI's local seller OAuth configuration or a session-scoped
+  `GUMROAD_ACCESS_TOKEN`.
+- Agents should use their installed Gumroad skill/runbook rather than assuming a
+  machine-specific skill path.
 
 Do not commit Gumroad access tokens. For CI or a fresh machine, use `GUMROAD_ACCESS_TOKEN` or pipe a token into `gumroad auth login --with-token`.
 

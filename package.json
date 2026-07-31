@@ -2,10 +2,18 @@
   "name": "vox-jot-app",
   "private": true,
   "version": "1.0.18",
+  "description": "Local-first, extensible speech-to-text and voice tooling",
+  "license": "MIT",
+  "author": "Irie Dinamik and Vox Jot contributors",
+  "homepage": "https://www.iriedinamik.org/voxjot/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KimaniDJ11/Vox-Jot.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "node scripts/vite-dev-wrapper.mjs",
-    "build": "BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true node ./node_modules/typescript/bin/tsc && BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true node ./node_modules/vite/bin/vite.js build",
+    "build": "bun run licenses:generate && BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true node ./node_modules/typescript/bin/tsc && BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true node ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -73,6 +81,8 @@
     "models:stt:download-all": "bun scripts/download-all-stt-models.ts",
     "models:validate-public": "bun scripts/validate-public-model-catalog.ts",
     "models:validate-licenses": "bun scripts/validate-model-license-compliance.ts",
+    "licenses:generate": "bun scripts/generate-third-party-notices.ts",
+    "licenses:check": "bun scripts/generate-third-party-notices.ts --check",
     "audit:distribution": "bun scripts/audit-distribution-readiness.ts",
     "audit:app-store": "bun scripts/audit-app-store-readiness.ts",
     "check:translations": "bun scripts/check-translations.ts",

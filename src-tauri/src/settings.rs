@@ -416,7 +416,6 @@ pub enum TranslationBilingualLayout {
 pub enum TranslationDestinationMode {
     PreviewThenPaste,
     #[default]
-    #[serde(other)]
     PasteInPlace,
 }
 
@@ -425,7 +424,6 @@ pub enum TranslationDestinationMode {
 pub enum SelectionTranslationDestinationMode {
     PreviewThenReplace,
     #[default]
-    #[serde(other)]
     ReplaceSelection,
 }
 
@@ -626,6 +624,8 @@ pub struct AppSettings {
     pub update_checks_enabled: bool,
     #[serde(default = "default_enable_crash_reporting")]
     pub enable_crash_reporting: bool,
+    #[serde(default = "default_enable_usage_analytics")]
+    pub enable_usage_analytics: bool,
     #[serde(default = "default_model")]
     pub selected_model: String,
     #[serde(default)]
@@ -977,6 +977,10 @@ fn default_update_checks_enabled() -> bool {
 }
 
 fn default_enable_crash_reporting() -> bool {
+    false
+}
+
+fn default_enable_usage_analytics() -> bool {
     false
 }
 
@@ -2067,6 +2071,7 @@ pub fn get_default_settings() -> AppSettings {
         autostart_enabled: default_autostart_enabled(),
         update_checks_enabled: default_update_checks_enabled(),
         enable_crash_reporting: default_enable_crash_reporting(),
+        enable_usage_analytics: default_enable_usage_analytics(),
         selected_model: "".to_string(),
         selected_stt_provider_id: String::new(),
         selected_stt_model_id: String::new(),

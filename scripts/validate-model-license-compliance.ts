@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 type LicenseEntry = {
@@ -274,6 +274,40 @@ for (const entry of manifest.entries) {
         `Commercial-license model ${entry.id} must use a commercial_license_required UI gate for ${catalogId}.`,
       );
     }
+  }
+}
+
+const bundledBinaryNotices = [
+  {
+    binary: "src-tauri/resources/bin/macos-aarch64/polyvoice",
+    notice: "src-tauri/resources/bin/macos-aarch64/LICENSE.polyvoice.txt",
+    requiredText: "Copyright (c) 2026 Evgeny Khodzitsky",
+  },
+];
+for (const bundled of bundledBinaryNotices) {
+  if (!existsSync(path.join(root, bundled.binary))) continue;
+  const noticePath = path.join(root, bundled.notice);
+  if (!existsSync(noticePath)) {
+    warn(`Bundled binary ${bundled.binary} is missing ${bundled.notice}.`);
+    continue;
+  }
+  if (!readFileSync(noticePath, "utf8").includes(bundled.requiredText)) {
+    warn(
+      `Bundled binary notice ${bundled.notice} is missing its upstream copyright.`,
+    );
+  }
+}
+
+for (const runtimeBuilder of [
+  "scripts/build-speech-runtime.sh",
+  "scripts/build-ocr-runtime.sh",
+]) {
+  const source = read(runtimeBuilder);
+  if (
+    !source.includes("collect-python-runtime-notices.py") ||
+    !source.includes("THIRD_PARTY_NOTICES.txt")
+  ) {
+    warn(`${runtimeBuilder} must preserve Python runtime dependency notices.`);
   }
 }
 

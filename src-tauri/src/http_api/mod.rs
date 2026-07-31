@@ -1172,6 +1172,7 @@ fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
             "Write Profile changes have dedicated routes for validation, ordering, and rule-resolution tests.",
         )),
         "autostart_enabled" | "update_checks_enabled" | "enable_crash_reporting"
+        | "enable_usage_analytics"
         | "keyboard_implementation" => Some((
             "/v1/settings/command",
             "This setting applies runtime platform side effects.",
@@ -1369,6 +1370,11 @@ fn apply_settings_command(
             Ok(vec![key.to_string()])
         }
         "enable_crash_reporting" => crate::shortcut::change_crash_reporting_setting(
+            app.clone(),
+            setting_bool(&value, key)?,
+        )
+        .map(|_| vec![key.to_string()]),
+        "enable_usage_analytics" => crate::shortcut::change_usage_analytics_setting(
             app.clone(),
             setting_bool(&value, key)?,
         )

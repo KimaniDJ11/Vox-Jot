@@ -1750,6 +1750,17 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           descriptionMode="inline"
           grouped={true}
         />
+        <ToggleSwitch
+          checked={getSetting("enable_usage_analytics") ?? false}
+          onChange={(enabled) =>
+            void updateSetting("enable_usage_analytics", enabled)
+          }
+          isUpdating={isUpdating("enable_usage_analytics")}
+          label={t("appSections.privacy.usageAnalyticsLabel")}
+          description={t("appSections.privacy.usageAnalyticsDescription")}
+          descriptionMode="inline"
+          grouped={true}
+        />
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.privacy.historyGroupTitle")}>

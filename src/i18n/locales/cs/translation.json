@@ -3046,7 +3046,9 @@
       "previewCleanup": "Čištění",
       "previewProvider": "Poskytovatel",
       "crashReportingLabel": "Odesílat anonymní hlášení o pádech",
-      "crashReportingDescription": "Pomozte vylepšit Vox Jot odesíláním anonymních hlášení o pádech a stack trace do Sentry. Žádné přepisy, zvuk ani osobní obsah se nikdy neodesílá. Ve výchozím stavu vypnuto."
+      "crashReportingDescription": "Pomozte vylepšit Vox Jot odesíláním anonymních hlášení o pádech a stack trace do Sentry. Žádné přepisy, zvuk ani osobní obsah se nikdy neodesílá. Ve výchozím stavu vypnuto.",
+      "usageAnalyticsLabel": "Odesílat anonymní metriky používání",
+      "usageAnalyticsDescription": "Pomozte zjistit, zda je Vox Jot užitečný, odesláním pouze události spuštění aplikace a prvního úspěšného diktování v relaci do služby agregovaných metrik Irie Dinamik. Neodesílají se přepisy, zvuk, výzvy, obsah obrazovky, časové údaje, ID účtů ani reklamní identifikátory. Ve výchozím stavu vypnuto."
     },
     "diagnostics": {
       "debugRevealNotice": "Stisknutím Cmd/Ctrl + Shift + D zobrazíte hlubší nástroje pro ladění, když je potřebujete.",

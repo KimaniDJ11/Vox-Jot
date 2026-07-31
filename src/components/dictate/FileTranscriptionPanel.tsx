@@ -1241,12 +1241,12 @@ const FileTranscriptionPanelShell: React.FC<{
                     {emotion.top_label}
                   </span>
                   <span className="text-xs tabular-nums text-[var(--muted)]">
-                    {Math.round(emotion.top_score * 100)}%
+                    {Math.round((emotion.top_score ?? 0) * 100)}%
                   </span>
                 </div>
                 <div className="space-y-1">
                   {[...emotion.scores]
-                    .sort((a, b) => b.score - a.score)
+                    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
                     .slice(0, 5)
                     .map((entry) => (
                       <div
@@ -1260,12 +1260,12 @@ const FileTranscriptionPanelShell: React.FC<{
                           <div
                             className="h-full rounded-full bg-[var(--accent)]"
                             style={{
-                              width: `${Math.max(2, Math.round(entry.score * 100))}%`,
+                              width: `${Math.max(2, Math.round((entry.score ?? 0) * 100))}%`,
                             }}
                           />
                         </div>
                         <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-[var(--muted)]">
-                          {Math.round(entry.score * 100)}%
+                          {Math.round((entry.score ?? 0) * 100)}%
                         </span>
                       </div>
                     ))}

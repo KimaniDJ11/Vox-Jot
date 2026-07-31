@@ -16,8 +16,16 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Validate model licenses and notices
         run: bun run models:validate-licenses
+
+      - name: Generate and verify application dependency notices
+        run: bun run licenses:generate

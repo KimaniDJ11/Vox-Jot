@@ -1,27 +1,37 @@
-# Vox Jot paid download runbook
+# Vox Jot open-source distribution and support runbook
 
-This is the production path for distributing Vox Jot as pay-what-you-want software without mixing App Store and self-hosted rules.
+This is the production path for distributing the official open-source Vox Jot
+build while keeping downloads low-friction and support payments separate from
+the Mac App Store rules.
 
 ## Recommended setup
 
-Use self-hosted distribution first: a direct checkout link, a signed and notarized DMG, and Cloudflare R2 downloads.
+Use self-hosted distribution first: a direct signed and notarized DMG from
+Cloudflare R2 plus a separate pay-what-you-want support path.
 
-- Price: pay what you want, suggested `27.00 USD`, with `$0` allowed
-- Website CTA: `Get Vox Jot - pay what you want, suggested $27`
-- Checkout provider: Gumroad for the current launch; Lemon Squeezy remains a later option if license keys or merchant-of-record handling become more important
+- Official download: direct, without account or checkout
+- Website primary CTA: `Download the signed Mac build`
+- Support CTA: `Support development - pay what you want, suggested $27`
+- Support provider: Gumroad for the current launch; Lemon Squeezy remains a
+  later option if memberships, license keys, or merchant-of-record handling
+  become important
 - File host: Cloudflare R2 through `https://downloads.iriedinamik.org`
 - Delivery target: latest signed and notarized Apple Silicon DMG
 
-For the pay-what-you-want desktop beta, do not add license enforcement first. It adds support burden, activation edge cases, offline failure modes, and latency-risking startup checks. Treat the first public build as download access through the checkout page, then add signed license receipts later if abuse becomes real.
+Do not add license enforcement to the open-source launch. It adds support burden,
+activation edge cases, offline failure modes, and latency-risking startup checks.
+The official build is free to download; Gumroad payments support continued
+development, official builds, updates, and support.
 
 ## Checkout provider decision
 
-Default to Gumroad for the current self-hosted launch because the product is already live there as a pay-what-you-want download.
+Keep Gumroad as the current support path because the product and receipt flow are
+already live there as pay-what-you-want.
 
 Why:
 
-- It already supports the launch model: `$0+` pricing with a clear `$27` suggested anchor.
-- It keeps checkout, receipts, creator-style delivery, and customer support in one path.
+- It already supports `$0+` pricing with a clear `$27` suggested anchor.
+- It keeps voluntary payments, receipts, and supporter communication in one path.
 - It keeps the app free from payment SDKs and private payment secrets.
 
 Revisit Lemon Squeezy later if Vox Jot needs generated license keys, stronger tax handling, or a less creator-marketplace checkout surface.
@@ -36,30 +46,30 @@ Provider tradeoffs:
 | Paddle               | More mature merchant-of-record SaaS billing                                  | Strong later, but more operationally heavy than the current launch needs  |
 | Apple StoreKit       | App Store unlocks and trials                                                 | Best only for a Mac App Store build                                       |
 
-Do not wire more than one provider into the first beta. Pick one checkout path, one receipt email path, one support path, and one download page.
+Do not wire more than one payment provider into the launch. Keep one support
+checkout, one receipt path, one official download URL, and one support page.
 
 ## Distribution tracks
 
 Keep these two tracks separate.
 
-### Track A: Self-hosted website release
+### Track A: Official self-hosted release
 
 This is the current path.
 
-- Sell through Stripe, Lemon Squeezy, Gumroad, or Paddle.
 - Host the notarized DMG on R2.
-- Link the website purchase button to checkout.
-- Link the post-payment success page to the R2 DMG.
+- Link the website's primary download button directly to the R2 DMG.
+- Link a separate support button to Gumroad.
 - Use the Tauri updater manifest on Hugging Face for installed-app updates.
 - Do not use GitHub Releases for Vox Jot app distribution.
-- License keys are allowed in this path if we decide to add them later.
+- Do not require a license key for the open-source core or official launch build.
 
 Recommended first version:
 
 - No in-app lock.
 - No license-key field.
 - No startup network call.
-- Paid access is controlled by the checkout/download page.
+- Source and official builds remain usable without payment activation.
 
 ### Track B: Mac App Store release
 
@@ -99,20 +109,20 @@ https://huggingface.co/IrieDinamik/vox-jot-releases/resolve/main/latest.json
 
 The DMG on R2 is for new installs and manual re-downloads. The Hugging Face `latest.json` manifest and signed updater artifacts are for in-app updates.
 
-## Payment provider requirements
+## Support provider requirements
 
-Create one live checkout product:
+Maintain one live supporter product:
 
 - Product name: `Vox Jot: Local-First Mac Dictation`
 - Price: `$0+` pay what you want
 - Suggested price: `$27.00`
 - Currency: `USD`
 - Type: one-time payment
-- Success URL: `https://www.iriedinamik.org/voxjot/download/?paid=1`
-- Cancel URL: `https://www.iriedinamik.org/voxjot/`
 - Receipt email: enabled
 
-The success URL should land on a page that explains the supported Mac target and links to the R2-hosted DMG. If the checkout provider supports post-payment digital file delivery, use that too, but keep the website download page as the canonical support surface.
+The receipt and product content should link back to the official product and
+support pages. Gumroad may continue delivering the same official DMG for
+supporters, but payment is not the only download path.
 
 If using Lemon Squeezy later for license keys:
 
@@ -146,25 +156,28 @@ The website should point users at `latest/`. Support and rollback workflows shou
 Primary CTA:
 
 ```html
-<a class="btn btn-primary" href="PAYMENT_LINK_URL"
-  >Get Vox Jot - pay what you want, suggested $27</a
->
-```
-
-Secondary CTA after payment:
-
-```html
 <a
   class="btn btn-primary"
   href="https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg"
-  >Download for Mac</a
+  >Download the signed Mac build</a
+>
+```
+
+Support CTA:
+
+```html
+<a class="btn btn-secondary" href="https://iriedinamik.gumroad.com/l/voxjot"
+  >Support development - suggested $27</a
 >
 ```
 
 Short purchase note:
 
 ```text
-Pay-what-you-want beta download for Apple Silicon Macs. Suggested price: $27. If you need Vox Jot free, enter $0. Vox Jot is signed and notarized for direct macOS distribution. Core dictation stays local by default; optional cleanup only runs when configured.
+Free official download for Apple Silicon Macs. Vox Jot is signed and notarized
+for direct macOS distribution. Core dictation stays local by default; optional
+cleanup only runs when configured. If Vox Jot helps you, support continued
+development with a pay-what-you-want contribution; the suggested amount is $27.
 ```
 
 ## Security and abuse controls
@@ -188,9 +201,10 @@ Pay-what-you-want beta download for Apple Silicon Macs. Suggested price: $27. If
 5. Gatekeeper-validate the installed app and DMG.
 6. Upload the DMG and checksum to R2 versioned paths.
 7. Copy the same files to `voxjot/latest/`.
-8. Create or update the `$0+` pay-what-you-want checkout link with `$27` suggested.
-9. Update `https://www.iriedinamik.org/voxjot/` so the primary CTA points to checkout.
-10. Verify purchase success page and public download URL in a browser.
+8. Create or update the `$0+` supporter link with `$27` suggested.
+9. Update `https://www.iriedinamik.org/voxjot/` so the primary CTA points to the
+   direct DMG and the support CTA points to Gumroad.
+10. Verify the public download and supporter paths in a browser.
 11. For updater-capable releases, use the local distributor to create the signed updater archive and upload the updater artifacts plus `latest.json` to Hugging Face.
 
 ## Required local release path
@@ -218,6 +232,9 @@ The script:
 
 Use `--skip-hf` only after already-shipped installed apps point at a non-Hugging-Face updater endpoint. Current installed builds still read the Hugging Face updater manifest, so skipping Hugging Face would prevent in-app updates for those users.
 
-Use `--skip-r2`, `--skip-gumroad`, or `--skip-website-check` only for a dry run or a deliberately partial release. A public paid release is not complete until R2, Gumroad, the website path, and the updater feed are all verified.
+Use `--skip-r2`, `--skip-gumroad`, or `--skip-website-check` only for a dry run
+or a deliberately partial release. A public official release is not complete
+until R2, the direct website download, Gumroad support path, and updater feed are
+all verified.
 
 If the local distributor is blocked by missing notary credentials, Cloudflare R2 auth, updater signing key/password, Hugging Face auth, Gumroad auth, website verification, or public download verification, fix that blocker and rerun the local distributor. Do not use GitHub Releases as a fallback.

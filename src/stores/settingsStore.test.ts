@@ -164,7 +164,7 @@ describe("settings store", () => {
       .updateSetting("translation_model_ids", { openai: "gpt-4.1-mini" });
     await useSettingsStore
       .getState()
-      .updateSetting("model_unload_timeout", "min_5");
+      .updateSetting("model_unload_timeout", "min5");
 
     expect(commandMocks.changeCustomFillerWordsSetting).toHaveBeenCalledWith([
       "well",
@@ -176,7 +176,7 @@ describe("settings store", () => {
     expect(commandMocks.changeTranslationModelIdsSetting).toHaveBeenCalledWith({
       openai: "gpt-4.1-mini",
     });
-    expect(commandMocks.setModelUnloadTimeout).toHaveBeenCalledWith("min_5");
+    expect(commandMocks.setModelUnloadTimeout).toHaveBeenCalledWith("min5");
   });
 
   it("rolls back an optimistically displayed setting without a handler", async () => {

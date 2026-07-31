@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a user problem or product improvement
+title: "[Idea]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For broad exploration, start a GitHub Discussion. Use this form when the problem and expected outcome are concrete enough to track.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues, pull requests, discussions, and the roadmap.
+          required: true
+        - label: I am describing a user problem, not only a preferred implementation.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Who experiences this and what are they unable to do today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe what success would look like without assuming a specific implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround or alternatives
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Privacy, latency, accessibility, or platform constraints
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Examples or supporting evidence

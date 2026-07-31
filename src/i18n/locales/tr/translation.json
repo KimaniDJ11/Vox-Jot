@@ -3046,7 +3046,9 @@
       "previewCleanup": "Temizleme",
       "previewProvider": "sağlayıcı",
       "crashReportingLabel": "Anonim çökme raporları gönder",
-      "crashReportingDescription": "Sentry'ye anonim çökme raporları ve yığın izleri göndererek Vox Jot'u iyileştirmeye yardımcı olun. Hiçbir transkript, ses veya kişisel içerik gönderilmez. Varsayılan olarak kapalıdır."
+      "crashReportingDescription": "Sentry'ye anonim çökme raporları ve yığın izleri göndererek Vox Jot'u iyileştirmeye yardımcı olun. Hiçbir transkript, ses veya kişisel içerik gönderilmez. Varsayılan olarak kapalıdır.",
+      "usageAnalyticsLabel": "Anonim kullanım ölçümleri gönder",
+      "usageAnalyticsDescription": "Her oturumda yalnızca uygulama başlatma ve ilk başarılı dikte olaylarını Irie Dinamik toplu ölçüm hizmetine göndererek Vox Jot’un yararlı olup olmadığını ölçmeye yardımcı olun. Transkript, ses, istem, ekran içeriği, zamanlama ayrıntısı, hesap kimliği veya reklam tanımlayıcısı gönderilmez. Varsayılan olarak kapalıdır."
     },
     "diagnostics": {
       "debugRevealNotice": "İhtiyacınız olduğunda daha derin hata ayıklama araçlarını ortaya çıkarmak için Cmd/Ctrl + Shift + D tuşlarına basın.",

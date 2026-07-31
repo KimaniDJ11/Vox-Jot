@@ -124,7 +124,7 @@ describe("resolvedTuningControlsForModel", () => {
   });
 
   it("uses Supertonic controls for an imported HF alias row", () => {
-    const supertonicAlias = model("local_sidecar_api", "hf_tts_collection_145");
+    const supertonicAlias = model("local_sidecar_api", "hf_tts_collection_145"); // gitleaks:allow -- test-only catalog alias
     supertonicAlias.label = "supertonic-3";
     supertonicAlias.description =
       "Verified TTS model from Hugging Face collection (Supertone/supertonic-3).";

@@ -3046,7 +3046,9 @@
       "previewCleanup": "Dọn dẹp",
       "previewProvider": "nhà cung cấp",
       "crashReportingLabel": "Gửi báo cáo lỗi ẩn danh",
-      "crashReportingDescription": "Giúp cải thiện Vox Jot bằng cách gửi báo cáo lỗi ẩn danh và stack trace đến Sentry. Bản ghi, âm thanh hoặc nội dung cá nhân sẽ không bao giờ được gửi. Mặc định tắt."
+      "crashReportingDescription": "Giúp cải thiện Vox Jot bằng cách gửi báo cáo lỗi ẩn danh và stack trace đến Sentry. Bản ghi, âm thanh hoặc nội dung cá nhân sẽ không bao giờ được gửi. Mặc định tắt.",
+      "usageAnalyticsLabel": "Gửi số liệu sử dụng ẩn danh",
+      "usageAnalyticsDescription": "Giúp đo lường mức độ hữu ích của Vox Jot bằng cách chỉ gửi sự kiện khởi chạy ứng dụng và lần đọc chính tả thành công đầu tiên trong mỗi phiên đến dịch vụ số liệu tổng hợp của Irie Dinamik. Không gửi bản chép lời, âm thanh, câu lệnh, nội dung màn hình, chi tiết thời gian, ID tài khoản hay mã nhận dạng quảng cáo. Mặc định tắt."
     },
     "diagnostics": {
       "debugRevealNotice": "Nhấn Cmd/Ctrl + Shift + D để hiển thị các công cụ gỡ lỗi sâu hơn khi bạn cần chúng.",

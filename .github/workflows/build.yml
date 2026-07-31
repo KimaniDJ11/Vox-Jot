@@ -47,7 +47,7 @@ on:
 env:
   # Pinned digest of https://packages.lunarg.com/lunarg-signing-key-pub.asc.
   # Bump deliberately if LunarG rotates the key; a mismatch must fail the build.
-  LUNARG_SIGNING_KEY_SHA256: "aa1c3c29673140e77f0d6a9aaeed5d9b5621e305ead51c59fae4458bbb4df92b"
+  LUNARG_SIGNING_KEY_SHA256: "aa1c3c29673140e77f0d6a9aaeed5d9b5621e305ead51c59fae4458bbb4df92b" # gitleaks:allow -- public pinned checksum
 
 jobs:
   build:

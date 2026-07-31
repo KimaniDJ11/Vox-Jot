@@ -185,6 +185,11 @@ fi
 "$RUNTIME_PYTHON" -m ensurepip --upgrade || true
 "$RUNTIME_PYTHON" -m pip install --upgrade pip setuptools wheel
 "$RUNTIME_PYTHON" -m pip install --no-compile -r "$BUILD_DIR/requirements.txt"
+"$RUNTIME_PYTHON" "$ROOT_DIR/scripts/collect-python-runtime-notices.py" "$BUILD_DIR"
+if [[ ! -s "$BUILD_DIR/THIRD_PARTY_NOTICES.txt" ]]; then
+  echo "Speech runtime third-party notices were not generated" >&2
+  exit 1
+fi
 
 # Strip caches and macOS metadata so the archive is reproducible and
 # notarization-safe (no AppleDouble files inside bundled archives).

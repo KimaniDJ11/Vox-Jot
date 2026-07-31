@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible Vox Jot defect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Do not attach private recordings, transcripts, API keys, license keys, or unredacted logs. Report security issues through SECURITY.md instead.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing open and closed issues.
+          required: true
+        - label: I removed private content and credentials from logs and attachments.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build type
+      options:
+        - Official signed Mac build
+        - Unmodified self-build
+        - Modified fork or unofficial package
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vox Jot version or commit
+      placeholder: "1.0.18 or commit hash"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Operating system and hardware
+      placeholder: "macOS 15.6, Apple M2 Pro"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and the behavior you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Affected model, mode, and destination app
+      description: Include these only when relevant. Do not include dictated content.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs
+      description: Paste only the smallest relevant, privacy-safe excerpt.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context

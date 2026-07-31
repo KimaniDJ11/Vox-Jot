@@ -1,158 +1,112 @@
-# Build Instructions
+# Building Vox Jot
 
-This guide covers how to set up the development environment and build Vox Jot from source across different platforms.
+This guide covers contributor builds. Official Irie Dinamik releases use a
+separate signed, notarized, and verified distribution process.
 
 ## Prerequisites
 
-### All Platforms
+- [Rust stable](https://rustup.rs/)
+- [Bun](https://bun.sh/)
+- [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/)
 
-- [Rust](https://rustup.rs/) (latest stable)
-- [Bun](https://bun.sh/) package manager
-- [Tauri Prerequisites](https://tauri.app/start/prerequisites/)
+Platform requirements:
 
-### Platform-Specific Requirements
+- **macOS:** Xcode Command Line Tools (`xcode-select --install`)
+- **Windows:** Visual Studio Build Tools with Desktop development with C++
+- **Ubuntu/Debian:** `build-essential libasound2-dev pkg-config libssl-dev
+libvulkan-dev glslc libgtk-3-dev libwebkit2gtk-4.1-dev
+libayatana-appindicator3-dev librsvg2-dev libgtk-layer-shell-dev patchelf cmake`
 
-#### macOS
+Equivalent GTK, WebKitGTK, ALSA, OpenSSL, Vulkan, layer-shell, and build packages
+are required on other Linux distributions.
 
-- Xcode Command Line Tools
-- Install with: `xcode-select --install`
-
-#### Windows
-
-- Microsoft C++ Build Tools
-- Visual Studio 2019/2022 with C++ development tools
-- Or Visual Studio Build Tools 2019/2022
-
-#### Linux
-
-- Build essentials
-- ALSA development libraries
-- Install with:
-
-  ```bash
-  # Ubuntu/Debian
-  sudo apt update
-  sudo apt install build-essential libasound2-dev pkg-config libssl-dev libvulkan-dev vulkan-tools glslc libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-layer-shell0 libgtk-layer-shell-dev patchelf cmake
-
-  # Fedora/RHEL
-  sudo dnf groupinstall "Development Tools"
-  sudo dnf install alsa-lib-devel pkgconf openssl-devel vulkan-devel \
-    gtk3-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel \
-    gtk-layer-shell gtk-layer-shell-devel \
-    cmake
-
-  # Arch Linux
-  sudo pacman -S base-devel alsa-lib pkgconf openssl vulkan-devel \
-    gtk3 webkit2gtk-4.1 libappindicator-gtk3 librsvg gtk-layer-shell \
-    cmake
-  ```
-
-## Setup Instructions
-
-### 1. Clone the Repository
+## Clone and install
 
 ```bash
-git clone git@github.com:cjpais/Vox Jot.git
-cd Vox Jot
-```
-
-### 2. Install Dependencies
-
-```bash
+git clone https://github.com/KimaniDJ11/Vox-Jot.git
+cd Vox-Jot
 bun install
 ```
 
-### 3. Validate Changes
+The repository includes the required Silero VAD resource. Larger speech, OCR,
+TTS, and creative models are installed by the app when selected; do not commit
+downloaded weights into the repository.
 
-On macOS, the standard validation workflow is to rebuild and update the installed app in `/Applications` so the same approved app bundle keeps its Accessibility-related permissions:
-
-```bash
-bun run mac:update-installed-app:notarized
-```
-
-This is the canonical path for syncing the installed/running macOS app to the latest build. Short alias: `bun run mac:update:notarized`. It builds, Developer ID signs, submits to Apple notarization, staples, Gatekeeper-validates, replaces `/Applications/Vox Jot.app`, and opens the installed app. Plain aliases such as `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app` are intentionally blocked for all agents.
-
-The installed-app workflow requires a Developer ID signing identity and Apple notarization credentials. Set up the notarytool Keychain profile once with:
+## Development
 
 ```bash
-bun run mac:setup-notary
+bun run tauri dev
 ```
 
-This stores the `voxjot-notary` profile in the macOS Keychain and verifies it before future builds. If the profile is missing, `bun run mac:update-installed-app:notarized` fails during preflight before starting the frontend or Rust build.
-
-When checking the profile manually, use:
+Frontend-only work can use:
 
 ```bash
-xcrun notarytool history --keychain-profile voxjot-notary
+bun run dev
 ```
 
-Do not use `security find-generic-password -s voxjot-notary` as the credential check; it can report a false negative for a valid notarytool profile.
+Development builds are not signed official releases. On macOS they use a
+different approval path and may need separate Microphone, Accessibility, or
+Automation permissions.
 
-Use `bun run tauri dev` only for explicitly requested quick iteration when you do not need to validate through the installed app bundle. It is not an installed-app sync path. Dev (debug) builds also skip single-instance and the release-only macOS startup paths, so any window or startup behavior must be validated with a release build (`bun run mac:update-installed-app:notarized`), not `tauri dev`.
-
-### 4. Start Dev Server
+## Build checks
 
 ```bash
-bun tauri dev
+bun run format:check
+bun run lint
+bun run build
+bun run test:unit
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+bun run check:translations
+bun run models:validate-licenses
+bun run licenses:check
 ```
 
-### 5. Build for Production
+Create a local release bundle with:
 
 ```bash
 bun run tauri build
 ```
 
-This compiles a release binary and generates platform-specific bundles (deb, rpm, AppImage on Linux; dmg on macOS; msi on Windows).
+That build is still a community/self-build unless it has passed Irie Dinamik's
+official signing, notarization, and distribution process.
 
-## Linux Install (from source)
+## Maintainer macOS validation
 
-The raw binary (`src-tauri/target/release/handy`) cannot run standalone — it needs Tauri resource files (tray icons, sounds, VAD model) to be co-located at the expected path.
-
-**Install from the deb bundle** (works on any Linux distro):
-
-```bash
-cd /tmp
-ar x /path/to/Vox Jot/src-tauri/target/release/bundle/deb/Vox Jot_*_amd64.deb data.tar.gz
-tar xzf data.tar.gz
-sudo cp usr/bin/handy /usr/bin/
-sudo cp -r usr/lib/Vox Jot /usr/lib/
-sudo cp -r usr/share/icons/hicolor/* /usr/share/icons/hicolor/
-sudo cp usr/share/applications/Vox Jot.desktop /usr/share/applications/
-```
-
-After subsequent rebuilds, only the binary needs re-copying:
+Maintainers with the required Developer ID identity and Apple credentials use:
 
 ```bash
-sudo cp src-tauri/target/release/handy /usr/bin/
+bun run mac:update-installed-app:notarized
 ```
 
-Resources only need re-copying if they change upstream (new icons, sounds, etc.).
+Short alias: `bun run mac:update:notarized`.
 
-## Troubleshooting
+This builds the release app, signs it, submits it to Apple notarization, staples
+the ticket, validates it with Gatekeeper, replaces `/Applications/Vox Jot.app`,
+and launches the installed app. It is intentionally unavailable without valid
+maintainer credentials. Contributors should report their local build/test
+results instead of attempting to obtain project signing secrets.
 
-### AppImage build fails on Arch / rolling-release distros
+## Linux notes
 
-`linuxdeploy` bundles its own `strip` binary which is too old to process system libraries built with newer toolchains on rolling-release distros (Arch, CachyOS, Manjaro, EndeavourOS).
+The executable is named `vox_jot`. Prefer installing a generated package so its
+Tauri resources are placed correctly. Wayland users may need `wtype` or `dotool`
+for text injection; X11 users may use `xdotool`.
 
-The error from Tauri:
-
-```
-Bundling Vox Jot_*_amd64.AppImage
-failed to bundle project `failed to run linuxdeploy`
-```
-
-Tauri swallows the real linuxdeploy error. To see it, run linuxdeploy manually:
-
-```bash
-cd src-tauri/target/release/bundle/appimage
-~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
-  --appdir Vox Jot.AppDir --plugin gtk --output appimage
-```
-
-**Workaround:** The binary, deb, and rpm bundles all build fine — only the AppImage step fails. To skip it:
+If AppImage creation fails on a rolling distribution because the bundled
+`linuxdeploy` tooling cannot process newer system libraries, build another
+package type, for example:
 
 ```bash
 bun run tauri build -- --bundles deb
 ```
 
-Then install using the deb extraction method above.
+## Troubleshooting
+
+- Run `rustup update stable` when the lockfile requires a newer compiler.
+- Delete only generated build output when recovering from a corrupt local build;
+  do not remove source or model mirrors.
+- Include the exact command, platform, tool versions, and first relevant error
+  when asking for help.
+- See [SUPPORT.md](SUPPORT.md) for support routes.

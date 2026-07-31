@@ -3046,7 +3046,9 @@
       "previewCleanup": "Oczyszczanie",
       "previewProvider": "Dostawca",
       "crashReportingLabel": "Wysyłaj anonimowe raporty o awariach",
-      "crashReportingDescription": "Pomóż ulepszać Vox Jot, wysyłając anonimowe raporty o awariach i ślady stosu do Sentry. Transkrypcje, dźwięk ani treści osobiste nigdy nie są wysyłane. Domyślnie wyłączone."
+      "crashReportingDescription": "Pomóż ulepszać Vox Jot, wysyłając anonimowe raporty o awariach i ślady stosu do Sentry. Transkrypcje, dźwięk ani treści osobiste nigdy nie są wysyłane. Domyślnie wyłączone.",
+      "usageAnalyticsLabel": "Wysyłaj anonimowe statystyki użycia",
+      "usageAnalyticsDescription": "Pomóż ocenić przydatność Vox Jot, wysyłając wyłącznie zdarzenia uruchomienia aplikacji i pierwszego udanego dyktowania w sesji do usługi zagregowanych statystyk Irie Dinamik. Nie są wysyłane transkrypcje, dźwięk, polecenia, zawartość ekranu, dane czasowe, identyfikatory kont ani identyfikatory reklamowe. Domyślnie wyłączone."
     },
     "diagnostics": {
       "debugRevealNotice": "Naciśnij Cmd/Ctrl + Shift + D, aby wyświetlić głębsze narzędzia do debugowania, gdy ich potrzebujesz.",

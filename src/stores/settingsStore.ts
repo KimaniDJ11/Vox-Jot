@@ -164,6 +164,8 @@ const settingUpdaters: {
     commands.changeUpdateChecksSetting(value as boolean),
   enable_crash_reporting: (value) =>
     commands.changeCrashReportingSetting(value as boolean),
+  enable_usage_analytics: (value) =>
+    commands.changeUsageAnalyticsSetting(value as boolean),
   push_to_talk: (value) => commands.changePttSetting(value as boolean),
   selected_microphone: (value) =>
     commands.setSelectedMicrophone(

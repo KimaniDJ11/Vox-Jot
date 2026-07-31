@@ -1,494 +1,119 @@
 # Vox Jot
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
+**Local-first Mac dictation for people who write all day.** Press a shortcut,
+speak naturally, and place text where your cursor is already focused.
 
-**Pay-what-you-want, open source, local-first Mac dictation. Suggested price: $27, with $0 allowed.**
+[Download the official signed Mac build](https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg)
+· [Support development](https://iriedinamik.gumroad.com/l/voxjot)
+· [Product page](https://www.iriedinamik.org/voxjot/)
+· [Build from source](BUILD.md)
 
-Vox Jot is a desktop voice input layer for people who write all day. Press a shortcut, speak, and have your words appear where your cursor is focused. Core dictation runs locally by default with no Vox Jot account required. Optional cleanup and rewrite features only use cloud providers when you configure them.
+The official Apple Silicon download is pay-what-you-want: the suggested support
+price is **$27**, and **$0 is allowed**. The source code is available under the
+[MIT License](LICENSE).
 
-## Why Vox Jot?
+## The core workflow
 
-Vox Jot was created to fill the gap for a truly open source, extensible speech-to-text tool. As stated on [handy.computer](https://handy.computer):
+1. Press a configurable global shortcut.
+2. Speak into your selected microphone.
+3. Vox Jot transcribes locally by default.
+4. The text is placed into the app you were already using.
 
-- **Accessible**: Pay what you want for the Mac download. The suggested price is `$27`, and people who need it free can enter `$0`
-- **Open Source**: Together we can build further. Extend Vox Jot for yourself and contribute to something bigger
-- **Private by default**: Core dictation uses local speech models. Cloud cleanup is optional and user-configured
-- **Simple first**: Talk once and get text where your cursor already is
+Core dictation does not require a Vox Jot account. Optional cleanup and rewrite
+features use local models, Apple Intelligence, or cloud providers only when you
+choose and configure them.
 
-Vox Jot includes deeper tools such as Dictation Modes, Phrase Keys, file transcription, Reader/Listen, OCR, and Model Hub. Those are power-user depth. The main job is simple: speak once and get text where you were already writing.
+## What is included
 
-## How It Works
+- Global shortcut and push-to-talk dictation
+- Local Whisper, Parakeet, and other app-managed speech models
+- App-aware Dictation Modes and reusable Phrase Keys
+- File transcription and a correction-learning dictionary
+- Reader, Listen, OCR, speech analysis, and voice tools
+- Visible, cancellable model and runtime downloads
+- A local API for user-controlled automations
 
-1. **Press** a configurable keyboard shortcut to start/stop recording (or use push-to-talk mode)
-2. **Speak** your words while the shortcut is active
-3. **Release** and Vox Jot processes your speech using Whisper
-4. **Get** your transcribed text pasted directly into whatever app you're using
+The deeper tools are optional. Vox Jot's first job remains simple: talk once and
+get text where your cursor is.
 
-Core dictation is local by default:
+## Install the official Mac build
 
-- Silence is filtered using VAD (Voice Activity Detection) with Silero
-- Transcription uses your choice of models:
-  - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
-  - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
-- Optional post-processing can run locally or through cloud providers you configure
-- Works on Windows, macOS, and Linux in development; public direct downloads currently prioritize signed Apple Silicon Mac builds
+The current official download targets **Apple Silicon Macs running macOS 13
+Ventura or later**.
 
-## Quick Start
+1. [Download the signed and notarized DMG](https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg).
+2. Optionally [verify its SHA-256 checksum](https://downloads.iriedinamik.org/voxjot/latest/Vox-Jot-latest-aarch64.dmg.sha256).
+3. Drag Vox Jot into Applications.
+4. Grant Microphone access. Global shortcuts and text placement may also need
+   Accessibility or Automation permission.
+5. Choose a speech model and test a short dictation.
 
-### Installation
+The website provides [install notes](https://www.iriedinamik.org/voxjot/) and
+[support](https://www.iriedinamik.org/voxjot/support/).
 
-1. Get the latest signed Mac download from [iriedinamik.org/voxjot](https://www.iriedinamik.org/voxjot/).
-   - The public Mac download is pay-what-you-want through Gumroad, with `$27` suggested and `$0` allowed.
-   - **macOS**: A third-party Homebrew cask may exist, but it is not maintained by the Vox Jot developers.
-2. Install the application
-3. Launch Vox Jot and grant necessary system permissions (microphone, accessibility)
-4. Configure your preferred keyboard shortcuts in Settings
-5. Start transcribing!
+## Official builds and community builds
 
-### Development Setup
+Irie Dinamik publishes the official `Vox Jot` Mac build. It is Developer ID
+signed, notarized by Apple, stapled, Gatekeeper-validated, and connected to the
+official update feed.
 
-For detailed build instructions including platform-specific requirements, see [BUILD.md](BUILD.md).
+The MIT license permits forks and redistribution, but modified distributions
+must not imply that they are produced, reviewed, signed, or supported by Irie
+Dinamik. Use a distinct name and visual identity for modified distributions.
+See [TRADEMARKS.md](TRADEMARKS.md) for the project identity policy.
 
-On macOS, the standard way to validate a solid app change is to update the installed app in place:
+## Build from source
 
-```bash
-bun run mac:update-installed-app:notarized
-# Short alias for the same notarized installed-app workflow
-bun run mac:update:notarized
-
-# Open the already-installed, permission-preserving dev app
-bun run mac:open-installed-app
-```
-
-This rebuilds, Developer ID signs, notarizes, staples, Gatekeeper-validates, and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. It requires Apple notary credentials — run `bun run mac:setup-notary` once to store the `voxjot-notary` keychain profile (or supply `APPLE_ID` + `APPLE_PASSWORD` + `APPLE_TEAM_ID`, or `APPLE_API_KEY` + `APPLE_API_ISSUER` + `APPLE_API_KEY_PATH`); see [BUILD.md](BUILD.md) for details. `bun run tauri dev` is still available for quick iteration, but it is not notarized and is not the default path for solid macOS testing. Dev (debug) builds also skip single-instance and the release-only macOS startup paths, so validate any window or startup behavior with a release build.
-
-For agents and automation, `bun run mac:update-installed-app:notarized` is the only canonical path for syncing the installed/running macOS app to the latest build. `bun run mac:update:notarized` is the short alias. Plain aliases such as `bun run mac:update`, `bun run mac:update-installed-app`, `bun run mac:build-install`, and `bun run mac:dev-installed-app` are intentionally blocked. If notarization credentials need to be checked manually, verify them with `xcrun notarytool history --keychain-profile voxjot-notary`; direct `security find-generic-password` checks are not authoritative for notarytool profiles.
-
-## Architecture
-
-Vox Jot is built as a Tauri application combining:
-
-- **Frontend**: React + TypeScript with Tailwind CSS for the settings UI
-- **Backend**: Rust for system integration, audio processing, and ML inference
-- **Core Libraries**:
-  - `whisper-rs`: Local speech recognition with Whisper models
-  - `transcribe-rs`: CPU-optimized speech recognition with Parakeet and ONNX-based models
-  - `cpal`: Cross-platform audio I/O
-  - `vad-rs`: Voice Activity Detection
-  - `rdev`: Global keyboard shortcuts and system events
-  - `rubato`: Audio resampling
-
-### Debug Mode
-
-Vox Jot includes an advanced debug mode for development and troubleshooting. Access it by pressing:
-
-- **macOS**: `Cmd+Shift+D`
-- **Windows/Linux**: `Ctrl+Shift+D`
-
-### CLI Parameters
-
-Vox Jot supports command-line flags for controlling a running instance and customizing startup behavior. These work on all platforms (macOS, Windows, Linux).
-
-**Remote control flags** (sent to an already-running instance via the single-instance plugin):
+The short path is:
 
 ```bash
-vox-jot --toggle-transcription    # Toggle recording on/off
-vox-jot --toggle-post-process     # Toggle recording with post-processing on/off
-vox-jot --cancel                  # Cancel the current operation
+git clone https://github.com/KimaniDJ11/Vox-Jot.git
+cd Vox-Jot
+bun install
+bun run build
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-**Startup flags:**
-
-```bash
-vox-jot --start-hidden            # Start without showing the main window
-vox-jot --no-tray                 # Start without the system tray icon
-vox-jot --debug                   # Enable debug mode with verbose logging
-vox-jot --help                    # Show all available flags
-```
-
-Flags can be combined for autostart scenarios:
-
-```bash
-vox-jot --start-hidden --no-tray
-```
-
-> **macOS tip:** When Vox Jot is installed as an app bundle, invoke the binary directly:
->
-> ```bash
-> /Applications/Vox Jot.app/Contents/MacOS/Vox Jot --toggle-transcription
-> ```
-
-## Known Issues & Current Limitations
-
-This project is actively being developed and has some [known issues](https://github.com/KimaniDJ11/Vox-Jot/issues). We believe in transparency about the current state:
-
-### Major Issues (Help Wanted)
-
-**Whisper Model Crashes:**
-
-- Whisper models crash on certain system configurations (Windows and Linux)
-- Does not affect all systems - issue is configuration-dependent
-  - If you experience crashes and are a developer, please help to fix and provide debug logs!
-
-**Wayland Support (Linux):**
-
-- Limited support for Wayland display server
-- Requires [`wtype`](https://github.com/atx/wtype) or [`dotool`](https://sr.ht/~geb/dotool/) for text input to work correctly (see [Linux Notes](#linux-notes) below for installation)
-
-### Linux Notes
-
-**Text Input Tools:**
-
-For reliable text input on Linux, install the appropriate tool for your display server:
-
-| Display Server | Recommended Tool | Install Command                                    |
-| -------------- | ---------------- | -------------------------------------------------- |
-| X11            | `xdotool`        | `sudo apt install xdotool`                         |
-| Wayland        | `wtype`          | `sudo apt install wtype`                           |
-| Both           | `dotool`         | `sudo apt install dotool` (requires `input` group) |
-
-- **X11**: Install `xdotool` for both direct typing and clipboard paste shortcuts
-- **Wayland**: Install `wtype` (preferred) or `dotool` for text input to work correctly
-- **dotool setup**: Requires adding your user to the `input` group: `sudo usermod -aG input $USER` (then log out and back in)
-
-Without these tools, Vox Jot falls back to enigo which may have limited compatibility, especially on Wayland.
-
-**Other Notes:**
-
-- **Runtime library dependency (`libgtk-layer-shell.so.0`)**:
-  - Vox Jot links `gtk-layer-shell` on Linux. If startup fails with `error while loading shared libraries: libgtk-layer-shell.so.0`, install the runtime package for your distro:
-
-    | Distro        | Package to install    | Example command                        |
-    | ------------- | --------------------- | -------------------------------------- |
-    | Ubuntu/Debian | `libgtk-layer-shell0` | `sudo apt install libgtk-layer-shell0` |
-    | Fedora/RHEL   | `gtk-layer-shell`     | `sudo dnf install gtk-layer-shell`     |
-    | Arch Linux    | `gtk-layer-shell`     | `sudo pacman -S gtk-layer-shell`       |
-
-  - For building from source on Ubuntu/Debian, you may also need `libgtk-layer-shell-dev`.
-
-- The recording overlay is disabled by default on Linux (`Overlay Position: None`) because certain compositors treat it as the active window. When the overlay is visible it can steal focus, which prevents Vox Jot from pasting back into the application that triggered transcription. If you enable the overlay anyway, be aware that clipboard-based pasting might fail or end up in the wrong window.
-- If you are having trouble with the app, running with the environment variable `WEBKIT_DISABLE_DMABUF_RENDERER=1` may help
-- **Global keyboard shortcuts (Wayland):** On Wayland, system-level shortcuts must be configured through your desktop environment or window manager. Use the [CLI flags](#cli-parameters) as the command for your custom shortcut.
-
-  **GNOME:**
-  1. Open **Settings > Keyboard > Keyboard Shortcuts > Custom Shortcuts**
-  2. Click the **+** button to add a new shortcut
-  3. Set the **Name** to `Toggle Vox Jot Transcription`
-  4. Set the **Command** to `vox-jot --toggle-transcription`
-  5. Click **Set Shortcut** and press your desired key combination (e.g., `Super+O`)
-
-  **KDE Plasma:**
-  1. Open **System Settings > Shortcuts > Custom Shortcuts**
-  2. Click **Edit > New > Global Shortcut > Command/URL**
-  3. Name it `Toggle Vox Jot Transcription`
-  4. In the **Trigger** tab, set your desired key combination
-  5. In the **Action** tab, set the command to `vox-jot --toggle-transcription`
-
-  **Sway / i3:**
-
-  Add to your config file (`~/.config/sway/config` or `~/.config/i3/config`):
-
-  ```ini
-  bindsym $mod+o exec vox-jot --toggle-transcription
-  ```
-
-  **Hyprland:**
-
-  Add to your config file (`~/.config/hypr/hyprland.conf`):
-
-  ```ini
-  bind = $mainMod, O, exec, vox-jot --toggle-transcription
-  ```
-
-- You can also manage global shortcuts outside of Vox Jot via Unix signals, which lets Wayland window managers or other hotkey daemons keep ownership of keybindings:
-
-  | Signal    | Action                                    | Example                  |
-  | --------- | ----------------------------------------- | ------------------------ |
-  | `SIGUSR2` | Toggle transcription                      | `pkill -USR2 -n vox_jot` |
-  | `SIGUSR1` | Toggle transcription with post-processing | `pkill -USR1 -n vox_jot` |
-
-  Example Sway config:
-
-  ```ini
-  bindsym $mod+o exec pkill -USR2 -n vox_jot
-  bindsym $mod+p exec pkill -USR1 -n vox_jot
-  ```
-
-  `pkill` here simply delivers the signal—it does not terminate the process.
-
-### Platform Support
-
-- **macOS (both Intel and Apple Silicon)**
-- **x64 Windows**
-- **x64 Linux**
-
-### System Requirements/Recommendations
-
-The following are recommendations for running Vox Jot on your own machine. If you don't meet the system requirements, the performance of the application may be degraded. We are working on improving the performance across all kinds of computers and hardware.
-
-**For Whisper Models:**
-
-- **macOS**: M series Mac, Intel Mac
-- **Windows**: Intel, AMD, or NVIDIA GPU
-- **Linux**: Intel, AMD, or NVIDIA GPU
-  - Ubuntu 22.04, 24.04
-
-**For Parakeet V3 Model:**
-
-- **CPU-only operation** - runs on a wide variety of hardware
-- **Minimum**: Intel Skylake (6th gen) or equivalent AMD processors
-- **Performance**: ~5x real-time speed on mid-range hardware (tested on i5)
-- **Automatic language detection** - no manual language selection required
-
-## Working Feature Policy
-
-Vox Jot does not maintain planning-only sections for partially implemented user-facing work. If a feature is visible in the app, it should be fully implemented and runnable through the normal app flow.
-
-Contributions should avoid promise-only surfaces, disabled placeholders, mock-only flows, and planning-only entries. If a feature cannot be completed because an artifact, credential, runtime, platform API, or upstream dependency is unavailable, keep it out of usable surfaces or mark it clearly as blocked until the full path can be implemented and verified.
-
-## Troubleshooting
-
-### Manual Model Installation (For Proxy Users or Network Restrictions)
-
-If you're behind a proxy, firewall, or in a restricted network environment where Vox Jot cannot download models automatically, you can manually download and install them. The URLs are publicly accessible from any browser.
-
-#### Step 1: Find Your App Data Directory
-
-1. Open Vox Jot settings
-2. Navigate to the **About** section
-3. Copy the "App Data Directory" path shown there, or use the shortcuts:
-   - **macOS**: `Cmd+Shift+D` to open debug menu
-   - **Windows/Linux**: `Ctrl+Shift+D` to open debug menu
-
-The typical paths are:
-
-- **macOS**: `~/Library/Application Support/com.iriedinamik.voxjot/`
-- **Windows**: `C:\Users\{username}\AppData\Roaming\com.iriedinamik.voxjot\`
-- **Linux**: `~/.config/com.iriedinamik.voxjot/`
-
-#### Step 2: Create Models Directory
-
-Inside your app data directory, create a `models` folder if it doesn't already exist:
-
-```bash
-# macOS/Linux
-mkdir -p ~/Library/Application\ Support/com.iriedinamik.voxjot/models
-
-# Windows (PowerShell)
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\com.iriedinamik.voxjot\models"
-```
-
-#### Step 3: Download Model Files
-
-Download the models you want from below.
-
-You can publish or refresh the pinned model mirror release yourself with:
-
-```bash
-./scripts/mirror-models.sh --dry-run
-./scripts/mirror-models.sh
-```
-
-**Pinned model release (GitHub):**
-
-- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-small.bin`
-- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-medium.bin`
-- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
-- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
-- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
-- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
-- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
-- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-base.tar.gz`
-- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
-- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
-- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
-- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
-- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
-
-> By default, Vox Jot downloads every built-in model from this pinned GitHub release.
-> Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.
-> Non-Whisper download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
-> Translation pack download base can be customized with `VOX_JOT_TRANSLATION_MODELS_BASE_URL`.
-> TTS runtime and voice-pack download base can be customized with `VOX_JOT_TTS_MODELS_BASE_URL`.
-> Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.
-> If the repo is private, Vox Jot will look for GitHub release-asset auth in `VOX_JOT_GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`, then `GITHUB_TOKEN`.
-
-**Pinned translation pack release (GitHub):**
-
-- Release tag: `v0.2.0-translation-models`
-- Repo: `KimaniDJ11/Vox-Jot`
-- Initial pack filenames:
-  - `translate-en-es-ct2.tar.gz`
-  - `translate-es-en-ct2.tar.gz`
-  - `translate-en-fr-ct2.tar.gz`
-  - `translate-fr-en-ct2.tar.gz`
-  - `translate-en-de-ct2.tar.gz`
-  - `translate-de-en-ct2.tar.gz`
-  - `translate-en-pt-ct2.tar.gz`
-  - `translate-pt-en-ct2.tar.gz`
-  - `translate-en-it-ct2.tar.gz`
-  - `translate-it-en-ct2.tar.gz`
-  - `translate-en-nl-ct2.tar.gz`
-  - `translate-nl-en-ct2.tar.gz`
-  - `translate-en-ja-ct2.tar.gz`
-  - `translate-ja-en-ct2.tar.gz`
-  - `translate-en-ko-ct2.tar.gz`
-  - `translate-ko-en-ct2.tar.gz`
-  - `translate-en-zh-Hans-ct2.tar.gz`
-  - `translate-zh-Hans-en-ct2.tar.gz`
-  - `translate-en-zh-Hant-ct2.tar.gz`
-  - `translate-zh-Hant-en-ct2.tar.gz`
-  - `translate-en-ru-ct2.tar.gz`
-  - `translate-ru-en-ct2.tar.gz`
-  - `translate-en-uk-ct2.tar.gz`
-  - `translate-uk-en-ct2.tar.gz`
-  - `translate-en-pl-ct2.tar.gz`
-  - `translate-pl-en-ct2.tar.gz`
-  - `translate-en-tr-ct2.tar.gz`
-  - `translate-tr-en-ct2.tar.gz`
-
-**GitHub publishing + browser verification workflow:**
-
-1. Use `gh release create` or `gh release upload` to publish the translation assets into `KimaniDJ11/Vox-Jot`.
-2. Open the main GitHub repo in a browser and verify the release state:
-   - `KimaniDJ11/Vox-Jot`
-3. Confirm the release tag exists, every asset is visible, filenames match the app-side expectations exactly, and download URLs resolve publicly before shipping.
-
-**Pinned TTS release (GitHub):**
-
-- Publish or refresh it with:
-
-```bash
-./scripts/mirror-tts-assets.sh --dry-run
-./scripts/mirror-tts-assets.sh
-```
-
-- Release tag: `v0.3.0-tts-models`
-- Repo: `KimaniDJ11/Vox-Jot`
-- Runtime assets:
-  - `tts-sherpa-runtime-macos-universal2.tar.gz`
-  - `tts-sherpa-runtime-linux-x64.tar.gz`
-  - `tts-sherpa-runtime-win-x64.tar.gz`
-- Voice-pack assets:
-  - `tts-sherpa-en-us-lessac-medium.tar.gz`
-  - `tts-sherpa-zh-cn-melo.tar.gz`
-
-**Canonical upstream TTS sources:**
-
-- Runtime: `https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.20`
-- English voice: `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2`
-- Chinese + English voice: `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2`
-
-#### Step 4: Install Models
-
-**For single-file models (.bin / .onnx):**
-
-Place the file directly into the `models` directory:
-
-```
-{app_data_dir}/models/
-├── ggml-small.bin
-├── ggml-medium.bin
-├── ggml-large-v3-turbo.bin
-├── ggml-large-v3-q5_0.bin
-├── breeze-asr-q5_k.bin
-└── v3_e2e_ctc.int8.onnx
-```
-
-**For archive-based models (.tar.gz):**
-
-1. Extract the `.tar.gz` file
-2. Place the **extracted directory** into the `models` folder
-3. Keep the directory name exactly as packaged
-
-Final structure should look like:
-
-```
-{app_data_dir}/models/
-├── parakeet-tdt-0.6b-v2-int8/
-├── parakeet-tdt-0.6b-v3-int8/
-├── moonshine-base/
-├── moonshine-tiny-streaming-en/
-├── moonshine-small-streaming-en/
-├── moonshine-medium-streaming-en/
-└── sense-voice-int8/
-```
-
-**Important Notes:**
-
-- For Parakeet models, the extracted directory name **must** match exactly as shown above
-- Do not rename the `.bin` files for Whisper models—use the exact filenames from the download URLs
-- After placing the files, restart Vox Jot to detect the new models
-
-#### Step 5: Verify Installation
-
-1. Restart Vox Jot
-2. Open Settings → Models
-3. Your manually installed models should now appear as "Downloaded"
-4. Select the model you want to use and test transcription
-
-### Custom Whisper Models
-
-Vox Jot can auto-discover custom Whisper GGML models placed in the `models` directory. This is useful for users who want to use fine-tuned or community models not included in the default model list.
-
-**How to use:**
-
-1. Obtain a Whisper model in GGML `.bin` format (e.g., from [Hugging Face](https://huggingface.co/models?search=whisper%20ggml))
-2. Place the `.bin` file in your `models` directory (see paths above)
-3. Restart Vox Jot to discover the new model
-4. The model will appear in the "Custom Models" section of the Models settings page
-
-**Important:**
-
-- Community models are user-provided and may not receive troubleshooting assistance
-- The model must be a valid Whisper GGML format (`.bin` file)
-- Model name is derived from the filename (e.g., `my-custom-model.bin` → "My Custom Model")
-
-### How to Contribute
-
-1. **Check existing issues** at [github.com/KimaniDJ11/Vox-Jot/issues](https://github.com/KimaniDJ11/Vox-Jot/issues)
-2. **Fork the repository** and create a feature branch
-3. **Test thoroughly** on your target platform
-4. **Submit a pull request** with clear description of changes
-5. **Join the discussion** - reach out at [contact@voxjot.app](mailto:contact@voxjot.app)
-
-The goal is to create both a useful tool and a foundation for others to build upon—a well-patterned, simple codebase that serves the community.
-
-## Sponsors
-
-<div align="center">
-  We're grateful for the support of our sponsors who help make Vox Jot possible:
-  <br><br>
-  <a href="https://wordcab.com">
-    <img src="sponsor-images/wordcab.png" alt="Wordcab" width="120" height="120">
-  </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/epicenter-so/epicenter">
-    <img src="sponsor-images/epicenter.png" alt="Epicenter" width="120" height="120">
-  </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://boltai.com?utm_source=handy">
-    <img src="sponsor-images/boltai.jpg" alt="Bolt AI" width="120" height="120">
-  </a>
-</div>
-
-## Related Projects
-
-- **[Vox Jot CLI](https://github.com/cjpais/handy-cli)** - The original Python command-line version
-- **[handy.computer](https://handy.computer)** - Project website with demos and documentation
+Use `bun run tauri dev` for a local development build. A self-built app is not
+an official signed release and may need separate macOS permissions. Platform
+prerequisites and validation commands are documented in [BUILD.md](BUILD.md).
+
+## Contributing
+
+Bug reports, documentation, translations, tests, design improvements, and code
+contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), review
+the [roadmap](ROADMAP.md), and search existing issues and discussions before
+opening new work.
+
+- [Report a bug](https://github.com/KimaniDJ11/Vox-Jot/issues/new/choose)
+- [Join a discussion](https://github.com/KimaniDJ11/Vox-Jot/discussions)
+- [Get support](SUPPORT.md)
+- [Report a security issue privately](SECURITY.md)
+
+## Privacy and model licenses
+
+Vox Jot is local-first, not "every feature is always offline." Core recording
+and transcription stay on the Mac by default. Optional provider-backed features
+are explicitly configured by the user. Read the
+[privacy policy](https://www.iriedinamik.org/voxjot/privacy/) for the supported
+distribution.
+
+Models and runtimes retain their own upstream terms. The app and repository
+publish a generated dependency notice bundle plus the curated
+[model and runtime notices](src-tauri/resources/THIRD_PARTY_MODEL_NOTICES.md).
+Some optional assets require acknowledgement, have non-commercial terms, or are
+not redistributed by Vox Jot.
+
+## Project lineage
+
+Vox Jot builds on the open-source work of CJ Pais and the Handy project. The
+original copyright and MIT license notices are preserved in [LICENSE](LICENSE)
+and [NOTICE.md](NOTICE.md). Related upstream projects include
+[Handy](https://github.com/cjpais/Handy) and
+[handy-cli](https://github.com/cjpais/handy-cli).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- **Whisper** by OpenAI for the speech recognition model
-- **whisper.cpp and ggml** for amazing cross-platform whisper inference/acceleration
-- **Silero** for great lightweight VAD
-- **Tauri** team for the excellent Rust-based app framework
-- **Community contributors** helping make Vox Jot better
-
----
-
-_"Your search for the right speech-to-text tool can end here—not because Vox Jot is perfect, but because you can make it perfect for you."_
+Source code is licensed under the [MIT License](LICENSE). Third-party models,
+runtimes, binaries, fonts, sounds, and other assets may use different licenses;
+consult the adjacent notices and [NOTICE.md](NOTICE.md).

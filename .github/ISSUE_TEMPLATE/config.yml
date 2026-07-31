@@ -1,14 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: ✏️ Post-processing / Editing Transcripts
+  - name: Questions and open-ended ideas
     url: https://github.com/KimaniDJ11/Vox-Jot/discussions
-    about: Looking to edit, format, or post-process transcripts? Join this discussion
-  - name: ⌨️ Keyboard Shortcuts / Hotkeys
-    url: https://github.com/KimaniDJ11/Vox-Jot/discussions
-    about: Want different keyboard shortcuts or hotkey configurations? Join this discussion
-  - name: 💡 Feature Request or Idea
-    url: https://github.com/KimaniDJ11/Vox-Jot/discussions
-    about: Please post feature requests and ideas in our Discussions tab
-  - name: 💬 General Discussion
-    url: https://github.com/KimaniDJ11/Vox-Jot/discussions
-    about: Ask questions and discuss Vox Jot with the community
+    about: Ask for help, share a workflow, or explore an idea with the community
+  - name: Official build support
+    url: https://www.iriedinamik.org/voxjot/support/
+    about: Installation, permissions, models, updates, and common troubleshooting
+  - name: Private security report
+    url: https://github.com/KimaniDJ11/Vox-Jot/security/advisories/new
+    about: Do not disclose vulnerabilities or secrets in a public issue

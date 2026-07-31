@@ -3042,7 +3042,9 @@
       "previewCleanup": "清理",
       "previewProvider": "提供者",
       "crashReportingLabel": "发送匿名崩溃报告",
-      "crashReportingDescription": "通过向 Sentry 发送匿名崩溃报告和堆栈跟踪来帮助改进 Vox Jot。我们绝不发送任何转录文本、音频或个人内容。默认关闭。"
+      "crashReportingDescription": "通过向 Sentry 发送匿名崩溃报告和堆栈跟踪来帮助改进 Vox Jot。我们绝不发送任何转录文本、音频或个人内容。默认关闭。",
+      "usageAnalyticsLabel": "发送匿名使用指标",
+      "usageAnalyticsDescription": "仅将应用启动和每个会话中首次听写成功事件发送到 Irie Dinamik 的汇总指标服务，帮助衡量 Vox Jot 是否有用。不会发送转录文本、音频、提示词、屏幕内容、耗时详情、账户 ID 或广告标识符。默认关闭。"
     },
     "diagnostics": {
       "debugRevealNotice": "按 Cmd/Ctrl + Shift + D 可在需要时显示更深入的调试工具。",

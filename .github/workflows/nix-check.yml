@@ -59,7 +59,7 @@ jobs:
         if: steps.bun-check.outputs.outdated != 'true'
         id: eval
         run: |
-          if ! nix eval .#packages.x86_64-linux.handy.drvPath 2>eval_err.log; then
+          if ! nix eval .#packages.x86_64-linux.vox-jot.drvPath 2>eval_err.log; then
             echo "failed=true" >> "$GITHUB_OUTPUT"
             cat eval_err.log
           fi
@@ -75,6 +75,6 @@ jobs:
 
       # Full build — catches runtime build errors (broken dependencies,
       # sandbox issues, compilation failures) that flake eval alone misses.
-      - name: Build handy
+      - name: Build Vox Jot
         if: steps.bun-check.outputs.outdated != 'true' && steps.eval.outputs.failed != 'true'
-        run: nix build .#handy -L --show-trace
+        run: nix build .#vox-jot -L --show-trace

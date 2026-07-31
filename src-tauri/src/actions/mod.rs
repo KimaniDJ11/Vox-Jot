@@ -1648,6 +1648,7 @@ impl ShortcutAction for TranscribeAction {
                                                 "Text pasted successfully in {:?}",
                                                 paste_time.elapsed()
                                             );
+                                            crate::telemetry::track_first_dictation_success();
                                             if let Some((
                                                 inserted_text,
                                                 app_id,

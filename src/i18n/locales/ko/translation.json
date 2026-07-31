@@ -3046,7 +3046,9 @@
       "previewCleanup": "정리",
       "previewProvider": "공급자",
       "crashReportingLabel": "익명 충돌 보고서 전송",
-      "crashReportingDescription": "Sentry로 익명 충돌 보고서와 스택 트레이스를 전송하여 Vox Jot 개선에 도움을 주세요. 전사 내용, 오디오, 개인 콘텐츠는 절대 전송되지 않습니다. 기본값은 꺼짐입니다."
+      "crashReportingDescription": "Sentry로 익명 충돌 보고서와 스택 트레이스를 전송하여 Vox Jot 개선에 도움을 주세요. 전사 내용, 오디오, 개인 콘텐츠는 절대 전송되지 않습니다. 기본값은 꺼짐입니다.",
+      "usageAnalyticsLabel": "익명 사용 지표 보내기",
+      "usageAnalyticsDescription": "Vox Jot의 유용성을 측정할 수 있도록 앱 실행 및 세션에서 첫 번째 받아쓰기 성공 이벤트만 Irie Dinamik의 집계 지표 서비스로 보냅니다. 기록문, 오디오, 프롬프트, 화면 콘텐츠, 시간 정보, 계정 ID 또는 광고 식별자는 전송하지 않습니다. 기본적으로 꺼져 있습니다."
     },
     "diagnostics": {
       "debugRevealNotice": "필요할 때 Cmd/Ctrl + Shift + D를 눌러 더 자세한 디버그 도구를 표시하세요.",

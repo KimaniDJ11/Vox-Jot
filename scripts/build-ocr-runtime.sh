@@ -186,7 +186,12 @@ fi
 if [[ "$PLATFORM" == "linux" ]]; then
   "$RUNTIME_PYTHON" -m pip install --no-compile --index-url https://download.pytorch.org/whl/cpu torch torchvision
 fi
-(cd "$BUILD_DIR" && "$RUNTIME_PYTHON" -m pip install --no-compile ".[$EXTRAS]")
+(cd "$BUILD_DIR" && "$RUNTIME_PYTHON" -m pip install --no-compile ".[${EXTRAS}]")
+"$RUNTIME_PYTHON" "$ROOT_DIR/scripts/collect-python-runtime-notices.py" "$BUILD_DIR"
+if [[ ! -s "$BUILD_DIR/THIRD_PARTY_NOTICES.txt" ]]; then
+  echo "OCR runtime third-party notices were not generated" >&2
+  exit 1
+fi
 
 find "$BUILD_DIR" \
   \( -name '*.pyc' -o -name '__pycache__' -o -name '.DS_Store' -o -name '._*' -o -name '__MACOSX' \) \

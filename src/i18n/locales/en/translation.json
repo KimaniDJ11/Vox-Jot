@@ -3290,6 +3290,8 @@
       "localPrivacyModeDescription": "Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available.",
       "crashReportingLabel": "Send anonymous crash reports",
       "crashReportingDescription": "Help improve Vox Jot by sending anonymous crash reports and stack traces to Sentry. No transcripts, audio, or personal content is ever sent. Off by default.",
+      "usageAnalyticsLabel": "Send anonymous usage metrics",
+      "usageAnalyticsDescription": "Help measure whether Vox Jot is useful by sending only app launch and first successful dictation-in-session events to Irie Dinamik’s aggregate metrics service. No transcripts, audio, prompts, screen content, timing details, account IDs, or advertising identifiers are sent. Off by default.",
       "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.",
       "heroOnTitle": "Local privacy on",
       "heroOnDetail": "Cleanup and translation prefer on-device providers. Cloud routes are skipped when a local route exists.",

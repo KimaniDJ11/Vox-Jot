@@ -336,11 +336,11 @@
       "id": "polyvoice-wespeaker",
       "domains": ["speech_analysis"],
       "name": "Polyvoice ONNX diarization with WeSpeaker embeddings and Silero VAD",
-      "upstream": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34",
-      "distribution_source": "src-tauri/resources/models/polyvoice",
-      "license": "Apache-2.0",
+      "upstream": "https://github.com/ekhodzitsky/polyvoice",
+      "distribution_source": "src-tauri/resources/bin and src-tauri/resources/models/polyvoice",
+      "license": "MIT (Polyvoice); Apache-2.0 (WeSpeaker and Silero model assets)",
       "commercial_status": "allowed_with_notice",
-      "required_notices": ["license_text", "copyright_notice"],
+      "required_notices": ["license_text", "copyright_notice", "source_link"],
       "catalog_ids": ["onnx-polyvoice-diarization"]
     },
     {

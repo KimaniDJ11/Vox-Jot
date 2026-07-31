@@ -151,8 +151,7 @@ const correctionBelongsInDictionary = (entry: StoredCorrection): boolean => {
   return (
     entry.user_approved ||
     autoApply.eligible ||
-    (autoApply.status === "disabled" &&
-      autoApply.confirmations_remaining === 0)
+    (autoApply.status === "disabled" && autoApply.confirmations_remaining === 0)
   );
 };
 
@@ -260,7 +259,7 @@ const getEntrySourceTitle = (
   t: ReturnType<typeof useTranslation>["t"],
 ): string => {
   const confidence = Math.round(
-    (entry.auto_apply?.effective_confidence ?? entry.confidence) * 100,
+    (entry.auto_apply?.effective_confidence ?? entry.confidence ?? 0) * 100,
   );
   return t("settings.corrections.dictionary.source.title", {
     source: getEntrySourceLabel(entry, t),
@@ -423,14 +422,11 @@ export const CorrectionDictionaryView: React.FC<
         setLearningNotice({
           status: "unavailable",
           message: appName
-            ? t(
-                "settings.corrections.dictionary.learningUnavailableForApp",
-                {
-                  appName,
-                  defaultValue:
-                    "Vox Jot could not read the text field in {{appName}}, so edits there may not be learned. You can still add the correction with Add new.",
-                },
-              )
+            ? t("settings.corrections.dictionary.learningUnavailableForApp", {
+                appName,
+                defaultValue:
+                  "Vox Jot could not read the text field in {{appName}}, so edits there may not be learned. You can still add the correction with Add new.",
+              })
             : t("settings.corrections.dictionary.learningUnavailable", {
                 defaultValue:
                   "Vox Jot could not read the destination text field, so edits there may not be learned. You can still add the correction with Add new.",
@@ -827,8 +823,7 @@ export const CorrectionDictionaryView: React.FC<
   const visibleCorrections = useMemo(
     () =>
       corrections.filter((correction) => {
-        const belongsInDictionary =
-          correctionBelongsInDictionary(correction);
+        const belongsInDictionary = correctionBelongsInDictionary(correction);
         return viewMode === "dictionary"
           ? belongsInDictionary
           : !belongsInDictionary;

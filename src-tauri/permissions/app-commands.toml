@@ -99,6 +99,7 @@ commands.allow = [
   "change_global_language_sync_enabled_setting",
   "change_update_checks_setting",
   "change_crash_reporting_setting",
+  "change_usage_analytics_setting",
   "change_keyboard_implementation_setting",
   "get_keyboard_implementation",
   "change_show_tray_icon_setting",

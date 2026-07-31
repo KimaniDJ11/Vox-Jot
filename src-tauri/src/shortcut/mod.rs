@@ -1159,6 +1159,28 @@ pub fn change_crash_reporting_setting(app: AppHandle, enabled: bool) -> Result<(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_usage_analytics_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.enable_usage_analytics = enabled;
+    settings::write_settings(&app, settings);
+    crate::telemetry::set_usage_analytics_enabled(enabled);
+    if enabled {
+        crate::telemetry::track_usage_event("analytics_enabled");
+    }
+
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "enable_usage_analytics",
+            "value": enabled
+        }),
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn update_custom_words(app: AppHandle, words: Vec<String>) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.custom_words = words;

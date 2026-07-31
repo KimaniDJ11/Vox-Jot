@@ -43,6 +43,7 @@ jobs:
       - name: Build speech runtime (Unix)
         if: runner.os != 'Windows'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           SPEECH_RUNTIME_PYTHON: python3.11
           SPEECH_RUNTIME_ARCH: ${{ matrix.arch_override }}
         run: bash scripts/build-speech-runtime.sh
@@ -51,6 +52,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           SPEECH_RUNTIME_PYTHON: python
           SPEECH_RUNTIME_ARCH: ${{ matrix.arch_override }}
         run: bash scripts/build-speech-runtime.sh

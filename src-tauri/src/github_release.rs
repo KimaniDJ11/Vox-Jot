@@ -166,16 +166,16 @@ mod tests {
     #[test]
     fn parses_github_release_download_urls() {
         let parsed = parse_github_release_download(
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models/tts-sherpa-runtime-macos-universal2.tar.gz",
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-osx-universal2-shared.tar.bz2",
         )
         .expect("should parse");
 
-        assert_eq!(parsed.owner, "KimaniDJ11");
-        assert_eq!(parsed.repo, "Vox-Jot");
-        assert_eq!(parsed.tag, "v0.3.0-tts-models");
+        assert_eq!(parsed.owner, "k2-fsa");
+        assert_eq!(parsed.repo, "sherpa-onnx");
+        assert_eq!(parsed.tag, "v1.12.20");
         assert_eq!(
             parsed.asset_name,
-            "tts-sherpa-runtime-macos-universal2.tar.gz"
+            "sherpa-onnx-v1.12.20-osx-universal2-shared.tar.bz2"
         );
     }
 

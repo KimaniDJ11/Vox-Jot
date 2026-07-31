@@ -160,9 +160,7 @@ pub struct Qwen3PackDefinition {
     pub id: &'static str,
     pub label: &'static str,
     pub locale: &'static str,
-    /// HuggingFace repo ID for models too large for GitHub release assets (>2 GB).
-    /// When set, the installer downloads individual files from HuggingFace as a
-    /// fallback when the GitHub release archive is unavailable.
+    /// Canonical Hugging Face repo used when a prepackaged mirror is unavailable.
     pub hf_repo_id: Option<&'static str>,
 }
 
@@ -352,7 +350,7 @@ pub struct ManagedRuntimeModelDefinition {
     pub supports_voice_cloning: bool,
     pub supports_instruction_prompt: bool,
     pub supports_inline_tags: bool,
-    /// HuggingFace repo ID for models too large for GitHub release assets (>2 GB).
+    /// Canonical Hugging Face repo used when a prepackaged mirror is unavailable.
     pub hf_repo_id: Option<&'static str>,
 }
 

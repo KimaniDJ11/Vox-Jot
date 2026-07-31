@@ -266,27 +266,6 @@ function snapshotReady(spec: Extract<ModelSpec, { kind: "hf-snapshot" }>) {
   );
 }
 
-function githubReleaseAssetName(url: string): string | null {
-  const prefix =
-    "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/";
-  return url.startsWith(prefix) ? basename(url) : null;
-}
-
-function downloadReleaseAsset(asset: string, outputPath: string) {
-  rmSync(outputPath, { force: true });
-  run("gh", [
-    "release",
-    "download",
-    "v0.1.0-models",
-    "--repo",
-    "KimaniDJ11/Vox-Jot",
-    "--pattern",
-    asset,
-    "--output",
-    outputPath,
-  ]);
-}
-
 function finalizeExtract(stagingDir: string, finalPath: string) {
   const dirs = readdirSync(stagingDir, { withFileTypes: true }).filter(
     (entry) => entry.isDirectory(),
@@ -345,7 +324,7 @@ function downloadFile(
   mkdirSync(dirname(target), { recursive: true });
   const partial = `${target}.partial`;
   console.log(`Downloading ${spec.id}`);
-  const status = tryRun("curl", [
+  run("curl", [
     "-L",
     "--fail",
     "--continue-at",
@@ -354,14 +333,6 @@ function downloadFile(
     partial,
     spec.url,
   ]);
-  if (status !== 0) {
-    const asset = githubReleaseAssetName(spec.url);
-    if (!asset) {
-      throw new Error(`curl download failed for ${spec.id} with ${status}`);
-    }
-    console.log(`Retrying ${spec.id} with GitHub release asset API`);
-    downloadReleaseAsset(asset, partial);
-  }
   renameSync(partial, target);
 }
 
@@ -382,7 +353,7 @@ function downloadArchive(
   const stagingDir = resolve(STT_MODELS_DIR, `${spec.filename}.extracting`);
   rmSync(stagingDir, { recursive: true, force: true });
   console.log(`Downloading ${spec.id}`);
-  const status = tryRun("curl", [
+  run("curl", [
     "-L",
     "--fail",
     "--continue-at",
@@ -391,14 +362,6 @@ function downloadArchive(
     archivePath,
     spec.url,
   ]);
-  if (status !== 0) {
-    const asset = githubReleaseAssetName(spec.url);
-    if (!asset) {
-      throw new Error(`curl download failed for ${spec.id} with ${status}`);
-    }
-    console.log(`Retrying ${spec.id} with GitHub release asset API`);
-    downloadReleaseAsset(asset, archivePath);
-  }
   mkdirSync(stagingDir, { recursive: true });
   run("tar", ["-xzf", archivePath, "-C", stagingDir]);
   finalizeExtract(stagingDir, finalPath);

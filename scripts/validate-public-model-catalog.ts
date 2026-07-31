@@ -11,6 +11,7 @@ const SPEECH_ANALYSIS = readFileSync(
   "utf8",
 );
 const TTS_CATALOG = readFileSync("src-tauri/src/tts/catalog.rs", "utf8");
+const TTS_MANAGER = readFileSync("src-tauri/src/tts.rs", "utf8");
 
 type HfRepoInfo = {
   id?: string;
@@ -58,10 +59,27 @@ function assertNoPrivateReleaseReferences() {
     ["ModelManager", MODEL_MANAGER],
     ["speech_analysis", SPEECH_ANALYSIS],
     ["TTS catalog", TTS_CATALOG],
+    ["TTS manager", TTS_MANAGER],
   ] as const) {
     if (source.includes(PRIVATE_GITHUB_RELEASE)) {
       fail(`${label} still references private GitHub model release assets.`);
     }
+  }
+}
+
+async function assertManagedSpeechRuntimeIsPublic() {
+  const baseUrl = TTS_MANAGER.match(
+    /const DEFAULT_TTS_ASSET_BASE_URL[^=]*=\s*"([^"]+)"/s,
+  )?.[1];
+  if (!baseUrl) {
+    fail("Could not resolve DEFAULT_TTS_ASSET_BASE_URL.");
+    return;
+  }
+  const runtimeUrl = `${baseUrl.replace(/\/$/, "")}/speech-runtime-macos-aarch64.tar.gz`;
+  if (!(await headOk(runtimeUrl))) {
+    fail(
+      `Managed macOS speech runtime is not anonymously reachable: ${runtimeUrl}`,
+    );
   }
 }
 
@@ -136,6 +154,7 @@ async function assertHfReposAreNotPrivateOrDisabled() {
 
 async function main() {
   assertNoPrivateReleaseReferences();
+  await assertManagedSpeechRuntimeIsPublic();
   await assertRecommendedModelsArePublic();
   await assertVoxJotModelAssetsExist();
   await assertHfReposAreNotPrivateOrDisabled();

@@ -159,17 +159,11 @@ transcribe-rs = { version = "0.3.11", default-features = false, features = ["onn
 tempfile = "3"
 tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
 
-# crates.io 0.31.10 still pins vulnerable quick-xml 0.39.4. Upstream has
-# already moved to quick-xml 0.41; pin that reviewed revision until the next
-# wayland-scanner release carries the fix. Keep the full Wayland crate family
-# on the same reviewed workspace revision: mixing the patched scanner with
-# newer crates.io client/backend releases breaks generated protocol code.
+# crates.io 0.31.10 still pins vulnerable quick-xml 0.39.4. This public fork
+# starts from the exact 0.31.10 release and applies only upstream's official
+# quick-xml 0.41 bump, preserving compatibility with released Wayland clients.
 [patch.crates-io]
-wayland-backend = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
-wayland-client = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
-wayland-protocols-wlr = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
-wayland-scanner = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
+wayland-scanner = { git = "https://github.com/KimaniDJ11/wayland-rs.git", rev = "71bdacc6d4c9aca51e9175709d561d7dba01ad40" }
 
 [profile.release]
 lto = true

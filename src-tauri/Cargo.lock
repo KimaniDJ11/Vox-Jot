@@ -1790,12 +1790,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "downcast-rs"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
-
-[[package]]
 name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,7 +2032,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3327,7 +3321,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5151,7 +5145,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5625,7 +5619,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5684,7 +5678,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7301,7 +7295,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -8320,26 +8314,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "wayland-backend"
-version = "0.3.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "016ccf01d1c58b6f8999612813e17c9b2390f7d70671428869913310f83f54b8"
-dependencies = [
- "cc",
- "downcast-rs",
- "rustix",
- "smallvec",
- "wayland-sys",
-]
-
-[[package]]
 name = "wayland-client"
 version = "0.31.14"
 source = "git+https://github.com/Smithay/wayland-rs.git?rev=a55c54b4e138e29181d63908ece06fd2a13550a0#a55c54b4e138e29181d63908ece06fd2a13550a0"
 dependencies = [
  "bitflags 2.13.1",
  "rustix",
- "wayland-backend 0.3.15",
+ "wayland-backend",
  "wayland-scanner",
 ]
 
@@ -8349,7 +8330,7 @@ version = "0.32.13"
 source = "git+https://github.com/Smithay/wayland-rs.git?rev=a55c54b4e138e29181d63908ece06fd2a13550a0#a55c54b4e138e29181d63908ece06fd2a13550a0"
 dependencies = [
  "bitflags 2.13.1",
- "wayland-backend 0.3.15",
+ "wayland-backend",
  "wayland-client",
  "wayland-scanner",
 ]
@@ -8360,7 +8341,7 @@ version = "0.3.12"
 source = "git+https://github.com/Smithay/wayland-rs.git?rev=a55c54b4e138e29181d63908ece06fd2a13550a0#a55c54b4e138e29181d63908ece06fd2a13550a0"
 dependencies = [
  "bitflags 2.13.1",
- "wayland-backend 0.3.15",
+ "wayland-backend",
  "wayland-client",
  "wayland-protocols",
  "wayland-scanner",
@@ -8374,14 +8355,6 @@ dependencies = [
  "proc-macro2",
  "quick-xml",
  "quote",
-]
-
-[[package]]
-name = "wayland-sys"
-version = "0.31.11"
-source = "git+https://github.com/Smithay/wayland-rs.git?rev=a55c54b4e138e29181d63908ece06fd2a13550a0#a55c54b4e138e29181d63908ece06fd2a13550a0"
-dependencies = [
- "pkg-config",
 ]
 
 [[package]]
@@ -9312,7 +9285,7 @@ dependencies = [
  "rustix",
  "thiserror 2.0.19",
  "tree_magic_mini",
- "wayland-backend 0.3.16",
+ "wayland-backend",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",

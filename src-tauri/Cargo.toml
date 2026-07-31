@@ -170,7 +170,6 @@ wayland-client = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55
 wayland-protocols = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
 wayland-protocols-wlr = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
 wayland-scanner = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
-wayland-sys = { git = "https://github.com/Smithay/wayland-rs.git", rev = "a55c54b4e138e29181d63908ece06fd2a13550a0" }
 
 [profile.release]
 lto = true

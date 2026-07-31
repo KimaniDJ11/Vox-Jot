@@ -158,7 +158,7 @@ pub fn list_voice_profiles(
         profiles.push(metadata.into_descriptor(&profile_dir));
     }
 
-    profiles.sort_by(|left, right| left.label.to_lowercase().cmp(&right.label.to_lowercase()));
+    profiles.sort_by_key(|profile| profile.label.to_lowercase());
     Ok(profiles)
 }
 

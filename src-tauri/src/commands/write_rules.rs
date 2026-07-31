@@ -68,7 +68,7 @@ pub fn reorder_write_rules(app: AppHandle, ordered_ids: Vec<String>) -> Result<(
     }
     settings
         .write_rules
-        .sort_by(|left, right| right.priority.cmp(&left.priority));
+        .sort_by_key(|rule| std::cmp::Reverse(rule.priority));
     write_settings(&app, settings);
     Ok(())
 }

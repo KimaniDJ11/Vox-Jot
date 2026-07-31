@@ -1,6 +1,7 @@
 use crate::settings::{
     TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_ORPHEUS_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
 };
+#[cfg(target_os = "macos")]
 use regex::Regex;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use std::process::Command;
@@ -10,6 +11,7 @@ use super::catalog::{is_known_tts_model_id, is_known_tts_provider_id};
 use super::TtsEngineKind;
 use super::VoiceInfo;
 
+#[cfg(target_os = "macos")]
 pub static SAY_VOICE_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
     Regex::new(r"^(?P<name>.+?)\s{2,}(?P<locale>[A-Za-z_]+)\s+#").expect("valid say voice regex")
 });
@@ -87,6 +89,7 @@ pub fn is_valid_mlx_voice_id(voice_id: &str) -> bool {
         || is_known_tts_provider_id(trimmed))
 }
 
+#[cfg(target_os = "macos")]
 pub fn rate_to_words_per_minute(rate: f32) -> u32 {
     let normalized = rate.clamp(0.5, 2.0);
     let words_per_minute = 180.0 * normalized;
@@ -194,9 +197,4 @@ $voices | ConvertTo-Json -Compress
         .collect();
 
     Ok(voices)
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-pub fn windows_system_voices() -> Result<Vec<VoiceInfo>, String> {
-    Ok(Vec::new())
 }

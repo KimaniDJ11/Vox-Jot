@@ -17,16 +17,22 @@ use crate::speech_analysis::{
     CURRENT_DICTATION_ASR_ID,
 };
 use log::warn;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 use sha2::{Digest, Sha256};
 use specta::Type;
 use std::fs;
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
 const SPEECH_ANALYSIS_SIDECAR_SOURCE: &str =
@@ -467,24 +473,38 @@ fn requested_model_is_demucs(model: Option<&str>) -> bool {
     )
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_DOWNLOAD_DOMAIN: &str = "audio_cleanup";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_DOWNLOAD_ARTIFACT_ID: &str = "demucs";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_RUNTIME_REPO_ID: &str = "IrieDinamik/vox-jot-models";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_RUNTIME_REPO_PREFIX: &str = "audio-cleanup/demucs-mlx-swift-runtime/macos-arm64";
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 const DEMUCS_RUNTIME_BINARY: &str = "demucs-mlx-swift";
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 const DEMUCS_RUNTIME_BINARY_SHA256: &str =
     "9422ed9baee16f3af3c969b8055935c72b4d281e73494699da7b129e66e6f517";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_RUNTIME_BINARY_BYTES: u64 = 55_348_832;
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 const DEMUCS_RUNTIME_METALLIB: &str = "mlx.metallib";
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 const DEMUCS_RUNTIME_METALLIB_SHA256: &str =
     "4b11cd850e3e6ad24898ba7a24745c057d7807b28193ab11beaa284475edf2bb";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_RUNTIME_METALLIB_BYTES: u64 = 107_017_438;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const DEMUCS_MODEL_REPO_ID: &str = "mlx-community/demucs-mlx-fp16";
 const DEMUCS_MODEL_REQUIRED_FILES: &[&str] = &["htdemucs.safetensors", "htdemucs_config.json"];
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 static ACTIVE_DEMUCS_SETUP: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 struct DemucsSetupGuard;
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 impl Drop for DemucsSetupGuard {
     fn drop(&mut self) {
         crate::artifact_download::clear_download_cancel_flag(
@@ -498,6 +518,7 @@ impl Drop for DemucsSetupGuard {
     }
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn begin_demucs_setup() -> Result<(Arc<AtomicBool>, DemucsSetupGuard), String> {
     let mut active = ACTIVE_DEMUCS_SETUP
         .lock()
@@ -513,6 +534,7 @@ fn begin_demucs_setup() -> Result<(Arc<AtomicBool>, DemucsSetupGuard), String> {
     Ok((cancel_flag, DemucsSetupGuard))
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn emit_demucs_download_progress(
     app: &AppHandle,
     phase: &str,
@@ -539,6 +561,7 @@ fn emit_demucs_download_progress(
     );
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn demucs_runtime_dir(app: &AppHandle) -> Option<PathBuf> {
     crate::storage_paths::audio_cleanup_models_dir(app)
         .ok()
@@ -555,6 +578,7 @@ fn demucs_weights_root(app: &AppHandle) -> Option<PathBuf> {
         })
 }
 
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 fn demucs_runtime_ready(runtime_dir: &Path) -> bool {
     let binary = runtime_dir.join(DEMUCS_RUNTIME_BINARY);
     let metallib = runtime_dir.join(DEMUCS_RUNTIME_METALLIB);
@@ -575,7 +599,7 @@ fn required_model_file_ready(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, any(test, all(target_os = "macos", target_arch = "aarch64"))))]
 fn demucs_binary_is_executable(path: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
 
@@ -584,7 +608,10 @@ fn demucs_binary_is_executable(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(not(unix))]
+#[cfg(all(
+    not(unix),
+    any(test, all(target_os = "macos", target_arch = "aarch64"))
+))]
 fn demucs_binary_is_executable(path: &Path) -> bool {
     path.is_file()
 }
@@ -691,6 +718,7 @@ pub fn demucs_runtime_status(app: AppHandle) -> Result<DemucsRuntimeStatus, Stri
     })
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn demucs_runtime_url(filename: &str) -> String {
     let rel_path = format!("{DEMUCS_RUNTIME_REPO_PREFIX}/{filename}");
     format!(
@@ -699,6 +727,7 @@ fn demucs_runtime_url(filename: &str) -> String {
     )
 }
 
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 fn file_sha256_matches(path: &Path, expected_sha256: &str) -> Result<bool, String> {
     let mut file = match fs::File::open(path) {
         Ok(file) => file,
@@ -719,7 +748,7 @@ fn file_sha256_matches(path: &Path, expected_sha256: &str) -> Result<bool, Strin
     Ok(hex::encode(hasher.finalize()).eq_ignore_ascii_case(expected_sha256))
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, target_os = "macos", target_arch = "aarch64"))]
 fn ensure_executable(path: &Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
 
@@ -731,11 +760,12 @@ fn ensure_executable(path: &Path) -> Result<(), String> {
         .map_err(|err| format!("Failed to mark {} executable: {err}", path.display()))
 }
 
-#[cfg(not(unix))]
+#[cfg(all(not(unix), target_os = "macos", target_arch = "aarch64"))]
 fn ensure_executable(_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 async fn download_demucs_runtime_file(
     app: &AppHandle,
     filename: &'static str,
@@ -815,6 +845,7 @@ async fn download_demucs_runtime_file(
     Ok(())
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 async fn download_demucs_weights(
     app: &AppHandle,
     cancel_flag: Arc<AtomicBool>,
@@ -875,9 +906,7 @@ pub async fn prepare_demucs_runtime(app: AppHandle) -> Result<DemucsRuntimeStatu
     #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
     {
         let _ = app;
-        return Err(
-            "Demucs MLX vocal isolation is available only on Apple Silicon Macs.".to_string(),
-        );
+        Err("Demucs MLX vocal isolation is available only on Apple Silicon Macs.".to_string())
     }
 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]

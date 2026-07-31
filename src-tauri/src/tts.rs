@@ -4288,8 +4288,8 @@ impl TtsManager {
                     if self.has_installed_pack_for_locale(locale) {
                         Ok(TtsEngineKind::SherpaOnnx)
                     } else {
-                        self.ensure_sidecar_supported(settings).or_else(|_| {
-                            Err("Install a TTS pack or configure a local sidecar to enable speech output on Linux.".to_string())
+                        self.ensure_sidecar_supported(settings).map_err(|_| {
+                            "Install a TTS pack or configure a local sidecar to enable speech output on Linux.".to_string()
                         })
                     }
                 }

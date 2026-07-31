@@ -185,6 +185,7 @@ fn set_main_window_visibility_intent(app: &AppHandle, visible: bool) {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn main_window_visibility_intended(app: &AppHandle) -> bool {
     app.try_state::<MainWindowVisibilityIntent>()
         .map(|intent| intent.visible.load(Ordering::SeqCst))

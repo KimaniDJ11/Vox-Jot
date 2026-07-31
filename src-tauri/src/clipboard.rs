@@ -98,6 +98,7 @@ fn pasteboard_change_count() -> Option<i64> {
     None
 }
 
+#[cfg(any(all(target_os = "macos", target_arch = "aarch64"), test))]
 const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
 static CLIPBOARD_RESTORE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
@@ -159,6 +160,7 @@ fn schedule_clipboard_restore(
     });
 }
 
+#[cfg(any(all(target_os = "macos", target_arch = "aarch64"), test))]
 fn prefers_direct_paste_for_bundle_id(bundle_id: &str) -> bool {
     DIRECT_PASTE_PREFERRED_BUNDLE_IDS
         .iter()
@@ -617,13 +619,12 @@ fn send_key_combo_via_wtype(paste_method: &PasteMethod) -> Result<(), String> {
 /// Send a key combination (e.g., Ctrl+V) via dotool.
 #[cfg(target_os = "linux")]
 fn send_key_combo_via_dotool(paste_method: &PasteMethod) -> Result<(), String> {
-    let command;
-    match paste_method {
-        PasteMethod::CtrlV => command = "echo key ctrl+v | dotool",
-        PasteMethod::ShiftInsert => command = "echo key shift+insert | dotool",
-        PasteMethod::CtrlShiftV => command = "echo key ctrl+shift+v | dotool",
+    let command = match paste_method {
+        PasteMethod::CtrlV => "echo key ctrl+v | dotool",
+        PasteMethod::ShiftInsert => "echo key shift+insert | dotool",
+        PasteMethod::CtrlShiftV => "echo key ctrl+shift+v | dotool",
         _ => return Err("Unsupported paste method".into()),
-    }
+    };
     use std::process::Stdio;
     let status = Command::new("sh")
         .arg("-c")

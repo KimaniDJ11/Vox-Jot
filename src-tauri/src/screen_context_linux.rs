@@ -325,16 +325,6 @@ fn expand_gray_to_rgba(g: &[u8]) -> Vec<u8> {
     out
 }
 
-/// Whether the current environment looks capable of capturing the screen.
-/// Used by `ScreenContextDiagnostics::has_screen_permission` so the settings
-/// UI can highlight a missing tool.
-pub(crate) fn check_capture_permission() -> bool {
-    match detect_session() {
-        SessionKind::Wayland => which("grim").is_some(),
-        SessionKind::X11 => which("import").is_some() || which("gnome-screenshot").is_some(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

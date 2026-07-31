@@ -1434,8 +1434,11 @@ pub fn run(cli_args: CliArgs) {
 
             let mut settings = get_settings(app.handle());
             let app_handle = app.handle().clone();
+            #[cfg(target_os = "macos")]
             let should_hide = settings.start_hidden || cli_args.start_hidden;
+            #[cfg(target_os = "macos")]
             let tray_available = settings.show_tray_icon && !cli_args.no_tray;
+            #[cfg(target_os = "macos")]
             let main_window_initially_visible = !should_hide || !tray_available;
 
             // Activate the crash-reporting gate now that settings are reachable.

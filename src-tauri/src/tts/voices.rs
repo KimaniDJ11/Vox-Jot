@@ -6,7 +6,9 @@ use regex::Regex;
 use std::process::Command;
 
 use super::catalog::{is_known_tts_model_id, is_known_tts_provider_id};
-use super::{TtsEngineKind, VoiceInfo};
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use super::TtsEngineKind;
+use super::VoiceInfo;
 
 pub static SAY_VOICE_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
     Regex::new(r"^(?P<name>.+?)\s{2,}(?P<locale>[A-Za-z_]+)\s+#").expect("valid say voice regex")

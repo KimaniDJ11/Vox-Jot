@@ -183,10 +183,9 @@ async fn rewrite_selected_text(
     );
 
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
-        let system_prompt = "You are a local writing assistant. Rewrite the provided text based on spoken instructions while preserving factual meaning. Return only the rewritten text with no explanations.";
-
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         {
+            let system_prompt = "You are a local writing assistant. Rewrite the provided text based on spoken instructions while preserving factual meaning. Return only the rewritten text with no explanations.";
             return match apple_intelligence::process_text_with_system_prompt(
                 system_prompt,
                 &user_prompt,

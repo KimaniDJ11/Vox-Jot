@@ -259,7 +259,7 @@ fn capture_x11() -> Result<Vec<u8>, String> {
 }
 
 fn decode_png_to_rgba(bytes: &[u8]) -> Result<CapturedFrame, String> {
-    let decoder = png::Decoder::new(bytes);
+    let decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     let mut reader = decoder
         .read_info()
         .map_err(|err| format!("PNG decode failed: {}", err))?;

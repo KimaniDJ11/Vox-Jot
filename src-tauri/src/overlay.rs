@@ -193,6 +193,7 @@ fn calculate_overlay_position_for_size(
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
 fn create_recording_overlay_inner(app_handle: &AppHandle) {
+    #[cfg(not(target_os = "linux"))]
     let position = calculate_overlay_position(app_handle);
 
     // On Linux (Wayland), monitor detection often fails, but we don't need exact coordinates

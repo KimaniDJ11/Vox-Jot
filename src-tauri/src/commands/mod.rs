@@ -20,6 +20,7 @@ use crate::settings::{
     get_settings, get_settings_without_secrets, write_settings, AppSettings, LogLevel,
 };
 use crate::utils::cancel_current_operation;
+#[cfg(target_os = "macos")]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};

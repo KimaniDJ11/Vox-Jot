@@ -233,7 +233,9 @@ pub(crate) async fn post_process_transcription(
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         let dictionary_result =
             apply_personal_dictionary(transcription, &settings.personal_dictionary);
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         let system_prompt = build_apple_system_prompt(
             settings,
             tone_context.as_ref(),
@@ -242,6 +244,7 @@ pub(crate) async fn post_process_transcription(
             effective_rewrite_strength,
             force_conservative_rewrite,
         );
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         let user_content = build_apple_user_content(
             settings,
             &dictionary_result.text,
@@ -250,6 +253,7 @@ pub(crate) async fn post_process_transcription(
             screen_context.as_ref(),
             false,
         );
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         let applied_tone_id = tone_context.as_ref().map(|tone| tone.tone_id.clone());
 
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]

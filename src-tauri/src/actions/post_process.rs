@@ -21,10 +21,10 @@ use tauri::AppHandle;
 
 use super::active_app::preview_app_context_from_override;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-use super::prompt::{build_apple_system_prompt, build_apple_user_content};
+use super::prompt::build_apple_user_content;
 use super::prompt::{
-    build_model_system_prompt, build_model_user_content, build_system_prompt,
-    looks_like_builtin_post_process_prompt, resolve_tone_context,
+    build_apple_system_prompt, build_model_system_prompt, build_model_user_content,
+    build_system_prompt, looks_like_builtin_post_process_prompt, resolve_tone_context,
 };
 use super::route::{
     choose_post_process_pass, extract_route_features, should_force_conservative_rewrite,

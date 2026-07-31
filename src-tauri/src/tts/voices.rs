@@ -9,6 +9,7 @@ use std::process::Command;
 use super::catalog::{is_known_tts_model_id, is_known_tts_provider_id};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use super::TtsEngineKind;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 use super::VoiceInfo;
 
 #[cfg(target_os = "macos")]

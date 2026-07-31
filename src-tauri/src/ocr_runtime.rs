@@ -762,6 +762,7 @@ impl OcrRuntimeManager {
     ) -> Result<Vec<NativeScreenContextSnippet>, String> {
         let frame_b64 = BASE64.encode(frame.pixels);
         let pixel_format = match frame.format {
+            #[cfg(any(target_os = "macos", target_os = "windows", test))]
             PixelFormat::Bgra8 => "bgra8",
             #[cfg(any(target_os = "windows", target_os = "linux"))]
             PixelFormat::Rgba8 => "rgba8",

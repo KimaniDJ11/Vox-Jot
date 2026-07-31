@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -23,6 +22,7 @@ import { buildHubDownloadState } from "@/components/model-hub/hubDownloadState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import {
   ENHANCE_MODELS,
   loadEnhanceModel,
@@ -168,39 +168,31 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     void refreshRuntime();
   }, [refreshRuntime]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen<AudioCleanupArtifactProgress>(
-        "artifact-download-progress",
-        (event) => {
-          const progress = event.payload;
-          if (
-            progress.domain !== DEMUCS_DOWNLOAD_DOMAIN ||
-            progress.artifact_id !== DEMUCS_DOWNLOAD_ARTIFACT_ID
-          ) {
-            return;
-          }
-          setDemucsProgress(progress);
-          if (
-            progress.phase === "complete" ||
-            progress.phase === "failed" ||
-            progress.phase === "cancelled"
-          ) {
-            setDemucsInstalling(false);
-            setDemucsCancelling(false);
-            void refreshRuntime();
-          }
-          if (progress.phase === "failed" && progress.error) {
-            setDemucsInstallError(progress.error);
-          }
-        },
-      );
-    })();
-    return () => {
-      unlisten?.();
-    };
-  }, [refreshRuntime]);
+  useTauriEvent<AudioCleanupArtifactProgress>(
+    "artifact-download-progress",
+    (event) => {
+      const progress = event.payload;
+      if (
+        progress.domain !== DEMUCS_DOWNLOAD_DOMAIN ||
+        progress.artifact_id !== DEMUCS_DOWNLOAD_ARTIFACT_ID
+      ) {
+        return;
+      }
+      setDemucsProgress(progress);
+      if (
+        progress.phase === "complete" ||
+        progress.phase === "failed" ||
+        progress.phase === "cancelled"
+      ) {
+        setDemucsInstalling(false);
+        setDemucsCancelling(false);
+        void refreshRuntime();
+      }
+      if (progress.phase === "failed" && progress.error) {
+        setDemucsInstallError(progress.error);
+      }
+    },
+  );
 
   const selectModel = useCallback((id: EnhanceModelId) => {
     saveEnhanceModel(id);

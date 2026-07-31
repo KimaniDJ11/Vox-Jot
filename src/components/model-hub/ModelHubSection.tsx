@@ -9,7 +9,7 @@ import {
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
 import { DictateModelsSection } from "@/components/app-sections/dictate";
-import { RefineModelsSection } from "@/components/app-sections/refine";
+import { SectionLoading } from "@/components/app-sections/shared";
 import { EngineLibrarySection } from "@/components/settings/general/ListenSections";
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";
@@ -33,6 +33,11 @@ import {
 import type { ModelSortMode } from "@/lib/modelListOrdering";
 
 const ALL_TABS = MODEL_HUB_TAB_DEFS;
+const RefineModelsSection = React.lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefineModelsSection,
+  })),
+);
 
 function isModelHubTabId(value: string | null): value is ModelHubTabId {
   return ALL_TABS.some((tab) => tab.id === value);
@@ -106,6 +111,9 @@ const ModelHubSection: React.FC = () => {
     }));
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
   const visibleTab = scope === "all" ? activeTab : scope;
+  const [visitedTabs, setVisitedTabs] = useState<Set<ModelHubTabId>>(
+    () => new Set([visibleTab]),
+  );
   const controlScope = getControlScope(visibleTab);
   const showCategoryHeader = scope === "all" || scope === "analysis";
 
@@ -170,6 +178,15 @@ const ModelHubSection: React.FC = () => {
     }
   }, [visibleTab]);
 
+  useEffect(() => {
+    setVisitedTabs((current) => {
+      if (current.has(visibleTab)) return current;
+      const next = new Set(current);
+      next.add(visibleTab);
+      return next;
+    });
+  }, [visibleTab]);
+
   const searchPlaceholder = t("modelHub.search.globalPlaceholder", {
     defaultValue: "Search models by name, language, or provider…",
   });
@@ -206,6 +223,7 @@ const ModelHubSection: React.FC = () => {
 
   const renderTabPanel = (tabId: ModelHubTabId) => {
     const isActive = visibleTab === tabId;
+    const shouldRenderContent = isActive || visitedTabs.has(tabId);
     const titleActionTargetId = isActive
       ? "model-hub-section-actions"
       : undefined;
@@ -222,7 +240,9 @@ const ModelHubSection: React.FC = () => {
     };
 
     let content: React.ReactNode = null;
-    if (tabId === "analysis") {
+    if (!shouldRenderContent) {
+      content = null;
+    } else if (tabId === "analysis") {
       content = (
         <SpeechAnalysisEnginesSection
           titleActionTargetId={titleActionTargetId}
@@ -292,7 +312,7 @@ const ModelHubSection: React.FC = () => {
         hidden={!isActive}
         className="min-w-0 flex-1 pt-3"
       >
-        {content}
+        <React.Suspense fallback={<SectionLoading />}>{content}</React.Suspense>
       </div>
     );
   };

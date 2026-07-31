@@ -8,9 +8,7 @@ export type TtsExpressionControlKind =
   | "none";
 
 export type TtsExpressionTagSyntax =
-  | "square_brackets"
-  | "parentheses"
-  | "speaker_plus_parentheses";
+  "square_brackets" | "parentheses" | "speaker_plus_parentheses";
 
 export interface TtsExpressionTag {
   value: string;

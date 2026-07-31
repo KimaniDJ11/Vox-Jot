@@ -15,9 +15,7 @@ export interface TtsStyleEvaluationResult {
   latencyP50Ms?: number;
   realTimeFactorP50?: number;
   styleCapability?:
-    | "instruction_prompt"
-    | "expressiveness_controls"
-    | "text_only";
+    "instruction_prompt" | "expressiveness_controls" | "text_only";
   listenerPreference?: number;
   notes: string;
 }

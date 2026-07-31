@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 import {
@@ -39,6 +38,7 @@ import { Button } from "@/components/ui/Button";
 import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import {
   ProviderIcon,
@@ -317,36 +317,30 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen<OcrDownloadProgressPayload>(
-        "ocr-download-progress",
-        (event) => {
-          const payload = event.payload;
-          const id = payload.catalog_id;
-          if (!id) return;
-          setDownloadProgress((prev) => ({
-            ...prev,
-            [id]: {
-              stage: payload.stage,
-              percentage: payload.percentage,
-              file: payload.file ?? undefined,
-              error: payload.error ?? undefined,
-            },
-          }));
-          if (
-            payload.stage === "failed" ||
-            payload.stage === "complete" ||
-            payload.error
-          ) {
-            void refreshCatalog();
-          }
+  useTauriEvent<OcrDownloadProgressPayload>(
+    "ocr-download-progress",
+    (event) => {
+      const payload = event.payload;
+      const id = payload.catalog_id;
+      if (!id) return;
+      setDownloadProgress((prev) => ({
+        ...prev,
+        [id]: {
+          stage: payload.stage,
+          percentage: payload.percentage,
+          file: payload.file ?? undefined,
+          error: payload.error ?? undefined,
         },
-      );
-    })();
-    return () => unlisten?.();
-  }, [refreshCatalog]);
+      }));
+      if (
+        payload.stage === "failed" ||
+        payload.stage === "complete" ||
+        payload.error
+      ) {
+        void refreshCatalog();
+      }
+    },
+  );
 
   const onSelectSystemPolicy = async (engine: ScreenContextOcrEngine) => {
     if (currentNeural) {

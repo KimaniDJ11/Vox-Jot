@@ -46,10 +46,7 @@ interface PermissionsStepProps {
 }
 
 type PermissionId =
-  | "microphone"
-  | "accessibility"
-  | "inputMonitoring"
-  | "screenRecording";
+  "microphone" | "accessibility" | "inputMonitoring" | "screenRecording";
 type PermissionStatus = "checking" | "needed" | "waiting" | "granted";
 type PermissionPlatform = "macos" | "windows" | "other";
 

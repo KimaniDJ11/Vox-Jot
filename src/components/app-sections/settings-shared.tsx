@@ -4,11 +4,7 @@ import { Link2 } from "lucide-react";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 
 export type SectionToneToken =
-  | "accent"
-  | "info"
-  | "success"
-  | "warning"
-  | "neutral";
+  "accent" | "info" | "success" | "warning" | "neutral";
 
 const toneToCssBg: Record<SectionToneToken, string> = {
   accent:

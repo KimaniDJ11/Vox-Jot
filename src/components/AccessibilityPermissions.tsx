@@ -22,10 +22,7 @@ import {
 } from "tauri-plugin-macos-permissions-api";
 
 type MissingPermission =
-  | "accessibility"
-  | "inputMonitoring"
-  | "screenRecording"
-  | null;
+  "accessibility" | "inputMonitoring" | "screenRecording" | null;
 type AccessibilityPermissionsPresentation = "card" | "titleBar";
 
 interface MacPermissionsState {

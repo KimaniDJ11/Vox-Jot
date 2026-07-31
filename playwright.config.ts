@@ -2,13 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: true,
+  // The app harness models one stateful native process. Running scenarios in
+  // parallel made otherwise deterministic navigation assertions flaky.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  workers: 1,
+  reporter: [["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:1420",
+    baseURL: "http://127.0.0.1:1420",
     trace: "on-first-retry",
   },
   projects: [
@@ -18,8 +20,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1",
-    url: "http://localhost:1420",
+    command: "TAURI_DEV_HOST=127.0.0.1 bun run dev",
+    url: "http://127.0.0.1:1420",
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },

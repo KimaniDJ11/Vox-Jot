@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   AlertTriangle,
@@ -62,6 +61,7 @@ import type {
   ProviderDescriptor,
 } from "@/lib/modelPlatform";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { speechLibraryCardClassName } from "../styles";
 import {
@@ -1074,36 +1074,26 @@ export const EngineLibraryPanel: React.FC<{
       });
   }, [licenseGateDownloadModel, savingHfToken, speech, t]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen<TtsHfDownloadProgress>(
-        "tts-hf-download-progress",
-        (event) => {
-          const progress = event.payload;
-          if (!progress.repo_id) return;
-          setTtsDownloadProgress((current) => {
-            const next = { ...current };
-            const matchingModel = speech.visibleModels.find(
-              (model) =>
-                model.id === progress.repo_id ||
-                huggingFaceRepoIdFromSourceUrl(model.source_url) ===
-                  progress.repo_id,
-            );
-            if (progress.stage === "complete") {
-              delete next[progress.repo_id];
-              if (matchingModel) delete next[matchingModel.id];
-            } else {
-              next[progress.repo_id] = progress;
-              if (matchingModel) next[matchingModel.id] = progress;
-            }
-            return next;
-          });
-        },
+  useTauriEvent<TtsHfDownloadProgress>("tts-hf-download-progress", (event) => {
+    const progress = event.payload;
+    if (!progress.repo_id) return;
+    setTtsDownloadProgress((current) => {
+      const next = { ...current };
+      const matchingModel = speech.visibleModels.find(
+        (model) =>
+          model.id === progress.repo_id ||
+          huggingFaceRepoIdFromSourceUrl(model.source_url) === progress.repo_id,
       );
-    })();
-    return () => unlisten?.();
-  }, [speech.visibleModels]);
+      if (progress.stage === "complete") {
+        delete next[progress.repo_id];
+        if (matchingModel) delete next[matchingModel.id];
+      } else {
+        next[progress.repo_id] = progress;
+        if (matchingModel) next[matchingModel.id] = progress;
+      }
+      return next;
+    });
+  });
 
   if (!speech.settings) return null;
 

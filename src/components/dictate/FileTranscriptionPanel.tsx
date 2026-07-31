@@ -66,6 +66,12 @@ import { voiceAvatarGradient } from "@/components/settings/general/listen/create
 import { useSettingsSlice } from "@/hooks/useSettings";
 import { useTtsVoiceCatalog } from "@/hooks/useTtsVoiceCatalog";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
+import {
+  loadReaderLibrary,
+  saveReaderLibrary,
+  type ReaderDocumentKind,
+  type ReaderLibraryItem,
+} from "@/lib/readerLibraryStorage";
 import { ReaderPlaybackBar } from "./reader/ReaderPlaybackBar";
 import { ReaderVoicePicker } from "./reader/ReaderVoicePicker";
 import { ReaderSearchControl } from "./reader/ReaderSearchControl";
@@ -163,12 +169,7 @@ function readerLanguageLabel(value: string): string {
 type FileTranscriptionView = "file" | "documents" | "folders";
 type ReaderSplitView = "library" | "viewer";
 type ReaderLibrarySort =
-  | "recent"
-  | "oldest"
-  | "name_asc"
-  | "name_desc"
-  | "largest"
-  | "smallest";
+  "recent" | "oldest" | "name_asc" | "name_desc" | "largest" | "smallest";
 type FileProcessingMode = "transcribe" | "clean_transcribe";
 type FileTranscriptionPanelKind = "media" | "reader";
 
@@ -200,13 +201,10 @@ const READER_DOCUMENT_EXTENSIONS = [
   "markdown",
 ];
 
-const readerLibraryStorageKey = "voxjot:reader-document-library:v1";
 const readerDocumentStateStorageKey = "voxjot:reader-document-state:v1";
 const readerLastDocumentVoiceStorageKey =
   "voxjot:reader-last-document-voice:v1";
 const readerPlaybackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
-
-type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text";
 
 type ReaderDocumentSection = {
   index: number;
@@ -265,21 +263,6 @@ type ReaderStoredDocument = {
   thumbnail_data_url: string | null;
   imported_at_ms: number;
   updated_at_ms: number;
-};
-
-type ReaderLibraryItem = {
-  id: string;
-  path: string;
-  name: string;
-  kind: ReaderDocumentKind;
-  sizeBytes: number;
-  sourceModifiedMs: number | null;
-  wordCount: number;
-  pageCount: number;
-  sectionCount: number;
-  extractionEngine: string;
-  thumbnailDataUrl: string | null;
-  openedAt: number;
 };
 
 type ReaderDocumentProgress = {
@@ -367,68 +350,6 @@ function readerErrorMessage(err: unknown, fallback: string): string {
     return err.message;
   }
   return fallback;
-}
-
-function loadReaderLibrary(): ReaderLibraryItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(readerLibraryStorageKey);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item): ReaderLibraryItem | null => {
-        if (
-          !item ||
-          typeof item !== "object" ||
-          typeof item.path !== "string" ||
-          typeof item.name !== "string" ||
-          typeof item.kind !== "string" ||
-          typeof item.sizeBytes !== "number" ||
-          typeof item.wordCount !== "number" ||
-          typeof item.openedAt !== "number"
-        ) {
-          return null;
-        }
-        const sectionCount =
-          typeof item.sectionCount === "number" ? item.sectionCount : 1;
-        return {
-          id: typeof item.id === "string" ? item.id : item.path,
-          path: item.path,
-          name: item.name,
-          kind: item.kind,
-          sizeBytes: item.sizeBytes,
-          sourceModifiedMs:
-            typeof item.sourceModifiedMs === "number"
-              ? item.sourceModifiedMs
-              : null,
-          wordCount: item.wordCount,
-          pageCount: typeof item.pageCount === "number" ? item.pageCount : 1,
-          sectionCount,
-          extractionEngine:
-            typeof item.extractionEngine === "string"
-              ? item.extractionEngine
-              : "unknown",
-          thumbnailDataUrl:
-            typeof item.thumbnailDataUrl === "string"
-              ? item.thumbnailDataUrl
-              : null,
-          openedAt: item.openedAt,
-        };
-      })
-      .filter((item): item is ReaderLibraryItem => item !== null)
-      .slice(0, 48);
-  } catch {
-    return [];
-  }
-}
-
-function saveReaderLibrary(items: ReaderLibraryItem[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    readerLibraryStorageKey,
-    JSON.stringify(items.slice(0, 48)),
-  );
 }
 
 function loadReaderLastDocumentVoice(): string | null {

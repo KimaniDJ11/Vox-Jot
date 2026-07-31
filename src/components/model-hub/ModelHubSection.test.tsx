@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const renderHubSection = vi.hoisted(() => {
@@ -83,7 +82,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("framer-motion", async () => {
   const ReactModule = await vi.importActual<typeof import("react")>("react");
   const passthrough =
-    (element: keyof JSX.IntrinsicElements) =>
+    (element: keyof React.JSX.IntrinsicElements & string) =>
     ({
       children,
       layoutId: _layoutId,

@@ -29,7 +29,7 @@ export function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
 
 interface DialogFocusTrapOptions {
   enabled: boolean;
-  containerRef: React.RefObject<HTMLElement>;
+  containerRef: React.RefObject<HTMLElement | null>;
   initialFocusSelector?: string;
 }
 

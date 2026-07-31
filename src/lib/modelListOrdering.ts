@@ -1,8 +1,5 @@
 export type ModelSortMode =
-  | "best_match"
-  | "alphabetical"
-  | "test_score"
-  | "recently_updated";
+  "best_match" | "alphabetical" | "test_score" | "recently_updated";
 
 export type ModelListSection = "downloaded" | "available";
 

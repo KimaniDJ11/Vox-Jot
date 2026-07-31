@@ -30,7 +30,9 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({
   const settingsLoaded = !isLoading && settings !== null;
   const updateChecksEnabled = settings?.update_checks_enabled ?? false;
 
-  const upToDateTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const upToDateTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const isManualCheckRef = useRef(false);
 
   const checkForUpdates = useCallback(async () => {

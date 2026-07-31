@@ -33,7 +33,7 @@ export const LiveMatchHint: React.FC<LiveMatchHintProps> = ({ matchers }) => {
     const refresh = async () => {
       const appResult = await commands.getFrontmostAppForExclusion();
       if (cancelled) return;
-      if (appResult.status !== "ok") {
+      if (appResult.status !== "ok" || !appResult.data) {
         setInput({ bundleId: null, appName: null, url: null });
         return;
       }

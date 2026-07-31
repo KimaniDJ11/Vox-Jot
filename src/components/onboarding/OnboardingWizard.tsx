@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
 import { getLanguageDirection } from "@/lib/utils/rtl";
@@ -36,7 +36,6 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const { i18n, t } = useTranslation();
   const direction = getLanguageDirection(i18n.language);
   const enterOffset = direction === "rtl" ? -20 : 20;
-  const exitOffset = direction === "rtl" ? 20 : -20;
   const [step, setStep] = useState<WizardStep>(
     skipToPermissions ? "permissions" : "welcome",
   );
@@ -122,33 +121,28 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   // The onboarding window is transparent at the html/body/#root level (so
   // native vibrancy can show through the main app shell). Each step paints its
   // own opaque background via `.ob-root`, but that lives inside the
-  // opacity-animated motion.div below — so during an AnimatePresence "wait"
-  // transition the only opaque layer fades to 0 and the bare (transparent)
-  // window flashes the desktop through. This stable backdrop keeps a solid
-  // var(--bg) behind the steps so transitions cross-fade content over a
-  // constant background instead of flashing a "clear" view.
+  // opacity-animated motion.div below. This stable backdrop keeps a solid
+  // var(--bg) behind the keyed step entrance instead of flashing the desktop
+  // through the transparent native window.
   return (
     <div className="relative h-full w-full bg-[var(--bg)]">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={step}
-          ref={stepRegionRef}
-          tabIndex={-1}
-          role="group"
-          aria-label={t(`onboarding.steps.${step}`, {
-            defaultValue: step,
-          })}
-          aria-live="polite"
-          dir={direction}
-          initial={{ opacity: 0, x: enterOffset }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: exitOffset }}
-          transition={modal}
-          className="h-full w-full"
-        >
-          {renderStep()}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={step}
+        ref={stepRegionRef}
+        tabIndex={-1}
+        role="group"
+        aria-label={t(`onboarding.steps.${step}`, {
+          defaultValue: step,
+        })}
+        aria-live="polite"
+        dir={direction}
+        initial={{ opacity: 0, x: enterOffset }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={modal}
+        className="h-full w-full"
+      >
+        {renderStep()}
+      </motion.div>
     </div>
   );
 };

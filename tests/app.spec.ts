@@ -1,5 +1,31 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const pageErrors = new WeakMap<Page, string[]>();
+const consoleErrors = new WeakMap<Page, string[]>();
+const consoleWarnings = new WeakMap<Page, string[]>();
+
+test.beforeEach(async ({ page }) => {
+  pageErrors.set(page, []);
+  consoleErrors.set(page, []);
+  consoleWarnings.set(page, []);
+  page.on("pageerror", (error) => pageErrors.get(page)?.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      consoleErrors.get(page)?.push(message.text());
+    } else if (message.type() === "warning") {
+      consoleWarnings.get(page)?.push(message.text());
+    }
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  expect(pageErrors.get(page) ?? [], "uncaught browser errors").toEqual([]);
+  expect(consoleErrors.get(page) ?? [], "browser console errors").toEqual([]);
+  expect(consoleWarnings.get(page) ?? [], "browser console warnings").toEqual(
+    [],
+  );
+});
+
 type Scenario = {
   appleAvailable: boolean;
   hasAnyModels: boolean;
@@ -371,6 +397,10 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return eventListenerId;
           case "plugin:event|unlisten":
             return null;
+          case "plugin:app|version":
+            return "1.0.0";
+          case "plugin:updater|check":
+            return null;
           case "plugin:os|locale":
             return "en-US";
           case "plugin:macos-permissions|check_accessibility_permission": {
@@ -409,8 +439,11 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
           case "plugin:macos-permissions|request_microphone_permission":
           case "plugin:macos-permissions|request_screen_recording_permission":
           case "show_main_window_command":
+          case "show_detail_view":
           case "initialize_enigo":
           case "initialize_shortcuts":
+          case "start_microphone_level_preview":
+          case "stop_microphone_level_preview":
             return null;
           case "get_windows_microphone_permission_status":
             return {
@@ -437,6 +470,8 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return [];
           case "get_available_output_devices":
             return [];
+          case "is_laptop":
+            return false;
           case "get_transcription_model_status":
             return (state.settings.selected_model as string) || null;
           case "get_model_platform_overview":
@@ -473,6 +508,14 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
               latest_preview_text: null,
               last_error: null,
             };
+          case "get_frontmost_app_for_exclusion":
+            return {
+              bundle_id: "com.tinyspeck.slackmacgap",
+              localized_name: "Slack",
+            };
+          case "get_frontmost_url_for_write_rules":
+          case "test_resolve_write_rule":
+            return null;
           case "get_app_dir_path":
             return "/tmp/vox-jot-app";
           case "get_log_dir_path":
@@ -545,6 +588,18 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             };
           case "get_history_entries":
             return activeScenario.historyEntries;
+          case "get_latest_history_entry":
+            return activeScenario.historyEntries.at(0) ?? null;
+          case "get_dictation_stats":
+            return {
+              total_words: 0,
+              today_words: 0,
+              streak_days: 0,
+              unique_app_count: 0,
+              total_sessions: activeScenario.historyEntries.length,
+              top_app_name: null,
+              top_app_bundle_id: null,
+            };
           case "list_watch_folders":
             return state.watchFolders;
           case "add_watch_folder": {
@@ -664,7 +719,7 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
           case "fetch_post_process_models":
             return [];
           default:
-            return null;
+            throw new Error(`Unhandled Tauri command mock: ${cmd}`);
         }
       },
       metadata: {
@@ -1226,7 +1281,7 @@ test.describe("Vox Jot app", () => {
     await bootApp(page);
     await page.evaluate(() => {
       window.localStorage.setItem(
-        "voxjot:reader-document-library:v1",
+        "voxjot:reader-document-library:v2",
         JSON.stringify([
           {
             id: "reader-test-document",
@@ -1239,7 +1294,6 @@ test.describe("Vox Jot app", () => {
             pageCount: 2,
             sectionCount: 3,
             extractionEngine: "test-python",
-            thumbnailDataUrl: null,
             openedAt: Date.now(),
           },
         ]),

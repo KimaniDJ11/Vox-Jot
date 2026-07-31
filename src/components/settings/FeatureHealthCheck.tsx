@@ -31,8 +31,7 @@ type ProbeDefinition = {
 };
 
 type CommandResult<T> =
-  | { status: "ok"; data: T }
-  | { status: "error"; error: string };
+  { status: "ok"; data: T } | { status: "error"; error: string };
 
 const ok = (detail: string): ProbeResult => ({ status: "ok", detail });
 const warning = (detail: string): ProbeResult => ({

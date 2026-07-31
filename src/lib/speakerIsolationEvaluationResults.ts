@@ -1,9 +1,5 @@
 export type SpeakerIsolationEvaluationStatus =
-  | "tested"
-  | "download_required"
-  | "pending"
-  | "blocked"
-  | "not_applicable";
+  "tested" | "download_required" | "pending" | "blocked" | "not_applicable";
 
 export interface SpeakerIsolationEvaluationResult {
   modelId: string;

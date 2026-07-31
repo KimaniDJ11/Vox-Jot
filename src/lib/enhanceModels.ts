@@ -7,10 +7,7 @@
 // active tab/scope.
 
 export type EnhanceModelId =
-  | "rnnoise"
-  | "spectral"
-  | "deepfilternet"
-  | "demucs";
+  "rnnoise" | "spectral" | "deepfilternet" | "demucs";
 
 export interface EnhanceModelMeta {
   id: EnhanceModelId;

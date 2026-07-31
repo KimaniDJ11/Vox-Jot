@@ -395,6 +395,7 @@ impl SidecarManager {
         self.ensure_legacy_runtime_running()
     }
 
+    #[cfg_attr(feature = "ci-mock-transcription", allow(dead_code))]
     pub fn restart_running(&self) -> Result<(), String> {
         let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
         let port = match self.backend {
@@ -1308,9 +1309,14 @@ impl SidecarManager {
             return false;
         };
         let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
-        std::fs::read_to_string(stt_utils_file)
+        let stt_patch_ready = std::fs::read_to_string(stt_utils_file)
             .map(|contents| Self::mlx_audio_stt_utils_has_parakeet_remap(&contents))
-            .unwrap_or(false)
+            .unwrap_or(false);
+        let server_file = site_packages.join("mlx_audio").join("server.py");
+        let server_patch_ready = std::fs::read_to_string(server_file)
+            .map(|contents| Self::mlx_audio_server_has_stt_thread_load_patch(&contents))
+            .unwrap_or(false);
+        stt_patch_ready && server_patch_ready
     }
 
     fn patch_mlx_audio_voxtral_model(contents: &str) -> Option<String> {
@@ -1411,7 +1417,8 @@ impl SidecarManager {
     }
 
     fn mlx_audio_server_has_stt_thread_load_patch(contents: &str) -> bool {
-        contents.contains("_vox_jot_stt_inline_transcription = True")
+        contents.contains("_VOX_JOT_PCM_TRANSPORT_VERSION = 1")
+            && contents.contains("payload_obj, timing_ms = _vox_jot_run_stt_inline(")
     }
 
     fn patch_mlx_audio_server(contents: &str) -> Option<String> {
@@ -1419,28 +1426,36 @@ impl SidecarManager {
             return None;
         }
 
-        let old_block = r#"    tmp.close()
+        // Keep MLX model loading and inference on Uvicorn's event-loop thread.
+        // MLX streams are thread-local, while the upstream broker moves work to
+        // another thread. The helper also gives Vox Jot a raw float32 endpoint:
+        // Rust can upload the recorder buffer directly instead of encoding WAV,
+        // multipart-parsing it, decoding it, and then rewriting another WAV.
+        let helper_and_route = r#"_VOX_JOT_PCM_TRANSPORT_VERSION = 1
 
-    await _preflight_model_load(payload.model)
-"#;
-        let new_block = r#"    tmp.close()
 
-    # Vox Jot: run STT inline on the server request thread.
-    # MLX GPU stream state is thread-local; the upstream inference broker worker
-    # can make Qwen/Mega ASR fail with "There is no Stream(gpu, 1) in current thread."
-    _vox_jot_stt_inline_transcription = True
-    del _vox_jot_stt_inline_transcription
-    tmp_path = f"/tmp/{time.time()}_{uuid.uuid4().hex}_{file.filename or 'audio.wav'}"
-    audio_write(tmp_path, audio, sr)
+def _vox_jot_run_stt_inline(model_name, audio, sample_rate, gen_kwargs, filename):
+    timing_ms = {}
+    total_started = time.perf_counter()
+    timing_ms["model_was_cached"] = model_name in model_provider.models
+
+    load_started = time.perf_counter()
+    stt_model = _load_model_for_inference(model_name)
+    timing_ms["model_load"] = round((time.perf_counter() - load_started) * 1000, 3)
+
+    signature = inspect.signature(stt_model.generate)
+    gen_kwargs = {
+        key: value
+        for key, value in gen_kwargs.items()
+        if key in signature.parameters or key in _STT_EXTRA_KWARGS
+    }
+
+    tmp_path = f"/tmp/{time.time()}_{uuid.uuid4().hex}_{filename or 'audio.wav'}"
+    write_started = time.perf_counter()
+    audio_write(tmp_path, audio, sample_rate)
+    timing_ms["temp_wav_write"] = round((time.perf_counter() - write_started) * 1000, 3)
     try:
-        stt_model = _load_model_for_inference(payload.model)
-        gen_kwargs = payload.model_dump(exclude={"model"}, exclude_none=True)
-        signature = inspect.signature(stt_model.generate)
-        gen_kwargs = {
-            key: value
-            for key, value in gen_kwargs.items()
-            if key in signature.parameters or key in _STT_EXTRA_KWARGS
-        }
+        inference_started = time.perf_counter()
         result = stt_model.generate(tmp_path, **gen_kwargs)
         if hasattr(result, "__iter__") and hasattr(result, "__next__"):
             accumulated = ""
@@ -1464,24 +1479,94 @@ impl SidecarManager {
                 payload_obj = {"text": getattr(result, "text", "") or str(result)}
             elif "text" not in payload_obj and hasattr(result, "text"):
                 payload_obj["text"] = getattr(result, "text", "")
+        timing_ms["inference"] = round((time.perf_counter() - inference_started) * 1000, 3)
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+    timing_ms["server_total"] = round((time.perf_counter() - total_started) * 1000, 3)
+    return payload_obj, timing_ms
+
+
+@app.post("/v1/audio/transcriptions/pcm")
+async def vox_jot_stt_transcriptions_pcm(
+    request: Request,
+    model: str,
+    sample_rate: int = 16000,
+    language: Optional[str] = None,
+):
+    decode_started = time.perf_counter()
+    if sample_rate <= 0 or sample_rate > 192000:
+        raise HTTPException(status_code=400, detail="invalid sample rate")
+
+    data = await request.body()
+    if not data or len(data) % 4 != 0:
+        raise HTTPException(status_code=400, detail="audio must be non-empty float32 PCM")
+    if len(data) > sample_rate * 4 * 60 * 60 * 2:
+        raise HTTPException(status_code=413, detail="audio exceeds the two-hour PCM limit")
+
+    audio = np.frombuffer(data, dtype="<f4")
+    if not np.isfinite(audio).all():
+        raise HTTPException(status_code=400, detail="audio contains non-finite samples")
+    transport_decode_ms = round((time.perf_counter() - decode_started) * 1000, 3)
+
+    gen_kwargs = {"language": language} if language else {}
+    payload_obj, timing_ms = _vox_jot_run_stt_inline(
+        model, audio, sample_rate, gen_kwargs, "vox-jot-pcm.wav"
+    )
+    timing_ms["transport_decode"] = transport_decode_ms
+    payload_obj["_vox_jot_timing_ms"] = timing_ms
+    payload_obj["text"] = (payload_obj.get("text") or "").strip()
+    return JSONResponse(payload_obj)
+
+
+"#;
+
+        let standard_dispatch = r#"    # Vox Jot: run STT inline on the request thread so MLX stream
+    # state stays valid, and report cold-load versus inference time separately.
+    payload_obj, timing_ms = _vox_jot_run_stt_inline(
+        payload.model,
+        audio,
+        sr,
+        payload.model_dump(exclude={"model"}, exclude_none=True),
+        file.filename or "audio.wav",
+    )
+    payload_obj["_vox_jot_timing_ms"] = timing_ms
     text_out = (payload_obj.get("text") or "").strip()
     if response_format == "text":
         return PlainTextResponse(text_out)
     if response_format == "verbose_json":
         return JSONResponse(payload_obj)
-    return JSONResponse({"text": text_out})
+    return JSONResponse({"text": text_out, "_vox_jot_timing_ms": timing_ms})
+
 "#;
 
-        let patched = contents
-            .replace(old_block, new_block)
-            .replace(
-                "    tmp.close()\n\n    # Vox Jot: STT models must load on the inference broker thread.\n    # MLX GPU stream state is thread-local; preloading here can make Qwen/Mega\n    # ASR fail later with \"There is no Stream(gpu, 1) in current thread.\"\n",
-                new_block,
-            );
+        let route_marker = "@app.post(\"/v1/audio/transcriptions\")";
+        let route_offset = contents.find(route_marker)?;
+        let mut patched = contents.to_string();
+        patched.insert_str(route_offset, helper_and_route);
+
+        // Re-resolve offsets after inserting the helper. This handles both an
+        // untouched upstream server and Vox Jot's earlier inline-STT patch.
+        let route_offset = patched[route_offset + helper_and_route.len()..]
+            .find(route_marker)
+            .map(|offset| route_offset + helper_and_route.len() + offset)?;
+        let route_tail = &patched[route_offset..];
+        let relative_dispatch_start = route_tail
+            .find("    await _preflight_model_load(payload.model)")
+            .or_else(|| {
+                route_tail.find("    # Vox Jot: run STT inline on the server request thread.")
+            })
+            .or_else(|| {
+                route_tail
+                    .find("    # Vox Jot: STT models must load on the inference broker thread.")
+            })?;
+        let dispatch_start = route_offset + relative_dispatch_start;
+        let relative_broker_start =
+            patched[dispatch_start..].find("    handle = get_inference_broker().submit(")?;
+        let broker_start = dispatch_start + relative_broker_start;
+        patched.replace_range(dispatch_start..broker_start, standard_dispatch);
+
         (patched != contents).then_some(patched)
     }
 
@@ -1772,8 +1857,10 @@ mod tests {
     }
 
     #[test]
-    fn mlx_audio_server_patch_runs_stt_inline_on_request_thread() {
-        let original = r#"    tmp.close()
+    fn mlx_audio_server_patch_adds_inline_raw_pcm_transport() {
+        let original = r#"@app.post("/v1/audio/transcriptions")
+async def stt_transcriptions():
+    tmp.close()
 
     await _preflight_model_load(payload.model)
 
@@ -1786,8 +1873,55 @@ mod tests {
             &patched
         ));
         assert!(!patched.contains("await _preflight_model_load(payload.model)"));
-        assert!(patched.contains("return JSONResponse({\"text\": text_out})"));
+        assert!(patched.contains("@app.post(\"/v1/audio/transcriptions/pcm\")"));
+        assert!(patched.contains("np.frombuffer(data, dtype=\"<f4\")"));
+        assert!(patched.contains("payload_obj, timing_ms = _vox_jot_run_stt_inline("));
+        assert!(patched.contains("\"model_was_cached\""));
         assert!(SidecarManager::patch_mlx_audio_server(&patched).is_none());
+    }
+
+    #[test]
+    fn mlx_audio_server_patch_upgrades_legacy_inline_dispatch() {
+        let legacy = r#"@app.post("/v1/audio/transcriptions")
+async def stt_transcriptions():
+    tmp.close()
+
+    # Vox Jot: run STT inline on the server request thread.
+    old_inline_patch = True
+    return JSONResponse({"text": "legacy"})
+
+    handle = get_inference_broker().submit(
+"#;
+
+        let patched = SidecarManager::patch_mlx_audio_server(legacy).expect("upgrade patch");
+        assert!(SidecarManager::mlx_audio_server_has_stt_thread_load_patch(
+            &patched
+        ));
+        assert!(!patched.contains("old_inline_patch"));
+        assert!(patched.contains("@app.post(\"/v1/audio/transcriptions/pcm\")"));
+    }
+
+    #[test]
+    fn mlx_audio_server_patch_compiles_configured_upstream_fixture() {
+        let Ok(source_path) = std::env::var("VOX_JOT_MLX_SERVER_FIXTURE") else {
+            return;
+        };
+        let source = std::fs::read_to_string(&source_path).expect("read upstream server fixture");
+        let patched = SidecarManager::patch_mlx_audio_server(&source).expect("patch fixture");
+        assert!(SidecarManager::mlx_audio_server_has_stt_thread_load_patch(
+            &patched
+        ));
+
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let patched_path = temp_dir.path().join("server.py");
+        std::fs::write(&patched_path, patched).expect("write patched server fixture");
+        let python = std::env::var("VOX_JOT_TEST_PYTHON").unwrap_or_else(|_| "python3".to_string());
+        let status = std::process::Command::new(python)
+            .args(["-m", "py_compile"])
+            .arg(&patched_path)
+            .status()
+            .expect("launch Python syntax check");
+        assert!(status.success(), "patched upstream server must compile");
     }
 
     #[test]
@@ -1823,7 +1957,7 @@ mod tests {
         let server_file = server_dir.join("server.py");
         std::fs::write(
             &server_file,
-            "    tmp.close()\n\n    await _preflight_model_load(payload.model)\n\n    handle = get_inference_broker().submit(\n",
+            "@app.post(\"/v1/audio/transcriptions\")\nasync def stt_transcriptions():\n    tmp.close()\n\n    await _preflight_model_load(payload.model)\n\n    handle = get_inference_broker().submit(\n",
         )
         .expect("write server");
 

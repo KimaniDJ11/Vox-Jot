@@ -4423,7 +4423,7 @@ fn story_line_hash(_line_number: u32, line: &StoryScriptLine, preset: &TtsVoiceP
     });
     let mut hasher = Sha256::new();
     hasher.update(payload.to_string().as_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 fn waveform_peaks(samples: &[f32], peak_count: usize) -> Vec<f32> {

@@ -13,6 +13,20 @@ use tauri::AppHandle;
 #[derive(Clone)]
 pub struct TranscriptionManager;
 
+pub struct TranscriptionTiming {
+    pub model_id: String,
+    pub audio_duration_ms: u64,
+    pub model_ready_at_entry: bool,
+    pub model_ready_wait_ms: u64,
+    pub inference_ms: u64,
+    pub total_ms: u64,
+}
+
+pub struct TimedTranscription {
+    pub text: String,
+    pub timing: TranscriptionTiming,
+}
+
 impl TranscriptionManager {
     pub fn new(_app_handle: &AppHandle, _model_manager: Arc<ModelManager>) -> Result<Self> {
         Ok(Self)
@@ -52,8 +66,18 @@ impl TranscriptionManager {
     pub fn start_partial_provider(
         &self,
         _binding_id: &str,
+        _model_id: String,
         _recording_manager: Arc<AudioRecordingManager>,
     ) {
+    }
+
+    pub fn finish_partial_provider(
+        &self,
+        _binding_id: &str,
+        _model_id: &str,
+        _audio: Arc<Vec<f32>>,
+    ) -> Option<(String, u64)> {
+        None
     }
 
     pub fn stop_partial_provider(&self) {}
@@ -70,12 +94,53 @@ impl TranscriptionManager {
         Ok(String::new())
     }
 
+    /// Kept for API parity with the real manager; CI actions use the timed
+    /// wrapper directly.
+    #[allow(dead_code)]
     pub fn transcribe_with_settings(
         &self,
         _audio: Arc<Vec<f32>>,
         _settings: AppSettings,
     ) -> Result<String> {
         Ok(String::new())
+    }
+
+    pub fn transcribe_with_settings_timed(
+        &self,
+        _audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+    ) -> Result<TimedTranscription> {
+        Ok(TimedTranscription {
+            text: String::new(),
+            timing: TranscriptionTiming {
+                model_id: settings.selected_model,
+                audio_duration_ms: 0,
+                model_ready_at_entry: false,
+                model_ready_wait_ms: 0,
+                inference_ms: 0,
+                total_ms: 0,
+            },
+        })
+    }
+
+    pub fn finalize_streamed_transcription(
+        &self,
+        _audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+        raw_text: String,
+        streaming_finalize_ms: u64,
+    ) -> TimedTranscription {
+        TimedTranscription {
+            text: raw_text,
+            timing: TranscriptionTiming {
+                model_id: settings.selected_model,
+                audio_duration_ms: 0,
+                model_ready_at_entry: true,
+                model_ready_wait_ms: 0,
+                inference_ms: streaming_finalize_ms,
+                total_ms: streaming_finalize_ms,
+            },
+        }
     }
 
     pub fn transcribe_with_segments(

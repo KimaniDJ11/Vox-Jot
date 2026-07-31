@@ -102,10 +102,11 @@ fn process_rss_mb(pid: u32) -> Option<f64> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn set_model_unload_timeout(app: AppHandle, timeout: ModelUnloadTimeout) {
+pub fn set_model_unload_timeout(app: AppHandle, timeout: ModelUnloadTimeout) -> Result<(), String> {
     let mut settings = get_settings(&app);
     settings.model_unload_timeout = timeout;
     write_settings(&app, settings);
+    Ok(())
 }
 
 #[tauri::command]
@@ -715,7 +716,7 @@ fn file_sha256_matches(path: &Path, expected_sha256: &str) -> Result<bool, Strin
         }
         hasher.update(&buffer[..read]);
     }
-    Ok(format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(expected_sha256))
+    Ok(hex::encode(hasher.finalize()).eq_ignore_ascii_case(expected_sha256))
 }
 
 #[cfg(unix)]

@@ -518,6 +518,14 @@ async changeTranslationModelSetting(providerId: string, model: string) : Promise
     else return { status: "error", error: e  as any };
 }
 },
+async changeTranslationModelIdsSetting(modelIds: Record<string, string>) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_model_ids_setting", { modelIds }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async setPostProcessProvider(providerId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_post_process_provider", { providerId }) };
@@ -577,6 +585,14 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeCustomFillerWordsSetting(words: string[] | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_custom_filler_words_setting", { words }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1537,8 +1553,13 @@ async getClamshellMicrophone() : Promise<Result<string, string>> {
 async isRecording() : Promise<boolean> {
     return await TAURI_INVOKE("is_recording");
 },
-async setModelUnloadTimeout(timeout: ModelUnloadTimeout) : Promise<void> {
-    await TAURI_INVOKE("set_model_unload_timeout", { timeout });
+async setModelUnloadTimeout(timeout: ModelUnloadTimeout) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_model_unload_timeout", { timeout }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 },
 async getModelLoadStatus() : Promise<Result<ModelLoadStatus, string>> {
     try {

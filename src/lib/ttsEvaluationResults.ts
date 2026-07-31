@@ -1,9 +1,5 @@
 export type TtsEvaluationStatus =
-  | "tested"
-  | "pending"
-  | "download_required"
-  | "failed"
-  | "blocked";
+  "tested" | "pending" | "download_required" | "failed" | "blocked";
 
 export interface TtsEvaluationResult {
   modelId: string;

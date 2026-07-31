@@ -216,7 +216,7 @@ export const WriteRulesSettings: React.FC = () => {
   // without thrashing the system.
   const refreshActiveRule = useCallback(async () => {
     const appResult = await commands.getFrontmostAppForExclusion();
-    if (appResult.status !== "ok") {
+    if (appResult.status !== "ok" || !appResult.data) {
       setActiveRuleId(null);
       return;
     }

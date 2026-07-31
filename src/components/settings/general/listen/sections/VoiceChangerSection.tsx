@@ -8,7 +8,6 @@ import React, {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
@@ -53,6 +52,7 @@ import {
 } from "@/lib/modelListOrdering";
 import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import { modal } from "@/motion/springs";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
 import {
@@ -239,66 +239,56 @@ export const VoiceChangerSection: React.FC<{
     selectedVoiceChangerModel,
   ]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen<TtsHfDownloadProgress>(
-        "tts-hf-download-progress",
-        (event) => {
-          const progress = event.payload;
-          if (!progress.repo_id) return;
-          const matchingModel = voiceChangerModels.find(
-            (model) =>
-              model.id === progress.repo_id ||
-              huggingFaceRepoIdFromSourceUrl(model.source_url) ===
-                progress.repo_id,
-          );
-          if (!matchingModel) return;
+  useTauriEvent<TtsHfDownloadProgress>("tts-hf-download-progress", (event) => {
+    const progress = event.payload;
+    if (!progress.repo_id) return;
+    const matchingModel = voiceChangerModels.find(
+      (model) =>
+        model.id === progress.repo_id ||
+        huggingFaceRepoIdFromSourceUrl(model.source_url) === progress.repo_id,
+    );
+    if (!matchingModel) return;
 
-          if (progress.stage === "complete") {
-            setTtsDownloadProgress((current) => {
-              const next = { ...current };
-              delete next[progress.repo_id];
-              delete next[matchingModel.id];
-              return next;
-            });
-            setLocallyDownloadingModelIds((current) => {
-              const next = { ...current };
-              delete next[matchingModel.id];
-              return next;
-            });
-            setLocalDownloadErrors((current) => {
-              const next = { ...current };
-              delete next[matchingModel.id];
-              return next;
-            });
-            void speech.refreshAll();
-            return;
-          }
+    if (progress.stage === "complete") {
+      setTtsDownloadProgress((current) => {
+        const next = { ...current };
+        delete next[progress.repo_id];
+        delete next[matchingModel.id];
+        return next;
+      });
+      setLocallyDownloadingModelIds((current) => {
+        const next = { ...current };
+        delete next[matchingModel.id];
+        return next;
+      });
+      setLocalDownloadErrors((current) => {
+        const next = { ...current };
+        delete next[matchingModel.id];
+        return next;
+      });
+      void speech.refreshAll();
+      return;
+    }
 
-          setTtsDownloadProgress((current) => ({
-            ...current,
-            [progress.repo_id]: progress,
-            [matchingModel.id]: progress,
-          }));
-          if (progress.stage === "failed") {
-            setLocallyDownloadingModelIds((current) => {
-              const next = { ...current };
-              delete next[matchingModel.id];
-              return next;
-            });
-            if (progress.error) {
-              setLocalDownloadErrors((current) => ({
-                ...current,
-                [matchingModel.id]: progress.error ?? "",
-              }));
-            }
-          }
-        },
-      );
-    })();
-    return () => unlisten?.();
-  }, [speech, voiceChangerModels]);
+    setTtsDownloadProgress((current) => ({
+      ...current,
+      [progress.repo_id]: progress,
+      [matchingModel.id]: progress,
+    }));
+    if (progress.stage === "failed") {
+      setLocallyDownloadingModelIds((current) => {
+        const next = { ...current };
+        delete next[matchingModel.id];
+        return next;
+      });
+      if (progress.error) {
+        setLocalDownloadErrors((current) => ({
+          ...current,
+          [matchingModel.id]: progress.error ?? "",
+        }));
+      }
+    }
+  });
 
   useEffect(() => {
     writeVoiceChangerDraft({

@@ -409,7 +409,7 @@ fn extract_zip_archive<R: io::Read + io::Seek>(
         let enclosed = entry
             .enclosed_name()
             .ok_or_else(|| format!("TTS zip archive contains unsafe path: {}", entry.name()))?;
-        let relative_path = sanitize_archive_path(std::borrow::Cow::Borrowed(enclosed))?;
+        let relative_path = sanitize_archive_path(std::borrow::Cow::Borrowed(&enclosed))?;
         if relative_path.as_os_str().is_empty() {
             continue;
         }

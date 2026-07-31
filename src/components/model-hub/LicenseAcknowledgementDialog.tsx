@@ -14,9 +14,7 @@ import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 export type LicenseGateKind =
-  | "non_commercial"
-  | "custom_review"
-  | "commercial_license_required";
+  "non_commercial" | "custom_review" | "commercial_license_required";
 
 export interface LicenseAcknowledgementGate {
   kind: LicenseGateKind;

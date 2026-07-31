@@ -133,7 +133,11 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
         },
       );
 
-      unlistenRef.current = unlisten;
+      if (cleanup) {
+        unlisten();
+      } else {
+        unlistenRef.current = unlisten;
+      }
     };
 
     setupListener();

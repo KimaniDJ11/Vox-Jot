@@ -1168,6 +1168,18 @@ pub fn update_custom_words(app: AppHandle, words: Vec<String>) -> Result<(), Str
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_custom_filler_words_setting(
+    app: AppHandle,
+    words: Option<Vec<String>>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.custom_filler_words = words;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_word_correction_threshold_setting(
     app: AppHandle,
     threshold: f64,
@@ -1733,6 +1745,21 @@ pub fn change_translation_model_setting(
     let mut settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
     settings.translation_model_ids.insert(provider_id, model);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_model_ids_setting(
+    app: AppHandle,
+    model_ids: std::collections::HashMap<String, String>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    for provider_id in model_ids.keys() {
+        validate_provider_exists(&settings, provider_id)?;
+    }
+    settings.translation_model_ids = model_ids;
     settings::write_settings(&app, settings);
     Ok(())
 }

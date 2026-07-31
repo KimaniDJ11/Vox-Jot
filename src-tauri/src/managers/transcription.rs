@@ -10,12 +10,14 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Condvar, LazyLock, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -53,6 +55,7 @@ pub struct ModelStateEvent {
 struct MlxAudioSttEngine {
     base_url: String,
     model_source: String,
+    lease_registered: bool,
 }
 
 struct GemmaAudioSttEngine {
@@ -80,6 +83,14 @@ static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
             .build(),
     )
 });
+/// All Vox Jot transcription managers share one mlx-audio sidecar. Track the
+/// sources that are still in use so a live dictation engine never evicts the
+/// same model from a concurrent file-transcription engine. The operation lock
+/// also serializes the server's otherwise-unlocked synchronous model loads
+/// against deletes.
+static MLX_AUDIO_STT_MODEL_LEASES: LazyLock<Mutex<HashMap<String, usize>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static MLX_AUDIO_STT_MODEL_OPERATION_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 const GEMMA_AUDIO_STT_PORT: u16 = 8028;
 const GEMMA_AUDIO_STT_SERVER_SOURCE: &str = include_str!("../../../scripts/gemma4_stt_server.py");
 const GEMMA_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
@@ -130,6 +141,24 @@ impl Drop for FinalTranscriptionPendingGuard {
 #[derive(Debug, Deserialize)]
 struct MlxAudioTranscriptionResponse {
     text: String,
+    #[serde(default, rename = "_vox_jot_timing_ms")]
+    timing_ms: Option<Value>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TranscriptionTiming {
+    pub model_id: String,
+    pub audio_duration_ms: u64,
+    pub model_ready_at_entry: bool,
+    pub model_ready_wait_ms: u64,
+    pub inference_ms: u64,
+    pub total_ms: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct TimedTranscription {
+    pub text: String,
+    pub timing: TranscriptionTiming,
 }
 
 enum LoadedEngine {
@@ -159,6 +188,22 @@ struct PartialProviderSession {
     generation: u64,
     binding_id: String,
     cancel: Arc<AtomicBool>,
+    realtime: Option<RealtimePartialHandle>,
+}
+
+#[derive(Debug)]
+struct RealtimePartialHandle {
+    model_id: String,
+    command_tx: mpsc::Sender<RealtimeCommand>,
+}
+
+#[derive(Debug)]
+enum RealtimeCommand {
+    Finalize {
+        audio: Arc<Vec<f32>>,
+        response_tx: mpsc::Sender<Result<String, String>>,
+    },
+    Cancel,
 }
 
 enum PartialTranscriptionOutcome {
@@ -170,6 +215,10 @@ enum PartialTranscriptionOutcome {
 struct ModelLoadGuard {
     is_loading: Arc<Mutex<bool>>,
     loading_condvar: Arc<Condvar>,
+}
+
+struct EngineTeardownGuard {
+    state: Arc<(Mutex<usize>, Condvar)>,
 }
 
 impl ModelLoadGuard {
@@ -192,15 +241,163 @@ impl Drop for ModelLoadGuard {
     }
 }
 
+impl Drop for EngineTeardownGuard {
+    fn drop(&mut self) {
+        let (pending_lock, pending_condvar) = self.state.as_ref();
+        let mut pending = pending_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *pending = pending.saturating_sub(1);
+        pending_condvar.notify_all();
+    }
+}
+
 impl MlxAudioSttEngine {
+    fn new(base_url: String, model_source: String) -> Self {
+        Self {
+            base_url,
+            model_source,
+            lease_registered: false,
+        }
+    }
+
+    /// Register this engine before preloading. A pending asynchronous delete
+    /// must either observe the lease and stand down, or finish before this load
+    /// begins; it can never delete freshly loaded weights after the fact.
+    fn acquire_and_preload(&mut self) -> Result<()> {
+        let _operation_guard = MLX_AUDIO_STT_MODEL_OPERATION_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        {
+            let mut leases = MLX_AUDIO_STT_MODEL_LEASES
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            *leases.entry(self.model_source.clone()).or_insert(0) += 1;
+            self.lease_registered = true;
+        }
+
+        if let Err(error) = self.preload_unlocked() {
+            if self.release_lease() {
+                if let Err(unload_error) =
+                    Self::unload_from_sidecar_unlocked(&self.base_url, &self.model_source)
+                {
+                    warn!(
+                        "Failed to clean up mlx-audio model after preload error: {}",
+                        unload_error
+                    );
+                }
+            }
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    fn preload(&self) -> Result<()> {
+        let _operation_guard = MLX_AUDIO_STT_MODEL_OPERATION_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        self.preload_unlocked()
+    }
+
+    fn preload_unlocked(&self) -> Result<()> {
+        let preload_started = std::time::Instant::now();
+        let mut response = MLX_AUDIO_STT_AGENT
+            .post(&format!(
+                "{}/v1/models",
+                self.base_url.trim_end_matches('/')
+            ))
+            .query("model_name", &self.model_source)
+            .send_empty()
+            .map_err(|err| anyhow::anyhow!("mlx-audio model preload failed: {}", err))?;
+
+        // Drain the response so the pooled localhost connection can be reused.
+        let _ = response.body_mut().read_to_string();
+        info!(
+            "Preloaded mlx-audio STT model '{}' in {}ms",
+            self.model_source,
+            preload_started.elapsed().as_millis()
+        );
+        Ok(())
+    }
+
+    /// Release this wrapper's claim on the cached sidecar model. Returns true
+    /// only when no other Vox Jot STT engine still depends on the same source.
+    fn release_lease(&mut self) -> bool {
+        if !self.lease_registered {
+            return false;
+        }
+        self.lease_registered = false;
+
+        let mut leases = MLX_AUDIO_STT_MODEL_LEASES
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(count) = leases.get_mut(&self.model_source) else {
+            return false;
+        };
+        *count = count.saturating_sub(1);
+        if *count == 0 {
+            leases.remove(&self.model_source);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn unload_from_sidecar_unlocked(base_url: &str, model_source: &str) -> Result<()> {
+        let response = MLX_AUDIO_STT_AGENT
+            .delete(&format!("{}/v1/models", base_url.trim_end_matches('/')))
+            .query("model_name", model_source)
+            .call();
+
+        let mut response = match response {
+            Ok(response) => response,
+            // A sidecar restart clears its cache, so absence already satisfies
+            // the requested lifecycle state.
+            Err(ureq::Error::StatusCode(404)) => return Ok(()),
+            Err(error) => {
+                return Err(anyhow::anyhow!(
+                    "mlx-audio model unload failed for '{}': {}",
+                    model_source,
+                    error
+                ))
+            }
+        };
+        let _ = response.body_mut().read_to_string();
+        Ok(())
+    }
+
+    /// Used during an explicit model replacement. The delete completes before
+    /// the next model starts loading, preventing two large MLX models from
+    /// overlapping in unified memory.
+    fn release_and_unload_before_replacement(&mut self) -> Result<()> {
+        let _operation_guard = MLX_AUDIO_STT_MODEL_OPERATION_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if self.release_lease() {
+            if let Err(error) =
+                Self::unload_from_sidecar_unlocked(&self.base_url, &self.model_source)
+            {
+                // Keep ownership truthful so Drop can retry asynchronously and
+                // a later engine cannot mistake the cached model as unclaimed.
+                let mut leases = MLX_AUDIO_STT_MODEL_LEASES
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                *leases.entry(self.model_source.clone()).or_insert(0) += 1;
+                self.lease_registered = true;
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
+
     fn transcribe_with_sidecar_recovery(
         &self,
-        audio: Vec<f32>,
+        audio: &[f32],
         sample_rate: u32,
         sidecar: Option<&crate::sidecar::SidecarManager>,
     ) -> Result<transcribe_rs::TranscriptionResult> {
-        let wav_bytes = self.encode_wav(audio, sample_rate)?;
-        let response_body = match self.send_wav_bytes(&wav_bytes) {
+        let response_body = match self.send_audio(audio, sample_rate) {
             Ok(body) => body,
             Err(first_err) => {
                 let first_err_message = first_err.to_string();
@@ -217,7 +414,16 @@ impl MlxAudioSttEngine {
                             "Failed to restart mlx-audio sidecar after request failure: {err}"
                         )
                     })?;
-                    self.send_wav_bytes(&wav_bytes).map_err(|retry_err| {
+                    // A restarted sidecar has an empty model cache. Preload before
+                    // retrying so recovery does not silently move a cold model load
+                    // back into the stop-to-text path.
+                    self.preload().map_err(|preload_err| {
+                        anyhow::anyhow!(
+                            "Failed to preload mlx-audio model after sidecar restart: {}",
+                            preload_err
+                        )
+                    })?;
+                    self.send_audio(audio, sample_rate).map_err(|retry_err| {
                         anyhow::anyhow!(
                             "mlx-audio transcription request failed after sidecar restart: {}",
                             retry_err
@@ -230,10 +436,82 @@ impl MlxAudioSttEngine {
         };
         let payload = Self::decode_transcription_response(&response_body)?;
 
+        if let Some(timing_ms) = payload.timing_ms.as_ref() {
+            debug!(
+                "mlx-audio server timing for '{}': {}",
+                self.model_source, timing_ms
+            );
+        }
+
         Ok(transcribe_rs::TranscriptionResult {
             text: payload.text,
             segments: None,
         })
+    }
+
+    fn send_audio(&self, audio: &[f32], sample_rate: u32) -> Result<String> {
+        if let Some(body) = self.send_pcm_samples(audio, sample_rate)? {
+            return Ok(body);
+        }
+
+        // Compatibility fallback for a stale or externally-managed mlx-audio
+        // server that does not yet expose Vox Jot's raw PCM endpoint.
+        warn!("mlx-audio raw PCM endpoint is unavailable; falling back to WAV multipart transport");
+        let wav_bytes = self.encode_wav(audio, sample_rate)?;
+        self.send_wav_bytes(&wav_bytes)
+    }
+
+    fn send_pcm_samples(&self, audio: &[f32], sample_rate: u32) -> Result<Option<String>> {
+        let byte_len = audio
+            .len()
+            .checked_mul(std::mem::size_of::<f32>())
+            .ok_or_else(|| anyhow::anyhow!("mlx-audio PCM request is too large"))?;
+
+        // mlx-audio is only enabled on little-endian Apple Silicon today. f32
+        // has no padding, and this byte view lives no longer than `audio`, so the
+        // slice is valid for the synchronous localhost upload without a copy.
+        #[cfg(target_endian = "little")]
+        let pcm_bytes =
+            unsafe { std::slice::from_raw_parts(audio.as_ptr().cast::<u8>(), byte_len) };
+        #[cfg(not(target_endian = "little"))]
+        let pcm_storage = audio
+            .iter()
+            .flat_map(|sample| sample.to_le_bytes())
+            .collect::<Vec<_>>();
+        #[cfg(not(target_endian = "little"))]
+        let pcm_bytes = pcm_storage.as_slice();
+
+        let request_started = std::time::Instant::now();
+        let response = MLX_AUDIO_STT_AGENT
+            .post(&format!(
+                "{}/v1/audio/transcriptions/pcm",
+                self.base_url.trim_end_matches('/')
+            ))
+            .query("model", &self.model_source)
+            .query("sample_rate", sample_rate.to_string())
+            .header("content-type", "application/octet-stream")
+            .send(pcm_bytes);
+
+        let mut response = match response {
+            Ok(response) => response,
+            Err(ureq::Error::StatusCode(404 | 405)) => return Ok(None),
+            Err(err) => {
+                return Err(anyhow::anyhow!(
+                    "mlx-audio raw PCM transcription request failed: {}",
+                    err
+                ))
+            }
+        };
+        let response_body = response
+            .body_mut()
+            .read_to_string()
+            .map_err(|err| anyhow::anyhow!("Failed to read mlx-audio response: {}", err))?;
+        debug!(
+            "mlx-audio raw PCM request completed in {}ms for {} samples",
+            request_started.elapsed().as_millis(),
+            audio.len()
+        );
+        Ok(Some(response_body))
     }
 
     fn send_wav_bytes(&self, wav_bytes: &[u8]) -> Result<String> {
@@ -293,10 +571,13 @@ impl MlxAudioSttEngine {
             accumulated_text
         };
 
-        Ok(MlxAudioTranscriptionResponse { text })
+        Ok(MlxAudioTranscriptionResponse {
+            text,
+            timing_ms: None,
+        })
     }
 
-    fn encode_wav(&self, audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
+    fn encode_wav(&self, audio: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
         let spec = hound::WavSpec {
             channels: 1,
             sample_rate,
@@ -321,6 +602,34 @@ impl MlxAudioSttEngine {
     }
 }
 
+impl Drop for MlxAudioSttEngine {
+    fn drop(&mut self) {
+        if !self.release_lease() {
+            return;
+        }
+
+        let base_url = self.base_url.clone();
+        let model_source = self.model_source.clone();
+        thread::spawn(move || {
+            let _operation_guard = MLX_AUDIO_STT_MODEL_OPERATION_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let is_in_use = MLX_AUDIO_STT_MODEL_LEASES
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .contains_key(&model_source);
+            if is_in_use {
+                return;
+            }
+            if let Err(error) =
+                MlxAudioSttEngine::unload_from_sidecar_unlocked(&base_url, &model_source)
+            {
+                warn!("Failed to release idle mlx-audio model: {}", error);
+            }
+        });
+    }
+}
+
 impl Drop for GemmaAudioSttEngine {
     fn drop(&mut self) {
         if let Some(child) = self.child.as_mut() {
@@ -333,7 +642,7 @@ impl Drop for GemmaAudioSttEngine {
 impl GemmaAudioSttEngine {
     fn transcribe(
         &self,
-        audio: Vec<f32>,
+        audio: &[f32],
         sample_rate: u32,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
@@ -466,7 +775,7 @@ impl HiggsAudioSttEngine {
     fn transcribe_with_recovery(
         &mut self,
         app_handle: &AppHandle,
-        audio: Vec<f32>,
+        audio: &[f32],
         sample_rate: u32,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = encode_wav_bytes(audio, sample_rate)?;
@@ -665,7 +974,7 @@ fn higgs_audio_server_matches(base_url: &str, model_source: &str) -> bool {
         .is_some_and(|model| model == model_source)
 }
 
-fn encode_wav_bytes(audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
+fn encode_wav_bytes(audio: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate,
@@ -947,6 +1256,139 @@ fn supports_live_partial_provider(model_info: &ModelInfo) -> bool {
     )
 }
 
+fn supports_persistent_mlx_streaming(model_id: &str) -> bool {
+    matches!(model_id, "mlx-voxtral-mini-4b-realtime")
+}
+
+fn percent_encode_query_component(value: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push('%');
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+    }
+    encoded
+}
+
+type MlxRealtimeSocket =
+    tungstenite::WebSocket<tungstenite::stream::MaybeTlsStream<std::net::TcpStream>>;
+
+fn set_mlx_realtime_read_timeout(socket: &mut MlxRealtimeSocket, timeout: Duration) -> Result<()> {
+    match socket.get_mut() {
+        tungstenite::stream::MaybeTlsStream::Plain(stream) => stream
+            .set_read_timeout(Some(timeout))
+            .map_err(|err| anyhow::anyhow!("Failed to configure realtime STT socket: {err}")),
+        _ => Err(anyhow::anyhow!(
+            "Unexpected TLS stream for localhost realtime STT socket"
+        )),
+    }
+}
+
+fn send_mlx_realtime_json(socket: &mut MlxRealtimeSocket, payload: Value) -> Result<()> {
+    socket
+        .send(tungstenite::Message::Text(payload.to_string().into()))
+        .map_err(|err| anyhow::anyhow!("Failed to send realtime STT message: {err}"))
+}
+
+fn send_mlx_realtime_audio(socket: &mut MlxRealtimeSocket, samples: &[f32]) -> Result<()> {
+    if samples.is_empty() {
+        return Ok(());
+    }
+
+    let mut pcm16 = Vec::with_capacity(samples.len() * std::mem::size_of::<i16>());
+    for sample in samples {
+        let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+        pcm16.extend_from_slice(&value.to_le_bytes());
+    }
+    send_mlx_realtime_json(
+        socket,
+        serde_json::json!({
+            "type": "input_audio_buffer.append",
+            "audio": BASE64_STANDARD.encode(pcm16),
+        }),
+    )
+}
+
+fn process_mlx_realtime_message(
+    app_handle: &AppHandle,
+    message: tungstenite::Message,
+    accumulated: &mut String,
+) -> Result<Option<String>> {
+    let tungstenite::Message::Text(text) = message else {
+        return Ok(None);
+    };
+    let payload: Value = serde_json::from_str(text.as_str())
+        .map_err(|err| anyhow::anyhow!("Invalid realtime STT response: {err}"))?;
+    match payload.get("type").and_then(Value::as_str) {
+        Some("conversation.item.input_audio_transcription.delta") => {
+            if let Some(delta) = payload.get("delta").and_then(Value::as_str) {
+                accumulated.push_str(delta);
+                let trimmed = accumulated.trim();
+                if !trimmed.is_empty() {
+                    crate::overlay::emit_partial_transcription(app_handle, trimmed);
+                }
+            }
+            Ok(None)
+        }
+        Some("conversation.item.input_audio_transcription.completed") => Ok(Some(
+            payload
+                .get("transcript")
+                .and_then(Value::as_str)
+                .unwrap_or(accumulated)
+                .to_string(),
+        )),
+        Some("error") => Err(anyhow::anyhow!(
+            "Realtime STT server error: {}",
+            payload
+                .pointer("/error/message")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown error")
+        )),
+        _ => Ok(None),
+    }
+}
+
+fn drain_mlx_realtime_messages(
+    app_handle: &AppHandle,
+    socket: &mut MlxRealtimeSocket,
+    accumulated: &mut String,
+) -> Result<Option<String>> {
+    loop {
+        match socket.read() {
+            Ok(message) => {
+                if let Some(final_text) =
+                    process_mlx_realtime_message(app_handle, message, accumulated)?
+                {
+                    return Ok(Some(final_text));
+                }
+            }
+            Err(tungstenite::Error::Io(err))
+                if matches!(
+                    err.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                return Ok(None)
+            }
+            Err(tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed) => {
+                return Err(anyhow::anyhow!(
+                    "Realtime STT connection closed before completion"
+                ))
+            }
+            Err(err) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to read realtime STT response: {err}"
+                ))
+            }
+        }
+    }
+}
+
 fn whisper_gpu_available() -> bool {
     WhisperAccelerator::available()
         .into_iter()
@@ -983,6 +1425,10 @@ pub struct TranscriptionManager {
     engine_epoch: Arc<AtomicU64>,
     transcribe_lock: Arc<Mutex<()>>,
     lifecycle_lock: Arc<Mutex<()>>,
+    /// Immediate/idle unload moves expensive engine destruction to a worker.
+    /// A subsequent cold load waits for these workers so large allocations do
+    /// not overlap merely because the user switches models quickly.
+    pending_engine_teardowns: Arc<(Mutex<usize>, Condvar)>,
     model_manager: Arc<ModelManager>,
     app_handle: AppHandle,
     current_model_id: Arc<Mutex<Option<String>>>,
@@ -991,6 +1437,9 @@ pub struct TranscriptionManager {
     shutdown_started: Arc<AtomicBool>,
     watcher_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
     is_loading: Arc<Mutex<bool>>,
+    /// Latest requested warm model while another background load is in
+    /// progress. Model/rule changes are coalesced instead of silently lost.
+    pending_model_id: Arc<Mutex<Option<String>>>,
     loading_condvar: Arc<Condvar>,
     partial_session: Arc<Mutex<Option<PartialProviderSession>>>,
     partial_generation: Arc<AtomicU64>,
@@ -1011,6 +1460,7 @@ impl Clone for TranscriptionManager {
             engine_epoch: Arc::clone(&self.engine_epoch),
             transcribe_lock: Arc::clone(&self.transcribe_lock),
             lifecycle_lock: Arc::clone(&self.lifecycle_lock),
+            pending_engine_teardowns: Arc::clone(&self.pending_engine_teardowns),
             model_manager: Arc::clone(&self.model_manager),
             app_handle: self.app_handle.clone(),
             current_model_id: Arc::clone(&self.current_model_id),
@@ -1019,6 +1469,7 @@ impl Clone for TranscriptionManager {
             shutdown_started: Arc::clone(&self.shutdown_started),
             watcher_handle: Arc::clone(&self.watcher_handle),
             is_loading: Arc::clone(&self.is_loading),
+            pending_model_id: Arc::clone(&self.pending_model_id),
             loading_condvar: Arc::clone(&self.loading_condvar),
             partial_session: Arc::clone(&self.partial_session),
             partial_generation: Arc::clone(&self.partial_generation),
@@ -1059,6 +1510,7 @@ impl TranscriptionManager {
             engine_epoch: Arc::new(AtomicU64::new(0)),
             transcribe_lock: Arc::new(Mutex::new(())),
             lifecycle_lock: Arc::new(Mutex::new(())),
+            pending_engine_teardowns: Arc::new((Mutex::new(0), Condvar::new())),
             model_manager,
             app_handle: app_handle.clone(),
             current_model_id: Arc::new(Mutex::new(None)),
@@ -1067,6 +1519,7 @@ impl TranscriptionManager {
             shutdown_started: Arc::new(AtomicBool::new(false)),
             watcher_handle: Arc::new(Mutex::new(None)),
             is_loading: Arc::new(Mutex::new(false)),
+            pending_model_id: Arc::new(Mutex::new(None)),
             loading_condvar: Arc::new(Condvar::new()),
             partial_session: Arc::new(Mutex::new(None)),
             partial_generation: Arc::new(AtomicU64::new(0)),
@@ -1168,6 +1621,42 @@ impl TranscriptionManager {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
+    fn wait_for_pending_engine_teardowns(&self) {
+        let (pending_lock, pending_condvar) = self.pending_engine_teardowns.as_ref();
+        let mut pending = pending_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        while *pending > 0 {
+            pending = pending_condvar
+                .wait(pending)
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+        }
+    }
+
+    fn schedule_engine_teardown(&self, engine: LoadedEngine) {
+        let teardown_state = Arc::clone(&self.pending_engine_teardowns);
+        {
+            let (pending_lock, _) = teardown_state.as_ref();
+            let mut pending = pending_lock
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            *pending += 1;
+        }
+
+        thread::spawn(move || {
+            let _teardown_guard = EngineTeardownGuard {
+                state: teardown_state,
+            };
+            let mut engine = engine;
+            if let LoadedEngine::MlxAudioStt(mlx_engine) = &mut engine {
+                if let Err(error) = mlx_engine.release_and_unload_before_replacement() {
+                    warn!("Failed to release unloaded mlx-audio model: {}", error);
+                }
+            }
+            drop(engine);
+        });
+    }
+
     fn next_partial_generation(&self) -> u64 {
         self.partial_generation.fetch_add(1, Ordering::Relaxed) + 1
     }
@@ -1242,6 +1731,9 @@ impl TranscriptionManager {
                 "Stopping partial transcription session {} for binding {}",
                 session.generation, session.binding_id
             );
+            if let Some(realtime) = session.realtime {
+                let _ = realtime.command_tx.send(RealtimeCommand::Cancel);
+            }
             session.cancel.store(true, Ordering::Relaxed);
         }
         self.next_partial_generation();
@@ -1249,12 +1741,8 @@ impl TranscriptionManager {
 
     /// Return an engine a partial worker took out of the shared slot.
     ///
-    /// Partial inference runs without the lifecycle lock, so `load_model` or
-    /// `unload_model` on another thread may have replaced or cleared the
-    /// engine while the worker held the old one. The engine epoch captured at
-    /// take time detects both: restoring a stale engine would either clobber
-    /// a freshly loaded replacement or silently resurrect a model the user
-    /// (or the idle watcher) just unloaded.
+    /// The epoch is a final guard against restoring a stale engine if a future
+    /// engine path no longer holds the lifecycle lock for its full use.
     fn restore_partial_engine(&self, engine: LoadedEngine, taken_at_epoch: u64) {
         if self.engine_epoch.load(Ordering::SeqCst) != taken_at_epoch {
             debug!(
@@ -1407,10 +1895,18 @@ impl TranscriptionManager {
                             model_id
                         )
                     })?;
-                LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
-                    base_url: mlx_audio_base_url(),
-                    model_source,
-                })
+                let mut engine = MlxAudioSttEngine::new(mlx_audio_base_url(), model_source);
+                // `ensure_running()` only starts the Python server. Loading the
+                // selected weights here makes startup/model-selection warming
+                // real, while the caller's background loader keeps it off the
+                // recording-start path.
+                engine.acquire_and_preload().map_err(|err| {
+                    emit_loading_failure(format!(
+                        "Failed to preload mlx-audio model {}: {}",
+                        model_id, err
+                    ))
+                })?;
+                LoadedEngine::MlxAudioStt(engine)
             }
             EngineType::GemmaAudioStt => {
                 let sidecar = self
@@ -1477,7 +1973,7 @@ impl TranscriptionManager {
     fn transcribe_with_loaded_engine(
         &self,
         engine: &mut LoadedEngine,
-        audio: Vec<f32>,
+        audio: &[f32],
         settings: &AppSettings,
     ) -> Result<String> {
         self.transcribe_with_loaded_engine_inner(engine, audio, settings, false)
@@ -1492,7 +1988,7 @@ impl TranscriptionManager {
     fn transcribe_with_loaded_engine_segments(
         &self,
         engine: &mut LoadedEngine,
-        audio: Vec<f32>,
+        audio: &[f32],
         settings: &AppSettings,
     ) -> Result<(String, Vec<TimedSegment>)> {
         self.transcribe_with_loaded_engine_inner(engine, audio, settings, true)
@@ -1501,7 +1997,7 @@ impl TranscriptionManager {
     fn transcribe_with_loaded_engine_inner(
         &self,
         engine: &mut LoadedEngine,
-        audio: Vec<f32>,
+        audio: &[f32],
         settings: &AppSettings,
         want_segments: bool,
     ) -> Result<(String, Vec<TimedSegment>)> {
@@ -1551,7 +2047,7 @@ impl TranscriptionManager {
                 };
 
                 let r = whisper_engine
-                    .transcribe_with(&audio, &params)
+                    .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
@@ -1562,14 +2058,14 @@ impl TranscriptionManager {
                     ..Default::default()
                 };
                 let r = parakeet_engine
-                    .transcribe_with(&audio, &params)
+                    .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
             }
             LoadedEngine::Moonshine(moonshine_engine) => {
                 let r = moonshine_engine
-                    .transcribe(&audio, &TranscribeOptions::default())
+                    .transcribe(audio, &TranscribeOptions::default())
                     .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
@@ -1577,7 +2073,7 @@ impl TranscriptionManager {
             LoadedEngine::MoonshineStreaming(streaming_engine) => {
                 let params = MoonshineStreamingParams::default();
                 let r = streaming_engine
-                    .transcribe_with(&audio, &params)
+                    .transcribe_with(audio, &params)
                     .map_err(|e| {
                         anyhow::anyhow!("Moonshine streaming transcription failed: {}", e)
                     })?;
@@ -1595,14 +2091,14 @@ impl TranscriptionManager {
                     use_itn: Some(true),
                 };
                 let r = sense_voice_engine
-                    .transcribe_with(&audio, &params)
+                    .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("SenseVoice transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
             }
             LoadedEngine::GigaAM(gigaam_engine) => {
                 let r = gigaam_engine
-                    .transcribe(&audio, &TranscribeOptions::default())
+                    .transcribe(audio, &TranscribeOptions::default())
                     .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
@@ -1643,11 +2139,16 @@ impl TranscriptionManager {
                     Some(settings.selected_language.as_str())
                 };
                 apple_engine
-                    .transcribe(&audio, 16_000, language)
+                    .transcribe(audio, 16_000, language)
                     .map_err(|e| anyhow::anyhow!("Apple Speech transcription failed: {}", e))?
             }
         };
 
+        let cleaned = Self::clean_transcription_output(result, settings);
+        Ok((cleaned, segments))
+    }
+
+    fn clean_transcription_output(result: String, settings: &AppSettings) -> String {
         let corrected_result = if !settings.custom_words.is_empty() {
             apply_custom_words(
                 &result,
@@ -1664,12 +2165,11 @@ impl TranscriptionManager {
             lang => lang,
         };
 
-        let cleaned = filter_transcription_output(
+        filter_transcription_output(
             &corrected_result,
             filter_language,
             &settings.custom_filler_words,
-        );
-        Ok((cleaned, segments))
+        )
     }
 
     fn transcribe_partial_snapshot(
@@ -1679,7 +2179,7 @@ impl TranscriptionManager {
         settings: &AppSettings,
     ) -> PartialTranscriptionOutcome {
         match catch_unwind(AssertUnwindSafe(|| {
-            self.transcribe_with_loaded_engine(engine, audio, settings)
+            self.transcribe_with_loaded_engine(engine, &audio, settings)
         })) {
             Ok(Ok(text)) => PartialTranscriptionOutcome::Success(text),
             Ok(Err(err)) => PartialTranscriptionOutcome::Error(err),
@@ -1747,6 +2247,7 @@ impl TranscriptionManager {
                 let Ok(_transcribe_guard) = self.transcribe_lock.try_lock() else {
                     continue;
                 };
+                let _lifecycle_guard = self.lock_lifecycle();
 
                 if cancel.load(Ordering::Relaxed)
                     || !self.partial_generation_is_current(generation)
@@ -1755,13 +2256,13 @@ impl TranscriptionManager {
                     break;
                 }
 
+                let taken_at_epoch = self.engine_epoch.load(Ordering::SeqCst);
                 let mut engine_guard = self.lock_engine();
                 let Some(mut engine) = engine_guard.take() else {
                     // Model was unloaded mid-recording; stop emitting partials.
                     break;
                 };
                 drop(engine_guard);
-                let taken_at_epoch = self.engine_epoch.load(Ordering::SeqCst);
 
                 let inference_result =
                     self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings);
@@ -1819,6 +2320,265 @@ impl TranscriptionManager {
         }
     }
 
+    fn run_mlx_realtime_provider(
+        &self,
+        binding_id: String,
+        model_id: String,
+        model_source: String,
+        cancel: Arc<AtomicBool>,
+        command_rx: mpsc::Receiver<RealtimeCommand>,
+        recording_manager: Arc<AudioRecordingManager>,
+    ) {
+        let outcome = (|| -> Result<()> {
+            let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
+            if *is_loading {
+                let (guard, wait_result) = self
+                    .loading_condvar
+                    .wait_timeout_while(is_loading, Duration::from_secs(120), |loading| *loading)
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                is_loading = guard;
+                if *is_loading && wait_result.timed_out() {
+                    return Err(anyhow::anyhow!(
+                        "Timed out waiting for realtime STT model preload"
+                    ));
+                }
+            }
+            drop(is_loading);
+
+            // Keep the cached model and its persistent decoder session stable
+            // for the recording. A model switch first signals cancellation,
+            // then waits here until the socket closes before releasing/loading
+            // sidecar weights.
+            let _lifecycle_guard = self.lock_lifecycle();
+            if cancel.load(Ordering::Relaxed) || self.shutdown_signal.load(Ordering::Relaxed) {
+                return Ok(());
+            }
+            if self.get_current_model().as_deref() != Some(model_id.as_str())
+                || !self.is_model_loaded()
+            {
+                return Err(anyhow::anyhow!(
+                    "Realtime STT model {} was not ready after preload",
+                    model_id
+                ));
+            }
+
+            let websocket_base = mlx_audio_base_url().replacen("http://", "ws://", 1);
+            let websocket_url = format!(
+                "{}/v1/realtime?model={}",
+                websocket_base.trim_end_matches('/'),
+                percent_encode_query_component(&model_source)
+            );
+            let (mut socket, _) = tungstenite::connect(websocket_url.as_str())
+                .map_err(|err| anyhow::anyhow!("Failed to connect realtime STT: {err}"))?;
+            set_mlx_realtime_read_timeout(&mut socket, Duration::from_secs(90))?;
+
+            let mut accumulated = String::new();
+            let initial = socket
+                .read()
+                .map_err(|err| anyhow::anyhow!("Realtime STT did not become ready: {err}"))?;
+            process_mlx_realtime_message(&self.app_handle, initial, &mut accumulated)?;
+
+            send_mlx_realtime_json(
+                &mut socket,
+                serde_json::json!({
+                    "type": "session.update",
+                    "session": {
+                        "model": model_source,
+                        "audio": {
+                            "input": {
+                                "format": {"type": "audio/pcm", "rate": 16000},
+                                "transcription": {"model": model_source},
+                                "turn_detection": null
+                            }
+                        }
+                    }
+                }),
+            )?;
+            set_mlx_realtime_read_timeout(&mut socket, Duration::from_millis(10))?;
+            let _ = drain_mlx_realtime_messages(&self.app_handle, &mut socket, &mut accumulated)?;
+
+            let mut sent_samples = 0usize;
+            const REALTIME_SNAPSHOT_SAMPLES: usize = 64_000;
+            loop {
+                if cancel.load(Ordering::Relaxed) || self.shutdown_signal.load(Ordering::Relaxed) {
+                    let _ = socket.close(None);
+                    return Ok(());
+                }
+
+                match command_rx.recv_timeout(Duration::from_millis(250)) {
+                    Ok(RealtimeCommand::Cancel) | Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        let _ = socket.close(None);
+                        return Ok(());
+                    }
+                    Ok(RealtimeCommand::Finalize { audio, response_tx }) => {
+                        let finalize_started = std::time::Instant::now();
+                        let remaining_start = sent_samples.min(audio.len());
+                        let final_result = (|| -> Result<String> {
+                            send_mlx_realtime_audio(&mut socket, &audio[remaining_start..])?;
+                            send_mlx_realtime_json(
+                                &mut socket,
+                                serde_json::json!({"type": "input_audio_buffer.commit"}),
+                            )?;
+                            set_mlx_realtime_read_timeout(&mut socket, Duration::from_secs(90))?;
+                            loop {
+                                let message = socket.read().map_err(|err| {
+                                    anyhow::anyhow!(
+                                        "Realtime STT finalization did not complete: {err}"
+                                    )
+                                })?;
+                                if let Some(final_text) = process_mlx_realtime_message(
+                                    &self.app_handle,
+                                    message,
+                                    &mut accumulated,
+                                )? {
+                                    return Ok(final_text);
+                                }
+                            }
+                        })();
+                        info!(
+                            "Realtime STT finalized model '{}' in {}ms",
+                            model_id,
+                            finalize_started.elapsed().as_millis()
+                        );
+                        let response = final_result.map_err(|err| err.to_string());
+                        let _ = response_tx.send(response);
+                        let _ = socket.close(None);
+                        return Ok(());
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        let Some(mut snapshot) =
+                            recording_manager.snapshot_recording(Some(REALTIME_SNAPSHOT_SAMPLES))
+                        else {
+                            continue;
+                        };
+                        if snapshot.total_samples <= sent_samples {
+                            continue;
+                        }
+
+                        let mut snapshot_start = snapshot
+                            .total_samples
+                            .saturating_sub(snapshot.samples.len());
+                        if sent_samples < snapshot_start {
+                            // Usually the fixed four-second window makes each
+                            // poll cheap. If inference stalls longer, take one
+                            // catch-up snapshot large enough to preserve every
+                            // unsent sample instead of silently creating a hole
+                            // in the persistent decoder's audio stream.
+                            let catch_up_samples =
+                                snapshot.total_samples.saturating_sub(sent_samples);
+                            if let Some(catch_up) =
+                                recording_manager.snapshot_recording(Some(catch_up_samples))
+                            {
+                                snapshot = catch_up;
+                                snapshot_start = snapshot
+                                    .total_samples
+                                    .saturating_sub(snapshot.samples.len());
+                            }
+                            if sent_samples < snapshot_start {
+                                warn!(
+                                    "Realtime STT catch-up snapshot raced recording growth; deferring {} samples to the lossless final append",
+                                    snapshot_start - sent_samples
+                                );
+                                continue;
+                            }
+                        }
+                        let offset = sent_samples.saturating_sub(snapshot_start);
+                        send_mlx_realtime_audio(&mut socket, &snapshot.samples[offset..])?;
+                        sent_samples = snapshot.total_samples;
+                        set_mlx_realtime_read_timeout(&mut socket, Duration::from_millis(10))?;
+                        let _ = drain_mlx_realtime_messages(
+                            &self.app_handle,
+                            &mut socket,
+                            &mut accumulated,
+                        )?;
+                    }
+                }
+            }
+        })();
+
+        if let Err(err) = outcome {
+            warn!(
+                "Realtime STT provider failed for binding {} and model {}: {}. Final transcription will fall back to batch mode.",
+                binding_id, model_id, err
+            );
+        }
+    }
+
+    pub fn finish_partial_provider(
+        &self,
+        binding_id: &str,
+        model_id: &str,
+        audio: Arc<Vec<f32>>,
+    ) -> Option<(String, u64)> {
+        let session = self
+            .partial_session
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()?;
+
+        if session.binding_id != binding_id {
+            session.cancel.store(true, Ordering::Relaxed);
+            if let Some(realtime) = session.realtime {
+                let _ = realtime.command_tx.send(RealtimeCommand::Cancel);
+            }
+            return None;
+        }
+
+        let Some(realtime) = session.realtime else {
+            session.cancel.store(true, Ordering::Relaxed);
+            return None;
+        };
+        if realtime.model_id != model_id {
+            session.cancel.store(true, Ordering::Relaxed);
+            let _ = realtime.command_tx.send(RealtimeCommand::Cancel);
+            return None;
+        }
+
+        let finalize_started = std::time::Instant::now();
+        let (response_tx, response_rx) = mpsc::channel();
+        if realtime
+            .command_tx
+            .send(RealtimeCommand::Finalize { audio, response_tx })
+            .is_err()
+        {
+            session.cancel.store(true, Ordering::Relaxed);
+            return None;
+        }
+
+        let result = match response_rx.recv_timeout(Duration::from_secs(120)) {
+            Ok(result) => result,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                session.cancel.store(true, Ordering::Relaxed);
+                let _ = realtime.command_tx.send(RealtimeCommand::Cancel);
+                warn!(
+                    "Realtime STT finalization timed out; restarting the sidecar before batch fallback"
+                );
+                if let Some(sidecar) = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                {
+                    if let Err(error) = sidecar.restart_running() {
+                        warn!("Failed to restart timed-out mlx-audio sidecar: {error}");
+                    }
+                }
+                return None;
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                session.cancel.store(true, Ordering::Relaxed);
+                warn!("Realtime STT finalization worker disconnected");
+                return None;
+            }
+        };
+        session.cancel.store(true, Ordering::Relaxed);
+        match result {
+            Ok(text) => Some((text, finalize_started.elapsed().as_millis() as u64)),
+            Err(err) => {
+                warn!("Realtime STT finalization failed: {err}");
+                None
+            }
+        }
+    }
+
     pub fn is_model_loaded(&self) -> bool {
         let engine = self.lock_engine();
         engine.is_some()
@@ -1827,12 +2587,12 @@ impl TranscriptionManager {
     pub fn start_partial_provider(
         &self,
         binding_id: &str,
+        model_id: String,
         recording_manager: Arc<AudioRecordingManager>,
     ) {
         self.stop_partial_session_internal();
 
-        let settings = get_settings(&self.app_handle);
-        let model_id = settings.selected_model.trim().to_string();
+        let model_id = model_id.trim().to_string();
         if model_id.is_empty() {
             return;
         }
@@ -1845,9 +2605,11 @@ impl TranscriptionManager {
             return;
         };
 
-        if !supports_live_partial_provider(&model_info) {
+        let use_mlx_realtime = matches!(model_info.engine_type, EngineType::MlxAudioStt)
+            && supports_persistent_mlx_streaming(&model_id);
+        if !supports_live_partial_provider(&model_info) && !use_mlx_realtime {
             debug!(
-                "Skipping partial transcription for binding {} because model {} uses a sidecar runtime",
+                "Skipping partial transcription for binding {} because model {} does not expose a persistent streaming session",
                 binding_id, model_id
             );
             return;
@@ -1855,6 +2617,51 @@ impl TranscriptionManager {
 
         let generation = self.next_partial_generation();
         let cancel = Arc::new(AtomicBool::new(false));
+
+        if use_mlx_realtime {
+            let model_source = self
+                .model_manager
+                .get_model_path(&model_id)
+                .ok()
+                .filter(|path| mlx_audio_stt_model_dir_is_runnable(&model_id, path))
+                .map(|path| path.to_string_lossy().to_string())
+                .or_else(|| mlx_audio_stt_model_ref(&model_id).map(str::to_string));
+            let Some(model_source) = model_source else {
+                warn!(
+                    "Skipping realtime STT for {} because no runnable model source was found",
+                    model_id
+                );
+                return;
+            };
+            let (command_tx, command_rx) = mpsc::channel();
+            *self
+                .partial_session
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = Some(PartialProviderSession {
+                generation,
+                binding_id: binding_id.to_string(),
+                cancel: Arc::clone(&cancel),
+                realtime: Some(RealtimePartialHandle {
+                    model_id: model_id.clone(),
+                    command_tx,
+                }),
+            });
+
+            let manager = self.clone();
+            let binding_id = binding_id.to_string();
+            thread::spawn(move || {
+                manager.run_mlx_realtime_provider(
+                    binding_id,
+                    model_id,
+                    model_source,
+                    cancel,
+                    command_rx,
+                    recording_manager,
+                );
+            });
+            return;
+        }
+
         *self
             .partial_session
             .lock()
@@ -1862,6 +2669,7 @@ impl TranscriptionManager {
             generation,
             binding_id: binding_id.to_string(),
             cancel: Arc::clone(&cancel),
+            realtime: None,
         });
 
         let config = partial_provider_config_for_model(&model_id);
@@ -1930,10 +2738,10 @@ impl TranscriptionManager {
         self.stop_partial_session_internal();
         let _lifecycle_guard = self.lock_lifecycle();
 
-        {
+        let unloaded_engine = {
             let mut engine = self.lock_engine();
-            *engine = None; // Drop the engine to free memory
-        }
+            engine.take()
+        };
         self.engine_epoch.fetch_add(1, Ordering::SeqCst);
         {
             let mut current_model = self
@@ -1950,6 +2758,12 @@ impl TranscriptionManager {
             model_name: None,
             error: None,
         });
+
+        // Engine teardown can release large Metal/MLX allocations. Keep that
+        // work off stop-to-paste when the immediate-unload policy is selected.
+        if let Some(engine) = unloaded_engine {
+            self.schedule_engine_teardown(engine);
+        }
 
         let unload_duration = unload_start.elapsed();
         debug!(
@@ -1976,6 +2790,10 @@ impl TranscriptionManager {
         let load_start = std::time::Instant::now();
         debug!("Starting to load model: {}", model_id);
 
+        if self.get_current_model().as_deref() == Some(model_id) && self.is_model_loaded() {
+            return Ok(());
+        }
+
         // Emit loading started event
         self.emit_model_state(ModelStateEvent {
             event_type: "loading_started".to_string(),
@@ -2000,7 +2818,23 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
+        // Signal partial/realtime workers before waiting for the lifecycle
+        // lock they hold while using the current engine/session.
+        self.stop_partial_session_internal();
         let _lifecycle_guard = self.lock_lifecycle();
+        self.wait_for_pending_engine_teardowns();
+
+        // Another serialized caller may have completed the same load while we
+        // were validating availability and waiting for the lifecycle lock.
+        if self.get_current_model().as_deref() == Some(model_id) && self.is_model_loaded() {
+            self.emit_model_state(ModelStateEvent {
+                event_type: "loading_completed".to_string(),
+                model_id: Some(model_id.to_string()),
+                model_name: Some(model_info.name.clone()),
+                error: None,
+            });
+            return Ok(());
+        }
 
         // Drop any previously loaded engine BEFORE creating the replacement so
         // two models are never resident at once. Large engines hold multiple GB
@@ -2009,18 +2843,38 @@ impl TranscriptionManager {
         // CPU fallback. Keeping the old engine on load failure has no value
         // either: every call path keys off the selected model and reloads on
         // mismatch, so a stale engine never serves another request.
-        self.stop_partial_session_internal();
-        let had_engine = {
+        let mut previous_engine = {
             let mut engine = self.lock_engine();
-            engine.take().is_some()
+            engine.take()
         };
-        if had_engine {
+        if previous_engine.is_some() {
+            self.engine_epoch.fetch_add(1, Ordering::SeqCst);
             let mut current_model = self
                 .current_model_id
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
             *current_model = None;
         }
+
+        if let Some(LoadedEngine::MlxAudioStt(engine)) = previous_engine.as_mut() {
+            if let Err(error) = engine.release_and_unload_before_replacement() {
+                let message = format!(
+                    "Failed to release the previous mlx-audio model before loading '{}': {}",
+                    model_id, error
+                );
+                self.emit_model_state(ModelStateEvent {
+                    event_type: "loading_failed".to_string(),
+                    model_id: Some(model_id.to_string()),
+                    model_name: Some(model_info.name.clone()),
+                    error: Some(message.clone()),
+                });
+                return Err(anyhow::anyhow!(message));
+            }
+        }
+        // Native engines must also finish releasing unified memory before the
+        // replacement allocates its weights. This is a cold model-switch path,
+        // never the recording/paste hot path.
+        drop(previous_engine);
 
         let loaded_engine =
             self.create_loaded_engine(model_id, &model_info, self.emit_state_events)?;
@@ -2068,14 +2922,20 @@ impl TranscriptionManager {
         if selected_model.is_empty() {
             return;
         }
-        if self.get_current_model().as_deref() == Some(selected_model.as_str())
-            && self.is_model_loaded()
-        {
-            return;
-        }
 
         let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
         if *is_loading {
+            let mut pending = self
+                .pending_model_id
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            *pending = Some(selected_model);
+            return;
+        }
+
+        if self.get_current_model().as_deref() == Some(selected_model.as_str())
+            && self.is_model_loaded()
+        {
             return;
         }
 
@@ -2086,34 +2946,64 @@ impl TranscriptionManager {
                 Arc::clone(&self_clone.is_loading),
                 Arc::clone(&self_clone.loading_condvar),
             );
+            let mut next_model = selected_model;
 
-            let load_result =
-                catch_unwind(AssertUnwindSafe(|| self_clone.load_model(&selected_model)));
+            loop {
+                let load_result =
+                    catch_unwind(AssertUnwindSafe(|| self_clone.load_model(&next_model)));
 
-            match load_result {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => {
-                    error!("Failed to load model '{}': {}", selected_model, error);
+                match load_result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => {
+                        error!("Failed to load model '{}': {}", next_model, error);
+                    }
+                    Err(panic_payload) => {
+                        let panic_message =
+                            if let Some(message) = panic_payload.downcast_ref::<&str>() {
+                                (*message).to_string()
+                            } else if let Some(message) = panic_payload.downcast_ref::<String>() {
+                                message.clone()
+                            } else {
+                                "unknown panic".to_string()
+                            };
+                        error!(
+                            "Model load panicked for '{}': {}",
+                            next_model, panic_message
+                        );
+                        self_clone.emit_model_state(ModelStateEvent {
+                            event_type: "loading_failed".to_string(),
+                            model_id: Some(next_model.clone()),
+                            model_name: None,
+                            error: Some(format!("Model load panicked: {}", panic_message)),
+                        });
+                    }
                 }
-                Err(panic_payload) => {
-                    let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>()
+
+                // Lock in the same order as the request path. If no pending
+                // model remains, mark loading false while still holding the
+                // mutex so a concurrent request either joins this loop or
+                // starts a new worker; no final request can be stranded.
+                let mut loading = self_clone
+                    .is_loading
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                let pending = self_clone
+                    .pending_model_id
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .take();
+                match pending {
+                    Some(model)
+                        if self_clone.get_current_model().as_deref() != Some(model.as_str())
+                            || !self_clone.is_model_loaded() =>
                     {
-                        (*message).to_string()
-                    } else if let Some(message) = panic_payload.downcast_ref::<String>() {
-                        message.clone()
-                    } else {
-                        "unknown panic".to_string()
-                    };
-                    error!(
-                        "Model load panicked for '{}': {}",
-                        selected_model, panic_message
-                    );
-                    self_clone.emit_model_state(ModelStateEvent {
-                        event_type: "loading_failed".to_string(),
-                        model_id: Some(selected_model.clone()),
-                        model_name: None,
-                        error: Some(format!("Model load panicked: {}", panic_message)),
-                    });
+                        next_model = model;
+                    }
+                    _ => {
+                        *loading = false;
+                        self_clone.loading_condvar.notify_all();
+                        break;
+                    }
                 }
             }
         });
@@ -2196,13 +3086,10 @@ impl TranscriptionManager {
             };
             drop(engine_guard);
 
-            let audio_for_engine = (*audio).clone();
-            drop(audio);
-
             let r = catch_unwind(AssertUnwindSafe(|| {
                 self.transcribe_with_loaded_engine_segments(
                     &mut engine,
-                    audio_for_engine,
+                    audio.as_slice(),
                     &settings,
                 )
             }));
@@ -2251,6 +3138,56 @@ impl TranscriptionManager {
         audio: Arc<Vec<f32>>,
         settings: AppSettings,
     ) -> Result<String> {
+        self.transcribe_with_settings_timed(audio, settings)
+            .map(|outcome| outcome.text)
+    }
+
+    pub fn finalize_streamed_transcription(
+        &self,
+        audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+        raw_text: String,
+        streaming_finalize_ms: u64,
+    ) -> TimedTranscription {
+        let finalize_started = std::time::Instant::now();
+        self.last_activity
+            .store(current_unix_millis(), Ordering::Relaxed);
+
+        let model_id = settings.selected_model.trim().to_string();
+        let audio_duration_ms = ((audio.len() as u128 * 1000) / 16_000) as u64;
+        let final_text = Self::clean_transcription_output(raw_text, &settings);
+        self.maybe_unload_immediately("streamed transcription");
+
+        if !final_text.is_empty() {
+            let app = self.app_handle.clone();
+            let transcript_for_cloning = final_text.clone();
+            thread::spawn(move || {
+                use tauri::Manager;
+                if let Some(cloning_manager) = app.try_state::<Arc<ContinuousCloningManager>>() {
+                    cloning_manager.process_stt_result(audio.as_slice(), &transcript_for_cloning);
+                }
+            });
+        }
+
+        let cleanup_ms = finalize_started.elapsed().as_millis() as u64;
+        TimedTranscription {
+            text: final_text,
+            timing: TranscriptionTiming {
+                model_id,
+                audio_duration_ms,
+                model_ready_at_entry: true,
+                model_ready_wait_ms: 0,
+                inference_ms: streaming_finalize_ms,
+                total_ms: streaming_finalize_ms.saturating_add(cleanup_ms),
+            },
+        }
+    }
+
+    pub fn transcribe_with_settings_timed(
+        &self,
+        audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+    ) -> Result<TimedTranscription> {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
         // and cause the final full transcription to fail or return nothing.
@@ -2275,18 +3212,37 @@ impl TranscriptionManager {
         if audio.is_empty() {
             debug!("Empty audio vector");
             self.maybe_unload_immediately("empty audio");
-            return Ok(String::new());
+            return Ok(TimedTranscription {
+                text: String::new(),
+                timing: TranscriptionTiming {
+                    model_id: settings.selected_model.trim().to_string(),
+                    audio_duration_ms: 0,
+                    model_ready_at_entry: self.is_model_loaded(),
+                    model_ready_wait_ms: 0,
+                    inference_ms: 0,
+                    total_ms: st.elapsed().as_millis() as u64,
+                },
+            });
         }
 
         // Retain a cheap ref to the same buffer for continuous voice cloning.
-        // Arc clone is a refcount bump — no audio copy. The engine requires
-        // owned samples, so only one Vec clone happens (at the engine call).
+        // Arc clone is a refcount bump, and engines borrow the shared samples,
+        // so the final transcription path makes no full-recording Vec copy.
         let audio_for_cloning = Arc::clone(&audio);
 
         let selected_model = settings.selected_model.trim().to_string();
         if selected_model.is_empty() {
             return Err(anyhow::anyhow!("No transcription model is selected."));
         }
+
+        let audio_duration_ms = ((audio.len() as u128 * 1000) / 16_000) as u64;
+        let model_ready_started = std::time::Instant::now();
+        let model_ready_at_entry = {
+            let is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
+            !*is_loading
+                && self.get_current_model().as_deref() == Some(selected_model.as_str())
+                && self.is_model_loaded()
+        };
 
         // Check if the requested model is loaded, loading it if a rule selected
         // a different engine for this recording.
@@ -2313,10 +3269,12 @@ impl TranscriptionManager {
                 self.load_model(&selected_model)?;
             }
         }
+        let model_ready_wait_ms = model_ready_started.elapsed().as_millis() as u64;
 
         // Perform transcription with the appropriate engine.
         // We use catch_unwind to prevent engine panics from poisoning the mutex,
         // which would make the app hang indefinitely on subsequent operations.
+        let inference_started = std::time::Instant::now();
         let result = {
             let _lifecycle_guard = self.lock_lifecycle();
             let mut engine_guard = self.lock_engine();
@@ -2336,13 +3294,11 @@ impl TranscriptionManager {
             // Release the lock before transcribing — no mutex held during the engine call
             drop(engine_guard);
 
-            // The engine consumes `Vec<f32>` by value, so we pay exactly one
-            // owned copy here. The caller and the voice-cloning thread keep
-            // their cheap `Arc` handles to the original buffer.
-            let audio_for_engine = (*audio).clone();
-            drop(audio);
+            // All engines borrow the shared recording buffer. This avoids the
+            // former full-recording Vec clone while history and continuous
+            // voice cloning retain their cheap Arc references.
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| {
-                self.transcribe_with_loaded_engine(&mut engine, audio_for_engine, &settings)
+                self.transcribe_with_loaded_engine(&mut engine, audio.as_slice(), &settings)
             }));
 
             match transcribe_result {
@@ -2390,6 +3346,7 @@ impl TranscriptionManager {
                 }
             }
         };
+        let inference_ms = inference_started.elapsed().as_millis() as u64;
 
         let et = std::time::Instant::now();
         let translation_note = if settings.translation_output_mode
@@ -2438,7 +3395,28 @@ impl TranscriptionManager {
             });
         }
 
-        Ok(final_result)
+        let total_ms = st.elapsed().as_millis() as u64;
+        debug!(
+            "Transcription timing model={} audio={}ms ready_at_entry={} model_wait={}ms inference={}ms total={}ms",
+            selected_model,
+            audio_duration_ms,
+            model_ready_at_entry,
+            model_ready_wait_ms,
+            inference_ms,
+            total_ms
+        );
+
+        Ok(TimedTranscription {
+            text: final_result,
+            timing: TranscriptionTiming {
+                model_id: selected_model,
+                audio_duration_ms,
+                model_ready_at_entry,
+                model_ready_wait_ms,
+                inference_ms,
+                total_ms,
+            },
+        })
     }
 }
 
@@ -2452,7 +3430,48 @@ impl Drop for TranscriptionManager {
 
 #[cfg(test)]
 mod tests {
-    use super::{mlx_audio_stt_model_dir_is_runnable, stt_sidecar_request_error_is_retryable};
+    use super::{
+        mlx_audio_stt_model_dir_is_runnable, percent_encode_query_component,
+        stt_sidecar_request_error_is_retryable, supports_persistent_mlx_streaming,
+        MlxAudioSttEngine,
+    };
+
+    #[test]
+    fn mlx_audio_response_preserves_server_timing_metadata() {
+        let response = MlxAudioSttEngine::decode_transcription_response(
+            r#"{"text":"ready","_vox_jot_timing_ms":{"model_load":0.4,"inference":12.5}}"#,
+        )
+        .expect("decode response");
+
+        assert_eq!(response.text, "ready");
+        assert_eq!(
+            response
+                .timing_ms
+                .as_ref()
+                .and_then(|timing| timing.get("inference"))
+                .and_then(serde_json::Value::as_f64),
+            Some(12.5)
+        );
+    }
+
+    #[test]
+    fn persistent_mlx_streaming_is_limited_to_session_capable_models() {
+        assert!(supports_persistent_mlx_streaming(
+            "mlx-voxtral-mini-4b-realtime"
+        ));
+        assert!(!supports_persistent_mlx_streaming("mlx-parakeet-v3"));
+        assert!(!supports_persistent_mlx_streaming(
+            "mlx-nemotron-asr-streaming-0.6b"
+        ));
+    }
+
+    #[test]
+    fn realtime_model_query_encoding_handles_local_paths() {
+        assert_eq!(
+            percent_encode_query_component("/Models/Vox Jot/model"),
+            "%2FModels%2FVox%20Jot%2Fmodel"
+        );
+    }
 
     #[test]
     fn mlx_audio_stt_model_dir_requires_config_and_weights() {

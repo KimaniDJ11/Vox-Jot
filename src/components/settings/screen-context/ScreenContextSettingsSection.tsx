@@ -148,9 +148,7 @@ const ScreenContextSettingsSection: React.FC = () => {
   const excluded = useMemo(
     () =>
       (excludedValue as
-        | { bundle_id: string; name: string }[]
-        | string[]
-        | undefined) ?? [],
+        { bundle_id: string; name: string }[] | string[] | undefined) ?? [],
     [excludedValue],
   );
   const pauseOnIdle = pauseOnIdleValue ?? true;
@@ -281,7 +279,7 @@ const ScreenContextSettingsSection: React.FC = () => {
     setAddingApp(true);
     try {
       const result = await commands.getFrontmostAppForExclusion();
-      if (result.status !== "ok") {
+      if (result.status !== "ok" || !result.data) {
         setAddAppError(t("settings.screenContext.addCurrentAppFailed"));
         return;
       }

@@ -60,11 +60,7 @@ const clearSkippedVersion = () => {
 };
 
 type InstallPhase =
-  | "idle"
-  | "downloading"
-  | "installing"
-  | "restarting"
-  | "error";
+  "idle" | "downloading" | "installing" | "restarting" | "error";
 
 type ProgressState = {
   downloaded: number;

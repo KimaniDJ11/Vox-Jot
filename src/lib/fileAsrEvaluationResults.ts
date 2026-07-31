@@ -1,9 +1,5 @@
 export type FileAsrEvaluationStatus =
-  | "tested"
-  | "runtime_ready"
-  | "download_required"
-  | "blocked"
-  | "pending";
+  "tested" | "runtime_ready" | "download_required" | "blocked" | "pending";
 
 export interface FileAsrEvaluationResult {
   modelId: string;

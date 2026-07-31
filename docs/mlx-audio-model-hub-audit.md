@@ -17,6 +17,14 @@ Vox Jot currently pins the app-managed MLX-Audio sidecar to `mlx-audio==0.4.4` i
 
 PyPI lists `mlx-audio==0.4.4`, uploaded 2026-06-06. The runtime bump must force a clean venv rebuild and pass the validation checklist below before it is shipped because Vox Jot carries model-specific bridge patches.
 
+### Dictation latency bridge update (2026-07-31)
+
+- The pinned runtime revision is unchanged. Vox Jot patches its server in place with a version-checked raw float32 PCM endpoint, avoiding client WAV encoding, multipart parsing, and the first server-side audio decode on the normal MLX STT path. The multipart endpoint remains a compatibility fallback.
+- Background warming now calls the sidecar model-load endpoint and waits for weights to finish loading. A running Python server alone is not reported as a warm model.
+- MLX model leases are reference-counted across live and file-transcription managers. A model switch releases an unshared prior model before loading the replacement; idle/immediate engine teardown runs outside the paste hot path.
+- Persistent decoder-state streaming is enabled only for `mlx-voxtral-mini-4b-realtime`, whose pinned runtime model implements `create_streaming_session`. Models without that API retain the batch final-transcription path and are not described as true streaming.
+- Dictation telemetry separates model-ready wait, engine inference, final-text, paste, and total stop-to-paste time. The patched server also reports transport decode, temporary WAV write, model-load, inference, and total server time in debug logs.
+
 ## Current Vox Jot Coverage
 
 The May 2026 first-wave roadmap has mostly shipped. Treat the following as implemented unless a new regression is found.

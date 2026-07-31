@@ -5,11 +5,7 @@ import path from "node:path";
 
 type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 type CreativeAudioStatus =
-  | "tested"
-  | "pending"
-  | "download_required"
-  | "failed"
-  | "blocked";
+  "tested" | "pending" | "download_required" | "failed" | "blocked";
 
 interface CreativeAudioModel {
   id: string;

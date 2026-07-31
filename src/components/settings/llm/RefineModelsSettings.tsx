@@ -71,10 +71,7 @@ import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
 
 type RefineModelSourceKind =
-  | "ollama"
-  | "lm_studio"
-  | "hugging_face"
-  | "managed_provider";
+  "ollama" | "lm_studio" | "hugging_face" | "managed_provider";
 
 type RefineProviderStatus = {
   id: string;

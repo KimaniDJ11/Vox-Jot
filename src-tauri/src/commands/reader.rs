@@ -1755,7 +1755,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::tempdir;
-    use zip::write::FileOptions;
+    use zip::write::SimpleFileOptions;
     use zip::ZipWriter;
 
     #[test]
@@ -1817,7 +1817,7 @@ mod tests {
         let path = dir.path().join("sample.docx");
         let file = File::create(&path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default();
+        let options = SimpleFileOptions::default();
         zip.start_file("word/document.xml", options).unwrap();
         zip.write_all(
             br#"<w:document><w:body><w:p><w:r><w:t>Hello reader</w:t></w:r></w:p><w:p><w:r><w:t>Second line</w:t></w:r></w:p></w:body></w:document>"#,
@@ -1836,7 +1836,7 @@ mod tests {
         let path = dir.path().join("sample.epub");
         let file = File::create(&path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default();
+        let options = SimpleFileOptions::default();
         zip.start_file("OPS/chapter.xhtml", options).unwrap();
         zip.write_all(
             br#"<html><head><title>Skip</title></head><body><h1>Chapter One</h1><p>Local voices read this.</p></body></html>"#,

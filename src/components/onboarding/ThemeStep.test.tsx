@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const updateSetting = vi.fn();

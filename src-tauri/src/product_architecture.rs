@@ -84,12 +84,24 @@ pub const DICTATION_LATENCY_BUDGETS: &[LatencyBudget] = &[
         budget: Duration::from_millis(120),
     },
     LatencyBudget {
-        stage: "warm_transcription",
+        stage: "model_ready_wait",
+        budget: Duration::from_millis(50),
+    },
+    LatencyBudget {
+        stage: "engine_inference",
         budget: Duration::from_millis(2500),
+    },
+    LatencyBudget {
+        stage: "stop_to_final_text",
+        budget: Duration::from_millis(3000),
     },
     LatencyBudget {
         stage: "paste",
         budget: Duration::from_millis(350),
+    },
+    LatencyBudget {
+        stage: "stop_to_paste",
+        budget: Duration::from_millis(3500),
     },
 ];
 
@@ -262,8 +274,11 @@ mod tests {
         for stage in [
             "recording_start",
             "stop_capture",
-            "warm_transcription",
+            "model_ready_wait",
+            "engine_inference",
+            "stop_to_final_text",
             "paste",
+            "stop_to_paste",
         ] {
             assert!(latency_budget_for(stage).is_some(), "{stage} missing");
         }

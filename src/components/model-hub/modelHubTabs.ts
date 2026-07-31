@@ -10,10 +10,7 @@ export type ModelHubTabId =
   | "audio_cleanup"
   | "ocr";
 export type ModelHubScope =
-  | "all"
-  | "analysis"
-  | "creative_audio"
-  | "audio_cleanup";
+  "all" | "analysis" | "creative_audio" | "audio_cleanup";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
 export const MODEL_HUB_SCOPE_STORAGE_KEY = "vox-jot-model-hub-scope";

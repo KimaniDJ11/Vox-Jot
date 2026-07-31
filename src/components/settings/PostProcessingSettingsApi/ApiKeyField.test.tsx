@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { act, Simulate } from "react-dom/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiKeyField } from "./ApiKeyField";
@@ -25,7 +24,7 @@ describe("ApiKeyField", () => {
 
     const input = container.querySelector("input") as HTMLInputElement;
     await act(async () => {
-      Simulate.blur(input);
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
 
     expect(onBlur).not.toHaveBeenCalled();
@@ -53,12 +52,15 @@ describe("ApiKeyField", () => {
 
     const input = container.querySelector("input") as HTMLInputElement;
     await act(async () => {
-      input.value = "new-key";
-      Simulate.change(input);
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(input, "new-key");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
     await act(async () => {
-      Simulate.blur(input);
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
 
     expect(onBlur).toHaveBeenCalledWith("new-key");

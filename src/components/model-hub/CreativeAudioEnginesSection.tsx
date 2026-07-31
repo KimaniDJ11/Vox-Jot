@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
@@ -37,6 +36,7 @@ import {
   type ModelSortMode,
 } from "@/lib/modelListOrdering";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 
 type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 type CreativeAudioSourceKind = "official_source";
@@ -240,56 +240,48 @@ const CreativeAudioEnginesSection: React.FC<
     };
   }, []);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void (async () => {
-      unlisten = await listen<CreativeAudioDownloadProgress>(
-        "creative-audio-download-progress",
-        (event) => {
-          const progress = event.payload;
-          setDownloadProgress((current) => ({
-            ...current,
-            [progress.model_id]: progress,
-          }));
-          setActiveDownloads((current) => {
-            const next = new Set(current);
-            if (
-              progress.phase === "complete" ||
-              progress.phase === "failed" ||
-              progress.phase === "cancelled"
-            ) {
-              next.delete(progress.model_id);
-            } else {
-              next.add(progress.model_id);
-            }
-            return next;
-          });
-          setCancellingDownloads((current) => {
-            const next = new Set(current);
-            if (
-              progress.phase === "complete" ||
-              progress.phase === "failed" ||
-              progress.phase === "cancelled"
-            ) {
-              next.delete(progress.model_id);
-            } else if (progress.phase === "cancelling") {
-              next.add(progress.model_id);
-            }
-            return next;
-          });
-          if (progress.phase === "complete" || progress.phase === "cancelled") {
-            void refreshCatalog();
-          }
-          if (progress.phase === "failed" && progress.error) {
-            setError(progress.error);
-          }
-        },
-      );
-    })();
-    return () => {
-      unlisten?.();
-    };
-  }, [refreshCatalog]);
+  useTauriEvent<CreativeAudioDownloadProgress>(
+    "creative-audio-download-progress",
+    (event) => {
+      const progress = event.payload;
+      setDownloadProgress((current) => ({
+        ...current,
+        [progress.model_id]: progress,
+      }));
+      setActiveDownloads((current) => {
+        const next = new Set(current);
+        if (
+          progress.phase === "complete" ||
+          progress.phase === "failed" ||
+          progress.phase === "cancelled"
+        ) {
+          next.delete(progress.model_id);
+        } else {
+          next.add(progress.model_id);
+        }
+        return next;
+      });
+      setCancellingDownloads((current) => {
+        const next = new Set(current);
+        if (
+          progress.phase === "complete" ||
+          progress.phase === "failed" ||
+          progress.phase === "cancelled"
+        ) {
+          next.delete(progress.model_id);
+        } else if (progress.phase === "cancelling") {
+          next.add(progress.model_id);
+        }
+        return next;
+      });
+      if (progress.phase === "complete" || progress.phase === "cancelled") {
+        void refreshCatalog();
+      }
+      if (progress.phase === "failed" && progress.error) {
+        setError(progress.error);
+      }
+    },
+  );
 
   const startDownload = useCallback(
     async (

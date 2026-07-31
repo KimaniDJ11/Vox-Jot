@@ -121,7 +121,7 @@ pub(crate) const MACOS_FORCE_POSTMESSAGE_IPC_SCRIPT: &str = r#"
 
 pub use cli::CliArgs;
 #[cfg(debug_assertions)]
-use specta_typescript::{BigIntExportBehavior, Typescript};
+use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, Builder};
 
 use correction_tracker::recent_input::RecentInputTracker;
@@ -1010,6 +1010,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_post_process_api_key_setting,
         shortcut::change_post_process_model_setting,
         shortcut::change_translation_model_setting,
+        shortcut::change_translation_model_ids_setting,
         shortcut::set_post_process_provider,
         shortcut::set_translation_provider,
         shortcut::fetch_post_process_models,
@@ -1018,6 +1019,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::delete_post_process_prompt,
         shortcut::set_post_process_selected_prompt,
         shortcut::update_custom_words,
+        shortcut::change_custom_filler_words_setting,
         shortcut::update_personal_dictionary,
         shortcut::change_max_rewrite_strength_setting,
         shortcut::change_show_preview_before_paste_setting,
@@ -1287,6 +1289,7 @@ pub fn run(cli_args: CliArgs) {
         commands::convo::convo_ensure_helper_running,
         commands::convo::convo_is_audio_capturing,
     ]);
+    let specta_builder = specta_builder.dangerously_cast_bigints_to_number();
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite
     // does not full-reload on every native app start.
@@ -1294,10 +1297,14 @@ pub fn run(cli_args: CliArgs) {
     {
         let bindings_path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
-        let ts = Typescript::default().bigint(BigIntExportBehavior::Number);
-        let generated_raw = specta_builder
-            .export_str(&ts)
+        let generated_path =
+            std::env::temp_dir().join(format!("vox-jot-bindings-{}.ts", std::process::id()));
+        specta_builder
+            .export(Typescript::default(), &generated_path)
             .expect("Failed to generate typescript bindings");
+        let generated_raw = std::fs::read_to_string(&generated_path)
+            .expect("Failed to read generated typescript bindings");
+        let _ = std::fs::remove_file(&generated_path);
         let mut generated = generated_raw
             .lines()
             .map(str::trim_end)

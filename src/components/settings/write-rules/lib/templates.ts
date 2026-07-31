@@ -21,12 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import type { WriteRule } from "@/bindings";
 
 export type ProfileTemplateId =
-  | "blank"
-  | "email"
-  | "coding"
-  | "chat"
-  | "notes"
-  | "concise";
+  "blank" | "email" | "coding" | "chat" | "notes" | "concise";
 
 export interface ProfileTemplate {
   id: ProfileTemplateId;

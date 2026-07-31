@@ -1,11 +1,11 @@
-use rubato::{FftFixedIn, Resampler};
+use rubato::{audioadapter_buffers::direct::InterleavedSlice, Fft, FixedSync, Resampler};
 use std::time::Duration;
 
 // Make this a constant you can tweak
 const RESAMPLER_CHUNK_SIZE: usize = 1024;
 
 pub struct FrameResampler {
-    resampler: Option<FftFixedIn<f32>>,
+    resampler: Option<Fft<f32>>,
     chunk_in: usize,
     in_buf: Vec<f32>,
     frame_samples: usize,
@@ -40,7 +40,7 @@ impl FrameResampler {
 
         let resampler = if in_hz != out_hz {
             Some(
-                FftFixedIn::<f32>::new(in_hz, out_hz, chunk_in, 1, 1).map_err(|e| {
+                Fft::<f32>::new(in_hz, out_hz, chunk_in, 1, FixedSync::Input).map_err(|e| {
                     format!("Failed to create resampler ({in_hz} Hz -> {out_hz} Hz): {e}")
                 })?,
             )
@@ -63,9 +63,7 @@ impl FrameResampler {
     fn note_dropped_chunk(&mut self, error: &rubato::ResampleError) {
         self.dropped_chunks += 1;
         if self.dropped_chunks == 1 {
-            log::error!(
-                "Resampler failed to process an audio chunk; captured audio will be truncated: {error}"
-            );
+            log::error!("Resampler failed to process an audio chunk; captured audio will be truncated: {error}");
         }
     }
 
@@ -82,13 +80,18 @@ impl FrameResampler {
             src = &src[take..];
 
             if self.in_buf.len() == self.chunk_in {
-                match self
-                    .resampler
-                    .as_mut()
-                    .unwrap()
-                    .process(&[&self.in_buf[..]], None)
-                {
-                    Ok(out) => self.emit_frames(&out[0], &mut emit),
+                // let start = std::time::Instant::now();
+                let output = {
+                    let input = InterleavedSlice::new(&self.in_buf, 1, self.chunk_in)
+                        .expect("mono resampler input length is validated");
+                    self.resampler
+                        .as_mut()
+                        .unwrap()
+                        .process(&input, None)
+                        .map(|out| out.take_data())
+                };
+                match output {
+                    Ok(out) => self.emit_frames(&out, &mut emit),
                     Err(e) => self.note_dropped_chunk(&e),
                 }
                 self.in_buf.clear();
@@ -102,8 +105,13 @@ impl FrameResampler {
             if !self.in_buf.is_empty() {
                 // Pad with zeros to reach chunk size
                 self.in_buf.resize(self.chunk_in, 0.0);
-                match resampler.process(&[&self.in_buf[..]], None) {
-                    Ok(out) => self.emit_frames(&out[0], &mut emit),
+                let output = {
+                    let input = InterleavedSlice::new(&self.in_buf, 1, self.chunk_in)
+                        .expect("mono resampler input length is validated");
+                    resampler.process(&input, None).map(|out| out.take_data())
+                };
+                match output {
+                    Ok(out) => self.emit_frames(&out, &mut emit),
                     Err(e) => self.note_dropped_chunk(&e),
                 }
                 self.in_buf.clear();

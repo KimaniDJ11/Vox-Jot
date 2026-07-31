@@ -819,8 +819,11 @@ impl ShortcutAction for TranscribeAction {
             );
             tm.initiate_model_load_for_model(effective_settings.selected_model.clone());
             remember_prepared_active_app_context(&binding_id, prepared_context);
-            tm.start_partial_provider(&binding_id, Arc::clone(&rm));
-            // Live partial STT currently shares the same engine as the final
+            tm.start_partial_provider(
+                &binding_id,
+                effective_settings.selected_model.clone(),
+                Arc::clone(&rm),
+            );
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
         } else {
@@ -862,7 +865,6 @@ impl ShortcutAction for TranscribeAction {
 
         // Play audio feedback for recording stop
         play_feedback_sound(app, SoundType::Stop);
-        tm.stop_partial_provider();
 
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
@@ -898,6 +900,7 @@ impl ShortcutAction for TranscribeAction {
                 );
 
                 if dictation_run_cancelled(&tm, processing_generation, "before transcription") {
+                    tm.stop_partial_provider();
                     return;
                 }
 
@@ -945,8 +948,29 @@ impl ShortcutAction for TranscribeAction {
                 let transcription_result = {
                     let tm_for_transcription = Arc::clone(&tm);
                     let transcribe_settings = effective_settings.clone();
+                    let transcribe_model_id = transcribe_settings.selected_model.clone();
+                    let transcribe_binding_id = binding_id.clone();
+                    let samples_for_transcription = Arc::clone(&samples);
                     tokio::task::spawn_blocking(move || {
-                        tm_for_transcription.transcribe_with_settings(samples, transcribe_settings)
+                        if let Some((streamed_text, streaming_finalize_ms)) = tm_for_transcription
+                            .finish_partial_provider(
+                                &transcribe_binding_id,
+                                &transcribe_model_id,
+                                Arc::clone(&samples_for_transcription),
+                            )
+                        {
+                            Ok(tm_for_transcription.finalize_streamed_transcription(
+                                samples_for_transcription,
+                                transcribe_settings,
+                                streamed_text,
+                                streaming_finalize_ms,
+                            ))
+                        } else {
+                            tm_for_transcription.transcribe_with_settings_timed(
+                                samples_for_transcription,
+                                transcribe_settings,
+                            )
+                        }
                     })
                     .await
                     .unwrap_or_else(|err| {
@@ -955,16 +979,32 @@ impl ShortcutAction for TranscribeAction {
                 };
 
                 match transcription_result {
-                    Ok(transcription) => {
+                    Ok(transcription_outcome) => {
                         let transcription_elapsed = transcription_time.elapsed();
+                        let timing = transcription_outcome.timing;
+                        let transcription = transcription_outcome.text;
                         crate::product_architecture::record_dictation_latency(
-                            "warm_transcription",
-                            transcription_elapsed,
+                            "model_ready_wait",
+                            Duration::from_millis(timing.model_ready_wait_ms),
+                        );
+                        crate::product_architecture::record_dictation_latency(
+                            "engine_inference",
+                            Duration::from_millis(timing.inference_ms),
+                        );
+                        crate::product_architecture::record_dictation_latency(
+                            "stop_to_final_text",
+                            stop_time.elapsed(),
                         );
                         debug!(
-                            "Transcription completed in {:?} ({} chars)",
+                            "Transcription completed in {:?} ({} chars, model={}, audio={}ms, ready_at_entry={}, model_wait={}ms, inference={}ms, manager_total={}ms)",
                             transcription_elapsed,
-                            transcription.chars().count()
+                            transcription.chars().count(),
+                            timing.model_id,
+                            timing.audio_duration_ms,
+                            timing.model_ready_at_entry,
+                            timing.model_ready_wait_ms,
+                            timing.inference_ms,
+                            timing.total_ms
                         );
                         // Require at least one alphanumeric character. Whisper
                         // can hallucinate punctuation-only strings (".", "?")
@@ -1546,6 +1586,7 @@ impl ShortcutAction for TranscribeAction {
                                 let ah_clone = ah.clone();
                                 let paste_settings = effective_settings.clone();
                                 let paste_time = Instant::now();
+                                let stop_to_paste_started = stop_time;
                                 let submit_override = submit_override;
                                 let hm_for_paste = Arc::clone(&hm);
                                 let tm_for_paste = Arc::clone(&tm);
@@ -1598,6 +1639,10 @@ impl ShortcutAction for TranscribeAction {
                                             crate::product_architecture::record_dictation_latency(
                                                 "paste",
                                                 paste_time.elapsed(),
+                                            );
+                                            crate::product_architecture::record_dictation_latency(
+                                                "stop_to_paste",
+                                                stop_to_paste_started.elapsed(),
                                             );
                                             debug!(
                                                 "Text pasted successfully in {:?}",
@@ -1714,6 +1759,7 @@ impl ShortcutAction for TranscribeAction {
                     }
                 }
             } else {
+                tm.stop_partial_provider();
                 debug!("No samples retrieved from recording stop");
                 utils::hide_recording_overlay(&ah);
                 change_tray_icon(&ah, TrayIconState::Idle);

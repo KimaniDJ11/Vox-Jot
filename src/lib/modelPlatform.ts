@@ -24,12 +24,7 @@ export type TtsExpressivenessMode = "native" | "mapped" | "unsupported";
 
 export type TtsAdvancedControlKind = "slider" | "toggle" | "select" | "text";
 export type TtsControlGroup =
-  | "identity"
-  | "tempo"
-  | "style"
-  | "sampler"
-  | "guidance"
-  | "steering";
+  "identity" | "tempo" | "style" | "sampler" | "guidance" | "steering";
 
 export interface TtsAdvancedControlOption {
   value: string;

@@ -20,7 +20,7 @@ export const DOCKED_AUDIO_HUD_TICK_HEIGHTS = Array.from(
 );
 
 interface DockedAudioHudProps {
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   audioSrc: string | null;
   isPlaying: boolean;
   isLoadingAudio: boolean;

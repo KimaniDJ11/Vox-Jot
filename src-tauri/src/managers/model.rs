@@ -272,7 +272,7 @@ impl ModelManager {
             hasher.update(&buffer[..bytes_read]);
         }
 
-        let actual_sha256 = format!("{:x}", hasher.finalize());
+        let actual_sha256 = hex::encode(hasher.finalize());
         if actual_sha256.eq_ignore_ascii_case(expected_sha256) {
             Ok(())
         } else {

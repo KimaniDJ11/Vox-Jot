@@ -1,6 +1,5 @@
-import React from "react";
+import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { act, Simulate } from "react-dom/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -124,8 +123,7 @@ describe("LicenseAcknowledgementDialog", () => {
     expect(checkbox).not.toBeNull();
 
     await act(async () => {
-      checkbox!.checked = true;
-      Simulate.change(checkbox!);
+      checkbox!.click();
     });
     expect(downloadButton?.disabled).toBe(false);
 

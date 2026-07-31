@@ -1,9 +1,5 @@
 export type CreativeAudioEvaluationStatus =
-  | "tested"
-  | "pending"
-  | "download_required"
-  | "failed"
-  | "blocked";
+  "tested" | "pending" | "download_required" | "failed" | "blocked";
 
 export interface CreativeAudioEvaluationResult {
   modelId: string;

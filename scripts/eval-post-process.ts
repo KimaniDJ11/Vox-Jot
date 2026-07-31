@@ -59,10 +59,7 @@ interface RouteFeatures {
 
 type PostProcessPass = "skip" | "pass1" | "pass2" | "command";
 type PromptProfile =
-  | "auto"
-  | "standard"
-  | "compact_final_text"
-  | "strict_literal";
+  "auto" | "standard" | "compact_final_text" | "strict_literal";
 
 interface RouteAnalysis {
   route: PostProcessPass;

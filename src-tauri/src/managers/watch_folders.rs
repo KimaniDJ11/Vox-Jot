@@ -30,7 +30,7 @@ use crate::settings::{get_settings, WatchFolderConfig, WatchFolderOutputFormat};
 use crate::sidecar::SidecarManager;
 use anyhow::Result;
 use log::{debug, info, warn};
-use notify::{RecursiveMode, Watcher};
+use notify::RecursiveMode;
 use notify_debouncer_full::{new_debouncer, DebounceEventResult};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -263,10 +263,7 @@ impl WatchFolderManager {
             };
 
             for cfg in &folders {
-                if let Err(err) = debouncer
-                    .watcher()
-                    .watch(Path::new(&cfg.path), RecursiveMode::Recursive)
-                {
+                if let Err(err) = debouncer.watch(Path::new(&cfg.path), RecursiveMode::Recursive) {
                     warn!("watch-folders: failed to watch '{}': {}", cfg.path, err);
                     self.emit_missing_folder(cfg);
                 }

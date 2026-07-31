@@ -16,13 +16,7 @@ type SidebarIcon = React.ComponentType<{
 }>;
 
 export type SidebarIconTone =
-  | "accent"
-  | "blue"
-  | "gold"
-  | "green"
-  | "red"
-  | "teal"
-  | "violet";
+  "accent" | "blue" | "gold" | "green" | "red" | "teal" | "violet";
 
 type SidebarIconToneStyle = React.CSSProperties & {
   "--sidebar-icon-color"?: string;

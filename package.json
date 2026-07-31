@@ -1,7 +1,7 @@
 {
   "name": "vox-jot-app",
   "private": true,
-  "version": "1.0.17",
+  "version": "1.0.18",
   "type": "module",
   "scripts": {
     "dev": "node scripts/vite-dev-wrapper.mjs",

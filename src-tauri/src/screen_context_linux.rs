@@ -264,7 +264,10 @@ fn decode_png_to_rgba(bytes: &[u8]) -> Result<CapturedFrame, String> {
         .read_info()
         .map_err(|err| format!("PNG decode failed: {}", err))?;
     let info = reader.info().clone();
-    let mut buffer = vec![0u8; reader.output_buffer_size()];
+    let output_buffer_size = reader
+        .output_buffer_size()
+        .ok_or_else(|| "PNG output buffer size exceeds supported limits".to_string())?;
+    let mut buffer = vec![0u8; output_buffer_size];
     let frame = reader
         .next_frame(&mut buffer)
         .map_err(|err| format!("PNG decode frame failed: {}", err))?;

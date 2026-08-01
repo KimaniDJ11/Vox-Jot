@@ -8362,7 +8362,7 @@ dependencies = [
 [[package]]
 name = "wayland-scanner"
 version = "0.31.10"
-source = "git+https://github.com/KimaniDJ11/wayland-rs.git?rev=74dfa6c96d28c79e3f2384212f5a7f38e711de1c#74dfa6c96d28c79e3f2384212f5a7f38e711de1c"
+source = "git+https://github.com/KimaniDJ11/wayland-rs.git?rev=1dfbcc66d7e3e4697be06101f4867fc1b351a14d#1dfbcc66d7e3e4697be06101f4867fc1b351a14d"
 dependencies = [
  "proc-macro2",
  "quick-xml",

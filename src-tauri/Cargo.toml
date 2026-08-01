@@ -163,7 +163,7 @@ tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
 # starts from the exact 0.31.10 release and applies only upstream's official
 # quick-xml 0.41 bump, preserving compatibility with released Wayland clients.
 [patch.crates-io]
-wayland-scanner = { git = "https://github.com/KimaniDJ11/wayland-rs.git", rev = "74dfa6c96d28c79e3f2384212f5a7f38e711de1c" }
+wayland-scanner = { git = "https://github.com/KimaniDJ11/wayland-rs.git", rev = "1dfbcc66d7e3e4697be06101f4867fc1b351a14d" }
 
 [profile.release]
 lto = true

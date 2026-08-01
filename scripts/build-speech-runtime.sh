@@ -82,6 +82,7 @@ if [[ ! -f "$PYTHON_ARCHIVE" ]]; then
   "$PYTHON_BIN" - "$PYTHON_VERSION" "$PYTHON_TARGET" "$PYTHON_ARCHIVE" "$PYTHON_BUILD_RELEASE" <<'PY'
 import hashlib
 import json
+import os
 import pathlib
 import sys
 import urllib.request
@@ -91,7 +92,16 @@ api = (
     "https://api.github.com/repos/astral-sh/python-build-standalone/releases/tags/"
     f"{release_tag}"
 )
-with urllib.request.urlopen(api) as response:
+headers = {
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "vox-jot-speech-runtime-builder",
+    "X-GitHub-Api-Version": "2022-11-28",
+}
+github_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+if github_token:
+    headers["Authorization"] = f"Bearer {github_token}"
+
+with urllib.request.urlopen(urllib.request.Request(api, headers=headers)) as response:
     release = json.load(response)
 
 prefix = f"cpython-{python_version}."

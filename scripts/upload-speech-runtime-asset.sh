@@ -3,8 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
-REPO="${GITHUB_REPO:-KimaniDJ11/Vox-Jot}"
-RELEASE_TAG="${RELEASE_TAG:-v0.3.0-tts-models}"
+HF_REPO="${HF_SPEECH_RUNTIME_REPO:-IrieDinamik/vox-jot-models}"
 
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -22,5 +21,34 @@ if [[ ! -f "$ASSET_PATH" ]]; then
   exit 1
 fi
 
-env -u GITHUB_TOKEN gh release upload "$RELEASE_TAG" "$ASSET_PATH" --clobber --repo "$REPO"
-echo "Uploaded $ASSET_NAME to $RELEASE_TAG"
+if ! command -v hf >/dev/null 2>&1; then
+  echo "Missing Hugging Face CLI: install the 'hf' command and authenticate first." >&2
+  exit 1
+fi
+
+if ! hf auth whoami >/dev/null 2>&1; then
+  echo "Hugging Face CLI is not authenticated. Run: hf auth login" >&2
+  exit 1
+fi
+
+ARCHIVE_LISTING="$(tar -tzf "$ASSET_PATH")"
+if ! grep -q 'THIRD_PARTY_NOTICES.txt' <<<"$ARCHIVE_LISTING"; then
+  echo "Runtime archive is missing THIRD_PARTY_NOTICES.txt: $ASSET_PATH" >&2
+  exit 1
+fi
+
+if grep -Eq '(^|/)(\._|__MACOSX)' <<<"$ARCHIVE_LISTING"; then
+  echo "Runtime archive contains macOS metadata: $ASSET_PATH" >&2
+  exit 1
+fi
+
+REMOTE_PATH="tts/releases/$ASSET_NAME"
+hf upload "$HF_REPO" "$ASSET_PATH" "$REMOTE_PATH" \
+  --commit-message "Update Vox Jot speech runtime $ASSET_NAME"
+
+VERIFY_DIR="$(mktemp -d)"
+trap 'rm -rf "$VERIFY_DIR"' EXIT
+hf download "$HF_REPO" "$REMOTE_PATH" --local-dir "$VERIFY_DIR" --quiet
+cmp "$ASSET_PATH" "$VERIFY_DIR/$REMOTE_PATH"
+
+echo "Uploaded and byte-verified https://huggingface.co/$HF_REPO/resolve/main/$REMOTE_PATH"

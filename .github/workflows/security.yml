@@ -42,3 +42,6 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The scan result is the gate. SARIF artifact upload is optional and
+          # must not turn a clean scan into a failure when Actions storage is full.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false

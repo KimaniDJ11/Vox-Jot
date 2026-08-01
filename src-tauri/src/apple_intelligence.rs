@@ -5,6 +5,7 @@ use std::os::raw::{c_char, c_int};
 
 #[cfg(not(feature = "ci-mock-transcription"))]
 use crate::helpers::subtitles::TimedSegment;
+#[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]
 use crate::post_processing::ActiveAppContext;
 
 // Define the response structure from Swift
@@ -248,7 +249,7 @@ pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
     result
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(all(test, not(all(target_os = "macos", target_arch = "aarch64"))))]
 pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
     Err("Frontmost app lookup through Apple APIs is only available on macOS.".to_string())
 }
@@ -305,15 +306,6 @@ pub fn process_text_with_system_prompt(
     unsafe { free_apple_llm_response(response_ptr) };
 
     result
-}
-
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
-pub fn process_text_with_system_prompt(
-    _system_prompt: &str,
-    _user_content: &str,
-    _max_tokens: i32,
-) -> Result<String, String> {
-    Err("Apple Intelligence is only available on supported Apple Silicon Macs.".to_string())
 }
 
 #[cfg(test)]

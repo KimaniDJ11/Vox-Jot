@@ -1079,7 +1079,7 @@ fn persist_reader_document(
     );
     store
         .documents
-        .sort_by(|a, b| b.updated_at_ms.cmp(&a.updated_at_ms));
+        .sort_by_key(|document| std::cmp::Reverse(document.updated_at_ms));
     store.documents.truncate(200);
     write_reader_library_store(reader_data_dir, &store)
 }

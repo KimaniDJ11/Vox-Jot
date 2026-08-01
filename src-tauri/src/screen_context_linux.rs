@@ -259,12 +259,15 @@ fn capture_x11() -> Result<Vec<u8>, String> {
 }
 
 fn decode_png_to_rgba(bytes: &[u8]) -> Result<CapturedFrame, String> {
-    let decoder = png::Decoder::new(bytes);
+    let decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     let mut reader = decoder
         .read_info()
         .map_err(|err| format!("PNG decode failed: {}", err))?;
     let info = reader.info().clone();
-    let mut buffer = vec![0u8; reader.output_buffer_size()];
+    let output_buffer_size = reader
+        .output_buffer_size()
+        .ok_or_else(|| "PNG output buffer size exceeds supported limits".to_string())?;
+    let mut buffer = vec![0u8; output_buffer_size];
     let frame = reader
         .next_frame(&mut buffer)
         .map_err(|err| format!("PNG decode frame failed: {}", err))?;
@@ -320,16 +323,6 @@ fn expand_gray_to_rgba(g: &[u8]) -> Vec<u8> {
         out.extend_from_slice(&[*px, *px, *px, 255]);
     }
     out
-}
-
-/// Whether the current environment looks capable of capturing the screen.
-/// Used by `ScreenContextDiagnostics::has_screen_permission` so the settings
-/// UI can highlight a missing tool.
-pub(crate) fn check_capture_permission() -> bool {
-    match detect_session() {
-        SessionKind::Wayland => which("grim").is_some(),
-        SessionKind::X11 => which("import").is_some() || which("gnome-screenshot").is_some(),
-    }
 }
 
 #[cfg(test)]

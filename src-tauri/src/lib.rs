@@ -185,6 +185,7 @@ fn set_main_window_visibility_intent(app: &AppHandle, visible: bool) {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn main_window_visibility_intended(app: &AppHandle) -> bool {
     app.try_state::<MainWindowVisibilityIntent>()
         .map(|intent| intent.visible.load(Ordering::SeqCst))
@@ -1436,6 +1437,7 @@ pub fn run(cli_args: CliArgs) {
             let app_handle = app.handle().clone();
             let should_hide = settings.start_hidden || cli_args.start_hidden;
             let tray_available = settings.show_tray_icon && !cli_args.no_tray;
+            #[cfg(target_os = "macos")]
             let main_window_initially_visible = !should_hide || !tray_available;
 
             // Activate the crash-reporting gate now that settings are reachable.

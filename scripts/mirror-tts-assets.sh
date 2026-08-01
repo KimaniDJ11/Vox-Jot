@@ -3,7 +3,7 @@
 # scripts/mirror-tts-assets.sh
 #
 # Mirror Vox Jot TTS runtime and voice-pack assets from the canonical
-# sherpa-onnx upstream releases into the pinned GitHub models repository.
+# sherpa-onnx upstream releases into the public Hugging Face models repository.
 
 set -euo pipefail
 
@@ -12,18 +12,15 @@ usage() {
 Usage: scripts/mirror-tts-assets.sh [options]
 
 Options:
-  --dry-run          Download/package assets but skip GitHub release upload
+  --dry-run          Download/package assets but skip Hugging Face upload
   --outdir PATH      Write finished assets to PATH instead of a temp dir
-  --tag TAG          Release tag to create/update (default: v0.3.0-tts-models)
-  --repo OWNER/REPO  GitHub repo for the release (default: KimaniDJ11/Vox-Jot)
+  --repo OWNER/REPO  Hugging Face model repo (default: IrieDinamik/vox-jot-models)
   --help             Show this help text
 EOF
 }
 
 DRY_RUN=false
-RELEASE_TAG="${VOX_JOT_TTS_RELEASE_TAG:-v0.3.0-tts-models}"
-REPO="${VOX_JOT_MODELS_RELEASE_REPO:-KimaniDJ11/Vox-Jot}"
-RELEASE_TITLE="TTS Assets (${RELEASE_TAG})"
+REPO="${VOX_JOT_MODELS_HF_REPO:-IrieDinamik/vox-jot-models}"
 OUTDIR=""
 
 while [[ $# -gt 0 ]]; do
@@ -38,15 +35,6 @@ while [[ $# -gt 0 ]]; do
         echo "Missing value for --outdir" >&2
         exit 1
       fi
-      shift 2
-      ;;
-    --tag)
-      RELEASE_TAG="${2:-}"
-      if [[ -z "$RELEASE_TAG" ]]; then
-        echo "Missing value for --tag" >&2
-        exit 1
-      fi
-      RELEASE_TITLE="TTS Assets (${RELEASE_TAG})"
       shift 2
       ;;
     --repo)
@@ -82,16 +70,8 @@ require_cmd tar
 require_cmd python3
 
 if ! $DRY_RUN; then
-  require_cmd gh
+  require_cmd hf
 fi
-
-gh_cmd() {
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    env -u GITHUB_TOKEN gh "$@"
-  else
-    gh "$@"
-  fi
-}
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/vox-jot-tts-work.XXXXXX")"
 if [[ -z "$OUTDIR" ]]; then
@@ -106,7 +86,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Workspace: $WORKDIR"
-echo "Release assets: $OUTDIR"
+echo "Mirror assets: $OUTDIR"
 echo
 
 download_file() {
@@ -335,38 +315,6 @@ stage_pack() {
   create_tarball "$work_dir" "$OUTDIR/$asset_name"
 }
 
-build_release_notes() {
-  local notes_file="$WORKDIR/release-notes.md"
-
-  {
-    echo "## Vox Jot TTS Assets"
-    echo
-    echo "Pinned offline TTS runtime and voice packs for Vox Jot."
-    echo
-    echo "**Do not delete this release tag.** App releases should use separate tags."
-    echo
-    echo "### Included assets"
-    echo
-    shopt -s nullglob
-    for asset in "$OUTDIR"/*.tar.gz; do
-      echo "- \`$(basename "$asset")\`"
-    done
-    shopt -u nullglob
-    echo
-    echo "### Canonical upstream sources"
-    echo
-    echo "- Runtime: [k2-fsa/sherpa-onnx v1.12.20](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.20)"
-    echo "- English voice: [vits-piper-en_US-lessac-medium.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2)"
-    echo "- Chinese + English voice: [vits-melo-tts-zh_en.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2)"
-    echo
-    echo "Each archive includes upstream notice metadata under \`upstream-notices/\` when available and \`VOX_JOT_UPSTREAM.json\` lineage metadata."
-    echo
-    echo "Point \`VOX_JOT_TTS_MODELS_BASE_URL\` at this release to have Vox Jot download these assets by default."
-  } >"$notes_file"
-
-  printf '%s' "$notes_file"
-}
-
 RUNTIME_URLS=(
   "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-osx-universal2-shared.tar.bz2"
   "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-linux-x64-shared.tar.bz2"
@@ -445,35 +393,20 @@ if [[ ${#STAGED[@]} -eq 0 ]]; then
 fi
 
 if $DRY_RUN; then
-  echo "--dry-run enabled, skipping GitHub release upload."
+  echo "--dry-run enabled, skipping Hugging Face upload."
   exit 0
 fi
 
-if ! gh_cmd auth status >/dev/null 2>&1; then
-  echo "GitHub CLI is not authenticated. Run: gh auth login" >&2
+if ! command -v hf >/dev/null 2>&1 || ! hf auth whoami >/dev/null 2>&1; then
+  echo "Hugging Face CLI is not authenticated. Run: hf auth login" >&2
   exit 1
 fi
 
-NOTES_FILE="$(build_release_notes)"
-
-if gh_cmd release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
-  echo "Updating existing release $RELEASE_TAG on $REPO"
-  gh_cmd release edit "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --title "$RELEASE_TITLE" \
-    --notes-file "$NOTES_FILE"
-  gh_cmd release upload "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --clobber \
-    "${STAGED[@]}"
-else
-  echo "Creating release $RELEASE_TAG on $REPO"
-  gh_cmd release create "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --title "$RELEASE_TITLE" \
-    --notes-file "$NOTES_FILE" \
-    "${STAGED[@]}"
-fi
+for asset in "${STAGED[@]}"; do
+  name="$(basename "$asset")"
+  hf upload "$REPO" "$asset" "tts/releases/$name" \
+    --commit-message "Update Vox Jot TTS asset $name"
+done
 
 echo
-echo "Done: https://github.com/$REPO/releases/tag/$RELEASE_TAG"
+echo "Done: https://huggingface.co/$REPO/tree/main/tts/releases"

@@ -1668,11 +1668,11 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
     }
 
     match settings.selected_tts_provider_id.as_str() {
-        TTS_PROVIDER_SYSTEM_BUILTIN_ID | TTS_PROVIDER_SHERPA_PACK_ID => {
-            if settings.selected_tts_voice_id != settings.tts_default_voice_id {
-                settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
-                changed = true;
-            }
+        TTS_PROVIDER_SYSTEM_BUILTIN_ID | TTS_PROVIDER_SHERPA_PACK_ID
+            if settings.selected_tts_voice_id != settings.tts_default_voice_id =>
+        {
+            settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
+            changed = true;
         }
         _ => {}
     }

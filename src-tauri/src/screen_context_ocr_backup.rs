@@ -25,6 +25,7 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PixelFormat {
+    #[cfg(any(target_os = "macos", target_os = "windows", test))]
     Bgra8,
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     Rgba8,
@@ -84,6 +85,7 @@ fn compute_downscale(w: u32, h: u32, target: DownscaleTarget) -> (u32, u32) {
 fn downscale_to_rgb(frame: &OcrFrame, dst_w: u32, dst_h: u32) -> Vec<u8> {
     let stride = frame.stride_bytes as usize;
     let (rs, gs, bs) = match frame.format {
+        #[cfg(any(target_os = "macos", target_os = "windows", test))]
         PixelFormat::Bgra8 => (2usize, 1, 0),
         #[cfg(any(target_os = "windows", target_os = "linux"))]
         PixelFormat::Rgba8 => (0usize, 1, 2),

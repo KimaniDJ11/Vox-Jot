@@ -86,6 +86,12 @@
                     --replace-fail '.write_to_file("opencc.h");' '// skipped'
                 fi
               done
+
+              # specta rc.25 uses fmt::from_fn, which is newer than the Rust
+              # compiler in this pinned nixpkgs revision. Keep the same Debug
+              # behavior through an equivalent wrapper on the Nix build path.
+              patch -d $cargoDepsCopy/specta-2.0.0-rc.25 -p1 \
+                < ${./.nix/patches/specta-debug-compat.patch}
             '';
 
             # Bun dependencies: fetched per-package using hashes from .nix/bun.nix.

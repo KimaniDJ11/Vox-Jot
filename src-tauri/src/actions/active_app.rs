@@ -9,6 +9,10 @@ use crate::apple_intelligence;
 use crate::post_processing::ActiveAppContext;
 use crate::settings::AppSettings;
 use crate::write_rules::{needs_url_capture, RuleResolver};
+#[cfg(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    target_os = "windows"
+))]
 use log::debug;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;

@@ -7,7 +7,9 @@ use log::{error, warn};
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-use crate::settings::{self, get_settings, ShortcutBinding};
+#[cfg(not(target_os = "linux"))]
+use crate::settings::get_settings;
+use crate::settings::{self, ShortcutBinding};
 
 use super::handler::handle_shortcut_event;
 
@@ -184,7 +186,6 @@ pub fn register_cancel_shortcut(app: &AppHandle) {
     #[cfg(target_os = "linux")]
     {
         let _ = app;
-        return;
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -206,7 +207,6 @@ pub fn unregister_cancel_shortcut(app: &AppHandle) {
     #[cfg(target_os = "linux")]
     {
         let _ = app;
-        return;
     }
 
     #[cfg(not(target_os = "linux"))]

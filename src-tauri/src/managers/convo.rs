@@ -929,7 +929,7 @@ impl ConvoController {
             }
         }
 
-        scored_chunks.sort_by(|a, b| b.0.cmp(&a.0));
+        scored_chunks.sort_by_key(|chunk| std::cmp::Reverse(chunk.0));
 
         let selected = scored_chunks
             .into_iter()

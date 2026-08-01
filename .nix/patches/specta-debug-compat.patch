@@ -1,0 +1,31 @@
+diff --git a/src/datatype/attributes.rs b/src/datatype/attributes.rs
+index 8cc084d..2ab7b61 100644
+--- a/src/datatype/attributes.rs
++++ b/src/datatype/attributes.rs
+@@ -12,6 +12,16 @@ trait DynAttributeValue: Send + Sync {
+     fn fmt_dyn(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+ }
+ 
++// `fmt::from_fn` is newer than the Rust compiler pinned by the Nix package.
++// This wrapper is equivalent and keeps the crate buildable on that toolchain.
++struct DynAttributeDebug<'a>(&'a dyn DynAttributeValue);
++
++impl fmt::Debug for DynAttributeDebug<'_> {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        self.0.fmt_dyn(f)
++    }
++}
++
+ struct NamedAttributeValue<T>(T);
+ 
+ impl<T> DynAttributeValue for NamedAttributeValue<T>
+@@ -175,7 +185,7 @@ impl fmt::Debug for Attributes {
+ 
+         let mut map = f.debug_map();
+         for (key, value) in entries {
+-            map.entry(key, &fmt::from_fn(|f| value.fmt_dyn(f)));
++            map.entry(key, &DynAttributeDebug(value.as_ref()));
+         }
+         map.finish()
+     }
+ }

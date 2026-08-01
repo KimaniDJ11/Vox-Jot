@@ -97,7 +97,7 @@ use voices::{
 
 const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
 const DEFAULT_TTS_ASSET_BASE_URL: &str =
-    "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
+    "https://huggingface.co/IrieDinamik/vox-jot-models/resolve/main/tts/releases";
 const HIDDEN_RUNTIME_MODEL_IDS: &[&str] = &[];
 const APP_PATH_BLOCKED_TTS_MODEL_ISSUES: &[(&str, &str)] = &[];
 pub(crate) const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
@@ -1048,9 +1048,10 @@ impl TtsManager {
             }
         }
 
-        // Try GitHub release archive first, then fall back to HuggingFace if configured.
+        // Try the Vox Jot Hugging Face archive first, then the canonical model
+        // snapshot when a prepackaged mirror is unavailable.
         let archive_name = self.qwen3_pack_archive_name(definition);
-        let github_result = self
+        let mirror_result = self
             .download_and_extract_archive(
                 &[self.asset_download_url(&archive_name)],
                 &install_dir,
@@ -1059,18 +1060,18 @@ impl TtsManager {
             )
             .await;
 
-        match github_result {
+        match mirror_result {
             Ok(()) => Ok(()),
-            Err(github_error) => {
+            Err(mirror_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
                     crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                     info!(
-                        "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
+                        "{label}: prepackaged mirror failed ({mirror_error}), falling back to Hugging Face ({hf_repo})"
                     );
                     self.download_hf_snapshot(hf_repo, &install_dir, &label, cancel_flag)
                         .await
                 } else {
-                    Err(github_error)
+                    Err(mirror_error)
                 }
             }
         }
@@ -1290,8 +1291,8 @@ impl TtsManager {
             }
         }
 
-        // Try GitHub release archive first.
-        let github_result = self
+        // Try the Vox Jot Hugging Face archive first.
+        let mirror_result = self
             .download_and_extract_archive(
                 &[self.asset_download_url(definition.archive_name)],
                 &install_dir,
@@ -1300,23 +1301,23 @@ impl TtsManager {
             )
             .await;
 
-        match github_result {
+        match mirror_result {
             Ok(()) => {
                 let _ = self.ensure_managed_speech_runtime_installed().await?;
                 Ok(())
             }
-            Err(github_error) => {
+            Err(mirror_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
                     crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                     info!(
-                        "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
+                        "{label}: prepackaged mirror failed ({mirror_error}), falling back to Hugging Face ({hf_repo})"
                     );
                     self.download_hf_snapshot(hf_repo, &install_dir, &label, cancel_flag)
                         .await?;
                     let _ = self.ensure_managed_speech_runtime_installed().await?;
                     Ok(())
                 } else {
-                    Err(github_error)
+                    Err(mirror_error)
                 }
             }
         }
@@ -4287,8 +4288,8 @@ impl TtsManager {
                     if self.has_installed_pack_for_locale(locale) {
                         Ok(TtsEngineKind::SherpaOnnx)
                     } else {
-                        self.ensure_sidecar_supported(settings).or_else(|_| {
-                            Err("Install a TTS pack or configure a local sidecar to enable speech output on Linux.".to_string())
+                        self.ensure_sidecar_supported(settings).map_err(|_| {
+                            "Install a TTS pack or configure a local sidecar to enable speech output on Linux.".to_string()
                         })
                     }
                 }
@@ -4816,8 +4817,8 @@ impl TtsManager {
         .map(|report| report.final_path)
     }
 
-    /// Download all files from a HuggingFace model repository into `install_dir`.
-    /// Used as a fallback for models too large for GitHub release assets (>2 GB).
+    /// Download all files from a Hugging Face model repository into `install_dir`.
+    /// Used when a prepackaged Vox Jot archive is unavailable.
     async fn download_hf_snapshot(
         &self,
         repo_id: &str,

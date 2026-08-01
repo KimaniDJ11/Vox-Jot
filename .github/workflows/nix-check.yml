@@ -13,6 +13,20 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: false
     steps:
+      # The full Nix/Tauri closure can exhaust the standard runner disk before
+      # packaging. These preinstalled SDKs are unrelated to this Linux build.
+      - name: Free runner disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune --all --force || true
+          sudo apt-get clean
+          df -h /
+
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2

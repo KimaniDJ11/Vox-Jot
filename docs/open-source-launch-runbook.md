@@ -66,12 +66,12 @@ identifier `privateKey`.
 GitHub release assets need separate treatment because they are not part of Git
 history:
 
-| Release                      | Current state         | Launch action                                                                                    |
-| ---------------------------- | --------------------- | ------------------------------------------------------------------------------------------------ |
-| `v1.0.4`                     | Drafted on 2026-07-31 | Keep draft; official app distribution remains R2 + Gumroad + Hugging Face updater                |
-| `v1.0.6`, `v1.0.2`, `v1.0.0` | Draft app releases    | Keep draft; never use as public distribution fallback                                            |
-| `v0.3.0-tts-models`          | Drafted on 2026-07-31 | Keep hidden; publish any future permitted mirrors only after rebuilding with complete notices    |
-| `v0.1.0-models`              | Drafted on 2026-07-31 | Keep hidden unless every asset has current redistribution approval and complete packaged notices |
+| Release                      | Current state         | Launch action                                                                                                                                                          |
+| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v1.0.4`                     | Drafted on 2026-07-31 | Keep draft; official app distribution remains R2 + Gumroad + Hugging Face updater                                                                                      |
+| `v1.0.6`, `v1.0.2`, `v1.0.0` | Draft app releases    | Keep draft; never use as public distribution fallback                                                                                                                  |
+| `v0.3.0-tts-models`          | Drafted on 2026-07-31 | Keep hidden; the rebuilt Apple Silicon speech runtime with complete notices is publicly mirrored on Hugging Face, and model fallbacks use canonical Hugging Face repos |
+| `v0.1.0-models`              | Drafted on 2026-07-31 | Keep hidden unless every asset has current redistribution approval and complete packaged notices                                                                       |
 
 All eight legacy release records are now drafts; the GitHub API reports zero
 published releases. No visibility change is allowed if a release is republished

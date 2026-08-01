@@ -1,4 +1,5 @@
 use crate::audio_playback;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::portable;
 use crate::settings::{TtsStyleControlValue, TtsVoiceTuningSettings, TTS_PROVIDER_QWEN3_NATIVE_ID};
 use crate::tts_profiles::ResolvedTtsVoiceProfile;
@@ -524,6 +525,7 @@ pub fn tuning_number_override(tuning: &TtsVoiceTuningSettings, key: &str) -> Opt
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 pub fn tts_temp_file(app_handle: &AppHandle, extension: &str) -> Result<PathBuf, String> {
     let base_dir = portable::app_data_dir(app_handle)
         .map_err(|err| format!("Failed to resolve app data dir: {err}"))?;

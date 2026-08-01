@@ -2,13 +2,13 @@
 #
 # scripts/mirror-models.sh
 #
-# Mirror Vox Jot model assets from canonical upstream sources into a pinned
-# GitHub release owned by this repository.
+# Mirror Vox Jot model assets from canonical upstream sources into the public
+# Hugging Face repository used by the app.
 #
 # Default behavior:
 # - Verifies canonical Whisper model URLs on Hugging Face
 # - Packages all built-in model assets into the exact layout Vox Jot expects
-# - Mirrors every built-in model asset into a pinned GitHub release
+# - Mirrors every built-in model asset into canonical Hugging Face paths
 #
 # Usage:
 #   chmod +x scripts/mirror-models.sh
@@ -23,23 +23,19 @@ usage() {
 Usage: scripts/mirror-models.sh [options]
 
 Options:
-  --dry-run          Download/package models but skip GitHub release upload
-  --skip-whisper     Skip mirroring Whisper binaries into the release
+  --dry-run          Download/package models but skip Hugging Face upload
+  --skip-whisper     Skip mirroring Whisper binaries to Hugging Face
   --outdir PATH      Write finished assets to PATH instead of a temp dir
-  --tag TAG          Release tag to create/update (default: v0.1.0-models)
-  --repo OWNER/REPO  GitHub repo for the release (default: KimaniDJ11/Vox-Jot)
+  --repo OWNER/REPO  Hugging Face model repo (default: IrieDinamik/vox-jot-models)
   --help             Show this help text
 EOF
 }
 
 DRY_RUN=false
 MIRROR_WHISPER=true
-RELEASE_TAG="${VOX_JOT_MODELS_RELEASE_TAG:-v0.1.0-models}"
-REPO="${VOX_JOT_MODELS_RELEASE_REPO:-KimaniDJ11/Vox-Jot}"
-RELEASE_TITLE="STT Model Assets (${RELEASE_TAG})"
+REPO="${VOX_JOT_MODELS_HF_REPO:-IrieDinamik/vox-jot-models}"
 OUTDIR=""
 LOCAL_MODEL_DIRS=(
-  "${VOX_JOT_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.iriedinamik.voxjot/models}"
   "${VOX_JOT_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.iriedinamik.voxjot/models}"
 )
 
@@ -59,15 +55,6 @@ while [[ $# -gt 0 ]]; do
         echo "Missing value for --outdir" >&2
         exit 1
       fi
-      shift 2
-      ;;
-    --tag)
-      RELEASE_TAG="${2:-}"
-      if [[ -z "$RELEASE_TAG" ]]; then
-        echo "Missing value for --tag" >&2
-        exit 1
-      fi
-      RELEASE_TITLE="STT Model Assets (${RELEASE_TAG})"
       shift 2
       ;;
     --repo)
@@ -103,16 +90,8 @@ require_cmd tar
 require_cmd python3
 
 if ! $DRY_RUN; then
-  require_cmd gh
+  require_cmd hf
 fi
-
-gh_cmd() {
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    env -u GITHUB_TOKEN gh "$@"
-  else
-    gh "$@"
-  fi
-}
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/vox-jot-model-work.XXXXXX")"
 if [[ -z "$OUTDIR" ]]; then
@@ -127,7 +106,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Workspace: $WORKDIR"
-echo "Release assets: $OUTDIR"
+echo "Mirror assets: $OUTDIR"
 echo
 
 download_file() {
@@ -526,46 +505,6 @@ stage_whisper() {
   package_notice_sidecar "$repo" "$filename"
 }
 
-build_release_notes() {
-  local include_whisper="$1"
-  local notes_file="$WORKDIR/release-notes.md"
-
-  {
-    echo "## Vox Jot STT Model Assets"
-    echo
-    echo "Pinned model assets for Vox Jot."
-    echo
-    echo "**Do not delete this release tag.** App releases should use separate tags."
-    echo
-    echo "### Included assets"
-    echo
-    shopt -s nullglob
-    for asset in "$OUTDIR"/*.bin "$OUTDIR"/*.tar.gz; do
-      echo "- \`$(basename "$asset")\`"
-    done
-    shopt -u nullglob
-    echo
-    echo "Single-file model assets include companion \`.notices.tar.gz\` archives containing upstream README, LICENSE, NOTICE, COPYING files when available, plus \`VOX_JOT_UPSTREAM.json\` lineage metadata."
-    echo
-    if [[ "$include_whisper" == "true" ]]; then
-      echo "Whisper binaries are mirrored in this release."
-      echo "Point \`VOX_JOT_WHISPER_MODELS_BASE_URL\` at this release if you want Vox Jot to use them by default."
-    else
-      echo "Whisper binaries are verified against [ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) and are not mirrored by default."
-      echo "Omit \`--skip-whisper\` if you want to publish them into this pinned release too."
-    fi
-    echo
-    echo "### Translation pack follow-up"
-    echo
-    echo "Translation packs live in the same GitHub models repo, but under a separate release tag such as \`v0.2.0-translation-models\`."
-    echo "Expected asset names follow the pattern \`translate-<source>-<target>-ct2.tar.gz\`."
-    echo "Point \`VOX_JOT_TRANSLATION_MODELS_BASE_URL\` at that release when wiring the multilingual translation downloader."
-    echo "Before shipping, verify the release and every asset filename in the GitHub web UI as part of the browser-driven rollout checklist."
-  } >"$notes_file"
-
-  printf '%s' "$notes_file"
-}
-
 echo "Verifying Whisper URLs"
 WHISPER_FILES=(
   "ggml-small.bin"
@@ -615,35 +554,32 @@ if [[ ${#STAGED[@]} -eq 0 ]]; then
 fi
 
 if $DRY_RUN; then
-  echo "--dry-run enabled, skipping GitHub release upload."
+  echo "--dry-run enabled, skipping Hugging Face upload."
   exit 0
 fi
 
-if ! gh_cmd auth status >/dev/null 2>&1; then
-  echo "GitHub CLI is not authenticated. Run: gh auth login" >&2
+if ! command -v hf >/dev/null 2>&1 || ! hf auth whoami >/dev/null 2>&1; then
+  echo "Hugging Face CLI is not authenticated. Run: hf auth login" >&2
   exit 1
 fi
 
-NOTES_FILE="$(build_release_notes "$MIRROR_WHISPER")"
-
-if gh_cmd release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
-  echo "Updating existing release $RELEASE_TAG on $REPO"
-  gh_cmd release edit "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --title "$RELEASE_TITLE" \
-    --notes-file "$NOTES_FILE"
-  gh_cmd release upload "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --clobber \
-    "${STAGED[@]}"
-else
-  echo "Creating release $RELEASE_TAG on $REPO"
-  gh_cmd release create "$RELEASE_TAG" \
-    --repo "$REPO" \
-    --title "$RELEASE_TITLE" \
-    --notes-file "$NOTES_FILE" \
-    "${STAGED[@]}"
-fi
+for asset in "${STAGED[@]}"; do
+  name="$(basename "$asset")"
+  case "$name" in
+    ggml-*.bin|ggml-*.bin.notices.tar.gz) remote_path="stt/whisper/$name" ;;
+    breeze-*) remote_path="stt/breeze/$name" ;;
+    giga-*) remote_path="stt/gigaam/$name" ;;
+    moonshine-*) remote_path="stt/moonshine/$name" ;;
+    parakeet-*) remote_path="stt/parakeet/$name" ;;
+    sense-*) remote_path="stt/sensevoice/$name" ;;
+    *)
+      echo "No canonical Hugging Face path is defined for $name" >&2
+      exit 1
+      ;;
+  esac
+  hf upload "$REPO" "$asset" "$remote_path" \
+    --commit-message "Update Vox Jot STT asset $name"
+done
 
 echo
-echo "Done: https://github.com/$REPO/releases/tag/$RELEASE_TAG"
+echo "Done: https://huggingface.co/$REPO/tree/main/stt"

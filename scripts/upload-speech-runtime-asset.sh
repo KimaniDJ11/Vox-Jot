@@ -26,6 +26,11 @@ if ! command -v hf >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! hf auth whoami >/dev/null 2>&1; then
+  echo "Hugging Face CLI is not authenticated. Run: hf auth login" >&2
+  exit 1
+fi
+
 ARCHIVE_LISTING="$(tar -tzf "$ASSET_PATH")"
 if ! grep -q 'THIRD_PARTY_NOTICES.txt' <<<"$ARCHIVE_LISTING"; then
   echo "Runtime archive is missing THIRD_PARTY_NOTICES.txt: $ASSET_PATH" >&2

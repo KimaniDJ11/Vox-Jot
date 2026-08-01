@@ -566,7 +566,7 @@ fi
 for asset in "${STAGED[@]}"; do
   name="$(basename "$asset")"
   case "$name" in
-    ggml-*.bin) remote_path="stt/whisper/$name" ;;
+    ggml-*.bin|ggml-*.bin.notices.tar.gz) remote_path="stt/whisper/$name" ;;
     breeze-*) remote_path="stt/breeze/$name" ;;
     giga-*) remote_path="stt/gigaam/$name" ;;
     moonshine-*) remote_path="stt/moonshine/$name" ;;

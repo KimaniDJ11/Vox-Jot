@@ -22,15 +22,15 @@ export const FILE_ASR_EVALUATION_RUN = {
   suite: "Vox Jot File ASR Multi-Format Benchmark v2",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
-  limitations:
-    "Evaluated on Apple Silicon Metal GPU and Native CPU.",
+  limitations: "Evaluated on Apple Silicon Metal GPU and Native CPU.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
     "Latency: lower is faster.",
     "RTF: lower is faster; below 1.00 is faster than real time.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [

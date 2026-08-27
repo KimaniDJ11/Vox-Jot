@@ -33,7 +33,8 @@ export const STT_EVALUATION_RUN = {
     "p50 latency: lower is faster.",
     "RTF: lower is faster; below 1.00 is faster than real time.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
@@ -97,7 +98,7 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     averageWer: 0.0188,
     latencyP50Ms: 125,
     latencyP95Ms: 155,
-    realTimeFactorP50: 0.010,
+    realTimeFactorP50: 0.01,
     notes:
       "Fastest CPU-native streaming model; 100x real-time speedup with pure Rust/ONNX runtime and 185 MB RAM usage.",
   },
@@ -263,8 +264,7 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     latencyP50Ms: 94,
     latencyP95Ms: 118,
     realTimeFactorP50: 0.015,
-    notes:
-      "High-accuracy CTC model optimized for Russian speech recognition.",
+    notes: "High-accuracy CTC model optimized for Russian speech recognition.",
   },
   {
     modelId: "moonshine-medium-streaming-en",
@@ -293,8 +293,7 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     latencyP50Ms: 94,
     latencyP95Ms: 118,
     realTimeFactorP50: 0.015,
-    notes:
-      "Lightweight streaming engine with 66.7x speedup on CPU.",
+    notes: "Lightweight streaming engine with 66.7x speedup on CPU.",
   },
   {
     modelId: "whisper-small",
@@ -307,9 +306,8 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     averageWer: 0.0558,
     latencyP50Ms: 188,
     latencyP95Ms: 235,
-    realTimeFactorP50: 0.030,
-    notes:
-      "Standard balanced Whisper model for general transcription.",
+    realTimeFactorP50: 0.03,
+    notes: "Standard balanced Whisper model for general transcription.",
   },
 ];
 

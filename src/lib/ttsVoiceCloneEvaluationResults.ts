@@ -33,7 +33,8 @@ export const TTS_VOICE_CLONE_EVALUATION_RUN = {
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_VOICE_CLONE_EVALUATION_RESULTS: TtsVoiceCloneEvaluationResult[] =
@@ -532,7 +533,6 @@ export const TTS_VOICE_CLONE_EVALUATION_RESULTS: TtsVoiceCloneEvaluationResult[]
         "Full installed-app API voice-clone suite run through mlx_voxcpm/voxcpm2-8bit; 4/4 cases generated with ASR round-trip scoring.",
     },
   ];
-
 
 export function getTtsVoiceCloneEvaluationResult(
   modelId: string,

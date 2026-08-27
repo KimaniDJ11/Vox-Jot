@@ -27,15 +27,15 @@ export const TTS_STYLE_EVALUATION_RUN = {
   suite: "Vox Jot TTS Style & Emotion Benchmark v2",
   corpus:
     "Six style-specific readback prompts covering neutral, warm, excited, calm, urgent, and empathetic delivery with ASR round-trip scoring enabled.",
-  limitations:
-    "Evaluated on Apple Silicon Metal GPU and Native CPU.",
+  limitations: "Evaluated on Apple Silicon Metal GPU and Native CPU.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "Score and style proxy: higher is better.",
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
@@ -1102,7 +1102,6 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
       "Full installed-app API style-suite run through mlx_fish_audio/fish-audio-s2-pro-8bit; 6/6 cases generated with ASR round-trip scoring.",
   },
 ];
-
 
 export function getTtsStyleEvaluationResult(
   modelId: string,

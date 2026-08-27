@@ -121,6 +121,67 @@ const HF_DYNAMIC_COLLECTION_MAX_RESULTS: usize = 32;
 const HF_DYNAMIC_MAX_PARAMETER_BILLIONS: f32 = 4.0;
 
 const HF_IMPORT_SPECS: &[HfImportSpec] = &[
+    // Benchmark v2 refine models. `file_name` is pinned to the exact Q4_K_M
+    // artifact that was benchmarked, so an install reproduces the measured
+    // quantization instead of whichever GGUF the repo happens to list first.
+    // `runtime_model_id` matches an alias in `llmEvaluationResults.ts` so the
+    // Testing rank resolves for the installed model.
+    HfImportSpec {
+        id: "hf:qwen-3.5-4b",
+        title: "Qwen3.5 4B",
+        description: "Highest-scoring refine model in the v2 suite: 46/46 dictation cases at 135 ms p50.",
+        repo_id: "unsloth/Qwen3.5-4B-GGUF",
+        file_name: "Qwen3.5-4B-Q4_K_M.gguf",
+        runtime_model_id: "qwen3.5-4b-q4km",
+    },
+    HfImportSpec {
+        id: "hf:qwen-3.5-2b",
+        title: "Qwen3.5 2B",
+        description: "Balanced pick for dictation cleanup: 44/46 cases at 68 ms p50.",
+        repo_id: "unsloth/Qwen3.5-2B-GGUF",
+        file_name: "Qwen3.5-2B-Q4_K_M.gguf",
+        runtime_model_id: "qwen3.5-2b-q4km",
+    },
+    HfImportSpec {
+        id: "hf:qwen-3.5-0.8b",
+        title: "Qwen3.5 0.8B",
+        description: "Lowest-memory Qwen3.5 option at roughly 530 MB, 45 ms p50 for simple cleanup.",
+        repo_id: "unsloth/Qwen3.5-0.8B-GGUF",
+        file_name: "Qwen3.5-0.8B-Q4_K_M.gguf",
+        runtime_model_id: "qwen3.5-0.8b-q4km",
+    },
+    HfImportSpec {
+        id: "hf:deepseek-r1-distill-1.5b",
+        title: "DeepSeek R1 Distill Qwen 1.5B",
+        description: "Reasoning-distilled 1.5B model for structured dictation formatting.",
+        repo_id: "bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF",
+        file_name: "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
+        runtime_model_id: "deepseek-r1-distill-qwen-1.5b",
+    },
+    HfImportSpec {
+        id: "hf:granite-4.0-micro",
+        title: "IBM Granite 4.0 Micro",
+        description: "IBM's Apache-2.0 instruction model with the highest zero-drift purity in the suite.",
+        repo_id: "ibm-granite/granite-4.0-micro-GGUF",
+        file_name: "granite-4.0-micro-Q4_K_M.gguf",
+        runtime_model_id: "granite-4.0-micro-3b",
+    },
+    HfImportSpec {
+        id: "hf:smollm3-3b",
+        title: "SmolLM3 3B (128K)",
+        description: "Compact multilingual model with a 128K context for long dictation passages.",
+        repo_id: "unsloth/SmolLM3-3B-128K-GGUF",
+        file_name: "SmolLM3-3B-128K-Q4_K_M.gguf",
+        runtime_model_id: "smollm3-3b-q4km",
+    },
+    HfImportSpec {
+        id: "hf:lfm2.5-2.6b",
+        title: "Liquid AI LFM2.5 2.6B",
+        description: "Liquid AI edge model tuned for fast on-device cleanup at 82 ms p50.",
+        repo_id: "LiquidAI/LFM2.5-2.6B-GGUF",
+        file_name: "LFM2.5-2.6B-Q4_K_M.gguf",
+        runtime_model_id: "lfm2.5-2.6b-q4km",
+    },
     HfImportSpec {
         id: "hf:llama-3.2-3b",
         title: "Llama 3.2 3B Instruct",

@@ -32,7 +32,8 @@ export const SCREEN_OCR_EVALUATION_RUN = {
     "Pass: cases with every required phrase detected.",
     "Latency: average per fixture; lower is faster.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
@@ -67,8 +68,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     averageConfidence: 0.99,
     strongestCategory: "full document layout extraction",
     weakestCategory: "latency and memory footprint",
-    notes:
-      "High-accuracy document OCR model with 0.60% CER.",
+    notes: "High-accuracy document OCR model with 0.60% CER.",
   },
   {
     engineId: "pp-ocrv6",
@@ -84,8 +84,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     averageConfidence: 0.98,
     strongestCategory: "instant screen text selection, settings UI",
     weakestCategory: "handwritten notes",
-    notes:
-      "Ultra-fast 38ms CPU inference with 133 MB footprint and 0.80% CER.",
+    notes: "Ultra-fast 38ms CPU inference with 133 MB footprint and 0.80% CER.",
   },
   {
     engineId: "qwen2.5-vl-3b",
@@ -135,8 +134,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     averageConfidence: 0.98,
     strongestCategory: "code review, terminal buffers",
     weakestCategory: "multilingual script mixing",
-    notes:
-      "Efficient 4-bit MLX OCR engine running locally on Metal GPU.",
+    notes: "Efficient 4-bit MLX OCR engine running locally on Metal GPU.",
   },
   {
     engineId: "tessdata-best",
@@ -152,8 +150,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     averageConfidence: 0.92,
     strongestCategory: "offline multilingual dictionary recognition",
     weakestCategory: "dense low-contrast UI tables",
-    notes:
-      "Classic OCR engine covering 120+ languages.",
+    notes: "Classic OCR engine covering 120+ languages.",
   },
 ];
 

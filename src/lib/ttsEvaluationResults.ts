@@ -35,7 +35,8 @@ export const TTS_EVALUATION_RUN = {
     "RTF: lower is faster; below 1.00 is faster than real time.",
     "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_EVALUATION_RESULTS: TtsEvaluationResult[] = [

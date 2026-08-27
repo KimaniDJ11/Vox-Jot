@@ -36,7 +36,8 @@ export const LLM_EVALUATION_RUN = {
     "Fallback: lower is better.",
     "Zero-Drift: higher purity means zero hallucinated content.",
   ],
-  reportPath: "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
+  reportPath:
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
   timeoutMs: 10000,
 };
 
@@ -82,7 +83,10 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
       "Sweet-spot for dictation post-processing: 142 tokens/sec throughput with 95.7% accuracy and 68ms P50 latency.",
   },
   {
-    modelIds: ["deepseek-r1-distill-qwen:1.5b", "deepseek-r1-distill-qwen-1.5b"],
+    modelIds: [
+      "deepseek-r1-distill-qwen:1.5b",
+      "deepseek-r1-distill-qwen-1.5b",
+    ],
     label: "DeepSeek-R1-Distill-Qwen 1.5B",
     status: "tested",
     rank: 3,
@@ -109,7 +113,7 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
     passed: 44,
     totalCases: 46,
     passRate: 0.9565,
-    averageSimilarity: 0.90,
+    averageSimilarity: 0.9,
     latencyP50Ms: 105,
     latencyP95Ms: 142,
     promptProfile: "standard",
@@ -198,8 +202,7 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
     driftFallbacks: 1,
     strongestCategory: "instruction following, structured output",
     weakestCategory: "latency overhead",
-    notes:
-      "Microsoft 3.8B model with strong formatting precision.",
+    notes: "Microsoft 3.8B model with strong formatting precision.",
   },
   {
     modelIds: ["smollm2:1.7b"],
@@ -218,8 +221,7 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
     driftFallbacks: 4,
     strongestCategory: "tone-professional and names",
     weakestCategory: "code-ish formatting",
-    notes:
-      "Compact 1.7B model with good general cleanup.",
+    notes: "Compact 1.7B model with good general cleanup.",
   },
 ];
 

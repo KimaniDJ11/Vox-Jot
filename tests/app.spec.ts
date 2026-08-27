@@ -1193,9 +1193,13 @@ test.describe("Vox Jot app", () => {
       "aria-selected",
       "true",
     );
-    await expect(page.getByText("Mini LibriSpeech real speech")).toHaveCount(0);
+    await expect(page.getByText("multi-domain real speech clips")).toHaveCount(
+      0,
+    );
     await page.getByRole("tab", { name: "Live STT" }).hover();
-    await expect(page.getByText("Mini LibriSpeech real speech")).toBeVisible();
+    await expect(
+      page.getByText("multi-domain real speech clips"),
+    ).toBeVisible();
 
     await expect(page.getByText("Match: higher is better.")).toHaveCount(0);
     await page.getByRole("button", { name: /Match/i }).first().hover();

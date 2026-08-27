@@ -8196,7 +8196,7 @@ dependencies = [
 
 [[package]]
 name = "vox_jot"
-version = "1.0.18"
+version = "1.0.19"
 dependencies = [
  "accessibility",
  "accessibility-sys",

@@ -264,6 +264,28 @@ async function createUpdaterArchive(
   return cleanSignature;
 }
 
+async function getWranglerAuth(): Promise<{
+  accountId: string;
+  token: string;
+} | null> {
+  try {
+    const configPath = path.join(
+      process.env.HOME || "",
+      "Library/Preferences/.wrangler/config/default.toml",
+    );
+    if (!existsSync(configPath)) return null;
+    const content = await readFile(configPath, "utf8");
+    const match = content.match(/oauth_token\s*=\s*"([^"]+)"/);
+    if (!match) return null;
+    return {
+      accountId: "0143685a9b54cfaddadab8f41e906f97",
+      token: match[1],
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function uploadR2Object(
   bucket: string,
   key: string,
@@ -271,20 +293,57 @@ async function uploadR2Object(
   contentType: string,
   cacheControl: string,
 ): Promise<void> {
-  await run("wrangler", [
-    "r2",
-    "object",
-    "put",
-    `${bucket}/${key}`,
-    "--file",
-    filePath,
-    "--remote",
-    "--content-type",
-    contentType,
-    "--cache-control",
-    cacheControl,
-    "--force",
-  ]);
+  const auth = await getWranglerAuth();
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (auth) {
+        const url = `https://api.cloudflare.com/client/v4/accounts/${auth.accountId}/r2/buckets/${bucket}/objects/${key}`;
+        await run("curl", [
+          "-s",
+          "-f",
+          "-X",
+          "PUT",
+          "-H",
+          `Authorization: Bearer ${auth.token}`,
+          "-H",
+          `Content-Type: ${contentType}`,
+          "-H",
+          `Cache-Control: ${cacheControl}`,
+          "-T",
+          filePath,
+          url,
+        ]);
+        console.log(`Uploaded ${key} to R2 bucket ${bucket}.`);
+        return;
+      }
+
+      await run("bunx", [
+        "wrangler",
+        "r2",
+        "object",
+        "put",
+        `${bucket}/${key}`,
+        "--file",
+        filePath,
+        "--remote",
+        "--content-type",
+        contentType,
+        "--cache-control",
+        cacheControl,
+        "--force",
+      ]);
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      console.warn(
+        `Upload attempt ${attempt} for ${key} failed, retrying in 2s...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
 }
 
 async function headOk(url: string): Promise<void> {

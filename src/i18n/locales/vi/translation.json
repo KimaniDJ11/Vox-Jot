@@ -1706,7 +1706,11 @@
     "loadDirectory": "Lỗi tải thư mục: {{error}}",
     "recordingFailed": "Không thể bắt đầu ghi: {{error}}",
     "modelLoadFailed": "Không tải được mô hình: {{model}}",
-    "modelLoadFailedUnknown": "mô hình không xác định"
+    "modelLoadFailedUnknown": "mô hình không xác định",
+    "externalStorageFallback": "Ổ đĩa ngoài \"{{volume}}\" bị ngắt kết nối. Đã chuyển sang mô hình cục bộ.",
+    "externalStorageFallbackUnnamed": "Bộ nhớ ngoài bị ngắt kết nối. Đã chuyển sang mô hình cục bộ.",
+    "externalStorageDisconnected": "Ổ đĩa ngoài \"{{volume}}\" bị ngắt kết nối. Kết nối lại ổ đĩa hoặc tải xuống mô hình cục bộ để đọc chính tả ngoại tuyến.",
+    "externalStorageDisconnectedUnnamed": "Bộ nhớ ngoài bị ngắt kết nối. Kết nối lại ổ đĩa hoặc tải xuống mô hình cục bộ để đọc chính tả ngoại tuyến."
   },
   "appLanguage": {
     "title": "Ngôn ngữ ứng dụng",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Tìm kiếm mô hình theo tên, ngôn ngữ hoặc nhà cung cấp...",
       "ariaLabel": "Tìm kiếm mô hình"
     },
+    "storageLocation": {
+      "local": "SSD bên trong",
+      "localDetail": "Đã tải xuống trên máy Mac này và có sẵn mà không cần ổ đĩa ngoài.",
+      "external": "Ổ đĩa ngoài",
+      "externalDetail": "Sẵn sàng trên ổ đĩa ngoài được kết nối. Kết nối lại ổ đĩa nếu mô hình này biến mất."
+    },
+
     "tabs": {
       "stt": "Lời nói (STT)",
       "analysis": "Phân tích giọng nói",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Lưu trữ",
       "historyGroupTitle": "Lịch sử",
       "filesGroupTitle": "Tập tin",
+      "externalModelStorage": {
+        "enabledLabel": "Quét bộ nhớ ngoài để tìm model",
+        "enabledDescription": "Sử dụng các mô hình đã được lưu trữ trên ổ đĩa được kết nối mà không cần sao chép chúng vào máy Mac này. Tệp tải xuống vẫn được lưu vào bộ nhớ cục bộ.",
+        "autoDetectLabel": "Tự động phát hiện thư mục Vox Jot trên ổ đĩa được kết nối",
+        "autoDetectDescription": "Tìm kiếm VoxJot/app-support/models hoặc Apps/Models/VoxJot trên các tập đĩa được đính kèm chẳng hạn như /Volumes/Models.",
+        "folderTitle": "Thư mục mô hình bên ngoài",
+        "folderDescription": "Chọn thư mục trên ổ SSD, thẻ SD hoặc ổ đĩa phụ bên ngoài. Vox Jot đọc các mô hình từ thư mục đó khi ổ đĩa được kết nối.",
+        "pathLabel": "Đường dẫn thư mục mô hình bên ngoài",
+        "browse": "Duyệt…",
+        "clear": "Sử dụng tính năng tự động phát hiện",
+        "noFolder": "Chưa có thư mục nào được chọn. Tự động phát hiện sẽ sử dụng ổ mô hình Vox Jot được kết nối nếu tìm thấy.",
+        "connected": "Đã kết nối: {{volume}} (đã phát hiện các mô hình {{count}})",
+        "disconnected": "Bộ nhớ ngoài bị ngắt kết nối",
+        "unnamedVolume": "Ổ đĩa ngoài"
+      },
       "previewLocalFirst": "Ưu tiên địa phương",
       "previewEnforced": "thực thi",
       "previewAllowed": "Được phép",

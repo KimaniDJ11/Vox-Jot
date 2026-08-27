@@ -91,6 +91,7 @@ interface ModelResult {
   exact_match?: boolean;
   latency_ms?: number;
   real_time_factor?: number;
+  speed_factor?: number;
   device?: string;
   reason?: string;
   samples?: SampleResult[];
@@ -107,6 +108,7 @@ interface SampleResult {
   exact_match?: boolean;
   latency_ms?: number;
   real_time_factor?: number;
+  speed_factor?: number;
   device?: string;
   reason?: string;
 }
@@ -484,6 +486,7 @@ function runSidecar(
     exact_match: normalizeText(REFERENCE) === normalizeText(text),
     latency_ms: elapsedMs,
     real_time_factor: durationMs > 0 ? elapsedMs / durationMs : undefined,
+    speed_factor: elapsedMs > 0 ? durationMs / elapsedMs : undefined,
     device: payload.device,
   };
 }
@@ -535,6 +538,7 @@ function evaluateModel(
       exact_match: sampleResult?.exact_match,
       latency_ms: sampleResult?.latency_ms,
       real_time_factor: sampleResult?.real_time_factor,
+      speed_factor: sampleResult?.speed_factor,
       device: sampleResult?.device,
       reason: sampleResult?.reason,
     });
@@ -601,6 +605,8 @@ function evaluateModel(
     exact_match: tested.every((sample) => sample.exact_match),
     latency_ms: percentile(latency, 0.5),
     real_time_factor: percentile(rtf, 0.5),
+    speed_factor:
+      percentile(rtf, 0.5) > 0 ? 1 / percentile(rtf, 0.5) : undefined,
     device: tested.find((sample) => sample.device)?.device,
     samples: sampleResults,
   };
@@ -618,7 +624,7 @@ function buildMarkdown(results: ModelResult[]): string {
     "",
     `Reference: ${REFERENCE}`,
     "",
-    "| Model | Status | Exact | WER | Latency | RTF | Device | Notes |",
+    "| Model | Status | Exact | WER | Latency | Speed | Device | Notes |",
     "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
   ];
   for (const result of results) {
@@ -635,9 +641,9 @@ function buildMarkdown(results: ModelResult[]): string {
               : "no",
         result.wer === undefined ? "n/a" : result.wer.toFixed(3),
         result.latency_ms === undefined ? "n/a" : `${result.latency_ms} ms`,
-        result.real_time_factor === undefined
+        result.speed_factor === undefined
           ? "n/a"
-          : result.real_time_factor.toFixed(2),
+          : `${result.speed_factor.toFixed(2)}x`,
         result.device ?? "n/a",
         result.reason ??
           (result.status === "tested"
@@ -677,6 +683,11 @@ function main() {
   );
   const report = {
     generated_at: new Date().toISOString(),
+    methodology_version: "2.0.0",
+    evidence_tier: "diagnostic",
+    ranking_eligible: false,
+    ranking_blocker:
+      "The committed samples cover container formats but not the required long-form meeting, technical, and multilingual domains.",
     sample_paths: config.samplePaths,
     sample_count: samples.length,
     samples,

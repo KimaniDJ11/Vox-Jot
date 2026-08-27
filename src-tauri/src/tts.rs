@@ -485,7 +485,7 @@ impl TtsManager {
             }
         }
 
-        candidates
+        crate::external_model_storage::expand_candidates(candidates)
     }
 
     fn resolved_mlx_audio_model_root(
@@ -875,9 +875,11 @@ impl TtsManager {
 
     fn managed_runtime_model_installed(&self, definition: &ManagedRuntimeModelDefinition) -> bool {
         let install_dir = self.managed_runtime_model_install_dir(definition);
-        let resolved = resolve_extracted_root(&install_dir).unwrap_or(install_dir);
-        if Self::managed_runtime_model_root_ready(definition, &resolved) {
-            return true;
+        for candidate in crate::external_model_storage::expand_candidate(install_dir) {
+            let resolved = resolve_extracted_root(&candidate).unwrap_or(candidate);
+            if Self::managed_runtime_model_root_ready(definition, &resolved) {
+                return true;
+            }
         }
 
         self.managed_runtime_model_source_dir(definition)
@@ -923,7 +925,7 @@ impl TtsManager {
             candidates.push(repo_root.join(definition.model_id));
         }
 
-        candidates
+        crate::external_model_storage::expand_candidates(candidates)
     }
 
     fn find_managed_runtime_model_source(
@@ -981,7 +983,7 @@ impl TtsManager {
             candidates.push(central_store.join(definition.id));
         }
 
-        candidates
+        crate::external_model_storage::expand_candidates(candidates)
     }
 
     fn find_qwen3_pack_source(&self, definition: &Qwen3PackDefinition) -> Option<PathBuf> {
@@ -991,7 +993,7 @@ impl TtsManager {
     }
 
     fn resolved_qwen3_pack_root(&self, definition: &Qwen3PackDefinition) -> Option<PathBuf> {
-        if let Some(root) = resolve_extracted_root(&self.pack_install_dir(definition.id)) {
+        if let Some(root) = self.installed_pack_root(definition.id) {
             return Some(root);
         }
 
@@ -2480,6 +2482,7 @@ impl TtsManager {
                         supports_inline_tags: definition.supports_inline_tags,
                     },
                     delivery_support: self.managed_runtime_definition_delivery_support(definition),
+                    storage_location: None,
                 }
             })
             .collect()
@@ -2618,10 +2621,16 @@ impl TtsManager {
                 supports_inline_tags: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_LFM_AUDIO_GGUF_ID),
+            storage_location: None,
         });
 
         let vv_dir_ok = crate::storage_paths::vibevoice_dir(&self.app_handle)
             .ok()
+            .and_then(|dir| {
+                crate::external_model_storage::resolve_existing(&dir)
+                    .map(|(path, _)| path)
+                    .or(Some(dir))
+            })
             .map(|dir| dir.join("model.safetensors").exists())
             .unwrap_or(false);
         let vv_supported = self.ensure_vibevoice_supported(settings).is_ok();
@@ -2691,6 +2700,7 @@ impl TtsManager {
                 supports_inline_tags: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_VIBEVOICE_ID),
+            storage_location: None,
         });
 
         models
@@ -2998,6 +3008,7 @@ impl TtsManager {
                 supports_inline_tags: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_SYSTEM_BUILTIN_ID),
+            storage_location: None,
         }];
 
         if !runtime_catalog_available && show_local_sidecar_api {
@@ -3035,6 +3046,7 @@ impl TtsManager {
                     supports_inline_tags: false,
                 },
                 delivery_support: self.builtin_delivery_support(TTS_PROVIDER_LOCAL_SIDECAR_API_ID),
+                storage_location: None,
             });
         }
 
@@ -3054,7 +3066,7 @@ impl TtsManager {
             qwen3_models
                 .into_iter()
                 .map(|pack| {
-                    let installed = self.installed_pack_root(pack.id).is_some();
+                    let installed = self.resolved_qwen3_pack_root(pack).is_some();
                     let selected = selected_provider_id == TTS_PROVIDER_QWEN3_NATIVE_ID
                         && selected_model_id.as_deref() == Some(pack.id);
                     let features = self.qwen3_pack_features(pack);
@@ -3097,6 +3109,7 @@ impl TtsManager {
                         },
                         capabilities,
                         delivery_support: self.qwen3_delivery_support(features),
+                        storage_location: None,
                     }
                 }),
         );
@@ -3144,6 +3157,7 @@ impl TtsManager {
                     supports_inline_tags: false,
                 },
                 delivery_support: self.builtin_delivery_support(TTS_PROVIDER_SHERPA_PACK_ID),
+                storage_location: None,
             }
         }));
 
@@ -3269,6 +3283,7 @@ impl TtsManager {
                         supports_inline_tags: model.capabilities.supports_inline_tags,
                     },
                     delivery_support: self.runtime_delivery_support(&model),
+                    storage_location: None,
                 })
             }));
 
@@ -3290,6 +3305,7 @@ impl TtsManager {
             models = deduped_models;
         }
 
+        self.attach_storage_locations(&mut models);
         DomainCatalog { providers, models }
     }
 
@@ -4420,7 +4436,100 @@ impl TtsManager {
     }
 
     fn installed_pack_root(&self, pack_id: &str) -> Option<PathBuf> {
-        resolve_extracted_root(&self.pack_install_dir(pack_id))
+        crate::external_model_storage::expand_candidate(self.pack_install_dir(pack_id))
+            .into_iter()
+            .find_map(|candidate| resolve_extracted_root(&candidate))
+    }
+
+    fn attach_storage_locations(&self, models: &mut [CatalogModelDescriptor]) {
+        for model in models.iter_mut() {
+            if !model.installed {
+                model.storage_location = None;
+                continue;
+            }
+            if model.storage_location.is_some() {
+                continue;
+            }
+            model.storage_location = self.storage_location_for_catalog_model(model);
+        }
+    }
+
+    fn storage_location_for_catalog_model(
+        &self,
+        model: &CatalogModelDescriptor,
+    ) -> Option<crate::external_model_storage::ModelStorageLocation> {
+        use crate::external_model_storage::location_of_resolved;
+
+        if model.provider_id == TTS_PROVIDER_SYSTEM_BUILTIN_ID
+            || model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+        {
+            return None;
+        }
+
+        if let Some(definition) = mlx_audio_tts_model_definition(&model.id) {
+            if let Some(root) = self.resolved_mlx_audio_model_root(definition) {
+                return location_of_resolved(&root);
+            }
+        }
+
+        if let Some(root) = self.installed_pack_root(&model.id) {
+            return location_of_resolved(&root);
+        }
+
+        if let Some(definition) = QWEN3_PACK_DEFINITIONS
+            .iter()
+            .find(|candidate| candidate.id == model.id)
+        {
+            if let Some(root) = self.resolved_qwen3_pack_root(definition) {
+                return location_of_resolved(&root);
+            }
+        }
+
+        if let Some(definition) = self.managed_runtime_model_definition(&model.id) {
+            let install_dir = self.managed_runtime_model_install_dir(definition);
+            for candidate in crate::external_model_storage::expand_candidate(install_dir) {
+                let resolved = resolve_extracted_root(&candidate).unwrap_or(candidate);
+                if Self::managed_runtime_model_root_ready(definition, &resolved) {
+                    return location_of_resolved(&resolved);
+                }
+            }
+            if let Some(source) = self.managed_runtime_model_source_dir(definition) {
+                return location_of_resolved(&source);
+            }
+        }
+
+        if model.provider_id == TTS_PROVIDER_LFM_AUDIO_GGUF_ID {
+            if let Some(ctx) =
+                crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(&self.app_handle)
+            {
+                return location_of_resolved(&ctx.root_dir);
+            }
+        }
+
+        if model.provider_id == TTS_PROVIDER_VIBEVOICE_ID {
+            if let Ok(dir) = crate::storage_paths::vibevoice_dir(&self.app_handle) {
+                if let Some((path, location)) =
+                    crate::external_model_storage::resolve_existing(&dir)
+                {
+                    if path.join("model.safetensors").exists() {
+                        return Some(location);
+                    }
+                } else if dir.join("model.safetensors").exists() {
+                    return location_of_resolved(&dir);
+                }
+            }
+        }
+
+        if let Ok(hf_root) = crate::storage_paths::tts_hf_models_dir(&self.app_handle) {
+            let sanitized = model.id.replace('/', "--");
+            let candidate = hf_root.join(&sanitized);
+            if let Some((_, location)) = crate::external_model_storage::resolve_existing(&candidate)
+            {
+                return Some(location);
+            }
+        }
+
+        None
     }
 
     fn definition_for_voice(&self, voice: &VoiceInfo) -> Option<&'static PackDefinition> {

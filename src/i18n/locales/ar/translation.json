@@ -1706,7 +1706,11 @@
     "loadDirectory": "خطأ في تحميل الدليل: {{error}}",
     "recordingFailed": "فشل بدء التسجيل: {{error}}",
     "modelLoadFailed": "فشل تحميل النموذج: {{model}}",
-    "modelLoadFailedUnknown": "نموذج غير معروف"
+    "modelLoadFailedUnknown": "نموذج غير معروف",
+    "externalStorageFallback": "تم فصل محرك الأقراص الخارجي \"{{volume}}\". تحولت إلى نموذج محلي.",
+    "externalStorageFallbackUnnamed": "تم قطع وحدة التخزين الخارجية. تحولت إلى نموذج محلي.",
+    "externalStorageDisconnected": "تم فصل محرك الأقراص الخارجي \"{{volume}}\". أعد توصيل محرك الأقراص أو قم بتنزيل نموذج محلي للإملاء في وضع عدم الاتصال.",
+    "externalStorageDisconnectedUnnamed": "تم قطع وحدة التخزين الخارجية. أعد توصيل محرك الأقراص أو قم بتنزيل نموذج محلي للإملاء في وضع عدم الاتصال."
   },
   "appLanguage": {
     "title": "لغة التطبيق",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "نماذج البحث حسب الاسم أو اللغة أو المزود...",
       "ariaLabel": "نماذج البحث"
     },
+    "storageLocation": {
+      "local": "SSD داخلي",
+      "localDetail": "تم تنزيله على جهاز Mac هذا وهو متاح بدون محرك أقراص خارجي.",
+      "external": "محرك خارجي",
+      "externalDetail": "جاهز على محرك الأقراص الخارجي المتصل. أعد توصيل محرك الأقراص في حالة اختفاء هذا الطراز."
+    },
+
     "tabs": {
       "stt": "الكلام (STT)",
       "analysis": "تحليل الكلام",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "التخزين",
       "historyGroupTitle": "التاريخ",
       "filesGroupTitle": "ملفات",
+      "externalModelStorage": {
+        "enabledLabel": "مسح وحدة التخزين الخارجية للنماذج",
+        "enabledDescription": "استخدم النماذج المخزنة بالفعل على محرك أقراص متصل دون نسخها على جهاز Mac هذا. التنزيلات لا تزال تذهب إلى التخزين المحلي.",
+        "autoDetectLabel": "اكتشاف مجلدات Vox Jot تلقائيًا على محركات الأقراص المتصلة",
+        "autoDetectDescription": "يبحث عن VoxJot/app-support/models أو Apps/Models/VoxJot على وحدات التخزين المثبتة مثل /Volumes/Models.",
+        "folderTitle": "مجلد النموذج الخارجي",
+        "folderDescription": "اختر مجلدًا على SSD خارجي أو بطاقة SD أو قرص ثانوي. يقرأ Vox Jot النماذج من هذا المجلد عندما يكون محرك الأقراص متصلاً.",
+        "pathLabel": "مسار مجلد النموذج الخارجي",
+        "browse": "تصفح…",
+        "clear": "استخدم الاكتشاف التلقائي",
+        "noFolder": "لم يتم تحديد أي مجلد حتى الآن. سيستخدم الاكتشاف التلقائي محرك أقراص طراز Vox Jot متصلاً إذا تم العثور عليه.",
+        "connected": "متصل: {{volume}} (تم اكتشاف نماذج {{count}})",
+        "disconnected": "تم قطع وحدة التخزين الخارجية",
+        "unnamedVolume": "محرك خارجي"
+      },
       "previewLocalFirst": "محلي أولاً",
       "previewEnforced": "القسري",
       "previewAllowed": "مسموح",

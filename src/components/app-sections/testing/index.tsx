@@ -74,6 +74,8 @@ interface TestingRunSummary {
   suite: string;
   corpus: string;
   limitations?: string;
+  methodologyVersion?: string;
+  evidenceTier?: "legacy" | "diagnostic" | "ranked";
 }
 
 const TABS: Array<{
@@ -166,6 +168,7 @@ const TestingTabButton: React.FC<TestingTabButtonProps> = ({
   onSelect,
   tab,
 }) => {
+  const { t } = useTranslation();
   const [showHelp, setShowHelp] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipId = `model-testing-tab-help-${tab.id}`;
@@ -222,6 +225,15 @@ const TestingTabButton: React.FC<TestingTabButtonProps> = ({
           <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
             {tab.run.corpus}
           </span>
+          {tab.run.methodologyVersion ? (
+            <span className="mt-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              {t("testing.evidenceLabel", {
+                defaultValue: "{{tier}} evidence · methodology {{version}}",
+                tier: tab.run.evidenceTier ?? "unclassified",
+                version: tab.run.methodologyVersion,
+              })}
+            </span>
+          ) : null}
           {tab.run.limitations ? (
             <span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">
               {tab.run.limitations}

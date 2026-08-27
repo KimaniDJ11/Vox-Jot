@@ -66,30 +66,27 @@ pub fn init() {
         return;
     }
 
-    let guard = sentry::init((
-        dsn,
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            send_default_pii: false,
-            attach_stacktrace: true,
-            auto_session_tracking: false,
-            before_send: Some(Arc::new(|event| {
-                if CRASH_REPORTING_ENABLED.load(Ordering::SeqCst) {
-                    Some(event)
-                } else {
-                    None
-                }
-            })),
-            before_breadcrumb: Some(Arc::new(|crumb| {
-                if CRASH_REPORTING_ENABLED.load(Ordering::SeqCst) {
-                    Some(crumb)
-                } else {
-                    None
-                }
-            })),
-            ..Default::default()
-        },
-    ));
+    let mut client_options = sentry::ClientOptions::default();
+    client_options.release = sentry::release_name!();
+    client_options.send_default_pii = false;
+    client_options.attach_stacktrace = true;
+    client_options.auto_session_tracking = false;
+    client_options.before_send = Some(Arc::new(|event| {
+        if CRASH_REPORTING_ENABLED.load(Ordering::SeqCst) {
+            Some(event)
+        } else {
+            None
+        }
+    }));
+    client_options.before_breadcrumb = Some(Arc::new(|crumb| {
+        if CRASH_REPORTING_ENABLED.load(Ordering::SeqCst) {
+            Some(crumb)
+        } else {
+            None
+        }
+    }));
+
+    let guard = sentry::init((dsn, client_options));
 
     if SENTRY_GUARD.set(guard).is_err() {
         log::warn!("Sentry init called twice; second call ignored");

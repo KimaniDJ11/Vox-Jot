@@ -1,6 +1,7 @@
 fn main() {
     println!("cargo:rerun-if-env-changed=SENTRY_DSN");
     println!("cargo:rerun-if-env-changed=VOX_JOT_DISTRIBUTION");
+    println!("cargo:rerun-if-env-changed=DEVELOPER_DIR");
     println!("cargo:rustc-check-cfg=cfg(vox_jot_app_store)");
 
     if std::env::var("VOX_JOT_DISTRIBUTION")
@@ -180,6 +181,23 @@ fn build_apple_intelligence_bridge() {
     .expect("SDK path is not valid UTF-8")
     .trim()
     .to_string();
+    let clang_resource_dir = String::from_utf8(
+        Command::new("xcrun")
+            .args(["clang", "-print-resource-dir"])
+            .output()
+            .expect("Failed to locate the active Clang resource directory")
+            .stdout,
+    )
+    .expect("Clang resource path is not valid UTF-8")
+    .trim()
+    .to_string();
+    let clang_runtime_lib = Path::new(&clang_resource_dir).join("lib/darwin");
+    if !clang_runtime_lib.is_dir() {
+        panic!(
+            "Active Clang runtime directory is missing: {}",
+            clang_runtime_lib.display()
+        );
+    }
 
     // Check if the SDK supports FoundationModels (required for Apple Intelligence)
     let framework_path =
@@ -334,6 +352,10 @@ fn build_apple_intelligence_bridge() {
         toolchain_swift_lib.display()
     );
     println!("cargo:rustc-link-search=native={}", sdk_swift_lib.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        clang_runtime_lib.display()
+    );
     println!("cargo:rustc-link-lib=framework=Foundation");
     println!("cargo:rustc-link-lib=framework=AppKit");
     println!("cargo:rustc-link-lib=framework=Vision");

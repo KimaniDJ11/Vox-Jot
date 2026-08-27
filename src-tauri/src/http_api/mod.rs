@@ -1151,7 +1151,10 @@ fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
             "/v1/settings/command",
             "TTS preference settings synchronize related voice/provider fields or clamp values.",
         )),
-        "speech_runtime_path" | "tts_model_store_path" => Some((
+        "speech_runtime_path" | "tts_model_store_path"
+        | "external_model_storage_enabled"
+        | "external_model_storage_auto_detect"
+        | "external_model_storage_path" => Some((
             "/v1/settings/command",
             "Runtime path settings are trimmed and normalized before saving.",
         )),
@@ -1512,6 +1515,27 @@ fn apply_settings_command(
             setting_optional_string(&value, key)?,
         )
         .map(|_| vec![key.to_string()]),
+        "external_model_storage_enabled" => {
+            crate::shortcut::change_external_model_storage_enabled_setting(
+                app.clone(),
+                setting_bool(&value, key)?,
+            )
+            .map(|_| vec![key.to_string()])
+        }
+        "external_model_storage_auto_detect" => {
+            crate::shortcut::change_external_model_storage_auto_detect_setting(
+                app.clone(),
+                setting_bool(&value, key)?,
+            )
+            .map(|_| vec![key.to_string()])
+        }
+        "external_model_storage_path" => {
+            crate::shortcut::change_external_model_storage_path_setting(
+                app.clone(),
+                setting_optional_string(&value, key)?,
+            )
+            .map(|_| vec![key.to_string()])
+        }
         "tts_engine_preference" => crate::shortcut::change_tts_engine_preference_setting(
             app.clone(),
             setting_string(&value, key)?,

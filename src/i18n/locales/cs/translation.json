@@ -1706,7 +1706,11 @@
     "loadDirectory": "Chyba při načítání adresáře: {{error}}",
     "recordingFailed": "Nepodařilo se spustit nahrávání: {{error}}",
     "modelLoadFailed": "Nepodařilo se načíst model: {{model}}",
-    "modelLoadFailedUnknown": "neznámý model"
+    "modelLoadFailedUnknown": "neznámý model",
+    "externalStorageFallback": "Externí disk \"{{volume}}\" je odpojen. Přešel na místní model.",
+    "externalStorageFallbackUnnamed": "Externí úložiště je odpojeno. Přešel na místní model.",
+    "externalStorageDisconnected": "Externí disk \"{{volume}}\" je odpojen. Znovu připojte disk nebo si stáhněte místní model pro offline diktování.",
+    "externalStorageDisconnectedUnnamed": "Externí úložiště je odpojeno. Znovu připojte disk nebo si stáhněte místní model pro offline diktování."
   },
   "appLanguage": {
     "title": "Jazyk aplikace",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Hledat modely podle názvu, jazyka nebo poskytovatele...",
       "ariaLabel": "Hledat modely"
     },
+    "storageLocation": {
+      "local": "Interní SSD",
+      "localDetail": "Staženo na tomto Macu a dostupné bez externího disku.",
+      "external": "Externí disk",
+      "externalDetail": "Připraveno na připojeném externím disku. Pokud tento model zmizí, znovu připojte disk."
+    },
+
     "tabs": {
       "stt": "Řeč (STT)",
       "analysis": "Analýza řeči",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Skladování",
       "historyGroupTitle": "Historie",
       "filesGroupTitle": "Soubory",
+      "externalModelStorage": {
+        "enabledLabel": "Vyhledejte modely v externím úložišti",
+        "enabledDescription": "Používejte modely již uložené na připojeném disku, aniž byste je kopírovali do tohoto Macu. Stažené soubory jsou stále přesunuty do místního úložiště.",
+        "autoDetectLabel": "Automaticky detekovat složky Vox Jot na připojených discích",
+        "autoDetectDescription": "Vyhledá VoxJot/app-support/models nebo Apps/Models/VoxJot na připojených svazcích, jako je /Volumes/Models.",
+        "folderTitle": "Externí složka modelu",
+        "folderDescription": "Vyberte složku na externím SSD, SD kartě nebo sekundárním disku. Vox Jot čte modely z této složky, když je disk připojen.",
+        "pathLabel": "Cesta ke složce externího modelu",
+        "browse": "Prohlížet…",
+        "clear": "Použijte automatickou detekci",
+        "noFolder": "Zatím není vybrána žádná složka. Automatická detekce použije připojenou jednotku modelu Vox Jot, pokud ji najde.",
+        "connected": "Připojeno: {{volume}} (zjištěny modely {{count}})",
+        "disconnected": "Externí úložiště je odpojeno",
+        "unnamedVolume": "Externí disk"
+      },
       "previewLocalFirst": "Místní-první",
       "previewEnforced": "Vynuceno",
       "previewAllowed": "Povoleno",

@@ -563,19 +563,29 @@ fn emit_demucs_download_progress(
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn demucs_runtime_dir(app: &AppHandle) -> Option<PathBuf> {
-    crate::storage_paths::audio_cleanup_models_dir(app)
+    let local = crate::storage_paths::audio_cleanup_models_dir(app)
         .ok()
-        .map(|root| root.join("runtime"))
+        .map(|root| root.join("runtime"))?;
+    Some(
+        crate::external_model_storage::resolve_existing(&local)
+            .map(|(path, _)| path)
+            .unwrap_or(local),
+    )
 }
 
 fn demucs_weights_root(app: &AppHandle) -> Option<PathBuf> {
-    crate::storage_paths::audio_cleanup_models_dir(app)
+    let local = crate::storage_paths::audio_cleanup_models_dir(app)
         .ok()
         .map(|root| {
             root.join("MLX")
                 .join("mlx-community")
                 .join("demucs-mlx-fp16")
-        })
+        })?;
+    Some(
+        crate::external_model_storage::resolve_existing(&local)
+            .map(|(path, _)| path)
+            .unwrap_or(local),
+    )
 }
 
 #[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]

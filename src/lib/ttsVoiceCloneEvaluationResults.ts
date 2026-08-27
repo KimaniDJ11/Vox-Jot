@@ -19,6 +19,8 @@ export interface TtsVoiceCloneEvaluationResult {
 }
 
 export const TTS_VOICE_CLONE_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-05-21T03:46:54Z",
   suite: "tts_voice_clone_real_world_hard",
   corpus:
@@ -31,6 +33,7 @@ export const TTS_VOICE_CLONE_EVALUATION_RUN = {
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
     "Listener preference is scaffolded in the CSV but not yet collected.",
+    "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
     "output/tts-voice-clone-eval/app-full-2026-05-21-fixed-merged/tts-voice-clone-eval-summary.json",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type VoiceInfo } from "@/bindings";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import {
   getModelPlatformOverview,
   type CatalogModelDescriptor,
@@ -83,6 +84,17 @@ export function useTtsVoiceCatalog(): TtsVoiceCatalog {
       cancelled = true;
     };
   }, []);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void getModelPlatformOverview()
+      .then((overview) => setTtsModels(overview.tts.models))
+      .catch((error) => {
+        console.error(
+          "Failed to refresh TTS models after storage change:",
+          error,
+        );
+      });
+  });
 
   const availableModels = useMemo(
     () => ttsModels.filter(isDraftVoiceModelAvailable),

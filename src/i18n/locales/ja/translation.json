@@ -1706,7 +1706,11 @@
     "loadDirectory": "ディレクトリのロード中にエラーが発生しました: {{error}}",
     "recordingFailed": "記録の開始に失敗しました: {{error}}",
     "modelLoadFailed": "モデルのロードに失敗しました: {{model}}",
-    "modelLoadFailedUnknown": "不明なモデル"
+    "modelLoadFailedUnknown": "不明なモデル",
+    "externalStorageFallback": "外部ドライブ「{{volume}}」が切断されました。ローカルモデルに切り替えました。",
+    "externalStorageFallbackUnnamed": "外部ストレージが切断されました。ローカルモデルに切り替えました。",
+    "externalStorageDisconnected": "外部ドライブ「{{volume}}」が切断されました。ドライブを再接続するか、オフラインディクテーション用にローカル モデルをダウンロードします。",
+    "externalStorageDisconnectedUnnamed": "外部ストレージが切断されました。ドライブを再接続するか、オフラインディクテーション用にローカル モデルをダウンロードします。"
   },
   "appLanguage": {
     "title": "アプリケーション言語",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "名前、言語、プロバイダーでモデルを検索...",
       "ariaLabel": "モデルを検索する"
     },
+    "storageLocation": {
+      "local": "内蔵SSD",
+      "localDetail": "この Mac にダウンロードされ、外部ドライブがなくても利用できます。",
+      "external": "外付けドライブ",
+      "externalDetail": "接続された外付けドライブで準備が完了しました。このモデルが表示されなくなった場合は、ドライブを再接続します。"
+    },
+
     "tabs": {
       "stt": "スピーチ (STT)",
       "analysis": "音声分析",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "ストレージ",
       "historyGroupTitle": "歴史",
       "filesGroupTitle": "ファイル",
+      "externalModelStorage": {
+        "enabledLabel": "モデルの外部ストレージをスキャンする",
+        "enabledDescription": "接続されたドライブにすでに保存されているモデルを、この Mac にコピーせずに使用します。ダウンロードは引き続きローカル ストレージに保存されます。",
+        "autoDetectLabel": "接続されたドライブ上の Vox Jot フォルダーを自動検出します",
+        "autoDetectDescription": "/Volumes/Models などのマウントされたボリュームで VoxJot/app-support/models または Apps/Models/VoxJot を探します。",
+        "folderTitle": "外部モデルフォルダー",
+        "folderDescription": "外付け SSD、SD カード、またはセカンダリ ディスク上のフォルダーを選択します。 Vox Jot は、ドライブが接続されているときにそのフォルダーからモデルを読み取ります。",
+        "pathLabel": "外部モデルフォルダーのパス",
+        "browse": "ブラウズ…",
+        "clear": "自動検出を使用する",
+        "noFolder": "まだフォルダーが選択されていません。自動検出では、接続されている Vox Jot モデルのドライブが見つかった場合、それが使用されます。",
+        "connected": "接続中: {{volume}} ({{count}} モデルが検出されました)",
+        "disconnected": "外部ストレージが切断されました",
+        "unnamedVolume": "外付けドライブ"
+      },
       "previewLocalFirst": "地元第一主義",
       "previewEnforced": "強制",
       "previewAllowed": "許可される",

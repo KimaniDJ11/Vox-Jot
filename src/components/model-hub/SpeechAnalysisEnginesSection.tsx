@@ -31,6 +31,7 @@ import {
   inferRuntimeFormat,
   mergeSizeWithIdentityChips,
 } from "@/components/model-hub/modelIdentityChips";
+import { storageLocationChip } from "@/components/model-hub/storageLocationChip";
 import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
 import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
@@ -54,6 +55,7 @@ import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import {
   DEFAULT_MODEL_SORT_OPTIONS,
   orderModelList,
@@ -272,6 +274,10 @@ const SpeechAnalysisEnginesSection: React.FC<
     void loadCatalog();
     void loadHfTokenStatus();
   }, [loadCatalog, loadHfTokenStatus]);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void loadCatalog();
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -1342,6 +1348,11 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                       : null;
                   const capabilityChips: CompactBadgeItem[] = [
                     ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+                    storageLocationChip(
+                      t,
+                      model.installed,
+                      model.storage_location,
+                    ),
                     model.gated
                       ? {
                           id: "capability-gated",
@@ -1415,7 +1426,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                             )}
                           </ActionIconButton>
                         ) : null}
-                        {model.downloadable && model.installed ? (
+                        {model.downloadable &&
+                        model.installed &&
+                        model.storage_location !== "external" ? (
                           <ActionIconButton
                             tone="danger"
                             disabled={Boolean(busyModelId) && !isBusy}

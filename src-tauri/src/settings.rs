@@ -698,6 +698,12 @@ pub struct AppSettings {
     pub speech_runtime_path: Option<String>,
     #[serde(default)]
     pub tts_model_store_path: Option<String>,
+    #[serde(default = "default_external_model_storage_enabled")]
+    pub external_model_storage_enabled: bool,
+    #[serde(default = "default_external_model_storage_auto_detect")]
+    pub external_model_storage_auto_detect: bool,
+    #[serde(default)]
+    pub external_model_storage_path: Option<String>,
     #[serde(default)]
     pub speech_backend_override: Option<String>,
     #[serde(default = "default_audio_enhancement_enabled")]
@@ -1142,6 +1148,14 @@ fn default_post_process_enabled() -> bool {
 
 fn default_local_privacy_mode() -> bool {
     false
+}
+
+fn default_external_model_storage_enabled() -> bool {
+    false
+}
+
+fn default_external_model_storage_auto_detect() -> bool {
+    true
 }
 
 fn default_context_capture_mode() -> ContextCaptureMode {
@@ -2108,6 +2122,9 @@ pub fn get_default_settings() -> AppSettings {
         tts_stop_on_record: default_tts_stop_on_record(),
         speech_runtime_path: None,
         tts_model_store_path: None,
+        external_model_storage_enabled: default_external_model_storage_enabled(),
+        external_model_storage_auto_detect: default_external_model_storage_auto_detect(),
+        external_model_storage_path: None,
         speech_backend_override: None,
         audio_enhancement_enabled: default_audio_enhancement_enabled(),
         audio_enhancement_model: default_audio_enhancement_model(),

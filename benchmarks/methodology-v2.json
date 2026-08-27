@@ -1,0 +1,231 @@
+{
+  "$schema": "./methodology-v2.schema.json",
+  "methodologyVersion": "2.0.0",
+  "name": "Vox Jot On-Device Model Benchmark",
+  "warmupRuns": 1,
+  "measuredRuns": 3,
+  "percentiles": [50, 95],
+  "rankingPolicy": {
+    "fullSuiteOnly": true,
+    "requireInstalledAppPath": true,
+    "missingRequiredMetric": "unranked",
+    "failedRequiredCase": "unranked",
+    "externalMetricsAffectRank": false,
+    "aggregatePolicy": "publish domain metrics and a declared weighted aggregate",
+    "legacyResults": "preserve but label with their original methodology version"
+  },
+  "systemProfile": {
+    "required": [
+      "gitCommit",
+      "appVersion",
+      "osVersion",
+      "machineModel",
+      "chip",
+      "memoryBytes",
+      "powerSource",
+      "thermalState",
+      "runtime",
+      "modelRevision",
+      "modelPrecision",
+      "hardwarePath"
+    ],
+    "performanceMetrics": [
+      "latencyP50Ms",
+      "latencyP95Ms",
+      "peakProcessTreeRssBytes"
+    ]
+  },
+  "suites": [
+    {
+      "id": "live-stt",
+      "runner": "scripts/run-stt-app-api-eval.py",
+      "primaryMetric": "weightedWer",
+      "requiredMetrics": [
+        "microWer",
+        "weightedWer",
+        "normalizedMatchRate",
+        "latencyP50Ms",
+        "latencyP95Ms",
+        "realTimeFactorP50",
+        "speedFactorP50"
+      ],
+      "domains": [
+        "clean-read-speech",
+        "casual-dictation",
+        "noise-and-far-field",
+        "numbers-names-and-technical",
+        "accent-and-language"
+      ],
+      "rankedGate": "Every declared base domain is present; post-processing is disabled; no case limit; app selection matches the reported canonical model ID."
+    },
+    {
+      "id": "file-asr",
+      "runner": "scripts/run-file-asr-model-eval.ts",
+      "primaryMetric": "weightedWer",
+      "requiredMetrics": [
+        "microWer",
+        "longFormWer",
+        "formatSuccessRate",
+        "latencyP50Ms",
+        "realTimeFactorP50",
+        "speedFactorP50"
+      ],
+      "domains": [
+        "short-format-coverage",
+        "meeting-long-form",
+        "technical-long-form",
+        "multilingual-long-form"
+      ],
+      "rankedGate": "Full committed manifest, all formats, and all long-form domains complete without a single-file override."
+    },
+    {
+      "id": "speaker-isolation",
+      "runner": "scripts/run-speaker-isolation-eval.py",
+      "primaryMetric": "diarizationErrorRate",
+      "requiredMetrics": [
+        "diarizationErrorRate",
+        "jaccardErrorRate",
+        "speakerCountError",
+        "latencyP50Ms",
+        "realTimeFactorP50"
+      ],
+      "domains": [
+        "two-speaker-clean",
+        "four-speaker-clean",
+        "overlapping-speech",
+        "noise-and-far-field"
+      ],
+      "rankedGate": "All fixtures use one-to-one optimal speaker mapping and no oracle speaker count."
+    },
+    {
+      "id": "screen-ocr",
+      "runner": "scripts/run-screen-ocr-eval.swift",
+      "primaryMetric": "characterErrorRate",
+      "requiredMetrics": [
+        "characterErrorRate",
+        "wordErrorRate",
+        "requiredPhraseRecall",
+        "readingOrderScore",
+        "latencyP50Ms"
+      ],
+      "domains": [
+        "app-ui",
+        "document",
+        "code",
+        "dense-table",
+        "low-contrast",
+        "rotated-and-scaled",
+        "multilingual"
+      ],
+      "rankedGate": "Every base fixture is rendered and scored from exact reference text; phrase recall alone cannot rank a model."
+    },
+    {
+      "id": "refine-llm",
+      "runner": "scripts/eval-post-process.ts",
+      "primaryMetric": "passRate",
+      "requiredMetrics": [
+        "passRate",
+        "exactMatchRate",
+        "zeroDriftPurity",
+        "fallbackRate",
+        "latencyP50Ms",
+        "latencyP95Ms",
+        "outputTokensPerSecond"
+      ],
+      "domains": [
+        "corrections",
+        "disfluency",
+        "formatting",
+        "lists",
+        "numbers-and-names",
+        "code-and-symbols",
+        "passthrough",
+        "adversarial-non-speech"
+      ],
+      "rankedGate": "Temperature is zero, prompt profile and model revision are locked, every case completes, and direct model drift is reported separately from safety fallback output."
+    },
+    {
+      "id": "tts",
+      "runner": "scripts/run-tts-model-eval.py",
+      "primaryMetric": "intelligibilityAndPreference",
+      "requiredMetrics": [
+        "successRate",
+        "asrRoundTripWer",
+        "audioHealth",
+        "latencyP50Ms",
+        "realTimeFactorP50",
+        "speedFactorP50"
+      ],
+      "domains": [
+        "casual",
+        "long-readback",
+        "code-and-symbols",
+        "numbers-and-dates",
+        "multilingual"
+      ],
+      "rankedGate": "Installed-app canonical provider/model path, all cases, ASR judge enabled, no reused audio, and representative provider voices where available."
+    },
+    {
+      "id": "tts-style",
+      "runner": "scripts/run-tts-model-eval.py",
+      "primaryMetric": "blindListenerPreference",
+      "requiredMetrics": [
+        "blindListenerPreference",
+        "styleAlignment",
+        "asrRoundTripWer",
+        "latencyP50Ms"
+      ],
+      "domains": ["neutral", "warm", "excited", "calm", "urgent", "empathetic"],
+      "rankedGate": "Automatic prosody is diagnostic; a randomized blind listener panel is required for a v2 ranked style row."
+    },
+    {
+      "id": "tts-voice-clone",
+      "runner": "scripts/run-tts-model-eval.py",
+      "primaryMetric": "speakerEmbeddingCosine",
+      "requiredMetrics": [
+        "speakerEmbeddingCosine",
+        "asrRoundTripWer",
+        "blindSpeakerPreference",
+        "latencyP50Ms"
+      ],
+      "domains": ["casual", "meeting", "technical", "correction"],
+      "rankedGate": "The same consented reference voices are used; CAM++ or an explicitly versioned speaker encoder scores cosine similarity; acoustic fingerprints cannot rank."
+    },
+    {
+      "id": "creative-audio",
+      "runner": "scripts/run-creative-audio-model-eval.ts",
+      "primaryMetric": "promptAdherence",
+      "requiredMetrics": [
+        "promptAdherence",
+        "successRate",
+        "durationAccuracy",
+        "audioHealth",
+        "latencyP50Ms",
+        "realTimeFactorP50"
+      ],
+      "domains": [
+        "sound-effects",
+        "ambience",
+        "music",
+        "song",
+        "symbolic-composition"
+      ],
+      "rankedGate": "Installed-app path and every supported base case complete; versioned CLAP prompt adherence is required; listening results remain separate."
+    }
+  ],
+  "externalContext": {
+    "allowed": [
+      "source name",
+      "source URL",
+      "retrieved date",
+      "published methodology version",
+      "published metric",
+      "coverage caveat"
+    ],
+    "prohibited": [
+      "mixing an external Elo or vendor score into a Vox Jot local rank",
+      "presenting cloud latency as installed-app latency",
+      "benchmarking a provider when its terms prohibit the evaluation"
+    ]
+  }
+}

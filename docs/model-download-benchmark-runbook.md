@@ -20,11 +20,15 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
 
 ## Benchmark Rules
 
+- Methodology v2 is defined in `docs/benchmark-methodology-v2.md` and enforced by `benchmarks/methodology-v2.json`; run `bun run eval:methodology:validate` before benchmark work.
+- Every new report must declare its methodology version and evidence tier. Never mix legacy, diagnostic, extended, and v2 ranked rows in one rank order.
+- Refresh `src/lib/ttsExternalBenchmarkContext.ts` only from an exact Artificial Analysis model-family match; retain the retrieval date, leaderboard kind, source URLs, appearances, and local-runtime caveat. External Elo never changes the local score or rank.
+- Ranked performance requires one warm-up, at least three measured runs, p50/p95 latency, speed factor alongside raw RTF, and the required system/model/runtime provenance.
 - Ranked Testing view rows must come from the full suite for that tab.
 - TTS, TTS Style, and Voice Cloning ranked rows require the full `scripts/run-tts-model-eval.py` hard suite with ASR round-trip scoring enabled. Do not use `--case-limit` or `--no-asr-roundtrip` for ranked rows.
 - TTS models must also pass the app create-voice path before being considered usable: select the model through the app catalog, load its voice list, create or preview a draft voice preset, and confirm synthesis uses the app's native provider/model IDs rather than a Hugging Face repo alias. A benchmark-only pass is not enough.
 - Live STT ranked rows require the full STT corpus, not a smoke subset.
-- File ASR ranked rows require the full committed file-transcription sample set, not a single sample. The single-file path is a readiness smoke test only.
+- File ASR ranked rows require the v2 committed manifest with format coverage plus real long-form meeting, technical, and multilingual recordings. The historical five-format same-sentence set and single-file path are readiness diagnostics only.
 - Smoke tests are temporary readiness checks. If a model has only smoke-test coverage, run the full relevant hard suite before adding or updating Testing view metrics.
 - A model that completes the full relevant benchmark suite must always be ranked, including specialized or language-specific models. Use notes for corpus/language caveats instead of leaving full-suite results unranked.
 - Recompute ranks after inserting full benchmark results. Do not leave notes that contradict the measured score, latency, WER, or pass count.

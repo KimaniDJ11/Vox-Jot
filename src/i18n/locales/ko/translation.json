@@ -1706,7 +1706,11 @@
     "loadDirectory": "디렉터리 로드 중 오류 발생: {{error}}",
     "recordingFailed": "녹화 시작 실패: {{error}}",
     "modelLoadFailed": "모델을 로드하지 못했습니다: {{model}}",
-    "modelLoadFailedUnknown": "알 수 없는 모델"
+    "modelLoadFailedUnknown": "알 수 없는 모델",
+    "externalStorageFallback": "외부 드라이브 \"{{volume}}\"의 연결이 끊어졌습니다. 로컬 모델로 전환했습니다.",
+    "externalStorageFallbackUnnamed": "외부 저장소 연결이 끊어졌습니다. 로컬 모델로 전환했습니다.",
+    "externalStorageDisconnected": "외부 드라이브 \"{{volume}}\"의 연결이 끊어졌습니다. 오프라인 받아쓰기를 위해 드라이브를 다시 연결하거나 로컬 모델을 다운로드하세요.",
+    "externalStorageDisconnectedUnnamed": "외부 저장소 연결이 끊어졌습니다. 오프라인 받아쓰기를 위해 드라이브를 다시 연결하거나 로컬 모델을 다운로드하세요."
   },
   "appLanguage": {
     "title": "응용 언어",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "이름, 언어 또는 제공업체로 모델을 검색하세요...",
       "ariaLabel": "모델 검색"
     },
+    "storageLocation": {
+      "local": "내부 SSD",
+      "localDetail": "이 Mac에 다운로드되었으며 외장 드라이브 없이 사용할 수 있습니다.",
+      "external": "외장 드라이브",
+      "externalDetail": "연결된 외장 드라이브가 준비되었습니다. 이 모델이 사라지면 드라이브를 다시 연결하십시오."
+    },
+
     "tabs": {
       "stt": "음성(STT)",
       "analysis": "음성 분석",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "저장",
       "historyGroupTitle": "역사",
       "filesGroupTitle": "파일",
+      "externalModelStorage": {
+        "enabledLabel": "모델에 대한 외부 저장소 검색",
+        "enabledDescription": "연결된 드라이브에 이미 저장된 모델을 이 Mac에 복사하지 않고 사용하세요. 다운로드는 여전히 로컬 저장소로 이동합니다.",
+        "autoDetectLabel": "연결된 드라이브의 Vox Jot 폴더 자동 감지",
+        "autoDetectDescription": "/Volumes/Models와 같이 마운트된 볼륨에서 VoxJot/app-support/models 또는 Apps/Models/VoxJot를 찾습니다.",
+        "folderTitle": "외부 모델 폴더",
+        "folderDescription": "외부 SSD, SD 카드 또는 보조 디스크의 폴더를 선택합니다. Vox Jot는 드라이브가 연결되면 해당 폴더에서 모델을 읽습니다.",
+        "pathLabel": "외부 모델 폴더 경로",
+        "browse": "찾아보기…",
+        "clear": "자동 감지 사용",
+        "noFolder": "아직 선택한 폴더가 없습니다. 자동 감지에서는 연결된 Vox Jot 모델 드라이브가 발견되면 해당 드라이브를 사용합니다.",
+        "connected": "연결됨: {{volume}}({{count}} 모델이 감지됨)",
+        "disconnected": "외부 저장소 연결이 끊어졌습니다.",
+        "unnamedVolume": "외장 드라이브"
+      },
       "previewLocalFirst": "로컬 우선",
       "previewEnforced": "시행",
       "previewAllowed": "허용됨",

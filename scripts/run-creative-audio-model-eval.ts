@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -47,6 +47,7 @@ interface CaseResult {
   rtf?: number;
   durationAccuracy?: number;
   audioHealth?: number;
+  promptAdherence?: number;
   outputPath?: string;
   error?: string;
 }
@@ -64,16 +65,30 @@ interface ModelResult {
   realTimeFactorP50?: number;
   durationAccuracy?: number;
   audioHealth?: number;
+  promptAdherence?: number;
   notes: string;
   cases: CaseResult[];
 }
 
 interface EvalSummary {
   generatedAt: string;
+  methodologyVersion: "2.0.0";
+  evidenceTier: "ranked" | "diagnostic";
+  rankingEligible: boolean;
+  rankingBlocker?: string;
   suite: string;
   corpus: string;
   limitations: string;
   apiUrl: string;
+  promptAdherence: {
+    method: "clap_prompt_adherence_v1" | "disabled";
+    modelId?: string;
+    modelRevision?: string;
+  };
+  performanceProtocol: {
+    warmupRuns: number;
+    measuredRunsPerCase: number;
+  };
   results: ModelResult[];
 }
 
@@ -137,6 +152,10 @@ const CASES: EvalCase[] = [
 const args = new Set(process.argv.slice(2));
 const updateResults = args.has("--update-results");
 const skipDownload = args.has("--skip-download");
+const noClap = args.has("--no-clap");
+const clapModel = valueArg("--clap-model") ?? "laion/clap-htsat-unfused";
+const clapRevision =
+  valueArg("--clap-revision") ?? "8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a";
 const baseUrl =
   valueArg("--api-url") ??
   process.env.VOX_JOT_API_URL ??
@@ -148,11 +167,23 @@ const apiToken =
     : "");
 const outputRoot =
   valueArg("--output-dir") ?? "output/creative-audio-eval/app-full-latest";
+const warmupRuns = 0;
+const measuredRunsPerCase = 1;
+const performanceProtocolComplete = warmupRuns >= 1 && measuredRunsPerCase >= 3;
+
+if (updateResults && !performanceProtocolComplete) {
+  throw new Error(
+    "--update-results requires a ranking-eligible run with at least one warm-up and three measured generations per prompt.",
+  );
+}
 
 if (!apiToken) {
   throw new Error(
     "Set VOX_JOT_API_TOKEN, or set VOX_JOT_ACCEPTANCE_READ_KEYCHAIN=1 for local keychain lookup.",
   );
+}
+if (updateResults && noClap) {
+  throw new Error("--update-results requires CLAP prompt-adherence scoring.");
 }
 
 const runStarted = new Date();
@@ -213,16 +244,45 @@ for (const model of catalog.models) {
   results.push(summarizeModel(current, caseResults));
 }
 
-rankResults(results);
+if (!noClap) {
+  scorePromptAdherence(results, clapModel, clapRevision);
+  for (const result of results) {
+    const model = catalog.models.find(
+      (candidate) => candidate.id === result.modelId,
+    );
+    if (model && result.cases.length > 0) {
+      Object.assign(result, summarizeModel(model, result.cases));
+    }
+  }
+}
+
+const rankingEligible = !noClap && performanceProtocolComplete;
+const rankingBlocker = rankingEligible
+  ? undefined
+  : "The current runner records one generation per prompt; v2 ranking requires one warm-up and three measured runs plus the full system profile.";
+if (rankingEligible) rankResults(results);
 
 const summary: EvalSummary = {
   generatedAt: runStarted.toISOString(),
+  methodologyVersion: "2.0.0",
+  evidenceTier: rankingEligible ? "ranked" : "diagnostic",
+  rankingEligible,
+  rankingBlocker,
   suite: "creative_audio_real_world_app_path",
   corpus:
     "Story Studio sound-design prompts covering SFX, ambience, music beds, full-song sketches, and symbolic composition.",
   limitations:
-    "Automatic scores use app-path generation success, generated-WAV health, duration accuracy, and real-time factor. Human listening preference and semantic prompt-adherence panels are not included.",
+    "Automatic scores use app-path generation success, LAION CLAP audio-text prompt adherence, generated-WAV health, duration accuracy, and real-time factor. Blind human preference remains a separate external panel and never changes the local rank.",
   apiUrl: baseUrl,
+  promptAdherence: {
+    method: noClap ? "disabled" : "clap_prompt_adherence_v1",
+    modelId: noClap ? undefined : clapModel,
+    modelRevision: noClap ? undefined : clapRevision,
+  },
+  performanceProtocol: {
+    warmupRuns,
+    measuredRunsPerCase,
+  },
   results,
 };
 
@@ -296,14 +356,21 @@ function summarizeModel(
 ): ModelResult {
   const passedCases = cases.filter((result) => result.passed).length;
   const testedCases = cases.filter((result) => result.latencyMs !== undefined);
+  const adherenceCases = testedCases.filter(
+    (result) => result.promptAdherence !== undefined,
+  );
+  const hasRequiredAdherence =
+    testedCases.length > 0 && adherenceCases.length === testedCases.length;
   const score =
-    cases.length === 0
+    cases.length === 0 || !hasRequiredAdherence
       ? undefined
       : round1(
-          (passedCases / cases.length) * 60 +
+          average(adherenceCases.map((result) => result.promptAdherence ?? 0)) *
+            35 +
+            (passedCases / cases.length) * 35 +
             average(testedCases.map((result) => result.durationAccuracy ?? 0)) *
-              20 +
-            average(testedCases.map((result) => result.audioHealth ?? 0)) * 12 +
+              12 +
+            average(testedCases.map((result) => result.audioHealth ?? 0)) * 10 +
             average(
               testedCases.map((result) =>
                 result.rtf === undefined ? 0 : Math.max(0, 1 - result.rtf / 4),
@@ -333,12 +400,90 @@ function summarizeModel(
     audioHealth: round3(
       average(testedCases.map((result) => result.audioHealth ?? 0)),
     ),
-    notes:
-      status === "tested"
+    promptAdherence: hasRequiredAdherence
+      ? round3(
+          average(adherenceCases.map((result) => result.promptAdherence ?? 0)),
+        )
+      : undefined,
+    notes: !hasRequiredAdherence
+      ? `Creative Audio generation completed, but CLAP prompt adherence is missing; this result is diagnostic and unranked.`
+      : status === "tested"
         ? `Full installed-app Creative Audio suite passed for ${model.provider_id}/${model.id}.`
         : `Installed-app Creative Audio suite failed ${cases.length - passedCases}/${cases.length} cases.`,
     cases,
   };
+}
+
+function scorePromptAdherence(
+  results: ModelResult[],
+  modelId: string,
+  modelRevision: string,
+) {
+  const items = results.flatMap((result) =>
+    result.cases.flatMap((caseResult) => {
+      if (!caseResult.outputPath) return [];
+      const testCase = CASES.find(
+        (candidate) => candidate.id === caseResult.caseId,
+      );
+      if (!testCase) return [];
+      return [
+        {
+          id: `${result.modelId}:${caseResult.caseId}`,
+          audio_path: caseResult.outputPath,
+          prompt: testCase.prompt,
+        },
+      ];
+    }),
+  );
+  if (items.length === 0) return;
+
+  const inputPath = path.resolve(outputRoot, "clap-score-input.json");
+  writeFileSync(inputPath, JSON.stringify({ items }, null, 2));
+  const venvPython = path.resolve(".venv/bin/python");
+  const python = existsSync(venvPython) ? venvPython : "python3";
+  const scorer = path.resolve("scripts/score-audio-text-clap.py");
+  const completed = spawnSync(
+    python,
+    [
+      scorer,
+      "--input",
+      inputPath,
+      "--model",
+      modelId,
+      "--revision",
+      modelRevision,
+    ],
+    {
+      encoding: "utf8",
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: 30 * 60_000,
+    },
+  );
+  if (completed.status !== 0) {
+    throw new Error(
+      `CLAP prompt-adherence scoring failed: ${(completed.stderr || completed.stdout || completed.error?.message || "unknown error").trim()}`,
+    );
+  }
+  const payload = JSON.parse(completed.stdout) as {
+    method: string;
+    results: Array<{ id: string; score: number }>;
+  };
+  if (payload.method !== "clap_prompt_adherence_v1") {
+    throw new Error(`Unexpected CLAP scorer method: ${payload.method}`);
+  }
+  const scores = new Map(
+    payload.results.map((result) => [
+      result.id,
+      Math.max(0, Math.min(1, result.score)),
+    ]),
+  );
+  for (const result of results) {
+    for (const caseResult of result.cases) {
+      caseResult.promptAdherence = scores.get(
+        `${result.modelId}:${caseResult.caseId}`,
+      );
+    }
+  }
 }
 
 function rankResults(results: ModelResult[]) {
@@ -484,12 +629,12 @@ function renderMarkdown(summary: EvalSummary) {
     ``,
     `Generated: ${summary.generatedAt}`,
     ``,
-    `| Rank | Model | Status | Score | Pass | p50 | RTF | Notes |`,
-    `| ---: | --- | --- | ---: | ---: | ---: | ---: | --- |`,
+    `| Rank | Model | Status | Score | CLAP | Pass | p50 | Speed | Notes |`,
+    `| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |`,
   ];
   for (const result of summary.results) {
     lines.push(
-      `| ${result.rank ?? ""} | ${result.label} | ${result.status} | ${result.score ?? ""} | ${result.passedCases ?? 0}/${result.sampleCount ?? 0} | ${result.latencyP50Ms ?? ""} | ${result.realTimeFactorP50 ?? ""} | ${result.notes.replaceAll("|", "\\|")} |`,
+      `| ${result.rank ?? ""} | ${result.label} | ${result.status} | ${result.score ?? ""} | ${result.promptAdherence ?? ""} | ${result.passedCases ?? 0}/${result.sampleCount ?? 0} | ${result.latencyP50Ms ?? ""} | ${result.realTimeFactorP50 && result.realTimeFactorP50 > 0 ? round1(1 / result.realTimeFactorP50) : ""}x | ${result.notes.replaceAll("|", "\\|")} |`,
     );
   }
   return `${lines.join("\n")}\n`;
@@ -519,12 +664,17 @@ export interface CreativeAudioEvaluationResult {
   realTimeFactorP50?: number;
   durationAccuracy?: number;
   audioHealth?: number;
+  promptAdherence?: number;
   notes: string;
 }
 
 export const CREATIVE_AUDIO_EVALUATION_RUN = ${JSON.stringify(
     {
       generatedAt: summary.generatedAt,
+      methodologyVersion: summary.methodologyVersion,
+      evidenceTier: summary.evidenceTier,
+      rankingEligible: summary.rankingEligible,
+      rankingBlocker: summary.rankingBlocker,
       suite: summary.suite,
       corpus: summary.corpus,
       limitations: summary.limitations,
@@ -533,6 +683,7 @@ export const CREATIVE_AUDIO_EVALUATION_RUN = ${JSON.stringify(
         "Score and pass: higher is better.",
         "p50 latency and RTF: lower is faster.",
         "Duration and audio health: higher is better.",
+        "CLAP prompt adherence: higher audio-text cosine similarity is better.",
       ],
       reportPath: summaryPath,
     },

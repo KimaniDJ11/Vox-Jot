@@ -56,7 +56,8 @@ STYLE_RUBRIC = {
         "latency": "Real-time factor; lower is better.",
     },
     "listener_preference": {
-        "status": "manual_ratings_not_collected",
+        "status": "required_for_v2_rank",
+        "ingestion": "--listener-ratings CSV with blind_assignment_id and unique listener_id",
         "scale": "1-5 per dimension, blind to model id when collected.",
         "dimensions": [
             "style_match",
@@ -70,13 +71,14 @@ STYLE_RUBRIC = {
 
 VOICE_CLONE_RUBRIC = {
     "automatic_proxy": {
-        "speaker_similarity": "Deterministic acoustic fingerprint similarity between the reference clip and generated WAV.",
+        "speaker_similarity": "CAM++ speaker-verification embedding cosine similarity between the reference clip and generated WAV.",
         "intelligibility": "ASR round-trip WER against the source text.",
         "audio_health": "Generated WAV duration, RMS, silence, and clipping checks.",
         "latency": "Real-time factor; lower is better.",
     },
     "listener_preference": {
-        "status": "manual_ratings_not_collected",
+        "status": "required_for_v2_rank",
+        "ingestion": "--listener-ratings CSV with blind_assignment_id and unique listener_id",
         "scale": "1-5 per dimension, blind to model id when collected.",
         "dimensions": [
             "speaker_match",
@@ -517,6 +519,33 @@ def parse_args() -> argparse.Namespace:
         "--reuse-audio",
         action="store_true",
         help="Reuse existing WAVs in --output-dir/audio instead of synthesizing again and preserve prior synthesis metrics when available",
+    )
+    parser.add_argument(
+        "--speaker-similarity-backend",
+        choices=("campplus", "acoustic_proxy", "none"),
+        default="campplus",
+        help="Voice-clone identity scorer. Ranked v2 runs require campplus; acoustic_proxy is diagnostic-only.",
+    )
+    parser.add_argument(
+        "--speaker-embedding-model",
+        default="iic/speech_campplus_sv_zh_en_16k-common_advanced",
+        help="ModelScope CAM++ speaker-verification model id",
+    )
+    parser.add_argument(
+        "--speaker-embedding-revision",
+        default="v1.0.0",
+        help="Pinned ModelScope revision for the CAM++ speaker judge",
+    )
+    parser.add_argument(
+        "--listener-ratings",
+        default="",
+        help="Completed blind-listener CSV for style or voice-clone v2 ranking",
+    )
+    parser.add_argument(
+        "--minimum-listeners",
+        type=int,
+        default=3,
+        help="Minimum unique blind listeners required for every ranked case",
     )
     parser.add_argument("--list", action="store_true", help="Print model inventory and exit")
     return parser.parse_args()
@@ -1161,7 +1190,61 @@ def similarity_from_features(reference: dict[str, Any], candidate: dict[str, Any
     return round(sum(weighted_scores) / len(weighted_scores), 4)
 
 
-def evaluate_clone_similarity(case: dict[str, Any], output_path: Path) -> dict[str, Any] | None:
+class SpeakerSimilarityScorer:
+    def __init__(self, backend: str, model_id: str, model_revision: str):
+        self.backend = backend
+        self.model_id = model_id
+        self.model_revision = model_revision
+        self.pipeline = None
+        if backend == "campplus":
+            try:
+                from modelscope.pipelines import pipeline
+                from modelscope.utils.constant import Tasks
+            except ImportError as exc:
+                raise RuntimeError(
+                    "CAM++ scoring requires ModelScope in the benchmark environment"
+                ) from exc
+            self.pipeline = pipeline(
+                task=Tasks.speaker_verification,
+                model=model_id,
+                model_revision=model_revision,
+            )
+
+    def score(self, reference_path: Path, candidate_path: Path) -> dict[str, Any]:
+        if self.backend == "none":
+            return {"error": "speaker similarity scoring disabled"}
+        if self.backend == "acoustic_proxy":
+            reference = acoustic_fingerprint(reference_path)
+            candidate = acoustic_fingerprint(candidate_path)
+            return {
+                "score": similarity_from_features(reference, candidate),
+                "method": "acoustic_fingerprint_proxy_v1_diagnostic_only",
+                "reference_features": reference,
+                "candidate_features": candidate,
+            }
+        assert self.pipeline is not None
+        result = self.pipeline([str(reference_path), str(candidate_path)])
+        raw_score = result.get("score") if isinstance(result, dict) else None
+        if isinstance(raw_score, (list, tuple)):
+            raw_score = raw_score[0] if raw_score else None
+        if raw_score is not None and hasattr(raw_score, "item"):
+            raw_score = raw_score.item()
+        if not isinstance(raw_score, (int, float)):
+            raise RuntimeError(f"CAM++ returned no numeric score: {result!r}")
+        return {
+            "score": round(max(0.0, min(1.0, float(raw_score))), 4),
+            "raw_score": float(raw_score),
+            "method": "campplus_embedding_cosine_v1",
+            "model_id": self.model_id,
+            "model_revision": self.model_revision,
+        }
+
+
+def evaluate_clone_similarity(
+    case: dict[str, Any],
+    output_path: Path,
+    scorer: SpeakerSimilarityScorer | None,
+) -> dict[str, Any] | None:
     raw_reference = case.get("clone_reference_audio")
     if not raw_reference:
         return None
@@ -1170,19 +1253,17 @@ def evaluate_clone_similarity(case: dict[str, Any], output_path: Path) -> dict[s
         reference_path = PROJECT_ROOT / reference_path
     if not reference_path.exists():
         return {"error": f"reference audio not found: {reference_path}"}
+    if scorer is None:
+        return {"error": "speaker similarity scorer unavailable"}
     try:
-        reference = acoustic_fingerprint(reference_path)
-        candidate = acoustic_fingerprint(output_path)
+        result = scorer.score(reference_path, output_path)
     except Exception as exc:
         return {"error": str(exc)}
     return {
-        "score": similarity_from_features(reference, candidate),
-        "method": "acoustic_fingerprint_proxy_v1",
+        **result,
         "reference_audio": str(reference_path.relative_to(PROJECT_ROOT))
         if reference_path.is_relative_to(PROJECT_ROOT)
         else str(reference_path),
-        "reference_features": reference,
-        "candidate_features": candidate,
     }
 
 
@@ -1432,9 +1513,17 @@ def summarize_clone_similarity(cases: list[dict[str, Any]]) -> dict[str, Any] | 
     if not values:
         return None
     return {
-        "average_proxy": round(sum(values) / len(values), 4),
+        "average_similarity": round(sum(values) / len(values), 4),
         "case_count": len(values),
-        "method": "acoustic_fingerprint_proxy_v1",
+        "method": next(
+            (
+                case["clone_similarity"].get("method")
+                for case in cases
+                if isinstance(case.get("clone_similarity"), dict)
+                and case["clone_similarity"].get("method")
+            ),
+            "unknown",
+        ),
     }
 
 
@@ -1494,11 +1583,24 @@ def score_cases(
         ]
         style_component = sum(style_values) / len(style_values) if style_values else 0.0
         style_component *= style_capability_weight(capability)
+        listener_values = [
+            case["listener_preference"]["overall_preference_normalized"]
+            for case in tested
+            if isinstance(case.get("listener_preference"), dict)
+            and isinstance(
+                case["listener_preference"].get("overall_preference_normalized"),
+                (int, float),
+            )
+        ]
+        listener_component = (
+            sum(listener_values) / len(listener_values) if listener_values else 0.0
+        )
         score = 100.0 * (
-            0.30 * style_component
-            + 0.25 * asr_component
-            + 0.20 * audio_component
-            + 0.15 * success
+            0.25 * listener_component
+            + 0.20 * style_component
+            + 0.20 * asr_component
+            + 0.15 * audio_component
+            + 0.10 * success
             + 0.10 * latency_component
         )
     elif suite == "voice_clone":
@@ -1510,11 +1612,24 @@ def score_cases(
         ]
         clone_component = sum(clone_values) / len(clone_values) if clone_values else 0.0
         clone_component *= clone_weight
+        listener_values = [
+            case["listener_preference"]["overall_preference_normalized"]
+            for case in tested
+            if isinstance(case.get("listener_preference"), dict)
+            and isinstance(
+                case["listener_preference"].get("overall_preference_normalized"),
+                (int, float),
+            )
+        ]
+        listener_component = (
+            sum(listener_values) / len(listener_values) if listener_values else 0.0
+        )
         score = 100.0 * (
-            0.30 * clone_component
-            + 0.25 * asr_component
-            + 0.20 * audio_component
-            + 0.15 * success
+            0.25 * clone_component
+            + 0.20 * listener_component
+            + 0.20 * asr_component
+            + 0.15 * audio_component
+            + 0.10 * success
             + 0.10 * latency_component
         )
     else:
@@ -1649,6 +1764,7 @@ def run_model(
     baseline_cases: BaselineCases,
     suite: str,
     app_api: AppApiConfig | None,
+    speaker_scorer: SpeakerSimilarityScorer | None,
 ) -> dict[str, Any]:
     if model.unavailable_reason:
         return {
@@ -1721,6 +1837,7 @@ def run_model(
         real_time_factor = (
             baseline_case.get("real_time_factor") if reuse_audio and baseline_case else round(elapsed / duration, 3) if duration else None
         )
+        speed_factor = round(1.0 / real_time_factor, 3) if real_time_factor and real_time_factor > 0 else None
         if audio_error:
             case_results.append(
                 {
@@ -1730,6 +1847,7 @@ def run_model(
                     "status": "failed",
                     "latency_ms": latency_ms,
                     "real_time_factor": real_time_factor,
+                    "speed_factor": speed_factor,
                     "audio": metrics,
                     "error": audio_error,
                     "output_path": str(final_path.relative_to(PROJECT_ROOT)),
@@ -1737,7 +1855,11 @@ def run_model(
             )
             continue
         style_alignment = evaluate_style_alignment(case, metrics) if suite == "style" else None
-        clone_similarity = evaluate_clone_similarity(case, final_path) if suite == "voice_clone" else None
+        clone_similarity = (
+            evaluate_clone_similarity(case, final_path, speaker_scorer)
+            if suite == "voice_clone"
+            else None
+        )
         asr_roundtrip = None
         if asr_judge is not None:
             try:
@@ -1756,6 +1878,7 @@ def run_model(
                 "status": "tested",
                 "latency_ms": latency_ms,
                 "real_time_factor": real_time_factor,
+                "speed_factor": speed_factor,
                 "audio": metrics,
                 "style_alignment": style_alignment,
                 "clone_similarity": clone_similarity,
@@ -1774,7 +1897,12 @@ def run_model(
         capability=capability,
         clone_weight=clone_weight,
     )
-    status = "tested" if any(case["status"] == "tested" for case in case_results) else "failed"
+    status = (
+        "tested"
+        if len(case_results) == len(cases)
+        and all(case["status"] == "tested" for case in case_results)
+        else "failed"
+    )
     return {
         "model_id": model.id,
         "label": model.label,
@@ -1857,7 +1985,7 @@ def suite_defaults(suite: str) -> tuple[list[dict[str, Any]], Path, str, str, st
             PROJECT_ROOT / "output/tts-style-eval",
             "tts-style-eval-summary.json",
             "tts_style_emotion_preference_proxy",
-            "30% style proxy, 25% ASR round-trip WER, 20% audio health, 15% synthesis success, 10% real-time factor.",
+            "25% blind listener preference, 20% automatic style alignment, 20% ASR round-trip WER, 15% audio health, 10% synthesis success, 10% speed factor.",
         )
     if suite == "voice_clone":
         return (
@@ -1865,7 +1993,7 @@ def suite_defaults(suite: str) -> tuple[list[dict[str, Any]], Path, str, str, st
             PROJECT_ROOT / "output/tts-voice-clone-eval",
             "tts-voice-clone-eval-summary.json",
             "tts_voice_clone_real_world_hard",
-            "30% speaker similarity proxy, 25% ASR round-trip WER, 20% audio health, 15% synthesis success, 10% real-time factor.",
+            "25% CAM++ speaker similarity, 20% blind listener preference, 20% ASR round-trip WER, 15% audio health, 10% synthesis success, 10% speed factor.",
         )
     return (
         CASES,
@@ -1876,12 +2004,119 @@ def suite_defaults(suite: str) -> tuple[list[dict[str, Any]], Path, str, str, st
     )
 
 
+def apply_listener_ratings(
+    results: list[dict[str, Any]],
+    ratings_path: str,
+    suite: str,
+    minimum_listeners: int,
+) -> dict[str, Any]:
+    if suite not in {"style", "voice_clone"}:
+        return {"required": False, "complete": True}
+    if not ratings_path:
+        return {
+            "required": True,
+            "complete": False,
+            "reason": "no completed blind-listener ratings CSV was provided",
+        }
+    path = Path(ratings_path).resolve()
+    if not path.exists():
+        raise SystemExit(f"Listener ratings file does not exist: {path}")
+    primary_field = (
+        "style_match_1_to_5" if suite == "style" else "speaker_match_1_to_5"
+    )
+    dimensions = [primary_field, "naturalness_1_to_5", "intelligibility_1_to_5"]
+    dimensions.extend(
+        ["listening_fatigue_1_to_5"]
+        if suite == "style"
+        else ["reference_artifacts_1_to_5"]
+    )
+    dimensions.append("overall_preference_1_to_5")
+    grouped: dict[tuple[str, str], dict[str, dict[str, float]]] = {}
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        required_fields = {
+            "listener_id",
+            "blind_assignment_id",
+            "model_id",
+            "case_id",
+            *dimensions,
+        }
+        missing_fields = required_fields - set(reader.fieldnames or [])
+        if missing_fields:
+            raise SystemExit(
+                "Listener ratings CSV is missing columns: "
+                + ", ".join(sorted(missing_fields))
+            )
+        for row_index, row in enumerate(reader, start=2):
+            listener_id = (row.get("listener_id") or "").strip()
+            blind_id = (row.get("blind_assignment_id") or "").strip()
+            model_id = (row.get("model_id") or "").strip()
+            case_id = (row.get("case_id") or "").strip()
+            if not all((listener_id, blind_id, model_id, case_id)):
+                raise SystemExit(
+                    f"Listener ratings row {row_index} has blank identity or blind-assignment fields."
+                )
+            values: dict[str, float] = {}
+            for field in dimensions:
+                try:
+                    value = float(row.get(field) or "")
+                except ValueError:
+                    raise SystemExit(
+                        f"Listener ratings row {row_index} has a non-numeric {field}."
+                    ) from None
+                if not 1.0 <= value <= 5.0:
+                    raise SystemExit(
+                        f"Listener ratings row {row_index} has {field} outside 1-5."
+                    )
+                values[field] = value
+            grouped.setdefault((model_id, case_id), {})[listener_id] = values
+
+    missing: list[str] = []
+    for result in results:
+        model_id = str(result.get("model_id") or "")
+        for case in result.get("cases", []):
+            if case.get("status") != "tested":
+                continue
+            case_id = str(case.get("case_id") or "")
+            listener_rows = list(grouped.get((model_id, case_id), {}).values())
+            if len(listener_rows) < minimum_listeners:
+                missing.append(
+                    f"{model_id}/{case_id} ({len(listener_rows)}/{minimum_listeners} listeners)"
+                )
+                continue
+            averages = {
+                field: round(
+                    sum(row[field] for row in listener_rows) / len(listener_rows),
+                    4,
+                )
+                for field in dimensions
+            }
+            case["listener_preference"] = {
+                "listener_count": len(listener_rows),
+                "blind": True,
+                "averages": averages,
+                "overall_preference_normalized": round(
+                    (averages["overall_preference_1_to_5"] - 1.0) / 4.0,
+                    4,
+                ),
+            }
+    return {
+        "required": True,
+        "complete": not missing,
+        "minimum_listeners_per_case": minimum_listeners,
+        "ratings_path": str(path),
+        "missing": missing,
+    }
+
+
 def write_listener_rating_template(output_dir: Path, results: list[dict[str, Any]]) -> None:
     template_path = output_dir / "listener-rating-template.csv"
     with template_path.open("w", newline="") as handle:
         writer = csv.DictWriter(
             handle,
             fieldnames=[
+                "listener_id",
+                "blind_assignment_id",
                 "model_id",
                 "case_id",
                 "target_style",
@@ -1901,6 +2136,8 @@ def write_listener_rating_template(output_dir: Path, results: list[dict[str, Any
                     continue
                 writer.writerow(
                     {
+                        "listener_id": "",
+                        "blind_assignment_id": "",
                         "model_id": result.get("model_id"),
                         "case_id": case.get("case_id"),
                         "target_style": case.get("target_style"),
@@ -1921,6 +2158,8 @@ def write_voice_clone_rating_template(output_dir: Path, results: list[dict[str, 
         writer = csv.DictWriter(
             handle,
             fieldnames=[
+                "listener_id",
+                "blind_assignment_id",
                 "model_id",
                 "case_id",
                 "reference_audio_path",
@@ -1940,6 +2179,8 @@ def write_voice_clone_rating_template(output_dir: Path, results: list[dict[str, 
                     continue
                 writer.writerow(
                     {
+                        "listener_id": "",
+                        "blind_assignment_id": "",
                         "model_id": result.get("model_id"),
                         "case_id": case.get("case_id"),
                         "reference_audio_path": case.get("clone_reference_audio"),
@@ -1964,6 +2205,8 @@ def print_inventory(models: list[ModelSpec]) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.minimum_listeners < 1:
+        raise SystemExit("--minimum-listeners must be at least 1")
     models = selected_models(args.models, args.include_disabled, args.suite)
     if args.list:
         print_inventory(models)
@@ -1978,6 +2221,23 @@ def main() -> int:
     if not args.no_asr_roundtrip:
         print(f"Loading ASR round-trip judge: {args.asr_model}", flush=True)
         asr_judge = AsrRoundTripJudge(args.asr_model)
+    speaker_scorer = None
+    if args.suite == "voice_clone" and args.speaker_similarity_backend != "none":
+        if args.speaker_similarity_backend == "acoustic_proxy":
+            print(
+                "WARNING: acoustic_proxy is diagnostic-only and cannot support a v2 ranked result.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"Loading CAM++ speaker judge: {args.speaker_embedding_model}",
+                flush=True,
+            )
+        speaker_scorer = SpeakerSimilarityScorer(
+            args.speaker_similarity_backend,
+            args.speaker_embedding_model,
+            args.speaker_embedding_revision,
+        )
     app_api = None
     if args.use_app_api:
         if not args.app_api_token.strip():
@@ -2003,11 +2263,74 @@ def main() -> int:
                 baseline_cases,
                 args.suite,
                 app_api,
+                speaker_scorer,
             )
         )
 
+    listener_rating_status = apply_listener_ratings(
+        results,
+        args.listener_ratings,
+        args.suite,
+        args.minimum_listeners,
+    )
+    model_by_id = {model.id: model for model in models}
+    for result in results:
+        model = model_by_id.get(str(result.get("model_id") or ""))
+        if model is None or not result.get("cases"):
+            continue
+        result["score"] = score_cases(
+            result["cases"],
+            suite=args.suite,
+            capability=style_capability(model),
+            clone_weight=clone_capability_weight(model),
+        )
+
+    performance_protocol = {
+        "warmup_runs_per_model": 0,
+        "measured_runs_per_case": 1,
+        "system_profile_complete": False,
+    }
+    performance_protocol_complete = (
+        performance_protocol["warmup_runs_per_model"] >= 1
+        and performance_protocol["measured_runs_per_case"] >= 3
+        and performance_protocol["system_profile_complete"] is True
+    )
+    ranking_blockers = []
+    if args.case_limit != 0:
+        ranking_blockers.append("A case limit was applied; ranked runs require the full suite.")
+    if args.no_asr_roundtrip:
+        ranking_blockers.append("ASR round-trip scoring was disabled.")
+    if not args.use_app_api:
+        ranking_blockers.append("Synthesis did not use the installed-app local API path.")
+    if args.reuse_audio:
+        ranking_blockers.append("Generated audio was reused instead of synthesized for this run.")
+    if not performance_protocol_complete:
+        ranking_blockers.append(
+            "The current TTS runner performs one measured synthesis per case without a warm-up or complete system profile; methodology v2 requires one warm-up, three measured runs, and the full system profile."
+        )
+    if listener_rating_status.get("complete") is not True:
+        ranking_blockers.append(
+            str(
+                listener_rating_status.get("reason")
+                or "The required blind-listener panel is incomplete."
+            )
+        )
+    if (
+        args.suite == "voice_clone"
+        and args.speaker_similarity_backend != "campplus"
+    ):
+        ranking_blockers.append(
+            "Voice-clone ranking requires the pinned CAM++ speaker-verification judge."
+        )
+    ranking_eligible = not ranking_blockers
     ranked = sorted(
-        [result for result in results if result.get("score") is not None],
+        [
+            result
+            for result in results
+            if ranking_eligible
+            and result.get("status") == "tested"
+            and result.get("score") is not None
+        ],
         key=lambda result: result["score"],
         reverse=True,
     )
@@ -2017,6 +2340,8 @@ def main() -> int:
     summary = {
         "run": {
             "suite": suite_name,
+            "methodology_version": "2.0.0",
+            "evidence_tier": "ranked" if ranking_eligible else "diagnostic",
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "host": platform.platform(),
             "cases": [case["id"] for case in cases],
@@ -2028,13 +2353,42 @@ def main() -> int:
             },
             "synthesis_path": "app_local_api" if app_api else "runner_runtime",
             "app_api_url": args.app_api_url if app_api else None,
+            "performance_protocol": performance_protocol,
+            "ranking_blockers": ranking_blockers,
             "style_rubric": STYLE_RUBRIC if args.suite == "style" else None,
             "voice_clone_rubric": VOICE_CLONE_RUBRIC if args.suite == "voice_clone" else None,
+            "speaker_similarity": (
+                {
+                    "backend": args.speaker_similarity_backend,
+                    "model_id": args.speaker_embedding_model
+                    if args.speaker_similarity_backend == "campplus"
+                    else None,
+                    "model_revision": args.speaker_embedding_revision
+                    if args.speaker_similarity_backend == "campplus"
+                    else None,
+                    "metric": "campplus_embedding_cosine_v1"
+                    if args.speaker_similarity_backend == "campplus"
+                    else "diagnostic_only",
+                }
+                if args.suite == "voice_clone"
+                else None
+            ),
+            "listener_ratings": listener_rating_status,
             "score_formula": score_formula,
             "notes": (
-                "Generated audio is stored under output/tts-style-eval/audio. Scoring combines a heuristic style-alignment proxy, ASR round-trip WER, audio health, success, and real-time factor. Human listener preference ratings are not collected by this automatic runner."
+                "Generated audio is stored under output/tts-style-eval/audio. Scoring combines blind listener preference, automatic style alignment, ASR round-trip WER, audio health, success, and speed. "
+                + (
+                    "The required blind listener panel is complete."
+                    if listener_rating_status.get("complete")
+                    else "The blind listener panel is incomplete, so the run is diagnostic and unranked."
+                )
                 if args.suite == "style"
-                else "Generated audio is stored under output/tts-voice-clone-eval/audio. Scoring combines a deterministic speaker-similarity proxy against the reference clip, ASR round-trip WER, audio health, success, and real-time factor. Human clone preference ratings are scaffolded but not collected by this automatic runner."
+                else "Generated audio is stored under output/tts-voice-clone-eval/audio. Scoring combines CAM++ speaker-verification similarity, blind speaker preference, ASR round-trip WER, audio health, success, and speed. "
+                + (
+                    "The required blind listener panel is complete."
+                    if listener_rating_status.get("complete")
+                    else "The blind listener panel is incomplete, so the run is diagnostic and unranked."
+                )
                 if args.suite == "voice_clone"
                 else "Generated audio is stored under output/tts-model-eval/audio. Scoring combines synthesis success, ASR round-trip WER, real-time factor, and WAV health checks. Reused-audio runs preserve prior synthesis latency when a baseline summary exists."
             ),

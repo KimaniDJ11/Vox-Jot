@@ -21,6 +21,8 @@ export interface TtsStyleEvaluationResult {
 }
 
 export const TTS_STYLE_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-05-21T03:46:54Z",
   suite: "tts_style_emotion_preference_proxy",
   corpus:
@@ -33,6 +35,7 @@ export const TTS_STYLE_EVALUATION_RUN = {
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
     "Control shows how directly the model accepts style instructions.",
+    "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
     "output/tts-style-eval/app-full-2026-05-21-fixed-merged/tts-style-eval-summary.json",

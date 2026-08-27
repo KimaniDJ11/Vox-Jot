@@ -21,6 +21,8 @@ export interface SpeakerIsolationEvaluationResult {
 }
 
 export const SPEAKER_ISOLATION_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-05-12T17:55:30Z",
   suite: "Speaker isolation real-speech turn benchmark",
   corpus:

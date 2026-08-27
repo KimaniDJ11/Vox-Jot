@@ -32,6 +32,7 @@ import type {
   TtsVoiceCloneEvaluationResult,
   TtsVoiceCloneEvaluationStatus,
 } from "@/lib/ttsVoiceCloneEvaluationResults";
+import { getTtsExternalBenchmarkContext } from "@/lib/ttsExternalBenchmarkContext";
 import type { LeaderboardRowProps } from "@/components/app-sections/testing/types";
 import type {
   CreativeAudioEvaluationResult,
@@ -91,6 +92,47 @@ export function formatNumber(value?: number): string {
   return value.toFixed(2);
 }
 
+export function formatSpeedFactor(realTimeFactor?: number): string {
+  if (
+    realTimeFactor === undefined ||
+    !Number.isFinite(realTimeFactor) ||
+    realTimeFactor <= 0
+  ) {
+    return "n/a";
+  }
+
+  const speed = 1 / realTimeFactor;
+  const speedText =
+    speed >= 100
+      ? speed.toFixed(0)
+      : speed >= 10
+        ? speed.toFixed(1)
+        : speed.toFixed(2);
+  return `${speedText}× (RTF ${realTimeFactor.toFixed(2)})`;
+}
+
+function externalTtsEloMetric(modelId: string, t: TFunction) {
+  const context = getTtsExternalBenchmarkContext(modelId);
+  return context
+    ? [
+        {
+          label: t("testing.metrics.externalElo", {
+            defaultValue: "AA Elo (external)",
+          }),
+          value: `${Math.round(context.elo)} (#${context.globalRank})`,
+        },
+      ]
+    : [];
+}
+
+function notesWithExternalTtsContext(notes: string, modelId: string): string {
+  const context = getTtsExternalBenchmarkContext(modelId);
+  if (!context) return notes;
+
+  const externalNote = `External context — ${context.source} ${context.leaderboard} leaderboard, retrieved ${context.retrievedAt}: Elo ${context.elo.toFixed(2)}, global rank #${context.globalRank}, ${context.appearances.toLocaleString("en-US")} samples. ${context.caveat}`;
+  return notes ? `${notes} ${externalNote}` : externalNote;
+}
+
 function categoryFooter(
   strongestCategory: string | undefined,
   weakestCategory: string | undefined,
@@ -142,8 +184,8 @@ export function buildFileAsrRow(
               value: formatMs(result.latencyMs),
             },
             {
-              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
-              value: formatNumber(result.realTimeFactor),
+              label: t("testing.metrics.speed", { defaultValue: "Speed" }),
+              value: formatSpeedFactor(result.realTimeFactor),
             },
             {
               label: t("testing.metrics.device", {
@@ -242,8 +284,8 @@ export function buildSttRow(
               value: formatMs(result.latencyP50Ms),
             },
             {
-              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
-              value: formatNumber(result.realTimeFactorP50),
+              label: t("testing.metrics.speed", { defaultValue: "Speed" }),
+              value: formatSpeedFactor(result.realTimeFactorP50),
             },
           ]
         : [],
@@ -398,8 +440,8 @@ export function buildCreativeAudioRow(
               value: formatMs(result.latencyP50Ms),
             },
             {
-              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
-              value: formatNumber(result.realTimeFactorP50),
+              label: t("testing.metrics.speed", { defaultValue: "Speed" }),
+              value: formatSpeedFactor(result.realTimeFactorP50),
             },
             {
               label: t("testing.metrics.duration", {
@@ -436,7 +478,7 @@ export function buildTtsRow(
     providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
-    notes: result.notes,
+    notes: notesWithExternalTtsContext(result.notes, result.modelId),
     metrics:
       result.status === "tested"
         ? [
@@ -462,9 +504,10 @@ export function buildTtsRow(
               value: formatMs(result.latencyP50Ms),
             },
             {
-              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
-              value: formatNumber(result.realTimeFactorP50),
+              label: t("testing.metrics.speed", { defaultValue: "Speed" }),
+              value: formatSpeedFactor(result.realTimeFactorP50),
             },
+            ...externalTtsEloMetric(result.modelId, t),
           ]
         : [
             {
@@ -505,7 +548,7 @@ export function buildTtsStyleRow(
     providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
-    notes: result.notes,
+    notes: notesWithExternalTtsContext(result.notes, result.modelId),
     metrics:
       result.status === "tested"
         ? [
@@ -530,6 +573,7 @@ export function buildTtsStyleRow(
               label: t("testing.metrics.control", { defaultValue: "Control" }),
               value: styleCapabilityLabel(result.styleCapability),
             },
+            ...externalTtsEloMetric(result.modelId, t),
           ]
         : [],
     footer:
@@ -538,7 +582,7 @@ export function buildTtsStyleRow(
             result.passedCases !== undefined && result.sampleCount !== undefined
               ? `${result.passedCases}/${result.sampleCount}`
               : "n/a"
-          } · ${t("testing.metrics.rtf", { defaultValue: "RTF" })}: ${formatNumber(
+          } · ${t("testing.metrics.speed", { defaultValue: "Speed" })}: ${formatSpeedFactor(
             result.realTimeFactorP50,
           )} · ${t("testing.metrics.listenerPreference", {
             defaultValue: "Listener preference",
@@ -558,7 +602,7 @@ export function buildTtsVoiceCloneRow(
     providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
-    notes: result.notes,
+    notes: notesWithExternalTtsContext(result.notes, result.modelId),
     metrics:
       result.status === "tested"
         ? [
@@ -580,9 +624,10 @@ export function buildTtsVoiceCloneRow(
               value: formatMs(result.latencyP50Ms),
             },
             {
-              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
-              value: formatNumber(result.realTimeFactorP50),
+              label: t("testing.metrics.speed", { defaultValue: "Speed" }),
+              value: formatSpeedFactor(result.realTimeFactorP50),
             },
+            ...externalTtsEloMetric(result.modelId, t),
           ]
         : [],
     footer:

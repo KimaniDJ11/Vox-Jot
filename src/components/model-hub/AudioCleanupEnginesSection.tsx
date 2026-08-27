@@ -168,6 +168,10 @@ const AudioCleanupEnginesSection: React.FC<AudioCleanupEnginesSectionProps> = ({
     void refreshRuntime();
   }, [refreshRuntime]);
 
+  useTauriEvent("external-model-storage-changed", () => {
+    void refreshRuntime();
+  });
+
   useTauriEvent<AudioCleanupArtifactProgress>(
     "artifact-download-progress",
     (event) => {

@@ -73,7 +73,10 @@ impl LfmAudioGgufContext {
     }
 
     pub fn from_managed_store_with_quant(app: &AppHandle, quant: &str) -> Option<Self> {
-        let root_dir = crate::storage_paths::lfm_audio_gguf_dir(app).ok()?;
+        let local = crate::storage_paths::lfm_audio_gguf_dir(app).ok()?;
+        let root_dir = crate::external_model_storage::resolve_existing(&local)
+            .map(|(path, _)| path)
+            .unwrap_or(local);
         let ctx = Self {
             root_dir,
             quantization: quant.to_string(),

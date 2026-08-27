@@ -34,6 +34,8 @@ const HIGHER_IS_BETTER_LABELS = [
   "phrases",
   "speakers",
   "turns",
+  "speed",
+  "elo",
 ];
 
 export function metricPreference(label: string): MetricPreference {

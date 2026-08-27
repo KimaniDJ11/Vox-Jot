@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.iriedinamik.org/voxjot/benchmark-methodology-v2.schema.json",
+  "title": "Vox Jot Benchmark Methodology",
+  "type": "object",
+  "required": [
+    "$schema",
+    "methodologyVersion",
+    "name",
+    "warmupRuns",
+    "measuredRuns",
+    "percentiles",
+    "rankingPolicy",
+    "systemProfile",
+    "suites",
+    "externalContext"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "methodologyVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "warmupRuns": { "type": "integer", "minimum": 1 },
+    "measuredRuns": { "type": "integer", "minimum": 3 },
+    "percentiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "integer", "minimum": 1, "maximum": 99 },
+      "uniqueItems": true,
+      "allOf": [
+        { "contains": { "const": 50 } },
+        { "contains": { "const": 95 } }
+      ]
+    },
+    "rankingPolicy": {
+      "type": "object",
+      "required": [
+        "fullSuiteOnly",
+        "requireInstalledAppPath",
+        "missingRequiredMetric",
+        "failedRequiredCase",
+        "externalMetricsAffectRank",
+        "aggregatePolicy",
+        "legacyResults"
+      ],
+      "properties": {
+        "fullSuiteOnly": { "const": true },
+        "requireInstalledAppPath": { "const": true },
+        "missingRequiredMetric": { "const": "unranked" },
+        "failedRequiredCase": { "const": "unranked" },
+        "externalMetricsAffectRank": { "const": false },
+        "aggregatePolicy": { "type": "string", "minLength": 1 },
+        "legacyResults": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "systemProfile": {
+      "type": "object",
+      "required": ["required", "performanceMetrics"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "performanceMetrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 9,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "runner",
+          "primaryMetric",
+          "requiredMetrics",
+          "domains",
+          "rankedGate"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "runner": { "type": "string", "minLength": 1 },
+          "primaryMetric": { "type": "string", "minLength": 1 },
+          "requiredMetrics": {
+            "type": "array",
+            "minItems": 3,
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          },
+          "domains": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          },
+          "rankedGate": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "externalContext": {
+      "type": "object",
+      "required": ["allowed", "prohibited"],
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "prohibited": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

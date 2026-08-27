@@ -21,6 +21,8 @@ export interface LlmEvaluationResult {
 }
 
 export const LLM_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-05-12T06:38:08Z",
   suite: "LLM post-process sanity",
   corpus:

@@ -301,6 +301,8 @@ pub struct OcrModelDescriptor {
     pub size_hint_label: String,
     pub languages_label: String,
     pub installed: bool,
+    #[serde(default)]
+    pub storage_location: Option<crate::external_model_storage::ModelStorageLocation>,
     pub install_path: Option<String>,
     pub selected: bool,
     /// Whether the app currently knows how to run inference for this entry.
@@ -358,7 +360,33 @@ fn descriptor_for(
     entry: &OcrCatalogEntry,
     selected_id: Option<&str>,
 ) -> OcrModelDescriptor {
-    let install_dir = entry_install_dir(app, entry).ok();
+    let local_install = match entry_install_dir(app, entry) {
+        Ok(path) => path,
+        Err(_) => {
+            return OcrModelDescriptor {
+                id: entry.id.to_string(),
+                title: entry.title.to_string(),
+                vendor: entry.vendor.to_string(),
+                description: entry.description.to_string(),
+                source_kind: entry.source_kind,
+                backend: entry.backend,
+                size_hint_label: entry.size_hint_label.to_string(),
+                languages_label: entry.languages_label.to_string(),
+                installed: false,
+                storage_location: None,
+                install_path: None,
+                selected: selected_id == Some(entry.id),
+                runnable: false,
+                hf_repo_id: entry.hf_repo_id.to_string(),
+                license_label: entry.license_label.to_string(),
+                upstream_url: entry.upstream_url.to_string(),
+                hf_repo_url: format!("https://huggingface.co/{}", entry.hf_repo_id),
+            };
+        }
+    };
+    let resolved = crate::external_model_storage::resolve_existing(&local_install);
+    let storage_location = resolved.as_ref().map(|(_, location)| *location);
+    let install_dir = resolved.map(|(path, _)| path).or(Some(local_install));
     let installed = install_dir
         .as_ref()
         .map(|dir| dir.exists() && directory_has_contents(dir))
@@ -378,6 +406,7 @@ fn descriptor_for(
         size_hint_label: entry.size_hint_label.to_string(),
         languages_label: entry.languages_label.to_string(),
         installed,
+        storage_location: if installed { storage_location } else { None },
         install_path: install_dir.map(|dir| dir.display().to_string()),
         selected: selected_id == Some(entry.id),
         runnable,

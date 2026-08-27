@@ -1706,7 +1706,11 @@
     "loadDirectory": "Fehler beim Laden des Verzeichnisses: {{error}}",
     "recordingFailed": "Aufnahme konnte nicht gestartet werden: {{error}}",
     "modelLoadFailed": "Modell konnte nicht geladen werden: {{model}}",
-    "modelLoadFailedUnknown": "unbekanntes Modell"
+    "modelLoadFailedUnknown": "unbekanntes Modell",
+    "externalStorageFallback": "Externes Laufwerk „{{volume}}“ getrennt. Auf ein lokales Modell umgestellt.",
+    "externalStorageFallbackUnnamed": "Externer Speicher nicht angeschlossen. Auf ein lokales Modell umgestellt.",
+    "externalStorageDisconnected": "Externes Laufwerk „{{volume}}“ getrennt. Schließen Sie das Laufwerk erneut an oder laden Sie ein lokales Modell für das Offline-Diktieren herunter.",
+    "externalStorageDisconnectedUnnamed": "Externer Speicher nicht angeschlossen. Schließen Sie das Laufwerk erneut an oder laden Sie ein lokales Modell für das Offline-Diktieren herunter."
   },
   "appLanguage": {
     "title": "Anwendungssprache",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Suchen Sie nach Modellen nach Name, Sprache oder Anbieter ...",
       "ariaLabel": "Modelle suchen"
     },
+    "storageLocation": {
+      "local": "Interne SSD",
+      "localDetail": "Auf diesen Mac heruntergeladen und ohne externes Laufwerk verfügbar.",
+      "external": "Externes Laufwerk",
+      "externalDetail": "Bereit auf dem angeschlossenen externen Laufwerk. Schließen Sie das Laufwerk erneut an, wenn dieses Modell verschwindet."
+    },
+
     "tabs": {
       "stt": "Sprache (STT)",
       "analysis": "Sprachanalyse",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Lagerung",
       "historyGroupTitle": "Geschichte",
       "filesGroupTitle": "Dateien",
+      "externalModelStorage": {
+        "enabledLabel": "Durchsuchen Sie den externen Speicher nach Modellen",
+        "enabledDescription": "Nutzen Sie Modelle, die bereits auf einem angeschlossenen Laufwerk gespeichert sind, ohne sie auf diesen Mac zu kopieren. Downloads werden weiterhin im lokalen Speicher gespeichert.",
+        "autoDetectLabel": "Vox Jot-Ordner auf verbundenen Laufwerken automatisch erkennen",
+        "autoDetectDescription": "Sucht nach VoxJot/app-support/models oder Apps/Models/VoxJot auf bereitgestellten Volumes wie /Volumes/Models.",
+        "folderTitle": "Externer Modellordner",
+        "folderDescription": "Wählen Sie einen Ordner auf einer externen SSD, SD-Karte oder sekundären Festplatte. Vox Jot liest Modelle aus diesem Ordner, wenn das Laufwerk angeschlossen ist.",
+        "pathLabel": "Pfad des externen Modellordners",
+        "browse": "Durchsuchen…",
+        "clear": "Verwenden Sie die automatische Erkennung",
+        "noFolder": "Noch kein Ordner ausgewählt. Bei der automatischen Erkennung wird ein angeschlossenes Vox Jot-Modelllaufwerk verwendet, wenn eines gefunden wird.",
+        "connected": "Verbunden: {{volume}} ({{count}} Modelle erkannt)",
+        "disconnected": "Externer Speicher nicht angeschlossen",
+        "unnamedVolume": "Externes Laufwerk"
+      },
       "previewLocalFirst": "Lokal zuerst",
       "previewEnforced": "Durchgesetzt",
       "previewAllowed": "Erlaubt",

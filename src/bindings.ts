@@ -35,6 +35,9 @@ export const commands = {
 	changeAudioEnhancementEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_enabled_setting", { enabled })),
 	changeAudioEnhancementModelSetting: (model: string) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_model_setting", { model })),
 	changeTtsModelStorePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_model_store_path_setting", { path })),
+	changeExternalModelStorageEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_enabled_setting", { enabled })),
+	changeExternalModelStorageAutoDetectSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_auto_detect_setting", { enabled })),
+	changeExternalModelStoragePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_path_setting", { path })),
 	changeSpeechRuntimePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_speech_runtime_path_setting", { path })),
 	changeOverlayPositionSetting: (position: string) => typedError<null, string>(__TAURI_INVOKE("change_overlay_position_setting", { position })),
 	changeRecordingOverlayStyleSetting: (style: string) => typedError<null, string>(__TAURI_INVOKE("change_recording_overlay_style_setting", { style })),
@@ -134,6 +137,10 @@ export const commands = {
 	showMainWindowCommand: () => typedError<null, string>(__TAURI_INVOKE("show_main_window_command")),
 	cancelOperation: () => __TAURI_INVOKE<void>("cancel_operation"),
 	getAppDirPath: () => typedError<string, string>(__TAURI_INVOKE("get_app_dir_path")),
+	getExternalModelStorageStatus: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("get_external_model_storage_status")),
+	refreshExternalModelStorage: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("refresh_external_model_storage")),
+	pickExternalModelStorageDir: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("pick_external_model_storage_dir")),
+	openExternalModelStorageDir: () => typedError<null, string>(__TAURI_INVOKE("open_external_model_storage_dir")),
 	getAppSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_app_settings")),
 	getDefaultSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_default_settings")),
 	getLogDirPath: () => typedError<string, string>(__TAURI_INVOKE("get_log_dir_path")),
@@ -233,6 +240,7 @@ export const commands = {
 	is_recommended: boolean,
 	supported_languages: string[],
 	is_custom: boolean,
+	storage_location?: ModelStorageLocation | null,
 } | null, string>(__TAURI_INVOKE("get_model_info", { modelId })),
 	getModelPlatformOverview: () => typedError<ModelPlatformOverview, string>(__TAURI_INVOKE("get_model_platform_overview")),
 	getModelPlatformOverviewJson: () => typedError<string, string>(__TAURI_INVOKE("get_model_platform_overview_json")),
@@ -358,6 +366,7 @@ export const commands = {
 	gated: boolean,
 	downloadable: boolean,
 	installed: boolean,
+	storage_location?: ModelStorageLocation | null,
 	local_path: string | null,
 	size_hint_label: string | null,
 	task: SpeechAnalysisTask,
@@ -665,6 +674,9 @@ export type AppSettings_Deserialize = {
 	tts_stop_on_record?: boolean,
 	speech_runtime_path?: string | null,
 	tts_model_store_path?: string | null,
+	external_model_storage_enabled?: boolean,
+	external_model_storage_auto_detect?: boolean,
+	external_model_storage_path?: string | null,
 	speech_backend_override?: string | null,
 	audio_enhancement_enabled?: boolean,
 	audio_enhancement_model?: string,
@@ -829,6 +841,9 @@ export type AppSettings_Serialize = {
 	tts_stop_on_record: boolean,
 	speech_runtime_path: string | null,
 	tts_model_store_path: string | null,
+	external_model_storage_enabled: boolean,
+	external_model_storage_auto_detect: boolean,
+	external_model_storage_path: string | null,
 	speech_backend_override: string | null,
 	audio_enhancement_enabled: boolean,
 	audio_enhancement_model: string,
@@ -993,6 +1008,7 @@ export type CatalogModelDescriptor = {
 	readiness_issues: string[],
 	capabilities: CapabilityFlags,
 	delivery_support: TtsDeliverySupport,
+	storage_location?: ModelStorageLocation | null,
 };
 
 export type CatalogSourceKind = "builtin" | "runtime";
@@ -1117,6 +1133,7 @@ export type CreativeAudioModelDescriptor = {
 	runtime_label: string,
 	size_hint_label: string,
 	installed: boolean,
+	storage_location?: ModelStorageLocation | null,
 	runnable: boolean,
 	selected: boolean,
 	active: boolean,
@@ -1199,6 +1216,23 @@ export type EmotionScore = {
 };
 
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "HiggsAudioStt" | "AppleSpeech" | "AppleSpeechStreaming";
+
+export type ExternalModelStorageDisconnectEvent = {
+	volume_name: string | null,
+	fell_back: boolean,
+};
+
+export type ExternalModelStorageStatus = {
+	enabled: boolean,
+	auto_detect: boolean,
+	connected: boolean,
+	configured_path: string | null,
+	resolved_path: string | null,
+	volume_name: string | null,
+	model_count: number,
+};
+
+export type ModelStorageLocation = "local" | "external";
 
 export type EnhanceAudioFileResult = {
 	output_path: string,
@@ -1336,6 +1370,7 @@ export type ModelInfo = {
 	is_recommended: boolean,
 	supported_languages: string[],
 	is_custom: boolean,
+	storage_location?: ModelStorageLocation | null,
 };
 
 export type ModelLoadStatus = {
@@ -1415,6 +1450,7 @@ export type OcrModelDescriptor = {
 	size_hint_label: string,
 	languages_label: string,
 	installed: boolean,
+	storage_location?: ModelStorageLocation | null,
 	install_path: string | null,
 	selected: boolean,
 	/**
@@ -1883,6 +1919,7 @@ export type SpeechAnalysisModelDescriptor = {
 	gated: boolean,
 	downloadable: boolean,
 	installed: boolean,
+	storage_location?: ModelStorageLocation | null,
 	local_path: string | null,
 	size_hint_label: string | null,
 	task: SpeechAnalysisTask,

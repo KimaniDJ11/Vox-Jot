@@ -493,5 +493,6 @@ export function previewErrorMessage(
 export function ttsHubModelCanRemove(model: CatalogModelDescriptor): boolean {
   if (!model.installed) return false;
   if (model.provider_id === "system_builtin") return false;
+  if (model.storage_location === "external") return false;
   return true;
 }

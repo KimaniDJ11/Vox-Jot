@@ -927,6 +927,36 @@ pub fn change_tts_model_store_path_setting(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_external_model_storage_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    crate::external_model_storage::set_enabled(&app, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_external_model_storage_auto_detect_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    crate::external_model_storage::set_auto_detect(&app, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_external_model_storage_path_setting(
+    app: AppHandle,
+    path: Option<String>,
+) -> Result<(), String> {
+    crate::external_model_storage::set_path(&app, path)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_speech_runtime_path_setting(
     app: AppHandle,
     path: Option<String>,

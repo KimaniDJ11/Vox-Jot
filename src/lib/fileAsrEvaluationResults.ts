@@ -16,6 +16,8 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-06-16T14:56:32Z",
   suite: "File ASR full local sample benchmark",
   corpus:

@@ -510,6 +510,11 @@ export const useModelStore = create<ModelsStore>()(
             void get().loadModels();
             void get().loadCurrentModel();
           }),
+
+          listen("external-model-storage-changed", () => {
+            void get().loadModels();
+            void get().loadCurrentModel();
+          }),
         ]);
 
         set({ initialized: true, eventUnlisteners });

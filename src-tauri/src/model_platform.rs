@@ -1,3 +1,4 @@
+use crate::external_model_storage::ModelStorageLocation;
 use crate::settings::TtsStyleControlValue;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -131,6 +132,8 @@ pub struct CatalogModelDescriptor {
     pub readiness_issues: Vec<String>,
     pub capabilities: CapabilityFlags,
     pub delivery_support: TtsDeliverySupport,
+    #[serde(default)]
+    pub storage_location: Option<ModelStorageLocation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

@@ -25,6 +25,7 @@ import LicenseAcknowledgementDialog, {
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
+import { storageLocationChip } from "@/components/model-hub/storageLocationChip";
 import { buildHubDownloadState } from "@/components/model-hub/hubDownloadState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -55,6 +56,7 @@ interface CreativeAudioModelDescriptor {
   runtime_label: string;
   size_hint_label: string;
   installed: boolean;
+  storage_location?: "local" | "external" | null;
   runnable: boolean;
   selected: boolean;
   active: boolean;
@@ -221,6 +223,10 @@ const CreativeAudioEnginesSection: React.FC<
   useEffect(() => {
     void refreshCatalog();
   }, [refreshCatalog]);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void refreshCatalog();
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -661,7 +667,12 @@ const CreativeAudioEnginesSection: React.FC<
                         defaultValue: "Approximate disk size after download.",
                       }),
                     },
-                  ];
+                    storageLocationChip(
+                      t,
+                      model.installed,
+                      model.storage_location,
+                    ),
+                  ].filter(Boolean) as CompactBadgeItem[];
                   const footerMetaItems = [
                     model.provider,
                     sourceKindLabel(model.source_kind),
@@ -743,7 +754,7 @@ const CreativeAudioEnginesSection: React.FC<
                                 defaultValue: "Blocked",
                               })}
                           </span>
-                        ) : (
+                        ) : model.storage_location === "external" ? null : (
                           <ActionIconButton
                             tone="danger"
                             disabled={actionDisabled && !isBusy}

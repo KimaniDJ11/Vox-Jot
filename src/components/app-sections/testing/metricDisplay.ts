@@ -52,6 +52,24 @@ export function metricPreference(label: string): MetricPreference {
   return "neutral";
 }
 
+export function realtimeSpeedBadge(
+  label: string,
+  value: string,
+): string | null {
+  const rtfMatch = value.match(/\brtf\s+(-?\d+(?:\.\d+)?)/i);
+  if (rtfMatch) {
+    const rtf = Number(rtfMatch[1]);
+    return Number.isFinite(rtf) && rtf > 0 && rtf < 1 ? "Real-time+" : null;
+  }
+
+  if (label.toLowerCase().includes("rtf")) {
+    const parsed = parseMetricValue(value);
+    return parsed !== undefined && parsed < 1 ? "Real-time+" : null;
+  }
+
+  return null;
+}
+
 export function parseMetricValue(value: string): number | undefined {
   const trimmed = value.trim().toLowerCase();
 

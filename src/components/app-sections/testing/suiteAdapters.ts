@@ -129,7 +129,7 @@ function notesWithExternalTtsContext(notes: string, modelId: string): string {
   const context = getTtsExternalBenchmarkContext(modelId);
   if (!context) return notes;
 
-  const externalNote = `External context — ${context.source} ${context.leaderboard} leaderboard, retrieved ${context.retrievedAt}: Elo ${context.elo.toFixed(2)}, global rank #${context.globalRank}, ${context.appearances.toLocaleString("en-US")} samples. ${context.caveat}`;
+  const externalNote = `External context — ${context.source} ${context.leaderboard} leaderboard, retrieved ${context.retrievedAt}: Elo ${context.elo.toFixed(2)}, global rank #${context.globalRank}, ${context.appearances.toLocaleString()} samples. ${context.caveat}`;
   return notes ? `${notes} ${externalNote}` : externalNote;
 }
 

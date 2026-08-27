@@ -4,6 +4,7 @@ import {
   buildTtsRow,
   formatSpeedFactor,
 } from "@/components/app-sections/testing/suiteAdapters";
+import { realtimeSpeedBadge } from "@/components/app-sections/testing/metricDisplay";
 
 describe("formatSpeedFactor", () => {
   it("keeps the raw RTF visible next to the intuitive speed factor", () => {
@@ -16,6 +17,23 @@ describe("formatSpeedFactor", () => {
     expect(formatSpeedFactor()).toBe("n/a");
     expect(formatSpeedFactor(0)).toBe("n/a");
     expect(formatSpeedFactor(Number.NaN)).toBe("n/a");
+  });
+});
+
+describe("realtimeSpeedBadge", () => {
+  it("keeps the Real-time+ cue when speed is shown with an embedded RTF", () => {
+    expect(realtimeSpeedBadge("Speed", formatSpeedFactor(0.92))).toBe(
+      "Real-time+",
+    );
+    expect(realtimeSpeedBadge("Vitesse", formatSpeedFactor(0.36))).toBe(
+      "Real-time+",
+    );
+    expect(realtimeSpeedBadge("Speed", formatSpeedFactor(3.61))).toBeNull();
+  });
+
+  it("still recognizes a dedicated RTF column", () => {
+    expect(realtimeSpeedBadge("RTF", "0.48")).toBe("Real-time+");
+    expect(realtimeSpeedBadge("RTF", "1.38")).toBeNull();
   });
 });
 

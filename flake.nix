@@ -108,6 +108,15 @@
               bunNix = ./.nix/bun.nix;
             };
 
+            # bun2nix.hook otherwise re-resolves manifests over the network.
+            bunInstallFlags = [
+              "--linker=isolated"
+              "--frozen-lockfile"
+              "--offline"
+            ];
+            dontRunLifecycleScripts = true;
+            dontUseBunBuild = true;
+
             nativeBuildInputs = with pkgs; [
               cargo-tauri.hook
               pkg-config

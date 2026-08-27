@@ -55,6 +55,12 @@
               # updated every time a git dependency changed in Cargo.lock.
               # Safe for standalone flakes (not allowed in nixpkgs, it is needed something like crate2nix).
               allowBuiltinFetchGit = true;
+              # crates.io now 403s the API download URL for curl's default UA.
+              # Fetch crate tarballs from the CDN instead (same files, not UA-gated).
+              extraRegistries = {
+                "https://github.com/rust-lang/crates.io-index" =
+                  "https://static.crates.io/crates";
+              };
             };
 
             postPatch = ''

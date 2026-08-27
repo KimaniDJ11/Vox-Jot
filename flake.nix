@@ -36,7 +36,33 @@
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ bun2nix.overlays.default ];
+            overlays = [
+              bun2nix.overlays.default
+              # crates.io 403s the API download URL for curl's default UA.
+              # Rewrite those fetches to the CDN without changing Cargo's
+              # crates-io source identity (extraRegistries duplicates it).
+              (_final: prev: {
+                fetchurl =
+                  args:
+                  let
+                    rewrite =
+                      url:
+                      let
+                        matchCrate = builtins.match "https://crates.io/api/v1/crates/([^/]+)/([^/]+)/download" url;
+                      in
+                      if matchCrate == null then
+                        url
+                      else
+                        "https://static.crates.io/crates/${builtins.elemAt matchCrate 0}/${builtins.elemAt matchCrate 1}/download";
+                  in
+                  if args ? url then
+                    prev.fetchurl (args // { url = rewrite args.url; })
+                  else if args ? urls then
+                    prev.fetchurl (args // { urls = map rewrite args.urls; })
+                  else
+                    prev.fetchurl args;
+              })
+            ];
           };
           lib = pkgs.lib;
         in
@@ -101,6 +127,15 @@
             bunDeps = pkgs.bun2nix.fetchBunDeps {
               bunNix = ./.nix/bun.nix;
             };
+
+            # bun2nix.hook otherwise re-resolves manifests over the network.
+            bunInstallFlags = [
+              "--linker=isolated"
+              "--frozen-lockfile"
+              "--offline"
+            ];
+            dontRunLifecycleScripts = true;
+            dontUseBunBuild = true;
 
             nativeBuildInputs = with pkgs; [
               cargo-tauri.hook

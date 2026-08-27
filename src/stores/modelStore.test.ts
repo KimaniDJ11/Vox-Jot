@@ -99,7 +99,7 @@ describe("model store", () => {
 
     await Promise.all([init1, init2]);
 
-    expect(listenMock).toHaveBeenCalledTimes(9);
+    expect(listenMock).toHaveBeenCalledTimes(10);
     expect(useModelStore.getState().initialized).toBe(true);
     expect(useModelStore.getState().initializePromise).toBeNull();
     expect(useModelStore.getState().isFirstRun).toBe(true);

@@ -261,8 +261,8 @@ pub(crate) fn decode_with_ffmpeg_blocking_at(
         ));
     }
     let mut samples = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
-        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    for chunk in bytes.as_chunks::<4>().0 {
+        samples.push(f32::from_le_bytes(*chunk));
     }
     Ok(samples)
 }
@@ -563,19 +563,29 @@ fn emit_demucs_download_progress(
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn demucs_runtime_dir(app: &AppHandle) -> Option<PathBuf> {
-    crate::storage_paths::audio_cleanup_models_dir(app)
+    let local = crate::storage_paths::audio_cleanup_models_dir(app)
         .ok()
-        .map(|root| root.join("runtime"))
+        .map(|root| root.join("runtime"))?;
+    Some(
+        crate::external_model_storage::resolve_existing(&local)
+            .map(|(path, _)| path)
+            .unwrap_or(local),
+    )
 }
 
 fn demucs_weights_root(app: &AppHandle) -> Option<PathBuf> {
-    crate::storage_paths::audio_cleanup_models_dir(app)
+    let local = crate::storage_paths::audio_cleanup_models_dir(app)
         .ok()
         .map(|root| {
             root.join("MLX")
                 .join("mlx-community")
                 .join("demucs-mlx-fp16")
-        })
+        })?;
+    Some(
+        crate::external_model_storage::resolve_existing(&local)
+            .map(|(path, _)| path)
+            .unwrap_or(local),
+    )
 }
 
 #[cfg(any(test, all(target_os = "macos", target_arch = "aarch64")))]

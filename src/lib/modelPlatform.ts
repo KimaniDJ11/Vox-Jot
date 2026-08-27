@@ -91,6 +91,7 @@ export interface CatalogModelDescriptor {
   readiness_issues: string[];
   capabilities: CapabilityFlags;
   delivery_support: TtsDeliverySupport;
+  storage_location?: import("@/bindings").ModelStorageLocation | null;
 }
 
 export interface DomainCatalog {

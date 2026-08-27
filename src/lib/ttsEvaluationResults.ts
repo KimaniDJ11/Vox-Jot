@@ -19,6 +19,8 @@ export interface TtsEvaluationResult {
 }
 
 export const TTS_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-06-15T14:46:48Z",
   suite: "tts_real_world_hard",
   corpus:
@@ -31,6 +33,7 @@ export const TTS_EVALUATION_RUN = {
     "ASR WER: lower is better.",
     "p50 latency: lower is faster.",
     "RTF: lower is faster; below 1.00 is faster than real time.",
+    "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
     "output/tts-model-eval/app-full-2026-06-15-orpheus-zonos2/tts-eval-summary.json",

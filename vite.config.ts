@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { resolve } from "path";
+import { resolve } from "node:path";
 
 // `baseline-browser-mapping` warns when its published data is older than two
 // months even if the project is already pinned to the latest available release.
@@ -43,8 +43,8 @@ export default defineConfig(async () => ({
   // Path aliases
   resolve: {
     alias: {
-      "@": resolve(__dirname, "./src"),
-      "@/bindings": resolve(__dirname, "./src/bindings.ts"),
+      "@": resolve(import.meta.dirname, "./src"),
+      "@/bindings": resolve(import.meta.dirname, "./src/bindings.ts"),
     },
   },
 
@@ -52,9 +52,9 @@ export default defineConfig(async () => ({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        overlay: resolve(__dirname, "src/overlay/index.html"),
-        detail: resolve(__dirname, "src/detail/index.html"),
+        main: resolve(import.meta.dirname, "index.html"),
+        overlay: resolve(import.meta.dirname, "src/overlay/index.html"),
+        detail: resolve(import.meta.dirname, "src/detail/index.html"),
       },
       output: {
         manualChunks,

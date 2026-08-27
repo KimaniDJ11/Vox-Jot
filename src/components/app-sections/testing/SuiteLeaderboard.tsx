@@ -8,6 +8,8 @@ interface EvaluationRun {
   generatedAt: string;
   suite: string;
   corpus: string;
+  methodologyVersion?: string;
+  evidenceTier?: "legacy" | "diagnostic" | "ranked";
   reportPath: string;
   limitations?: string;
   metricGuide?: string[];
@@ -41,6 +43,17 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
 
   return (
     <section className="space-y-4">
+      {run.evidenceTier === "legacy" ? (
+        <p
+          role="status"
+          className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-xs leading-5 text-[var(--muted)]"
+        >
+          {t("testing.legacyMethodology", {
+            defaultValue:
+              "Legacy methodology result. Keep this historical ranking for context; rerun the complete v2 suite before comparing it with new results.",
+          })}
+        </p>
+      ) : null}
       {ranked.length > 0 ? (
         <TestingTable rows={rankedRows} metricGuide={run.metricGuide} t={t} />
       ) : (

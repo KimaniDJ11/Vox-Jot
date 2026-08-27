@@ -59,6 +59,7 @@ import {
 import { AlwaysOnMicrophone } from "@/components/settings/AlwaysOnMicrophone";
 import { AppendTrailingSpace } from "@/components/settings/AppendTrailingSpace";
 import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
+import { ExternalModelStorage } from "@/components/settings/ExternalModelStorage";
 import { AppFontScale } from "@/components/settings/AppFontScale";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { AudioDucking } from "@/components/settings/AudioDucking";
@@ -1775,6 +1776,10 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
       <SettingsGroup title={t("appSections.privacy.filesGroupTitle")}>
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.privacy.storageGroupTitle")}>
+        <ExternalModelStorage grouped={true} />
       </SettingsGroup>
 
       {localPrivacyMode && (

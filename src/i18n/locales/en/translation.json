@@ -2299,6 +2299,12 @@
       "globalPlaceholder": "Search models by name, language, or provider...",
       "ariaLabel": "Search models"
     },
+    "storageLocation": {
+      "local": "Internal SSD",
+      "localDetail": "Downloaded on this Mac and available without an external drive.",
+      "external": "External drive",
+      "externalDetail": "Ready on the connected external drive. Reconnect the drive if this model disappears."
+    },
     "tabs": {
       "stt": "Speech (STT)",
       "analysis": "Speech Analysis",
@@ -2432,7 +2438,11 @@
     "loadDirectory": "Error loading directory: {{error}}",
     "recordingFailed": "Failed to start recording: {{error}}",
     "modelLoadFailed": "Failed to load model: {{model}}",
-    "modelLoadFailedUnknown": "unknown model"
+    "modelLoadFailedUnknown": "unknown model",
+    "externalStorageFallback": "External drive \"{{volume}}\" disconnected. Switched to a local model.",
+    "externalStorageFallbackUnnamed": "External storage disconnected. Switched to a local model.",
+    "externalStorageDisconnected": "External drive \"{{volume}}\" disconnected. Reconnect the drive or download a local model for offline dictation.",
+    "externalStorageDisconnectedUnnamed": "External storage disconnected. Reconnect the drive or download a local model for offline dictation."
   },
   "ollama": {
     "title": "Ollama — Local LLM Engine",
@@ -3300,6 +3310,21 @@
       "storageGroupTitle": "Storage",
       "historyGroupTitle": "History",
       "filesGroupTitle": "Files",
+      "externalModelStorage": {
+        "enabledLabel": "Scan external storage for models",
+        "enabledDescription": "Use models already stored on a connected drive without copying them onto this Mac. Downloads still go to local storage.",
+        "autoDetectLabel": "Auto-detect Vox Jot folders on connected drives",
+        "autoDetectDescription": "Looks for VoxJot/app-support/models or Apps/Models/VoxJot on mounted volumes such as /Volumes/Models.",
+        "folderTitle": "External model folder",
+        "folderDescription": "Choose a folder on an external SSD, SD card, or secondary disk. Vox Jot reads models from that folder when the drive is connected.",
+        "pathLabel": "External model folder path",
+        "browse": "Browse…",
+        "clear": "Use auto-detect",
+        "noFolder": "No folder selected yet. Auto-detect will use a connected Vox Jot model drive if one is found.",
+        "connected": "Connected: {{volume}} ({{count}} models detected)",
+        "disconnected": "External storage disconnected",
+        "unnamedVolume": "External drive"
+      },
       "previewLocalFirst": "Local-first",
       "previewEnforced": "Enforced",
       "previewAllowed": "Allowed",

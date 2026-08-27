@@ -11,6 +11,7 @@ import {
   TTS_MODEL_SIZE_HINTS,
   huggingFaceRepoIdFromSourceUrl,
   renderableTtsProviders,
+  ttsHubModelCanRemove,
   ttsPreviewSampleForLocale,
   ttsStorageSizeLabel,
   verifiedTtsHuggingFaceRepoId,
@@ -239,6 +240,17 @@ describe("ttsStorageSizeLabel", () => {
     );
 
     expect(missing).toEqual([]);
+  });
+});
+
+describe("ttsHubModelCanRemove", () => {
+  it("allows removal of local downloads but preserves external model libraries", () => {
+    expect(ttsHubModelCanRemove(model({ storage_location: "local" }))).toBe(
+      true,
+    );
+    expect(ttsHubModelCanRemove(model({ storage_location: "external" }))).toBe(
+      false,
+    );
   });
 });
 

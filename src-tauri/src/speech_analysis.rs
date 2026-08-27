@@ -168,6 +168,8 @@ pub struct SpeechAnalysisModelDescriptor {
     pub gated: bool,
     pub downloadable: bool,
     pub installed: bool,
+    #[serde(default)]
+    pub storage_location: Option<crate::external_model_storage::ModelStorageLocation>,
     pub local_path: Option<String>,
     pub size_hint_label: Option<String>,
     pub task: SpeechAnalysisTask,
@@ -319,6 +321,7 @@ fn descriptor(
             source_kind,
             SpeechAnalysisSourceKind::BuiltIn | SpeechAnalysisSourceKind::RuntimeManaged
         ),
+        storage_location: None,
         local_path: None,
         size_hint_label: size_hint_label.map(str::to_string),
         task,
@@ -838,6 +841,13 @@ fn install_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
         .join(model_id))
 }
 
+fn resolved_install_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
+    let local = install_dir(app, model_id)?;
+    Ok(crate::external_model_storage::resolve_existing(&local)
+        .map(|(path, _)| path)
+        .unwrap_or(local))
+}
+
 fn staging_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
     if let Some(path) = crate::shared_model_assets::shared_model_primary_staging_dir(app, model_id)?
     {
@@ -933,9 +943,9 @@ fn descriptor_with_install_state(
         {
             installed_shared_model_path
                 .clone()
-                .or_else(|| install_dir(app, &model.id).ok())
+                .or_else(|| resolved_install_dir(app, &model.id).ok())
         }
-        _ => install_dir(app, &model.id).ok(),
+        _ => resolved_install_dir(app, &model.id).ok(),
     };
 
     let installed = match model.source_kind {
@@ -950,7 +960,16 @@ fn descriptor_with_install_state(
     };
 
     model.installed = installed;
-    model.local_path = local_path.map(|p| p.to_string_lossy().to_string());
+    model.local_path = local_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+    model.storage_location = if installed {
+        local_path
+            .as_ref()
+            .and_then(|path| crate::external_model_storage::location_of_resolved(path))
+    } else {
+        None
+    };
     model.readiness = readiness_for(app, &model, installed);
     model
 }
@@ -1901,6 +1920,7 @@ pub fn delete_model(
         crate::shared_model_assets::delete_shared_model_assets(app, &model.id)?
     } else {
         let dir = install_dir(app, &model.id)?;
+        let mut deleted_any = false;
         if dir.exists() {
             fs::remove_dir_all(&dir).map_err(|err| {
                 format!(
@@ -1908,10 +1928,9 @@ pub fn delete_model(
                     dir.display()
                 )
             })?;
-            true
-        } else {
-            false
+            deleted_any = true;
         }
+        deleted_any
     };
 
     if !deleted {

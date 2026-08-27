@@ -210,6 +210,8 @@ pub struct CreativeAudioModelDescriptor {
     pub runtime_label: String,
     pub size_hint_label: String,
     pub installed: bool,
+    #[serde(default)]
+    pub storage_location: Option<crate::external_model_storage::ModelStorageLocation>,
     pub runnable: bool,
     pub selected: bool,
     pub active: bool,
@@ -863,7 +865,7 @@ pub fn delete_creative_audio_model(
     }
 
     if hf_creative_audio_spec(&model_id).is_some() {
-        let model_dir = hf_creative_audio_model_dir(&app, &model_id)?;
+        let model_dir = hf_creative_audio_local_model_dir(&app, &model_id)?;
         if model_dir.exists() {
             fs::remove_dir_all(&model_dir).map_err(|err| {
                 format!(
@@ -1106,10 +1108,17 @@ fn hf_creative_runtime_dir(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|err| format!("Failed to resolve HF creative runtime dir: {err}"))
 }
 
-fn hf_creative_audio_model_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
+fn hf_creative_audio_local_model_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
     crate::storage_paths::creative_audio_models_dir(app)
         .map(|dir| dir.join(model_id))
         .map_err(|err| format!("Failed to resolve HF creative audio model dir: {err}"))
+}
+
+fn hf_creative_audio_model_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
+    let local = hf_creative_audio_local_model_dir(app, model_id)?;
+    Ok(crate::external_model_storage::resolve_existing(&local)
+        .map(|(path, _)| path)
+        .unwrap_or(local))
 }
 
 fn hf_creative_audio_spec(model_id: &str) -> Option<&'static HfCreativeAudioModelSpec> {
@@ -1243,6 +1252,11 @@ fn stable_audio3_catalog_model(
         runtime_label: "Apple Silicon MLX".to_string(),
         size_hint_label: size_hint_label.to_string(),
         installed,
+        storage_location: if installed {
+            crate::external_model_storage::location_of_resolved(&runtime_dir)
+        } else {
+            None
+        },
         runnable: installed && !downloading,
         selected: false,
         active: false,
@@ -1284,6 +1298,11 @@ fn hf_creative_audio_catalog_model(
         runtime_label: "Bundled PyTorch/MPS runtime".to_string(),
         size_hint_label: spec.size_hint_label.to_string(),
         installed,
+        storage_location: if installed {
+            crate::external_model_storage::location_of_resolved(&model_dir)
+        } else {
+            None
+        },
         runnable: installed && !downloading,
         selected: false,
         active: false,

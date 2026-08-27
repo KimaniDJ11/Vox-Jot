@@ -69,6 +69,7 @@ import {
 } from "@/lib/modelListOrdering";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 
 type RefineModelSourceKind =
   "ollama" | "lm_studio" | "hugging_face" | "managed_provider";
@@ -461,6 +462,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void loadCatalog({ silent: true });
+  });
 
   /** Keep provider “ready” state fresh without a manual refresh control. */
   useEffect(() => {

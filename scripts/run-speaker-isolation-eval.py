@@ -10,6 +10,7 @@ import platform
 import subprocess
 import sys
 import time
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -50,16 +51,42 @@ def interval_overlap(start_a: int, end_a: int, start_b: int, end_b: int) -> int:
     return max(0, min(end_a, end_b) - max(start_a, start_b))
 
 
-def overlap_with_truth(turn: dict[str, Any], truth_turns: list[dict[str, Any]]) -> int:
-    return sum(
-        interval_overlap(
-            int(turn["start_ms"]),
-            int(turn["end_ms"]),
-            int(truth["start_ms"]),
-            int(truth["end_ms"]),
-        )
-        for truth in truth_turns
-    )
+def optimal_cluster_map(
+    predicted_speakers: list[str],
+    truth_speakers: list[str],
+    overlap_by_pair: dict[tuple[str, str], int],
+) -> dict[str, str]:
+    """Maximize overlap with a one-to-one speaker mapping."""
+
+    @lru_cache(maxsize=None)
+    def solve(predicted_index: int, used_truth_mask: int) -> tuple[int, tuple[int, ...]]:
+        if predicted_index == len(predicted_speakers):
+            return 0, ()
+        best_score, best_assignment = solve(predicted_index + 1, used_truth_mask)
+        best_assignment = (-1, *best_assignment)
+        predicted = predicted_speakers[predicted_index]
+        for truth_index, truth in enumerate(truth_speakers):
+            bit = 1 << truth_index
+            if used_truth_mask & bit:
+                continue
+            tail_score, tail_assignment = solve(predicted_index + 1, used_truth_mask | bit)
+            candidate_score = overlap_by_pair.get((predicted, truth), 0) + tail_score
+            candidate_assignment = (truth_index, *tail_assignment)
+            if candidate_score > best_score or (
+                candidate_score == best_score and candidate_assignment < best_assignment
+            ):
+                best_score = candidate_score
+                best_assignment = candidate_assignment
+        return best_score, best_assignment
+
+    if not predicted_speakers or not truth_speakers:
+        return {}
+    _, assignment = solve(0, 0)
+    return {
+        predicted: truth_speakers[truth_index]
+        for predicted, truth_index in zip(predicted_speakers, assignment)
+        if truth_index >= 0
+    }
 
 
 def score_turns(
@@ -87,45 +114,81 @@ def score_turns(
 
     predicted_speakers = sorted({str(turn.get("speaker_id", "UNKNOWN")) for turn in predicted_turns})
     truth_speakers = sorted({str(turn["speaker_id"]) for turn in truth_turns})
-    cluster_map = {
-        speaker: max(
-            truth_speakers,
-            key=lambda truth_speaker: overlap_by_pair.get((speaker, truth_speaker), 0),
-        )
-        for speaker in predicted_speakers
-    } if truth_speakers else {}
+    cluster_map = optimal_cluster_map(predicted_speakers, truth_speakers, overlap_by_pair)
 
-    covered_ms = sum(overlap_with_truth(turn, truth_turns) for turn in predicted_turns)
-    false_alarm_ms = sum(
-        max(0, int(turn["end_ms"]) - int(turn["start_ms"]) - overlap_with_truth(turn, truth_turns))
-        for turn in predicted_turns
+    boundaries = sorted(
+        {
+            int(turn[key])
+            for turn in [*truth_turns, *predicted_turns]
+            for key in ("start_ms", "end_ms")
+        }
     )
+    missed_ms = 0
+    false_alarm_ms = 0
     confusion_ms = 0
-    for predicted in predicted_turns:
-        mapped_speaker = cluster_map.get(str(predicted.get("speaker_id", "UNKNOWN")))
-        for truth in truth_turns:
-            if str(truth["speaker_id"]) == mapped_speaker:
-                continue
-            confusion_ms += interval_overlap(
-                int(predicted["start_ms"]),
-                int(predicted["end_ms"]),
-                int(truth["start_ms"]),
-                int(truth["end_ms"]),
-            )
+    detected_truth_ms = 0
+    speaker_intersection_ms = {speaker: 0 for speaker in truth_speakers}
+    speaker_union_ms = {speaker: 0 for speaker in truth_speakers}
+    inverse_map = {truth: predicted for predicted, truth in cluster_map.items()}
+    for start, end in zip(boundaries, boundaries[1:]):
+        duration = end - start
+        if duration <= 0:
+            continue
+        truth_active = {
+            str(turn["speaker_id"])
+            for turn in truth_turns
+            if int(turn["start_ms"]) < end and int(turn["end_ms"]) > start
+        }
+        predicted_active = {
+            str(turn.get("speaker_id", "UNKNOWN"))
+            for turn in predicted_turns
+            if int(turn["start_ms"]) < end and int(turn["end_ms"]) > start
+        }
+        matched = sum(
+            1
+            for predicted in predicted_active
+            if cluster_map.get(predicted) in truth_active
+        )
+        reference_count = len(truth_active)
+        predicted_count = len(predicted_active)
+        detected_truth_ms += min(reference_count, predicted_count) * duration
+        missed_ms += max(0, reference_count - predicted_count) * duration
+        false_alarm_ms += max(0, predicted_count - reference_count) * duration
+        confusion_ms += max(0, min(reference_count, predicted_count) - matched) * duration
+        for truth_speaker in truth_speakers:
+            reference_present = truth_speaker in truth_active
+            predicted_present = inverse_map.get(truth_speaker) in predicted_active
+            if reference_present and predicted_present:
+                speaker_intersection_ms[truth_speaker] += duration
+            if reference_present or predicted_present:
+                speaker_union_ms[truth_speaker] += duration
 
-    coverage = covered_ms / total_truth_ms
+    coverage = detected_truth_ms / total_truth_ms
+    missed_rate = missed_ms / total_truth_ms
     confusion_rate = confusion_ms / total_truth_ms
     false_alarm_rate = false_alarm_ms / total_truth_ms
-    der = max(0.0, 1.0 - coverage) + confusion_rate + false_alarm_rate
+    der = missed_rate + confusion_rate + false_alarm_rate
+    speaker_jaccard_errors = {
+        speaker: 1.0
+        - speaker_intersection_ms[speaker] / max(1, speaker_union_ms[speaker])
+        for speaker in truth_speakers
+    }
+    jer = sum(speaker_jaccard_errors.values()) / max(1, len(speaker_jaccard_errors))
 
     return {
         "speaker_count": len(predicted_speakers),
         "turn_count": len(predicted_turns),
         "coverage": round(coverage, 3),
+        "missed_speech_rate": round(missed_rate, 3),
         "confusion_rate": round(confusion_rate, 3),
         "false_alarm_rate": round(false_alarm_rate, 3),
         "der": round(der, 3),
+        "jaccard_error_rate": round(jer, 3),
+        "speaker_jaccard_errors": {
+            speaker: round(value, 3) for speaker, value in speaker_jaccard_errors.items()
+        },
         "cluster_map": cluster_map,
+        "speaker_mapping_method": "optimal_speaker_mapping_v2",
         "sample_turns": predicted_turns[:8],
     }
 
@@ -230,6 +293,13 @@ def main() -> int:
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "methodology_version": "2.0.0",
+        "evidence_tier": "diagnostic",
+        "ranking_eligible": False,
+        "ranking_blocker": (
+            "The current single four-speaker fixture lacks the required two-speaker, "
+            "overlap, noise, and far-field v2 domains."
+        ),
         "truth": truth,
         "results": results,
     }

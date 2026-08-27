@@ -18,6 +18,8 @@ export interface SttEvaluationResult {
 }
 
 export const STT_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-06-07T05:27:46Z",
   suite: "Mini LibriSpeech real speech",
   corpus:

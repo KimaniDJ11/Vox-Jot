@@ -138,12 +138,14 @@ fn tts_hf_repo_is_installed(app: &AppHandle, repo_id: &str) -> bool {
     let Some(dir) = tts_hf_install_dir(app, repo_id) else {
         return false;
     };
-    if !dir.exists() {
-        return false;
-    }
-    std::fs::read_dir(&dir)
-        .map(|mut entries| entries.next().is_some())
-        .unwrap_or(false)
+    crate::external_model_storage::expand_candidate(dir)
+        .into_iter()
+        .any(|candidate| {
+            candidate.exists()
+                && std::fs::read_dir(&candidate)
+                    .map(|mut entries| entries.next().is_some())
+                    .unwrap_or(false)
+        })
 }
 
 fn stt_hf_repo_to_model_id(repo_id: &str) -> Option<&'static str> {
@@ -645,6 +647,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     supports_inline_tags: false,
                 },
                 delivery_support: unsupported_delivery_support(),
+                storage_location: model.storage_location,
                 readiness_status: Some(if available {
                     "ready".to_string()
                 } else {
@@ -747,6 +750,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                         supports_inline_tags: false,
                     },
                     delivery_support: unsupported_delivery_support(),
+                    storage_location: mapped.storage_location,
                     readiness_status: Some(if available {
                         "ready".to_string()
                     } else {
@@ -944,6 +948,7 @@ fn augment_tts_catalog_with_hf_verified(
                 supports_inline_tags: false,
             },
             delivery_support: unsupported_delivery_support(),
+            storage_location: None,
         });
     }
 }
@@ -1234,6 +1239,7 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     supports_inline_tags: false,
                 },
                 delivery_support: unsupported_delivery_support(),
+                storage_location: None,
                 readiness_status: Some(readiness_status.to_string()),
                 readiness_issues,
             }

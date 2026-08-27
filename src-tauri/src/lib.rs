@@ -24,6 +24,7 @@ mod commands;
 mod convo;
 mod correction_tracker;
 mod detail_view;
+mod external_model_storage;
 mod github_release;
 mod helpers;
 mod http_api;
@@ -679,6 +680,8 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
 
     warm_selected_stt_engine(app_handle, &model_manager, &transcription_manager);
 
+    crate::external_model_storage::start_watcher(app_handle);
+
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
     // after permissions are confirmed (on macOS) or after onboarding completes.
@@ -978,6 +981,9 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_audio_enhancement_enabled_setting,
         shortcut::change_audio_enhancement_model_setting,
         shortcut::change_tts_model_store_path_setting,
+        shortcut::change_external_model_storage_enabled_setting,
+        shortcut::change_external_model_storage_auto_detect_setting,
+        shortcut::change_external_model_storage_path_setting,
         shortcut::change_speech_runtime_path_setting,
         shortcut::change_overlay_position_setting,
         shortcut::change_recording_overlay_style_setting,
@@ -1053,6 +1059,10 @@ pub fn run(cli_args: CliArgs) {
         show_main_window_command,
         commands::cancel_operation,
         commands::get_app_dir_path,
+        commands::get_external_model_storage_status,
+        commands::refresh_external_model_storage,
+        commands::pick_external_model_storage_dir,
+        commands::open_external_model_storage_dir,
         commands::get_app_settings,
         commands::get_default_settings,
         commands::get_log_dir_path,
@@ -1596,6 +1606,7 @@ pub fn run(cli_args: CliArgs) {
                 log::error!("Failed to prepare model storage layout: {error:#}");
                 Box::<dyn std::error::Error>::from(error)
             })?;
+            crate::external_model_storage::refresh(&app_handle);
 
             // Initialize correction tracking system
             let app_data_dir = crate::portable::app_data_dir(&app_handle).map_err(|error| {

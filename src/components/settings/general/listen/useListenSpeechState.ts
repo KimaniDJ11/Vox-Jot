@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
+import { useTauriEvent } from "@/hooks/useTauriEvent";
 import {
   getModelPlatformOverview,
   setTtsPlatformSelection,
@@ -191,6 +192,10 @@ export function useListenSpeechState() {
       document.removeEventListener("visibilitychange", syncOnVisibility);
     };
   }, [settings, refreshAll]);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void refreshPlatform();
+  });
 
   const activePresetId =
     settings?.tts_active_preset_id ?? presets[0]?.id ?? null;

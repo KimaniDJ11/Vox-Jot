@@ -24,6 +24,7 @@ use crate::utils::cancel_current_operation;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
@@ -39,6 +40,60 @@ pub fn get_app_dir_path(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to get app data directory: {}", e))?;
 
     Ok(app_data_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_external_model_storage_status(
+    app: AppHandle,
+) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
+    Ok(crate::external_model_storage::refresh(&app))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn refresh_external_model_storage(
+    app: AppHandle,
+) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
+    Ok(crate::external_model_storage::refresh_and_notify(&app))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn pick_external_model_storage_dir(
+    app: AppHandle,
+) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
+    let app_for_dialog = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app_for_dialog
+            .dialog()
+            .file()
+            .set_title("Choose external model folder")
+            .blocking_pick_folder()
+    })
+    .await
+    .map_err(|error| format!("Failed to open folder picker: {error}"))?;
+
+    let Some(path) = picked else {
+        return Ok(crate::external_model_storage::cached_status());
+    };
+    let path = path
+        .into_path()
+        .map_err(|error| format!("Selected folder path is not readable: {error}"))?;
+    crate::external_model_storage::set_path(&app, Some(path.display().to_string()))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn open_external_model_storage_dir(app: AppHandle) -> Result<(), String> {
+    let status = crate::external_model_storage::cached_status();
+    let Some(path) = status.resolved_path.or(status.configured_path) else {
+        return Err("No external model folder is connected.".to_string());
+    };
+    app.opener()
+        .open_path(path, None::<String>)
+        .map_err(|error| format!("Failed to open external model folder: {error}"))?;
+    Ok(())
 }
 
 #[tauri::command]

@@ -1706,7 +1706,11 @@
     "loadDirectory": "Błąd podczas ładowania katalogu: {{error}}",
     "recordingFailed": "Nie udało się rozpocząć nagrywania: {{error}}",
     "modelLoadFailed": "Nie udało się załadować modelu: {{model}}",
-    "modelLoadFailedUnknown": "nieznany model"
+    "modelLoadFailedUnknown": "nieznany model",
+    "externalStorageFallback": "Dysk zewnętrzny „{{volume}}” odłączony. Przełączono na model lokalny.",
+    "externalStorageFallbackUnnamed": "Pamięć zewnętrzna odłączona. Przełączono na model lokalny.",
+    "externalStorageDisconnected": "Dysk zewnętrzny „{{volume}}” odłączony. Podłącz ponownie dysk lub pobierz model lokalny do dyktowania w trybie offline.",
+    "externalStorageDisconnectedUnnamed": "Pamięć zewnętrzna odłączona. Podłącz ponownie dysk lub pobierz model lokalny do dyktowania w trybie offline."
   },
   "appLanguage": {
     "title": "Język aplikacji",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Wyszukaj modele według nazwy, języka lub dostawcy...",
       "ariaLabel": "Wyszukaj modele"
     },
+    "storageLocation": {
+      "local": "Wewnętrzny dysk SSD",
+      "localDetail": "Pobrane na ten komputer Mac i dostępne bez dysku zewnętrznego.",
+      "external": "Napęd zewnętrzny",
+      "externalDetail": "Gotowe na podłączonym dysku zewnętrznym. Podłącz ponownie dysk, jeśli ten model zniknie."
+    },
+
     "tabs": {
       "stt": "Mowa (STT)",
       "analysis": "Analiza mowy",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Przechowywanie",
       "historyGroupTitle": "Historia",
       "filesGroupTitle": "Pliki",
+      "externalModelStorage": {
+        "enabledLabel": "Przeskanuj pamięć zewnętrzną w poszukiwaniu modeli",
+        "enabledDescription": "Używaj modeli już zapisanych na podłączonym dysku bez kopiowania ich na tego Maca. Pobrane pliki nadal trafiają do pamięci lokalnej.",
+        "autoDetectLabel": "Automatycznie wykrywaj foldery Vox Jot na podłączonych dyskach",
+        "autoDetectDescription": "Wyszukuje VoxJot/app-support/models lub Apps/Models/VoxJot na zamontowanych woluminach, takich jak /Volumes/Models.",
+        "folderTitle": "Zewnętrzny folder modelu",
+        "folderDescription": "Wybierz folder na zewnętrznym dysku SSD, karcie SD lub dysku dodatkowym. Vox Jot odczytuje modele z tego folderu po podłączeniu dysku.",
+        "pathLabel": "Ścieżka folderu modelu zewnętrznego",
+        "browse": "Przeglądać…",
+        "clear": "Użyj automatycznego wykrywania",
+        "noFolder": "Nie wybrano jeszcze żadnego folderu. Funkcja automatycznego wykrywania użyje podłączonego dysku modelu Vox Jot, jeśli taki zostanie znaleziony.",
+        "connected": "Połączono: {{volume}} (wykryto modele {{count}})",
+        "disconnected": "Pamięć zewnętrzna odłączona",
+        "unnamedVolume": "Napęd zewnętrzny"
+      },
       "previewLocalFirst": "Najpierw lokalnie",
       "previewEnforced": "Wymuszone",
       "previewAllowed": "Dozwolone",

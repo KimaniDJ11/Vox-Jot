@@ -925,6 +925,30 @@ function App() {
   }, [t]);
 
   useEffect(() => {
+    const unlisten = listen<
+      import("@/bindings").ExternalModelStorageDisconnectEvent
+    >("external-model-storage-disconnected", (event) => {
+      const volume = event.payload.volume_name?.trim();
+      if (event.payload.fell_back) {
+        toast.message(
+          volume
+            ? t("errors.externalStorageFallback", { volume })
+            : t("errors.externalStorageFallbackUnnamed"),
+        );
+        return;
+      }
+      toast.error(
+        volume
+          ? t("errors.externalStorageDisconnected", { volume })
+          : t("errors.externalStorageDisconnectedUnnamed"),
+      );
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [t]);
+
+  useEffect(() => {
     const unlisten = listen<PostProcessPreviewRequest>(
       "post-process-preview-request",
       (event) => {

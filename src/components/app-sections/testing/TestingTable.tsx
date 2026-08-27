@@ -10,6 +10,7 @@ import {
   metricPerformance,
   metricPreference,
   parseMetricValue,
+  realtimeSpeedBadge,
   type MetricRange,
 } from "@/components/app-sections/testing/metricDisplay";
 import type { LeaderboardRowProps } from "@/components/app-sections/testing/types";
@@ -123,15 +124,6 @@ function metricTone(value: string, range?: MetricRange): string {
   }
 
   return "bg-[var(--warning-soft)] text-[var(--warning)]";
-}
-
-function realtimeTag(label: string, value: string) {
-  if (!label.toLowerCase().includes("rtf")) {
-    return null;
-  }
-
-  const parsed = parseMetricValue(value);
-  return parsed !== undefined && parsed < 1 ? "Real-time+" : null;
 }
 
 function modelProviderId(row: LeaderboardRowProps): string {
@@ -463,7 +455,7 @@ export const TestingTable: React.FC<TestingTableProps> = ({
                     {metricColumns.map((label) => {
                       const metric = metricFor(row, label);
                       const tag = metric
-                        ? realtimeTag(label, metric.value)
+                        ? realtimeSpeedBadge(label, metric.value)
                         : undefined;
                       return (
                         <td

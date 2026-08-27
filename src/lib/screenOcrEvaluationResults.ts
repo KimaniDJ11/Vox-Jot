@@ -18,6 +18,8 @@ export interface ScreenOcrEvaluationResult {
 }
 
 export const SCREEN_OCR_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-06-15T14:47:21Z",
   suite: "Screen OCR real-world fixture benchmark",
   corpus:

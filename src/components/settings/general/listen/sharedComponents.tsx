@@ -29,6 +29,7 @@ import {
   inferRuntimeFormat,
   mergeSizeWithIdentityChips,
 } from "@/components/model-hub/modelIdentityChips";
+import { storageLocationChip } from "@/components/model-hub/storageLocationChip";
 import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import type {
   CatalogModelDescriptor,
@@ -288,6 +289,7 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   };
   const capabilityChips: CompactBadgeItem[] = [
     ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+    storageLocationChip(t, model.installed, model.storage_location),
     languageCoverage
       ? {
           id: "capability-languages",

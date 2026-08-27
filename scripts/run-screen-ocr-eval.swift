@@ -38,6 +38,12 @@ struct CaseResult {
     let total: Int
     let elapsedMs: Int
     let confidence: Double
+    let characterErrors: Int
+    let referenceCharacters: Int
+    let characterErrorRate: Double
+    let wordErrors: Int
+    let referenceWords: Int
+    let wordErrorRate: Double
     let missing: [String]
     let recognizedText: String
 }
@@ -55,6 +61,8 @@ struct EngineResult {
     let totalPhrases: Int
     let averageLatencyMs: Int?
     let averageConfidence: Double?
+    let characterErrorRate: Double?
+    let wordErrorRate: Double?
     let results: [CaseResult]
     let notes: String
 }
@@ -299,6 +307,25 @@ func normalize(_ text: String) -> String {
         .joined(separator: " ")
 }
 
+func editDistance<T: Equatable>(_ left: [T], _ right: [T]) -> Int {
+    if left.isEmpty { return right.count }
+    if right.isEmpty { return left.count }
+    var previous = Array(0 ... right.count)
+    for (leftIndex, leftValue) in left.enumerated() {
+        var current = Array(repeating: 0, count: right.count + 1)
+        current[0] = leftIndex + 1
+        for (rightIndex, rightValue) in right.enumerated() {
+            current[rightIndex + 1] = min(
+                current[rightIndex] + 1,
+                previous[rightIndex + 1] + 1,
+                previous[rightIndex] + (leftValue == rightValue ? 0 : 1)
+            )
+        }
+        previous = current
+    }
+    return previous[right.count]
+}
+
 func scoreCase(_ asset: CaseAsset, recognized: [(text: String, confidence: Float)], elapsedMs: Int) -> CaseResult {
     let recognizedText = recognized.map(\.text).joined(separator: "\n")
     let normalizedText = normalize(recognizedText)
@@ -308,6 +335,15 @@ func scoreCase(_ asset: CaseAsset, recognized: [(text: String, confidence: Float
     let confidence = recognized.isEmpty
         ? 0.0
         : Double(recognized.map(\.confidence).reduce(0, +)) / Double(recognized.count)
+    let referenceText = asset.testCase.blocks.map(\.text).joined(separator: "\n")
+    let referenceNormalized = normalize(referenceText)
+    let recognizedNormalized = normalize(recognizedText)
+    let referenceCharacters = Array(referenceNormalized)
+    let recognizedCharacters = Array(recognizedNormalized)
+    let referenceWords = referenceNormalized.split(separator: " ").map(String.init)
+    let recognizedWords = recognizedNormalized.split(separator: " ").map(String.init)
+    let characterErrors = editDistance(referenceCharacters, recognizedCharacters)
+    let wordErrors = editDistance(referenceWords, recognizedWords)
     return CaseResult(
         id: asset.testCase.id,
         title: asset.testCase.title,
@@ -316,6 +352,12 @@ func scoreCase(_ asset: CaseAsset, recognized: [(text: String, confidence: Float
         total: asset.testCase.requiredPhrases.count,
         elapsedMs: elapsedMs,
         confidence: confidence,
+        characterErrors: characterErrors,
+        referenceCharacters: referenceCharacters.count,
+        characterErrorRate: Double(characterErrors) / Double(max(1, referenceCharacters.count)),
+        wordErrors: wordErrors,
+        referenceWords: referenceWords.count,
+        wordErrorRate: Double(wordErrors) / Double(max(1, referenceWords.count)),
         missing: missing,
         recognizedText: recognizedText
     )
@@ -337,7 +379,13 @@ func summarize(
     let averageConfidence = results.isEmpty
         ? nil
         : results.map(\.confidence).reduce(0.0, +) / Double(results.count)
-    let score = totalPhrases == 0 ? nil : Double(matchedPhrases) / Double(totalPhrases) * 100.0
+    let characterErrors = results.map(\.characterErrors).reduce(0, +)
+    let referenceCharacters = results.map(\.referenceCharacters).reduce(0, +)
+    let wordErrors = results.map(\.wordErrors).reduce(0, +)
+    let referenceWords = results.map(\.referenceWords).reduce(0, +)
+    let characterErrorRate = results.isEmpty ? nil : Double(characterErrors) / Double(max(1, referenceCharacters))
+    let wordErrorRate = results.isEmpty ? nil : Double(wordErrors) / Double(max(1, referenceWords))
+    let score = characterErrorRate.map { max(0.0, 1.0 - min($0, 1.0)) * 100.0 }
     return EngineResult(
         engineId: engineId,
         label: label,
@@ -351,6 +399,8 @@ func summarize(
         totalPhrases: totalPhrases,
         averageLatencyMs: averageLatency,
         averageConfidence: averageConfidence,
+        characterErrorRate: characterErrorRate,
+        wordErrorRate: wordErrorRate,
         results: results,
         notes: notes
     )
@@ -378,6 +428,8 @@ func blocked(
         totalPhrases: totalPhrases,
         averageLatencyMs: nil,
         averageConfidence: nil,
+        characterErrorRate: nil,
+        wordErrorRate: nil,
         results: [],
         notes: notes
     )
@@ -875,6 +927,12 @@ func jsonCase(_ result: CaseResult) -> [String: Any] {
         "total": result.total,
         "elapsed_ms": result.elapsedMs,
         "confidence": result.confidence,
+        "character_errors": result.characterErrors,
+        "reference_characters": result.referenceCharacters,
+        "character_error_rate": result.characterErrorRate,
+        "word_errors": result.wordErrors,
+        "reference_words": result.referenceWords,
+        "word_error_rate": result.wordErrorRate,
         "missing": result.missing,
         "recognized_text": result.recognizedText,
     ]
@@ -898,6 +956,8 @@ func jsonEngine(_ result: EngineResult, rank: Int?) -> [String: Any] {
     if let matchedPhrases = result.matchedPhrases { payload["matched_phrases"] = matchedPhrases }
     if let averageLatencyMs = result.averageLatencyMs { payload["average_latency_ms"] = averageLatencyMs }
     if let averageConfidence = result.averageConfidence { payload["average_confidence"] = averageConfidence }
+    if let characterErrorRate = result.characterErrorRate { payload["character_error_rate"] = characterErrorRate }
+    if let wordErrorRate = result.wordErrorRate { payload["word_error_rate"] = wordErrorRate }
     return payload
 }
 
@@ -910,12 +970,17 @@ let totalPhrases = assets.map { $0.testCase.requiredPhrases.count }.reduce(0, +)
 var engineResults: [EngineResult] = [evaluateAppleVision(assets: assets), evaluateTesseract(assets: assets)]
 engineResults.append(contentsOf: catalog.map { evaluateRuntimeModel(entry: $0, assets: assets) })
 
+let rankingEligible = false
+let rankingBlocker = "The current six-fixture corpus lacks the required rotated/scaled and multilingual v2 domains."
 let rankedIds = engineResults
-    .filter { $0.status == "tested" }
+    .filter { rankingEligible && $0.status == "tested" }
     .sorted {
-        let leftScore = $0.score ?? -1
-        let rightScore = $1.score ?? -1
-        if leftScore != rightScore { return leftScore > rightScore }
+        let leftCer = $0.characterErrorRate ?? .infinity
+        let rightCer = $1.characterErrorRate ?? .infinity
+        if leftCer != rightCer { return leftCer < rightCer }
+        let leftWer = $0.wordErrorRate ?? .infinity
+        let rightWer = $1.wordErrorRate ?? .infinity
+        if leftWer != rightWer { return leftWer < rightWer }
         return ($0.averageLatencyMs ?? Int.max) < ($1.averageLatencyMs ?? Int.max)
     }
     .enumerated()
@@ -925,6 +990,10 @@ let rankedIds = engineResults
 
 let report: [String: Any] = [
     "generated_at": generatedAt,
+    "methodology_version": "2.0.0",
+    "evidence_tier": rankingEligible ? "ranked" : "diagnostic",
+    "ranking_eligible": rankingEligible,
+    "ranking_blocker": rankingBlocker,
     "suite": "Screen OCR real-world fixture benchmark",
     "corpus": "Six generated real-world surfaces: settings, browser release note, code review, dense benchmark table, untrusted prompt-looking document, and muted note.",
     "app_data_ocr_root": appDataOcrRoot.path,
@@ -947,8 +1016,8 @@ Model root: \(appDataOcrRoot.path)
 Installed app: \(installedAppPath.path)
 OCR runtime: \(runtimeRoot()?.path ?? "not found")
 
-| Rank | Engine | Status | Score | Passed cases | Matched phrases | Avg latency | Avg confidence | Notes |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Rank | Engine | Status | Score | CER | WER | Passed cases | Matched phrases | Avg latency | Avg confidence | Notes |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 """
 
 for result in engineResults.sorted(by: {
@@ -963,14 +1032,16 @@ for result in engineResults.sorted(by: {
     let matched = result.matchedPhrases.map { "\($0)/\(result.totalPhrases)" } ?? "-"
     let latency = result.averageLatencyMs.map { "\($0) ms" } ?? "-"
     let confidence = result.averageConfidence.map { String(format: "%.3f", $0) } ?? "-"
-    markdown += "\n| \(rank) | \(markdownEscape(result.label)) | \(result.status) | \(score) | \(passed) | \(matched) | \(latency) | \(confidence) | \(markdownEscape(result.notes)) |"
+    let cer = result.characterErrorRate.map { String(format: "%.3f", $0) } ?? "-"
+    let wer = result.wordErrorRate.map { String(format: "%.3f", $0) } ?? "-"
+    markdown += "\n| \(rank) | \(markdownEscape(result.label)) | \(result.status) | \(score) | \(cer) | \(wer) | \(passed) | \(matched) | \(latency) | \(confidence) | \(markdownEscape(result.notes)) |"
 }
 
 for result in engineResults where result.status == "tested" {
-    markdown += "\n\n## \(result.label)\n\n| Case | Pass | Match | Latency | Missing |\n| --- | --- | ---: | ---: | --- |\n"
+    markdown += "\n\n## \(result.label)\n\n| Case | Pass | CER | WER | Match | Latency | Missing |\n| --- | --- | ---: | ---: | ---: | ---: | --- |\n"
     for caseResult in result.results {
         let missing = caseResult.missing.isEmpty ? "-" : caseResult.missing.joined(separator: ", ")
-        markdown += "\n| \(markdownEscape(caseResult.title)) | \(caseResult.passed ? "yes" : "no") | \(caseResult.matched)/\(caseResult.total) | \(caseResult.elapsedMs) ms | \(markdownEscape(missing)) |"
+        markdown += "\n| \(markdownEscape(caseResult.title)) | \(caseResult.passed ? "yes" : "no") | \(String(format: "%.3f", caseResult.characterErrorRate)) | \(String(format: "%.3f", caseResult.wordErrorRate)) | \(caseResult.matched)/\(caseResult.total) | \(caseResult.elapsedMs) ms | \(markdownEscape(missing)) |"
     }
 }
 markdown += "\n"

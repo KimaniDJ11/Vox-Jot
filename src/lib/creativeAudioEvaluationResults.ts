@@ -18,6 +18,8 @@ export interface CreativeAudioEvaluationResult {
 }
 
 export const CREATIVE_AUDIO_EVALUATION_RUN = {
+  methodologyVersion: "1.0-legacy",
+  evidenceTier: "legacy" as const,
   generatedAt: "2026-05-25T03:26:12.776Z",
   suite: "creative_audio_real_world_app_path",
   corpus:

@@ -79,6 +79,10 @@ interface EvalResult {
   exact_match: boolean;
   similarity: number;
   duration_ms?: number;
+  completion_tokens?: number;
+  output_tokens_per_second?: number;
+  raw_model_zero_drift?: boolean;
+  unsolicited_tokens?: string[];
   skipped_llm: boolean;
   blocked_candidate?: boolean;
   drift_fallback?: boolean;
@@ -106,6 +110,10 @@ interface EvalSummary {
   avg_similarity: number;
   latency_p50_ms?: number;
   latency_p95_ms?: number;
+  zero_drift_passes: number;
+  zero_drift_evaluated: number;
+  zero_drift_purity?: number;
+  output_tokens_per_second?: number;
   by_category: Record<
     string,
     { total: number; passed: number; avg_similarity: number }
@@ -640,6 +648,13 @@ interface LLMConfig {
   timeoutMs: number;
 }
 
+interface LLMCallResult {
+  content: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  generationDurationMs?: number;
+}
+
 function timeoutSignal(timeoutMs: number): AbortSignal | undefined {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
   return AbortSignal.timeout(timeoutMs);
@@ -662,7 +677,7 @@ async function callLLM(
   config: LLMConfig,
   systemPrompt: string,
   userContent: string,
-): Promise<string> {
+): Promise<LLMCallResult> {
   if (config.provider === "ollama") {
     return callOllama(config, systemPrompt, userContent);
   }
@@ -702,16 +717,21 @@ async function callLLM(
 
   const data = (await response.json()) as {
     choices: Array<{ message: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const content = data.choices?.[0]?.message?.content;
-  return content?.trim() ?? "";
+  return {
+    content: content?.trim() ?? "",
+    promptTokens: data.usage?.prompt_tokens,
+    completionTokens: data.usage?.completion_tokens,
+  };
 }
 
 async function callOllama(
   config: LLMConfig,
   systemPrompt: string,
   userContent: string,
-): Promise<string> {
+): Promise<LLMCallResult> {
   const rootUrl = config.baseUrl.replace(/\/$/, "").replace(/\/v1$/, "");
   const url = `${rootUrl}/api/chat`;
   const response = await fetch(url, {
@@ -743,10 +763,66 @@ async function callOllama(
   const data = (await response.json()) as {
     message?: { content?: string };
     error?: string;
+    prompt_eval_count?: number;
+    eval_count?: number;
+    eval_duration?: number;
   };
   if (data.error) throw new Error(`Ollama returned an error: ${data.error}`);
   const content = data.message?.content;
-  return content?.trim() ?? "";
+  return {
+    content: content?.trim() ?? "",
+    promptTokens: data.prompt_eval_count,
+    completionTokens: data.eval_count,
+    generationDurationMs:
+      data.eval_duration === undefined
+        ? undefined
+        : data.eval_duration / 1_000_000,
+  };
+}
+
+function normalizedSemanticTokens(text: string): string[] {
+  return (
+    text
+      .normalize("NFKC")
+      .toLocaleLowerCase("en-US")
+      .match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) ?? []
+  );
+}
+
+function findUnsolicitedTokens(
+  rawStt: string,
+  expectedOutput: string,
+  candidate: string,
+): string[] {
+  const tokenCounts = (text: string): Map<string, number> => {
+    const counts = new Map<string, number>();
+    for (const token of normalizedSemanticTokens(text)) {
+      counts.set(token, (counts.get(token) ?? 0) + 1);
+    }
+    return counts;
+  };
+  const rawCounts = tokenCounts(rawStt);
+  const expectedCounts = tokenCounts(expectedOutput);
+  const allowed = new Map<string, number>();
+  for (const token of new Set([
+    ...rawCounts.keys(),
+    ...expectedCounts.keys(),
+  ])) {
+    allowed.set(
+      token,
+      Math.max(rawCounts.get(token) ?? 0, expectedCounts.get(token) ?? 0),
+    );
+  }
+  const unsolicited: string[] = [];
+  for (const token of normalizedSemanticTokens(candidate)) {
+    const remaining = allowed.get(token) ?? 0;
+    if (remaining > 0) {
+      allowed.set(token, remaining - 1);
+    } else {
+      unsolicited.push(token);
+    }
+  }
+  return unsolicited;
 }
 
 // ---------------------------------------------------------------------------
@@ -1145,6 +1221,10 @@ async function main() {
         let driftFallback = false;
         let error: string | undefined;
         let durationMs: number | undefined;
+        let completionTokens: number | undefined;
+        let outputTokensPerSecond: number | undefined;
+        let rawModelZeroDrift: boolean | undefined;
+        let unsolicitedTokens: string[] | undefined;
 
         if (!skippedLlm) {
           const systemPrompt = buildSystemPrompt(
@@ -1162,13 +1242,28 @@ async function main() {
 
           try {
             const startedAt = performance.now();
-            rawModelOutput = await callLLM(
+            const callResult = await callLLM(
               llmConfig,
               systemPrompt,
               userContent,
             );
             durationMs = Math.round(performance.now() - startedAt);
+            rawModelOutput = callResult.content;
+            completionTokens = callResult.completionTokens;
+            const generationDurationMs =
+              callResult.generationDurationMs ?? durationMs;
+            if (completionTokens !== undefined && generationDurationMs > 0) {
+              outputTokensPerSecond =
+                completionTokens / (generationDurationMs / 1000);
+            }
             const sanitized = sanitizePlainModelOutput(rawModelOutput);
+            unsolicitedTokens = findUnsolicitedTokens(
+              tc.raw_stt,
+              tc.expected_output,
+              sanitized ?? rawModelOutput,
+            );
+            rawModelZeroDrift =
+              sanitized !== null && unsolicitedTokens.length === 0;
             if (sanitized === null) {
               blockedCandidate = true;
               actual = tc.raw_stt.trim();
@@ -1234,6 +1329,13 @@ async function main() {
           exact_match: exactMatch,
           similarity: sim,
           duration_ms: durationMs,
+          completion_tokens: completionTokens,
+          output_tokens_per_second: outputTokensPerSecond,
+          raw_model_zero_drift: rawModelZeroDrift,
+          unsolicited_tokens:
+            unsolicitedTokens && unsolicitedTokens.length > 0
+              ? unsolicitedTokens
+              : undefined,
           skipped_llm: skippedLlm,
           blocked_candidate: blockedCandidate || undefined,
           drift_fallback: driftFallback || undefined,
@@ -1273,6 +1375,15 @@ async function main() {
     );
     return values[index];
   };
+  const zeroDriftResults = results.filter(
+    (result) => result.raw_model_zero_drift !== undefined,
+  );
+  const zeroDriftPasses = zeroDriftResults.filter(
+    (result) => result.raw_model_zero_drift,
+  ).length;
+  const tokenRates = results
+    .map((result) => result.output_tokens_per_second)
+    .filter((value): value is number => value !== undefined);
 
   const byCategory: Record<
     string,
@@ -1314,6 +1425,16 @@ async function main() {
     avg_similarity: avgSim,
     latency_p50_ms: percentile(durations, 50),
     latency_p95_ms: percentile(durations, 95),
+    zero_drift_passes: zeroDriftPasses,
+    zero_drift_evaluated: zeroDriftResults.length,
+    zero_drift_purity:
+      zeroDriftResults.length > 0
+        ? zeroDriftPasses / zeroDriftResults.length
+        : undefined,
+    output_tokens_per_second:
+      tokenRates.length > 0
+        ? tokenRates.reduce((sum, value) => sum + value, 0) / tokenRates.length
+        : undefined,
     by_category: byCategory,
     results,
   };
@@ -1337,6 +1458,16 @@ async function main() {
     }
     if (summary.latency_p95_ms !== undefined) {
       console.log(`Latency p95: ${summary.latency_p95_ms} ms`);
+    }
+    if (summary.zero_drift_purity !== undefined) {
+      console.log(
+        `Zero-drift purity: ${(summary.zero_drift_purity * 100).toFixed(1)}% (${summary.zero_drift_passes}/${summary.zero_drift_evaluated})`,
+      );
+    }
+    if (summary.output_tokens_per_second !== undefined) {
+      console.log(
+        `Output speed: ${summary.output_tokens_per_second.toFixed(1)} tokens/s`,
+      );
     }
     console.log(`Passed: ${passed} / ${evaluated.length}`);
     if (skipped > 0) console.log(`Skipped LLM: ${skipped}`);
@@ -1389,6 +1520,16 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     if (summary.latency_p95_ms !== undefined) {
       lines.push(`| Latency p95 | ${summary.latency_p95_ms} ms |`);
     }
+    if (summary.zero_drift_purity !== undefined) {
+      lines.push(
+        `| Zero-drift purity | ${(summary.zero_drift_purity * 100).toFixed(1)}% (${summary.zero_drift_passes}/${summary.zero_drift_evaluated}) |`,
+      );
+    }
+    if (summary.output_tokens_per_second !== undefined) {
+      lines.push(
+        `| Output speed | ${summary.output_tokens_per_second.toFixed(1)} tokens/s |`,
+      );
+    }
   }
 
   lines.push(``);
@@ -1439,6 +1580,18 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
       lines.push("```");
       lines.push(r.actual_output);
       lines.push("```");
+    }
+
+    if (r.raw_model_zero_drift !== undefined) {
+      lines.push(``);
+      lines.push(
+        `**Raw-model zero drift:** ${r.raw_model_zero_drift ? "pass" : "fail"}${r.unsolicited_tokens?.length ? ` (unsolicited tokens: ${r.unsolicited_tokens.join(", ")})` : ""}`,
+      );
+      if (r.output_tokens_per_second !== undefined) {
+        lines.push(
+          `**Output speed:** ${r.output_tokens_per_second.toFixed(1)} tokens/s${r.completion_tokens !== undefined ? ` (${r.completion_tokens} tokens)` : ""}`,
+        );
+      }
     }
 
     if (r.raw_model_output && r.raw_model_output !== r.actual_output) {

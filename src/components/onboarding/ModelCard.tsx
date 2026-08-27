@@ -24,6 +24,7 @@ import {
   providerDisplayName,
   resolveModelProviderId,
 } from "../ui/ProviderIcon";
+import { storageLocationChip } from "../model-hub/storageLocationChip";
 import { getSttEvaluationResult } from "@/lib/sttEvaluationResults";
 import {
   buildModelIdentityChips,
@@ -291,11 +292,17 @@ const ModelCard: React.FC<ModelCardProps> = ({
               }),
       }
     : null;
+  const originChip: CompactBadgeItem | null = storageLocationChip(
+    t,
+    model.is_downloaded,
+    model.storage_location,
+  );
 
   // Capability chips — fact-style differentiators above the divider. Cap at 4.
   const capabilityChips: CompactBadgeItem[] = [
     plainModelBadge,
     ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+    originChip,
     languagesSummary
       ? {
           id: "capability-languages",
@@ -360,6 +367,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
     };
   } else if (
     onDelete &&
+    model.storage_location !== "external" &&
     !confirmingDelete &&
     (status === "available" || status === "active")
   ) {
@@ -372,7 +380,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   }
 
   const confirmDeleteNode =
-    confirmingDelete && onDelete ? (
+    confirmingDelete && onDelete && model.storage_location !== "external" ? (
       <div
         className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
         onClick={(event) => event.stopPropagation()}

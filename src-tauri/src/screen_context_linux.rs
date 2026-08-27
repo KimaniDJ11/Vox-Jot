@@ -300,7 +300,7 @@ fn decode_png_to_rgba(bytes: &[u8]) -> Result<CapturedFrame, String> {
 fn expand_rgb_to_rgba(rgb: &[u8]) -> Vec<u8> {
     let pixels = rgb.len() / 3;
     let mut out = Vec::with_capacity(pixels * 4);
-    for chunk in rgb.chunks_exact(3) {
+    for chunk in rgb.as_chunks::<3>().0 {
         out.extend_from_slice(chunk);
         out.push(255);
     }
@@ -310,8 +310,7 @@ fn expand_rgb_to_rgba(rgb: &[u8]) -> Vec<u8> {
 fn expand_gray_alpha_to_rgba(ga: &[u8]) -> Vec<u8> {
     let pixels = ga.len() / 2;
     let mut out = Vec::with_capacity(pixels * 4);
-    for chunk in ga.chunks_exact(2) {
-        let (g, a) = (chunk[0], chunk[1]);
+    for &[g, a] in ga.as_chunks::<2>().0 {
         out.extend_from_slice(&[g, g, g, a]);
     }
     out

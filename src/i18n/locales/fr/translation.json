@@ -1706,7 +1706,11 @@
     "loadDirectory": "Erreur de chargement du répertoire : {{error}}",
     "recordingFailed": "Échec du démarrage de l'enregistrement : {{error}}",
     "modelLoadFailed": "Échec du chargement du modèle : {{model}}",
-    "modelLoadFailedUnknown": "modèle inconnu"
+    "modelLoadFailedUnknown": "modèle inconnu",
+    "externalStorageFallback": "Lecteur externe \"{{volume}}\" déconnecté. Passé à un modèle local.",
+    "externalStorageFallbackUnnamed": "Stockage externe déconnecté. Passé à un modèle local.",
+    "externalStorageDisconnected": "Lecteur externe \"{{volume}}\" déconnecté. Reconnectez le lecteur ou téléchargez un modèle local pour une dictée hors ligne.",
+    "externalStorageDisconnectedUnnamed": "Stockage externe déconnecté. Reconnectez le lecteur ou téléchargez un modèle local pour une dictée hors ligne."
   },
   "appLanguage": {
     "title": "Langue de l'application",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Rechercher des modèles par nom, langue ou fournisseur...",
       "ariaLabel": "Rechercher des modèles"
     },
+    "storageLocation": {
+      "local": "SSD interne",
+      "localDetail": "Téléchargé sur ce Mac et disponible sans lecteur externe.",
+      "external": "Disque externe",
+      "externalDetail": "Prêt sur le disque externe connecté. Reconnectez le lecteur si ce modèle disparaît."
+    },
+
     "tabs": {
       "stt": "Discours (STT)",
       "analysis": "Analyse de la parole",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Stockage",
       "historyGroupTitle": "Histoire",
       "filesGroupTitle": "Fichiers",
+      "externalModelStorage": {
+        "enabledLabel": "Analyser le stockage externe pour les modèles",
+        "enabledDescription": "Utilisez des modèles déjà stockés sur un disque connecté sans les copier sur ce Mac. Les téléchargements sont toujours transférés vers le stockage local.",
+        "autoDetectLabel": "Détection automatique des dossiers Vox Jot sur les lecteurs connectés",
+        "autoDetectDescription": "Recherche VoxJot/app-support/models ou Apps/Models/VoxJot sur les volumes montés tels que /Volumes/Models.",
+        "folderTitle": "Dossier modèle externe",
+        "folderDescription": "Choisissez un dossier sur un SSD externe, une carte SD ou un disque secondaire. Vox Jot lit les modèles de ce dossier lorsque le lecteur est connecté.",
+        "pathLabel": "Chemin du dossier de modèle externe",
+        "browse": "Parcourir…",
+        "clear": "Utiliser la détection automatique",
+        "noFolder": "Aucun dossier sélectionné pour l'instant. La détection automatique utilisera un modèle de lecteur Vox Jot connecté s'il en trouve un.",
+        "connected": "Connecté : {{volume}} (modèles {{count}} détectés)",
+        "disconnected": "Stockage externe déconnecté",
+        "unnamedVolume": "Disque externe"
+      },
       "previewLocalFirst": "Le local d’abord",
       "previewEnforced": "Appliqué",
       "previewAllowed": "Autorisé",

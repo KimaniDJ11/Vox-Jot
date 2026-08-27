@@ -1,4 +1,5 @@
 use crate::artifact_download::{emit_artifact_progress, ArtifactProgress, HfRepoDownloadOptions};
+use crate::external_model_storage::{self, ModelStorageLocation};
 use crate::github_release;
 use crate::settings::{get_settings, write_settings};
 use anyhow::Result;
@@ -45,6 +46,13 @@ pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectedModelDisconnectOutcome {
+    StillAvailable,
+    FellBack(String),
+    Unavailable,
+}
+
 pub fn model_is_available(model: &ModelInfo) -> bool {
     if matches!(
         model.engine_type,
@@ -77,6 +85,8 @@ pub struct ModelInfo {
     pub is_recommended: bool,       // Whether this is the recommended model for new users
     pub supported_languages: Vec<String>, // Languages this model can transcribe
     pub is_custom: bool,            // Whether this is a user-provided custom model
+    #[serde(default)]
+    pub storage_location: Option<ModelStorageLocation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -431,6 +441,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -457,6 +468,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -482,6 +494,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -506,6 +519,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -530,6 +544,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -554,6 +569,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -578,6 +594,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -603,6 +620,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -628,6 +646,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -652,6 +671,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -679,6 +699,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -707,6 +728,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -731,6 +753,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -760,6 +783,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -789,6 +813,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -827,6 +852,7 @@ impl ModelManager {
                 is_recommended: true,
                 supported_languages: parakeet_v3_languages,
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -855,6 +881,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -883,6 +910,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -911,6 +939,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -939,6 +968,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -975,6 +1005,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: sense_voice_languages,
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -1006,6 +1037,7 @@ impl ModelManager {
                 is_recommended: false,
                 supported_languages: gigaam_languages,
                 is_custom: false,
+                storage_location: None,
             },
         );
 
@@ -1036,6 +1068,7 @@ impl ModelManager {
                     is_recommended: true,
                     supported_languages: whisper_languages.clone(),
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1060,6 +1093,7 @@ impl ModelManager {
                     is_recommended: false,
                     supported_languages: vec!["en".to_string()],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1092,6 +1126,7 @@ impl ModelManager {
                         "mul".to_string(),
                     ],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1143,6 +1178,7 @@ impl ModelManager {
                         "uk".to_string(),
                     ],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1180,6 +1216,7 @@ impl ModelManager {
                         "hi".to_string(),
                     ],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1223,6 +1260,7 @@ impl ModelManager {
                         "ru".to_string(),
                     ],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
 
@@ -1259,6 +1297,7 @@ impl ModelManager {
                                 .map(|language| (*language).to_string())
                                 .collect(),
                             is_custom: false,
+                            storage_location: None,
                         },
                     );
                 };
@@ -1378,6 +1417,7 @@ impl ModelManager {
                             is_recommended: false,
                             supported_languages: vec!["mul".to_string()],
                             is_custom: false,
+                            storage_location: None,
                         },
                     );
                 };
@@ -1436,13 +1476,32 @@ impl ModelManager {
                     is_recommended: false,
                     supported_languages: vec!["en".to_string()],
                     is_custom: false,
+                    storage_location: None,
                 },
             );
         }
 
         // Auto-discover custom Whisper models (.bin files) in the models directory
-        if let Err(e) = Self::discover_custom_whisper_models(&models_dir, &mut available_models) {
+        if let Err(e) = Self::discover_custom_whisper_models(
+            &models_dir,
+            &mut available_models,
+            ModelStorageLocation::Local,
+        ) {
             warn!("Failed to discover custom models: {}", e);
+        }
+        if let Some(external_stt) =
+            external_model_storage::cached_external_root().map(|root| root.join("stt"))
+        {
+            if let Err(e) = Self::discover_custom_whisper_models(
+                &external_stt,
+                &mut available_models,
+                ModelStorageLocation::External,
+            ) {
+                warn!(
+                    "Failed to discover custom models on external storage: {}",
+                    e
+                );
+            }
         }
 
         let manager = Self {
@@ -1489,6 +1548,81 @@ impl ModelManager {
         models.get(model_id).cloned()
     }
 
+    #[cfg(not(feature = "ci-mock-transcription"))]
+    fn resolve_model_artifact(&self, filename: &str) -> Option<(PathBuf, ModelStorageLocation)> {
+        external_model_storage::resolve_existing(&self.models_dir.join(filename))
+    }
+
+    pub fn refresh_external_storage_availability(&self) -> Result<()> {
+        let mut models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        models.retain(|_, model| {
+            !(model.is_custom && model.storage_location == Some(ModelStorageLocation::External))
+        });
+        if let Some(external_stt) =
+            external_model_storage::cached_external_root().map(|root| root.join("stt"))
+        {
+            Self::discover_custom_whisper_models(
+                &external_stt,
+                &mut models,
+                ModelStorageLocation::External,
+            )?;
+        }
+        drop(models);
+        self.update_download_status()
+    }
+
+    /// If the selected STT model disappeared with the external volume, switch
+    /// to a local/built-in model.
+    pub fn fallback_selected_model_if_unavailable(&self) -> Result<SelectedModelDisconnectOutcome> {
+        self.update_download_status()?;
+        let mut settings = get_settings(&self.app_handle);
+        let selected = settings.selected_model.clone();
+
+        let models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if let Some(model) = models.get(&selected) {
+            if model_is_available(model) {
+                return Ok(SelectedModelDisconnectOutcome::StillAvailable);
+            }
+        }
+
+        let fallback = models
+            .values()
+            .find(|model| {
+                matches!(model.engine_type, EngineType::AppleSpeech) && model_is_available(model)
+            })
+            .or_else(|| {
+                models.values().find(|model| {
+                    model.storage_location != Some(ModelStorageLocation::External)
+                        && model_is_available(model)
+                })
+            })
+            .cloned();
+        drop(models);
+
+        let Some(fallback) = fallback else {
+            if !selected.is_empty() {
+                settings.selected_model = String::new();
+                settings.selected_stt_model_id = String::new();
+                settings.selected_stt_provider_id = String::new();
+                write_settings(&self.app_handle, settings);
+            }
+            return Ok(SelectedModelDisconnectOutcome::Unavailable);
+        };
+
+        settings.selected_model = fallback.id.clone();
+        settings.selected_stt_model_id = fallback.id.clone();
+        settings.selected_stt_provider_id =
+            Self::stt_provider_id_for_engine(&fallback.engine_type).to_string();
+        write_settings(&self.app_handle, settings);
+        Ok(SelectedModelDisconnectOutcome::FellBack(fallback.id))
+    }
+
     fn migrate_bundled_models(&self) -> Result<()> {
         // Check for bundled models and copy them to user directory
         let bundled_models = ["ggml-small.bin"]; // Add other bundled models here if any
@@ -1532,25 +1666,48 @@ impl ModelManager {
             .unwrap_or_else(|e| e.into_inner());
 
         for model in models.values_mut() {
+            if matches!(
+                model.engine_type,
+                EngineType::AppleSpeech | EngineType::AppleSpeechStreaming
+            ) && model.url.is_none()
+                && model.size_mb == 0
+            {
+                model.is_downloaded =
+                    crate::apple_intelligence::check_apple_speech_analyzer_availability();
+                model.is_downloading = active_downloads.contains(&model.id);
+                model.partial_size = 0;
+                model.storage_location = None;
+                continue;
+            }
+
             if engine_uses_remote_runtime(&model.engine_type) {
-                model.is_downloaded = if model.url.is_none() && model.size_mb == 0 {
-                    true
+                let resolved = external_model_storage::resolve_existing(
+                    &self.models_dir.join(&model.filename),
+                );
+                let shared_dir = crate::shared_model_assets::installed_shared_model_dir(
+                    &self.app_handle,
+                    &model.id,
+                )
+                .ok()
+                .flatten();
+                if let Some((_, location)) = resolved {
+                    model.is_downloaded = true;
+                    model.storage_location = Some(location);
+                } else if let Some(shared_path) = shared_dir {
+                    model.is_downloaded = true;
+                    model.storage_location = external_model_storage::location_of_path(
+                        &shared_path,
+                        external_model_storage::cached_local_root().as_deref(),
+                        external_model_storage::cached_external_root().as_deref(),
+                    )
+                    .or(Some(ModelStorageLocation::Local));
+                } else if model.url.is_none() && model.size_mb == 0 {
+                    model.is_downloaded = true;
+                    model.storage_location = None;
                 } else {
-                    let model_path = self.models_dir.join(&model.filename);
-                    let primary_path_exists = if model.is_directory {
-                        model_path.is_dir()
-                    } else {
-                        model_path.is_file()
-                    };
-                    primary_path_exists
-                        || crate::shared_model_assets::installed_shared_model_dir(
-                            &self.app_handle,
-                            &model.id,
-                        )
-                        .ok()
-                        .flatten()
-                        .is_some()
-                };
+                    model.is_downloaded = false;
+                    model.storage_location = None;
+                }
                 model.is_downloading = active_downloads.contains(&model.id);
                 model.partial_size = 0;
                 continue;
@@ -1558,7 +1715,6 @@ impl ModelManager {
 
             if model.is_directory {
                 // For directory-based models, check if the directory exists
-                let model_path = self.models_dir.join(&model.filename);
                 let partial_path = self.models_dir.join(format!("{}.partial", model.filename));
                 let extracting_path = self
                     .models_dir
@@ -1578,7 +1734,15 @@ impl ModelManager {
                     let _ = fs::remove_dir_all(&extracting_path);
                 }
 
-                model.is_downloaded = model_path.exists() && model_path.is_dir();
+                if let Some((_, location)) =
+                    external_model_storage::resolve_existing(&self.models_dir.join(&model.filename))
+                {
+                    model.is_downloaded = true;
+                    model.storage_location = Some(location);
+                } else {
+                    model.is_downloaded = false;
+                    model.storage_location = None;
+                }
                 model.is_downloading = active_downloads.contains(&model.id);
 
                 // Get partial file size if it exists (for the .tar.gz being downloaded)
@@ -1589,10 +1753,17 @@ impl ModelManager {
                 }
             } else {
                 // For file-based models (existing logic)
-                let model_path = self.models_dir.join(&model.filename);
                 let partial_path = self.models_dir.join(format!("{}.partial", model.filename));
 
-                model.is_downloaded = model_path.exists();
+                if let Some((_, location)) =
+                    external_model_storage::resolve_existing(&self.models_dir.join(&model.filename))
+                {
+                    model.is_downloaded = true;
+                    model.storage_location = Some(location);
+                } else {
+                    model.is_downloaded = false;
+                    model.storage_location = None;
+                }
                 model.is_downloading = active_downloads.contains(&model.id);
 
                 // Get partial file size if it exists
@@ -1665,6 +1836,7 @@ impl ModelManager {
     fn discover_custom_whisper_models(
         models_dir: &Path,
         available_models: &mut HashMap<String, ModelInfo>,
+        storage_location: ModelStorageLocation,
     ) -> Result<()> {
         if !models_dir.exists() {
             return Ok(());
@@ -1783,6 +1955,7 @@ impl ModelManager {
                     is_recommended: false,
                     supported_languages: vec![],
                     is_custom: true,
+                    storage_location: Some(storage_location),
                 },
             );
         }
@@ -2475,6 +2648,7 @@ impl ModelManager {
 
         let mut deleted_something = false;
         let is_shared_model = crate::shared_model_assets::is_shared_model_asset(model_id);
+        let delete_targets = vec![model_path.clone()];
 
         if model_info.is_directory {
             if is_shared_model {
@@ -2484,21 +2658,23 @@ impl ModelManager {
                 )
                 .map_err(anyhow::Error::msg)?;
             } else {
-                // Delete complete model directory if it exists
-                if model_path.exists() && model_path.is_dir() {
-                    info!("Deleting model directory at: {:?}", model_path);
-                    fs::remove_dir_all(&model_path)?;
-                    info!("Model directory deleted successfully");
-                    deleted_something = true;
+                for target in &delete_targets {
+                    if target.exists() && target.is_dir() {
+                        info!("Deleting model directory at: {:?}", target);
+                        fs::remove_dir_all(target)?;
+                        info!("Model directory deleted successfully");
+                        deleted_something = true;
+                    }
                 }
             }
         } else {
-            // Delete complete model file if it exists
-            if model_path.exists() {
-                info!("Deleting model file at: {:?}", model_path);
-                fs::remove_file(&model_path)?;
-                info!("Model file deleted successfully");
-                deleted_something = true;
+            for target in &delete_targets {
+                if target.exists() {
+                    info!("Deleting model file at: {:?}", target);
+                    fs::remove_file(target)?;
+                    info!("Model file deleted successfully");
+                    deleted_something = true;
+                }
             }
         }
 
@@ -2553,29 +2729,28 @@ impl ModelManager {
             ));
         }
 
-        let model_path = self.models_dir.join(&model_info.filename);
         let partial_path = self
             .models_dir
             .join(format!("{}.partial", &model_info.filename));
 
         if model_info.is_directory {
-            // For directory-based models, ensure the directory exists and is complete
-            if model_path.exists() && model_path.is_dir() && !partial_path.exists() {
-                Ok(model_path)
-            } else if let Some(shared_path) =
+            if let Some((model_path, _)) = self.resolve_model_artifact(&model_info.filename) {
+                if model_path.is_dir() && !partial_path.exists() {
+                    return Ok(model_path);
+                }
+            }
+            if let Some(shared_path) =
                 crate::shared_model_assets::installed_shared_model_dir(&self.app_handle, model_id)
                     .map_err(|err| anyhow::anyhow!(err))?
             {
-                Ok(shared_path)
-            } else {
-                Err(anyhow::anyhow!(
-                    "Complete model directory not found: {}",
-                    model_id
-                ))
+                return Ok(shared_path);
             }
-        } else {
-            // For file-based models (existing logic)
-            if model_path.exists() && !partial_path.exists() {
+            Err(anyhow::anyhow!(
+                "Complete model directory not found: {}",
+                model_id
+            ))
+        } else if let Some((model_path, _)) = self.resolve_model_artifact(&model_info.filename) {
+            if !partial_path.exists() {
                 Ok(model_path)
             } else {
                 Err(anyhow::anyhow!(
@@ -2583,6 +2758,11 @@ impl ModelManager {
                     model_id
                 ))
             }
+        } else {
+            Err(anyhow::anyhow!(
+                "Complete model file not found: {}",
+                model_id
+            ))
         }
     }
 
@@ -2648,6 +2828,7 @@ mod tests {
             is_recommended: false,
             supported_languages: vec!["en".to_string()],
             is_custom: false,
+            storage_location: None,
         }
     }
 
@@ -2726,11 +2907,17 @@ mod tests {
                 is_recommended: false,
                 supported_languages: vec!["en".to_string()],
                 is_custom: false,
+                storage_location: None,
             },
         );
 
         // Discover custom models
-        ModelManager::discover_custom_whisper_models(&models_dir, &mut models).unwrap();
+        ModelManager::discover_custom_whisper_models(
+            &models_dir,
+            &mut models,
+            ModelStorageLocation::Local,
+        )
+        .unwrap();
 
         // Should have discovered 2 custom models (my-custom-model and whisper_medical_v2)
         assert!(models.contains_key("my-custom-model"));
@@ -2765,7 +2952,12 @@ mod tests {
         let mut models = HashMap::new();
         let count_before = models.len();
 
-        ModelManager::discover_custom_whisper_models(&models_dir, &mut models).unwrap();
+        ModelManager::discover_custom_whisper_models(
+            &models_dir,
+            &mut models,
+            ModelStorageLocation::Local,
+        )
+        .unwrap();
 
         // No new models should be added
         assert_eq!(models.len(), count_before);
@@ -2779,7 +2971,11 @@ mod tests {
         let count_before = models.len();
 
         // Should not error, just return Ok
-        let result = ModelManager::discover_custom_whisper_models(&models_dir, &mut models);
+        let result = ModelManager::discover_custom_whisper_models(
+            &models_dir,
+            &mut models,
+            ModelStorageLocation::Local,
+        );
         assert!(result.is_ok());
         assert_eq!(models.len(), count_before);
     }

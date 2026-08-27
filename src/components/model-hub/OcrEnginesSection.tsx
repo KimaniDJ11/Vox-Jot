@@ -62,6 +62,7 @@ import {
   TEST_SCORE_MODEL_SORT_OPTION,
   type ModelSortMode,
 } from "@/lib/modelListOrdering";
+import { storageLocationChip } from "@/components/model-hub/storageLocationChip";
 import { getScreenOcrEvaluationResult } from "@/lib/screenOcrEvaluationResults";
 
 type OcrProviderFilterValue = "all" | "system" | "neural" | "tesseract";
@@ -287,6 +288,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   useEffect(() => {
     void refreshCatalog();
   }, [refreshCatalog]);
+
+  useTauriEvent("external-model-storage-changed", () => {
+    void refreshCatalog();
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -936,6 +941,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     };
     const capabilityChips: CompactBadgeItem[] = [
       ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+      storageLocationChip(t, model.installed, model.storage_location),
       {
         id: "capability-languages",
         label: model.languages_label,
@@ -1009,7 +1015,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         busy: isBusy && busyId === model.id,
         onClick: () => void prepareOcrRuntime(model),
       };
-    } else if (!isConfirmingDelete) {
+    } else if (!isConfirmingDelete && model.storage_location !== "external") {
       trailing = {
         kind: "remove",
         busy: isBusy,

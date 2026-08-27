@@ -1,6 +1,6 @@
 use quick_xml::escape::unescape;
 use quick_xml::events::Event;
-use quick_xml::Reader;
+use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
@@ -1299,7 +1299,7 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Eof) => break,
             Ok(Event::Start(event)) => {
-                let tag = local_name(event.local_name().as_ref());
+                let tag = local_name(event.local_name().into_inner());
                 if should_skip_tag(&tag) {
                     skip_depth += 1;
                 } else if skip_depth == 0 && should_break_before(&tag, flavor) {
@@ -1307,7 +1307,7 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
                 }
             }
             Ok(Event::End(event)) => {
-                let tag = local_name(event.local_name().as_ref());
+                let tag = local_name(event.local_name().into_inner());
                 if skip_depth > 0 && should_skip_tag(&tag) {
                     skip_depth -= 1;
                 } else if skip_depth == 0 && should_break_after(&tag, flavor) {
@@ -1316,7 +1316,7 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
             }
             Ok(Event::Empty(event)) => {
                 if skip_depth == 0 {
-                    let tag = local_name(event.local_name().as_ref());
+                    let tag = local_name(event.local_name().into_inner());
                     if should_break_after(&tag, flavor) {
                         push_paragraph_break(&mut text);
                     }
@@ -1324,9 +1324,7 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
             }
             Ok(Event::Text(event)) => {
                 if skip_depth == 0 {
-                    let decoded = event
-                        .decode()
-                        .map_err(|err| format!("Failed to decode document XML text: {err}"))?;
+                    let decoded = event.xml_content(XmlVersion::default());
                     let unescaped = unescape(&decoded)
                         .map_err(|err| format!("Failed to decode document XML entities: {err}"))?;
                     push_text(&mut text, unescaped.as_ref());
@@ -1334,9 +1332,7 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
             }
             Ok(Event::CData(event)) => {
                 if skip_depth == 0 {
-                    let decoded = event
-                        .decode()
-                        .map_err(|err| format!("Failed to decode document XML CDATA: {err}"))?;
+                    let decoded = event.xml_content(XmlVersion::default());
                     push_text(&mut text, decoded.as_ref());
                 }
             }
@@ -1349,12 +1345,8 @@ fn xml_text(xml: &str, flavor: XmlFlavor) -> Result<String, String> {
     Ok(text)
 }
 
-fn local_name(raw: &[u8]) -> String {
-    let full = String::from_utf8_lossy(raw);
-    full.rsplit(':')
-        .next()
-        .unwrap_or_else(|| full.as_ref())
-        .to_ascii_lowercase()
+fn local_name(raw: &str) -> String {
+    raw.rsplit(':').next().unwrap_or(raw).to_ascii_lowercase()
 }
 
 fn should_skip_tag(tag: &str) -> bool {

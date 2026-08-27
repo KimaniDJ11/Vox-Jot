@@ -1706,7 +1706,11 @@
     "loadDirectory": "Dizin yüklenirken hata oluştu: {{error}}",
     "recordingFailed": "Kayıt başlatılamadı: {{error}}",
     "modelLoadFailed": "Model yüklenemedi: {{model}}",
-    "modelLoadFailedUnknown": "bilinmeyen model"
+    "modelLoadFailedUnknown": "bilinmeyen model",
+    "externalStorageFallback": "Harici sürücü \"{{volume}}\" bağlantısı kesildi. Yerel modele geçildi.",
+    "externalStorageFallbackUnnamed": "Harici depolamanın bağlantısı kesildi. Yerel modele geçildi.",
+    "externalStorageDisconnected": "Harici sürücü \"{{volume}}\" bağlantısı kesildi. Çevrimdışı dikte için sürücüyü yeniden bağlayın veya yerel bir model indirin.",
+    "externalStorageDisconnectedUnnamed": "Harici depolamanın bağlantısı kesildi. Çevrimdışı dikte için sürücüyü yeniden bağlayın veya yerel bir model indirin."
   },
   "appLanguage": {
     "title": "Uygulama Dili",
@@ -2641,6 +2645,13 @@
       "globalPlaceholder": "Modelleri ada, dile veya sağlayıcıya göre arayın...",
       "ariaLabel": "Modelleri ara"
     },
+    "storageLocation": {
+      "local": "Dahili SSD",
+      "localDetail": "Bu Mac'e indirildi ve harici sürücü olmadan kullanılabilir.",
+      "external": "Harici sürücü",
+      "externalDetail": "Bağlı harici sürücüde hazır. Bu model kaybolursa sürücüyü yeniden bağlayın."
+    },
+
     "tabs": {
       "stt": "Konuşma (STT)",
       "analysis": "Konuşma Analizi",
@@ -3039,6 +3050,21 @@
       "storageGroupTitle": "Depolama",
       "historyGroupTitle": "Tarih",
       "filesGroupTitle": "Dosyalar",
+      "externalModelStorage": {
+        "enabledLabel": "Modeller için harici depolamayı tarayın",
+        "enabledDescription": "Bağlı bir sürücüde kayıtlı olan modelleri bu Mac'e kopyalamadan kullanın. İndirilenler hâlâ yerel depolamaya gidiyor.",
+        "autoDetectLabel": "Bağlı sürücülerdeki Vox Jot klasörlerini otomatik olarak algıla",
+        "autoDetectDescription": "/Volumes/Models gibi takılı birimlerde VoxJot/app-support/models veya Apps/Models/VoxJot'yi arar.",
+        "folderTitle": "Harici model klasörü",
+        "folderDescription": "Harici SSD, SD kart veya ikincil diskteki bir klasörü seçin. Vox Jot, sürücü bağlandığında bu klasördeki modelleri okur.",
+        "pathLabel": "Harici model klasörü yolu",
+        "browse": "Göz at…",
+        "clear": "Otomatik algılamayı kullan",
+        "noFolder": "Henüz klasör seçilmedi. Otomatik algılama, eğer bulunursa bağlı bir Vox Jot model sürücüyü kullanacaktır.",
+        "connected": "Bağlandı: {{volume}} ({{count}} modelleri algılandı)",
+        "disconnected": "Harici depolamanın bağlantısı kesildi",
+        "unnamedVolume": "Harici sürücü"
+      },
       "previewLocalFirst": "Yerel öncelikli",
       "previewEnforced": "Zorunlu",
       "previewAllowed": "İzin verildi",

@@ -230,6 +230,14 @@ const settingUpdaters: {
     commands.changeSpeechRuntimePathSetting((value as string | null) ?? null),
   tts_model_store_path: (value) =>
     commands.changeTtsModelStorePathSetting((value as string | null) ?? null),
+  external_model_storage_enabled: (value) =>
+    commands.changeExternalModelStorageEnabledSetting(value as boolean),
+  external_model_storage_auto_detect: (value) =>
+    commands.changeExternalModelStorageAutoDetectSetting(value as boolean),
+  external_model_storage_path: (value) =>
+    commands.changeExternalModelStoragePathSetting(
+      (value as string | null) ?? null,
+    ),
   overlay_position: (value) =>
     commands.changeOverlayPositionSetting(value as string),
   recording_overlay_style: (value) =>

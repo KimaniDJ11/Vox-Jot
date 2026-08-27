@@ -1706,7 +1706,11 @@
     "loadDirectory": "載入目錄時發生錯誤：{{error}}",
     "recordingFailed": "開始錄音失敗：{{error}}",
     "modelLoadFailed": "載入模型失敗：{{model}}",
-    "modelLoadFailedUnknown": "未知型號"
+    "modelLoadFailedUnknown": "未知型號",
+    "externalStorageFallback": "外部磁碟機「{{volume}}」已中斷連線。已切換至本機模型。",
+    "externalStorageFallbackUnnamed": "外部儲存空間已中斷連線。已切換至本機模型。",
+    "externalStorageDisconnected": "外部驅動器“{{volume}}”已斷開。重新連接磁碟機或下載本機模型以進行離線聽寫。",
+    "externalStorageDisconnectedUnnamed": "外部儲存已斷開連線。重新連接磁碟機或下載本機模型以進行離線聽寫。"
   },
   "appLanguage": {
     "title": "應用語言",
@@ -2637,6 +2641,13 @@
       "globalPlaceholder": "按名稱、語言或提供者搜尋模型...",
       "ariaLabel": "搜尋型號"
     },
+    "storageLocation": {
+      "local": "內建SSD",
+      "localDetail": "下載到此 Mac 上，無需外部驅動器即可使用。",
+      "external": "外部驅動器",
+      "externalDetail": "連接的外部驅動器已準備就緒。如果該模型消失，請重新連接磁碟機。"
+    },
+
     "tabs": {
       "stt": "演講（STT）",
       "analysis": "語音分析",
@@ -3035,6 +3046,21 @@
       "storageGroupTitle": "儲存",
       "historyGroupTitle": "歷史",
       "filesGroupTitle": "文件",
+      "externalModelStorage": {
+        "enabledLabel": "掃描外部儲存中的模型",
+        "enabledDescription": "使用已儲存在連接的磁碟機上的模型，而無需將其複製到此 Mac 上。下載仍然會轉到本機儲存。",
+        "autoDetectLabel": "自動偵測連接的磁碟機上的 Vox Jot 資料夾",
+        "autoDetectDescription": "在已安裝的磁碟區（例如 /Volumes/Models）上尋找 VoxJot/app-support/models 或 Apps/Models/VoxJot。",
+        "folderTitle": "外部模型資料夾",
+        "folderDescription": "選擇外部 SSD、SD 卡或輔助磁碟上的資料夾。連接磁碟機時，Vox Jot 會從該資料夾讀取模型。",
+        "pathLabel": "外部模型資料夾路徑",
+        "browse": "瀏覽…",
+        "clear": "使用自動檢測",
+        "noFolder": "尚未選擇資料夾。如果找到已連接的 Vox Jot 模型磁碟機，自動偵測將使用該磁碟機。",
+        "connected": "已連接：{{volume}}（偵測到 {{count}} 個模型）",
+        "disconnected": "外部儲存已斷開連接",
+        "unnamedVolume": "外部驅動器"
+      },
       "previewLocalFirst": "本地優先",
       "previewEnforced": "強制執行",
       "previewAllowed": "允許",

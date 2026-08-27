@@ -194,7 +194,7 @@ pub fn shared_model_primary_staging_dir(
         .next())
 }
 
-pub fn shared_model_candidate_dirs(
+fn shared_model_local_candidate_dirs(
     app: &AppHandle,
     model_id: &str,
 ) -> Result<Vec<PathBuf>, String> {
@@ -210,6 +210,15 @@ pub fn shared_model_candidate_dirs(
     paths.sort();
     paths.dedup();
     Ok(paths)
+}
+
+pub fn shared_model_candidate_dirs(
+    app: &AppHandle,
+    model_id: &str,
+) -> Result<Vec<PathBuf>, String> {
+    Ok(crate::external_model_storage::expand_candidates(
+        shared_model_local_candidate_dirs(app, model_id)?,
+    ))
 }
 
 fn remove_dir_if_exists(path: &Path) -> Result<bool, String> {
@@ -242,7 +251,7 @@ pub fn delete_shared_model_assets(app: &AppHandle, model_id: &str) -> Result<boo
     }
 
     let mut deleted = false;
-    for dir in shared_model_candidate_dirs(app, model_id)? {
+    for dir in shared_model_local_candidate_dirs(app, model_id)? {
         deleted |= remove_dir_if_exists(&dir)?;
 
         for progress_dir in progress_dirs_for_install_dir(&dir) {

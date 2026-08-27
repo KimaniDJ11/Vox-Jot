@@ -36,7 +36,33 @@
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ bun2nix.overlays.default ];
+            overlays = [
+              bun2nix.overlays.default
+              # crates.io 403s the API download URL for curl's default UA.
+              # Rewrite those fetches to the CDN without changing Cargo's
+              # crates-io source identity (extraRegistries duplicates it).
+              (_final: prev: {
+                fetchurl =
+                  args:
+                  let
+                    rewrite =
+                      url:
+                      let
+                        matchCrate = builtins.match "https://crates.io/api/v1/crates/([^/]+)/([^/]+)/download" url;
+                      in
+                      if matchCrate == null then
+                        url
+                      else
+                        "https://static.crates.io/crates/${builtins.elemAt matchCrate 0}/${builtins.elemAt matchCrate 1}/download";
+                  in
+                  if args ? url then
+                    prev.fetchurl (args // { url = rewrite args.url; })
+                  else if args ? urls then
+                    prev.fetchurl (args // { urls = map rewrite args.urls; })
+                  else
+                    prev.fetchurl args;
+              })
+            ];
           };
           lib = pkgs.lib;
         in
@@ -55,12 +81,6 @@
               # updated every time a git dependency changed in Cargo.lock.
               # Safe for standalone flakes (not allowed in nixpkgs, it is needed something like crate2nix).
               allowBuiltinFetchGit = true;
-              # crates.io now 403s the API download URL for curl's default UA.
-              # Fetch crate tarballs from the CDN instead (same files, not UA-gated).
-              extraRegistries = {
-                "https://github.com/rust-lang/crates.io-index" =
-                  "https://static.crates.io/crates";
-              };
             };
 
             postPatch = ''

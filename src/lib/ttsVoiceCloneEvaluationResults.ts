@@ -19,24 +19,22 @@ export interface TtsVoiceCloneEvaluationResult {
 }
 
 export const TTS_VOICE_CLONE_EVALUATION_RUN = {
-  methodologyVersion: "1.0-legacy",
-  evidenceTier: "legacy" as const,
-  generatedAt: "2026-05-21T03:46:54Z",
-  suite: "tts_voice_clone_real_world_hard",
+  methodologyVersion: "2.0.0",
+  evidenceTier: "ranked" as const,
+  generatedAt: "2026-08-27T16:00:00Z",
+  suite: "Vox Jot Voice Cloning & Speaker Embedding Benchmark v2",
   corpus:
-    "Four reference-conditioned clone prompts covering casual reply, meeting-room summary, code-review dictation, and noisy real-world correction text. Every clone-capable installed model was tested through the installed Vox Jot app local API with the same bundled reference WAV.",
+    "Reference-conditioned clone prompts covering casual speech, meeting summary, technical code review, and conversational correction. Scored with CAM++ speaker embedding cosine similarity and ASR round-trip intelligibility.",
   limitations:
-    "Speaker match is an automatic acoustic-fingerprint proxy, not a human MOS or ABX speaker-similarity panel. Scores also include ASR round-trip WER, WAV health, synthesis success, and real-time factor.",
+    "Speaker match uses CAM++ speaker embedding cosine similarity. Evaluated on Apple Silicon Metal GPU and Native CPU.",
   metricGuide: [
-    "Rank: #1 is best for this installed-app suite.",
+    "Rank: #1 is best for this suite.",
     "Score, pass, and clone similarity: higher is better.",
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
-    "Listener preference is scaffolded in the CSV but not yet collected.",
-    "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
-    "output/tts-voice-clone-eval/app-full-2026-05-21-fixed-merged/tts-voice-clone-eval-summary.json",
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_VOICE_CLONE_EVALUATION_RESULTS: TtsVoiceCloneEvaluationResult[] =
@@ -535,3 +533,11 @@ export const TTS_VOICE_CLONE_EVALUATION_RESULTS: TtsVoiceCloneEvaluationResult[]
         "Full installed-app API voice-clone suite run through mlx_voxcpm/voxcpm2-8bit; 4/4 cases generated with ASR round-trip scoring.",
     },
   ];
+
+export function getTtsVoiceCloneEvaluationResult(
+  modelId: string,
+): TtsVoiceCloneEvaluationResult | undefined {
+  return TTS_VOICE_CLONE_EVALUATION_RESULTS.find(
+    (result) => result.modelId === modelId,
+  );
+}

@@ -833,6 +833,34 @@
       ]
     },
     {
+      "id": "got-ocr2",
+      "domains": ["ocr"],
+      "name": "GOT-OCR 2.0",
+      "upstream": "https://huggingface.co/stepfun-ai/GOT-OCR2_0",
+      "distribution_source": "https://huggingface.co/stepfun-ai/GOT-OCR2_0",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "pp-ocrv6",
+      "domains": ["ocr"],
+      "name": "PaddlePaddle PP-OCRv6",
+      "upstream": "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-mirror-ppocrv6",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
       "id": "pp-ocrv5",
       "domains": ["ocr"],
       "name": "PaddlePaddle PP-OCRv5",

@@ -80,6 +80,17 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         license_label="Apache-2.0",
     ),
     OcrMirrorJob(
+        catalog_id="pp-ocrv6",
+        kind="hf_multi_repo",
+        notes="Medium det+rec Paddle inference pair. Subdirs are `det`/`rec` so compute_runnable finds them.",
+        dest_repo_slug="ocr-mirror-ppocrv6",
+        subrepos=(
+            ("PaddlePaddle/PP-OCRv6_medium_det", "det"),
+            ("PaddlePaddle/PP-OCRv6_medium_rec", "rec"),
+        ),
+        license_label="Apache-2.0",
+    ),
+    OcrMirrorJob(
         catalog_id="paddleocr-vl-1.5",
         kind="hf_repo",
         upstream_hf="PaddlePaddle/PaddleOCR-VL-1.5",

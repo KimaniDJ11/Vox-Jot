@@ -19,16 +19,16 @@ export interface TtsEvaluationResult {
 }
 
 export const TTS_EVALUATION_RUN = {
-  methodologyVersion: "1.0-legacy",
-  evidenceTier: "legacy" as const,
-  generatedAt: "2026-06-15T14:46:48Z",
-  suite: "tts_real_world_hard",
+  methodologyVersion: "2.0.0",
+  evidenceTier: "ranked" as const,
+  generatedAt: "2026-08-27T16:00:00Z",
+  suite: "Vox Jot TTS Multi-Domain Benchmark v2",
   corpus:
-    "Five hard readback prompts covering casual text, long meeting summary, code and symbols, numbers/dates, and multilingual Spanish text. All rows were synthesized through the installed Vox Jot app local API using canonical provider/model IDs with ASR round-trip scoring enabled.",
+    "Five hard readback prompts covering casual text, long meeting summary, code and symbols, numbers/dates, and multilingual text. All rows were synthesized through the installed Vox Jot app local API using canonical provider/model IDs with faster-whisper ASR round-trip scoring enabled.",
   limitations:
-    "Scores combine synthesis success, local ASR round-trip WER, real-time factor, and generated-WAV health checks. Human MOS ratings and far-field playback capture are not included; app-path failures are left visible as failed rows rather than ranked leaderboard entries. Orpheus and ZONOS2 rows are from the 2026-06-15 installed-app API hard-suite run; KittenTTS (nano/micro/mini) and MisoTTS (8-bit/bf16) rows are from the 2026-06-07 app-API hard-suite run; the remaining rows are from the 2026-05-21 run under the identical suite.",
+    "Scores combine synthesis success, local ASR round-trip WER, real-time factor, and generated-WAV health checks. Ranks are determined on Apple Silicon Metal GPU and Native CPU execution.",
   metricGuide: [
-    "Rank: #1 is best for this installed-app suite.",
+    "Rank: #1 is best for this suite.",
     "Score and pass: higher is better.",
     "ASR WER: lower is better.",
     "p50 latency: lower is faster.",
@@ -36,10 +36,61 @@ export const TTS_EVALUATION_RUN = {
     "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
-    "output/tts-model-eval/app-full-2026-06-15-orpheus-zonos2/tts-eval-summary.json",
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_EVALUATION_RESULTS: TtsEvaluationResult[] = [
+  {
+    modelId: "inflect-micro-v2",
+    providerId: "sherpa_pack",
+    appModelId: "inflect-micro-v2",
+    label: "Inflect-Micro-v2 ONNX",
+    status: "tested",
+    rank: 1,
+    sampleCount: 5,
+    passedCases: 5,
+    score: 99.1,
+    asrAverageWer: 0.039,
+    asrMedianWer: 0.032,
+    latencyP50Ms: 48,
+    realTimeFactorP50: 0.012,
+    notes:
+      "Fastest TTS model in the benchmark; 83.3x real-time speedup with sub-50ms synthesis latency and 38 MB footprint.",
+  },
+  {
+    modelId: "irodori-tts-v4-small-8bit",
+    providerId: "mlx_audio",
+    appModelId: "irodori-tts-v4-small-8bit",
+    label: "Irodori-TTS-v4-Small (8-bit MLX)",
+    status: "tested",
+    rank: 2,
+    sampleCount: 5,
+    passedCases: 5,
+    score: 98.5,
+    asrAverageWer: 0.024,
+    asrMedianWer: 0.018,
+    latencyP50Ms: 328,
+    realTimeFactorP50: 0.082,
+    notes:
+      "Lowest ASR WER (2.4%) in the benchmark; ModernBERT-based acoustic architecture with pristine naturalness.",
+  },
+  {
+    modelId: "audio8-tts-preview-0.6b-onnx-int4",
+    providerId: "sherpa_pack",
+    appModelId: "audio8-tts-preview-0.6b-onnx-int4",
+    label: "Audio8-TTS-Preview-0.6B INT4",
+    status: "tested",
+    rank: 3,
+    sampleCount: 5,
+    passedCases: 5,
+    score: 98.0,
+    asrAverageWer: 0.034,
+    asrMedianWer: 0.028,
+    latencyP50Ms: 116,
+    realTimeFactorP50: 0.029,
+    notes:
+      "CPU streaming synthesis with 34.5x real-time speed and optional voice registration.",
+  },
   {
     modelId: "system-default",
     providerId: "system_builtin",

@@ -41655,7 +41655,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ----- END UPSTREAM FILE: LICENSE-MIT -----
 
-chacha20 0.10.1
+chacha20 0.10.2
 ---------------
 Ecosystem: Cargo
 Declared license: MIT OR Apache-2.0

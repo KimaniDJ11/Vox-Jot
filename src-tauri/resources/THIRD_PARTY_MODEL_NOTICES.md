@@ -183,6 +183,11 @@ directly or mirrors/converts assets for app-managed installation.
 
 ## OCR
 
+- GOT-OCR 2.0 - Apache-2.0. Source:
+  https://huggingface.co/stepfun-ai/GOT-OCR2_0.
+- PaddlePaddle PP-OCRv6 - Apache-2.0. Mirrored det + rec inference pair.
+  Source: https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det and
+  https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec.
 - PaddlePaddle PP-OCRv5 - Apache-2.0. Source:
   https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_safetensors.
 - LightOnOCR-2 1B - Apache-2.0. Source:

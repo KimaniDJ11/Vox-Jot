@@ -2,7 +2,16 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -264,6 +273,28 @@ async function createUpdaterArchive(
   return cleanSignature;
 }
 
+async function getWranglerAuth(): Promise<{
+  accountId: string;
+  token: string;
+} | null> {
+  try {
+    const configPath = path.join(
+      process.env.HOME || "",
+      "Library/Preferences/.wrangler/config/default.toml",
+    );
+    if (!existsSync(configPath)) return null;
+    const content = await readFile(configPath, "utf8");
+    const match = content.match(/oauth_token\s*=\s*"([^"]+)"/);
+    if (!match) return null;
+    return {
+      accountId: "0143685a9b54cfaddadab8f41e906f97",
+      token: match[1],
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function uploadR2Object(
   bucket: string,
   key: string,
@@ -271,20 +302,73 @@ async function uploadR2Object(
   contentType: string,
   cacheControl: string,
 ): Promise<void> {
-  await run("wrangler", [
-    "r2",
-    "object",
-    "put",
-    `${bucket}/${key}`,
-    "--file",
-    filePath,
-    "--remote",
-    "--content-type",
-    contentType,
-    "--cache-control",
-    cacheControl,
-    "--force",
-  ]);
+  const auth = await getWranglerAuth();
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (auth) {
+        const url = `https://api.cloudflare.com/client/v4/accounts/${auth.accountId}/r2/buckets/${bucket}/objects/${key}`;
+        // Keep the bearer token out of argv: it would otherwise be visible to
+        // `ps` and would be echoed back in run()'s failure message.
+        const headerFile = path.join(
+          await mkdtemp(path.join(tmpdir(), "voxjot-r2-")),
+          "auth.header",
+        );
+        await writeFile(headerFile, `Authorization: Bearer ${auth.token}\n`, {
+          mode: 0o600,
+        });
+        try {
+          await run("curl", [
+            "-s",
+            "-f",
+            "-X",
+            "PUT",
+            "-H",
+            `@${headerFile}`,
+            "-H",
+            `Content-Type: ${contentType}`,
+            "-H",
+            `Cache-Control: ${cacheControl}`,
+            "-T",
+            filePath,
+            url,
+          ]);
+        } finally {
+          await rm(path.dirname(headerFile), {
+            recursive: true,
+            force: true,
+          });
+        }
+        console.log(`Uploaded ${key} to R2 bucket ${bucket}.`);
+        return;
+      }
+
+      await run("bunx", [
+        "wrangler",
+        "r2",
+        "object",
+        "put",
+        `${bucket}/${key}`,
+        "--file",
+        filePath,
+        "--remote",
+        "--content-type",
+        contentType,
+        "--cache-control",
+        cacheControl,
+        "--force",
+      ]);
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      console.warn(
+        `Upload attempt ${attempt} for ${key} failed, retrying in 2s...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
 }
 
 async function headOk(url: string): Promise<void> {

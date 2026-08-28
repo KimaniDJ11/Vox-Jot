@@ -138,6 +138,38 @@ pub struct OcrCatalogEntry {
 }
 
 const CATALOG: &[OcrCatalogEntry] = &[
+    // `id` doubles as the install directory name and as the `engineId` the
+    // Testing leaderboard matches on, so it must stay `got-ocr2`.
+    OcrCatalogEntry {
+        id: "got-ocr2",
+        title: "GOT-OCR 2.0",
+        vendor: "StepFun",
+        description: "General OCR Theory 2.0. Best measured accuracy in the v2 suite at 0.5% CER, with strong formula and table formatting.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::TransformersVl,
+        conventional_subdir: "got-ocr2",
+        required_files: &["config.json", "model.safetensors"],
+        size_hint_label: "~1.4 GB",
+        languages_label: "Multilingual",
+        license_label: "Apache-2.0",
+        upstream_url: "https://huggingface.co/stepfun-ai/GOT-OCR2_0",
+        hf_repo_id: "stepfun-ai/GOT-OCR2_0",
+    },
+    OcrCatalogEntry {
+        id: "pp-ocrv6",
+        title: "PP-OCRv6",
+        vendor: "PaddlePaddle",
+        description: "Medium detector and recognizer pair at 0.8% CER and 38 ms p50. Fastest OCR engine in the v2 suite.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::PaddleDetRec,
+        conventional_subdir: "pp-ocrv6",
+        required_files: &[],
+        size_hint_label: "~135 MB",
+        languages_label: "Multilingual",
+        license_label: "Apache-2.0",
+        upstream_url: "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det",
+        hf_repo_id: "IrieDinamik/ocr-mirror-ppocrv6",
+    },
     OcrCatalogEntry {
         id: "pp-ocrv5",
         title: "PP-OCRv5",

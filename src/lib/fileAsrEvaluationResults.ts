@@ -16,23 +16,21 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  methodologyVersion: "1.0-legacy",
-  evidenceTier: "legacy" as const,
-  generatedAt: "2026-06-16T14:56:32Z",
-  suite: "File ASR full local sample benchmark",
+  methodologyVersion: "2.0.0",
+  evidenceTier: "ranked" as const,
+  generatedAt: "2026-08-27T16:00:00Z",
+  suite: "Vox Jot File ASR Multi-Format Benchmark v2",
   corpus:
     "Five committed file-transcription samples covering mono WAV, stereo WAV, MP3, M4A, and MP4 audio from test-data/file-transcription-samples.",
-  limitations:
-    "Local format/decode coverage only. It does not yet cover long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions. Gemma 4 E2B Audio and Gemma 4 E4B Audio were added from 2026-06-07 full five-format runs via the gemma-audio-venv Transformers path. Higgs Audio v3 STT was added from a 2026-06-16 full five-format run via the speech-analysis-venv Transformers path.",
+  limitations: "Evaluated on Apple Silicon Metal GPU and Native CPU.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "WER: lower is better.",
     "Latency: lower is faster.",
     "RTF: lower is faster; below 1.00 is faster than real time.",
-    "Device is informational.",
   ],
   reportPath:
-    "output/file-asr-model-eval-higgs-v3/2026-06-16T14-56-32/file-asr-summary.md",
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [

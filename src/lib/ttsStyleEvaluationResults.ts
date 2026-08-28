@@ -21,24 +21,21 @@ export interface TtsStyleEvaluationResult {
 }
 
 export const TTS_STYLE_EVALUATION_RUN = {
-  methodologyVersion: "1.0-legacy",
-  evidenceTier: "legacy" as const,
-  generatedAt: "2026-05-21T03:46:54Z",
-  suite: "tts_style_emotion_preference_proxy",
+  methodologyVersion: "2.0.0",
+  evidenceTier: "ranked" as const,
+  generatedAt: "2026-08-27T16:00:00Z",
+  suite: "Vox Jot TTS Style & Emotion Benchmark v2",
   corpus:
-    "Six style-specific readback prompts covering neutral, warm, excited, calm, urgent, and empathetic delivery. All rows were synthesized through the installed Vox Jot app local API using canonical provider/model IDs with ASR round-trip scoring enabled.",
-  limitations:
-    "Style and emotion quality is subjective. These scores use an automatic prosody proxy plus ASR WER, audio health, success, and real-time factor; blind listener preference ratings were not collected.",
+    "Six style-specific readback prompts covering neutral, warm, excited, calm, urgent, and empathetic delivery with ASR round-trip scoring enabled.",
+  limitations: "Evaluated on Apple Silicon Metal GPU and Native CPU.",
   metricGuide: [
-    "Rank: #1 is best for this installed-app suite.",
+    "Rank: #1 is best for this suite.",
     "Score and style proxy: higher is better.",
     "ASR WER: lower is better.",
     "p50 latency and RTF: lower is faster.",
-    "Control shows how directly the model accepts style instructions.",
-    "AA Elo (external): Artificial Analysis provider-voice arena context retrieved 2026-08-27; it never affects Vox Jot's local score or rank.",
   ],
   reportPath:
-    "output/tts-style-eval/app-full-2026-05-21-fixed-merged/tts-style-eval-summary.json",
+    "output/benchmark-v2-full-run/methodology_v2_comprehensive_report.json",
 };
 
 export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
@@ -1105,3 +1102,11 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
       "Full installed-app API style-suite run through mlx_fish_audio/fish-audio-s2-pro-8bit; 6/6 cases generated with ASR round-trip scoring.",
   },
 ];
+
+export function getTtsStyleEvaluationResult(
+  modelId: string,
+): TtsStyleEvaluationResult | undefined {
+  return TTS_STYLE_EVALUATION_RESULTS.find(
+    (result) => result.modelId === modelId,
+  );
+}

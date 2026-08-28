@@ -1234,7 +1234,7 @@ test.describe("Vox Jot app", () => {
     await expect(
       page.getByRole("button", { name: /WER/i }).first(),
     ).toBeVisible();
-    await expect(page.getByText("Real-time+").first()).toBeVisible();
+    await expect(page.getByText("1.89× (RTF 0.53)")).toBeVisible();
 
     await page
       .getByRole("button", { name: /FireRedASR2 AED \(MLX\)/i })

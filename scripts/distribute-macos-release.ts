@@ -2,7 +2,16 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -299,21 +308,37 @@ async function uploadR2Object(
     try {
       if (auth) {
         const url = `https://api.cloudflare.com/client/v4/accounts/${auth.accountId}/r2/buckets/${bucket}/objects/${key}`;
-        await run("curl", [
-          "-s",
-          "-f",
-          "-X",
-          "PUT",
-          "-H",
-          `Authorization: Bearer ${auth.token}`,
-          "-H",
-          `Content-Type: ${contentType}`,
-          "-H",
-          `Cache-Control: ${cacheControl}`,
-          "-T",
-          filePath,
-          url,
-        ]);
+        // Keep the bearer token out of argv: it would otherwise be visible to
+        // `ps` and would be echoed back in run()'s failure message.
+        const headerFile = path.join(
+          await mkdtemp(path.join(tmpdir(), "voxjot-r2-")),
+          "auth.header",
+        );
+        await writeFile(headerFile, `Authorization: Bearer ${auth.token}\n`, {
+          mode: 0o600,
+        });
+        try {
+          await run("curl", [
+            "-s",
+            "-f",
+            "-X",
+            "PUT",
+            "-H",
+            `@${headerFile}`,
+            "-H",
+            `Content-Type: ${contentType}`,
+            "-H",
+            `Cache-Control: ${cacheControl}`,
+            "-T",
+            filePath,
+            url,
+          ]);
+        } finally {
+          await rm(path.dirname(headerFile), {
+            recursive: true,
+            force: true,
+          });
+        }
         console.log(`Uploaded ${key} to R2 bucket ${bucket}.`);
         return;
       }

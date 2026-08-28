@@ -28,7 +28,7 @@ export const TTS_EVALUATION_RUN = {
   limitations:
     "Scores combine synthesis success, local ASR round-trip WER, real-time factor, and generated-WAV health checks. Ranks are determined on Apple Silicon Metal GPU and Native CPU execution.",
   metricGuide: [
-    "Rank: #1 is best for this installed-app suite.",
+    "Rank: #1 is best for this suite.",
     "Score and pass: higher is better.",
     "ASR WER: lower is better.",
     "p50 latency: lower is faster.",

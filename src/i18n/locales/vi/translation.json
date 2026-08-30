@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Tìm kiếm mô hình tinh chỉnh",
         "description": "Lọc theo tên model, nguồn, thời gian chạy hoặc repo.",
-        "placeholder": "Hãy thử: qwen, nemotron, ollama, lm studio"
+        "placeholder": "Hãy thử: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "Thử: qwen, cục bộ, ổ đĩa ngoài, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Sẵn sàng ngay bây giờ",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Có sẵn để thêm",
         "availableToAddDescription": "Các mục này có thể được tải xuống Ollama và được chọn tự động khi quá trình cài đặt kết thúc.",
         "availableToAddEmpty": "Không có mô hình tinh chỉnh có thể tải xuống nào phù hợp với tìm kiếm này.",
-        "availableToAddEmptyDescription": "Hãy thử cụm từ tìm kiếm khác hoặc nhập Hugging Face GGUF tùy chỉnh bên dưới."
+        "availableToAddEmptyDescription": "Hãy thử cụm từ tìm kiếm khác hoặc nhập Hugging Face GGUF tùy chỉnh bên dưới.",
+        "readyNowLocalDescription": "Các mô hình này đã có sẵn trên máy Mac này hoặc ổ đĩa ngoài được kết nối. Mô hình Vox Jot Local chạy trực tiếp tại chỗ mà không cần nhập vào Ollama."
       },
       "badges": {
         "ready": "Sẵn sàng",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Đang cài đặt vào Ollama...",
         "removeFromOllama": "Xóa {{title}}",
         "confirmRemoveModel": "Xóa {{title}} khỏi Ollama và xóa các tệp nhập cục bộ? Nếu mô hình này được chọn để Tinh chỉnh, Vox Jot sẽ quay trở lại mục nhập mô hình Ollama mặc định.",
-        "apiKeyRequired": "Cần có khóa API"
+        "apiKeyRequired": "Cần có khóa API",
+        "setupLocalRuntime": "Thiết lập & Sử dụng",
+        "downloadingLocalRuntime": "Đang tải xuống môi trường chạy cục bộ...",
+        "installingLocalRuntime": "Đang cài đặt môi trường chạy cục bộ...",
+        "installingLocalRuntimeDetail": "Đã xác minh tổng kiểm · các tệp mô hình vẫn được giữ nguyên vị trí"
       },
       "customImport": {
         "title": "Nhập tùy chỉnh",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Mục tiêu thời gian chạy",
         "runtimeDescription": "Quá trình nhập được cài đặt vào Ollama, sau đó được chọn làm mô hình tinh chỉnh đang hoạt động.",
         "importAndUse": "Nhập khẩu & Sử dụng",
-        "importingCustom": "Đang nhập khẩu..."
+        "importingCustom": "Đang nhập khẩu...",
+        "localDescription": "Nhập bất kỳ kho lưu trữ GGUF nào từ Hugging Face, lưu vào thư mục LLM do Vox Jot quản lý và chạy mà không cần Ollama hoặc LM Studio.",
+        "localModelNameLabel": "Tên mô hình cục bộ",
+        "localRuntimeDescription": "Mô hình chạy qua Vox Jot Local trực tiếp từ thư mục mô hình cục bộ hoặc ngoài đã định cấu hình."
       },
       "source": "Nguồn: {{repoId}}",
       "loading": "Đang tải các mô hình tinh chỉnh...",
@@ -1453,7 +1462,8 @@
         "importError": "Không thể nhập Hugging Face GGUF.",
         "importSuccess": "{{modelId}} đã được nhập vào Ollama và được chọn.",
         "enterRepo": "Trước tiên hãy nhập repo Hugging Face ID.",
-        "removed": "{{title}} đã bị xóa khỏi Ollama."
+        "removed": "{{title}} đã bị xóa khỏi Ollama.",
+        "localImportSuccess": "{{modelId}} đã được thêm vào Vox Jot Local và được chọn."
       },
       "evaluation": {
         "tested": "Đã thử nghiệm",
@@ -2651,7 +2661,6 @@
       "external": "Ổ đĩa ngoài",
       "externalDetail": "Sẵn sàng trên ổ đĩa ngoài được kết nối. Kết nối lại ổ đĩa nếu mô hình này biến mất."
     },
-
     "tabs": {
       "stt": "Lời nói (STT)",
       "analysis": "Phân tích giọng nói",

@@ -1388,7 +1388,8 @@
       "search": {
         "title": "搜索细化模型",
         "description": "按模型名称、源、运行时或存储库进行过滤。",
-        "placeholder": "尝试：qwen、nemotron、ollama、lm studio"
+        "placeholder": "尝试：qwen、nemotron、ollama、lm studio",
+        "localPlaceholder": "尝试搜索：qwen、本地、外接硬盘、ollama、lm studio"
       },
       "sections": {
         "readyNow": "立即准备",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "可添加",
         "availableToAddDescription": "这些条目可以下载到 Ollama 中，并在安装完成时自动选择。",
         "availableToAddEmpty": "没有可下载的优化模型与此搜索匹配。",
-        "availableToAddEmptyDescription": "尝试使用不同的搜索词或导入下面的自定义 Hugging Face GGUF。"
+        "availableToAddEmptyDescription": "尝试使用不同的搜索词或导入下面的自定义 Hugging Face GGUF。",
+        "readyNowLocalDescription": "这些模型已保存在此 Mac 或已连接的外接硬盘上。Vox Jot Local 模型无需导入 Ollama 即可直接就地运行。"
       },
       "badges": {
         "ready": "准备好",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "正在安装到 Ollama...",
         "removeFromOllama": "删除{{title}}",
         "confirmRemoveModel": "从Ollama中删除{{title}}并删除本地导入文件？如果选择此模型进行优化，Vox Jot 将回退到默认的 Ollama 模型条目。",
-        "apiKeyRequired": "需要 API 密钥"
+        "apiKeyRequired": "需要 API 密钥",
+        "setupLocalRuntime": "设置并使用",
+        "downloadingLocalRuntime": "正在下载本地运行时...",
+        "installingLocalRuntime": "正在安装本地运行时...",
+        "installingLocalRuntimeDetail": "校验和已验证 · 模型文件保留在原位"
       },
       "customImport": {
         "title": "定制进口",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "运行时目标",
         "runtimeDescription": "导入被安装到 Ollama 中，然后选择作为活动优化模型。",
         "importAndUse": "导入及使用",
-        "importingCustom": "正在导入..."
+        "importingCustom": "正在导入...",
+        "localDescription": "导入任何 Hugging Face GGUF 仓库，将其保存在 Vox Jot 托管的 LLM 文件夹中，无需 Ollama 或 LM Studio 即可直接运行。",
+        "localModelNameLabel": "本地模型名称",
+        "localRuntimeDescription": "模型直接从配置的本地或外接模型文件夹通过 Vox Jot Local 运行。"
       },
       "source": "来源：{{repoId}}",
       "loading": "正在加载优化模型...",
@@ -1453,7 +1462,8 @@
         "importError": "导入 Hugging Face GGUF 失败。",
         "importSuccess": "将{{modelId}}导入到Ollama中并选择。",
         "enterRepo": "首先输入 Hugging Face 存储库 ID。",
-        "removed": "{{title}} 已从 Ollama 中移除。"
+        "removed": "{{title}} 已从 Ollama 中移除。",
+        "localImportSuccess": "{{modelId}} 已添加到 Vox Jot Local 并已选择。"
       },
       "evaluation": {
         "tested": "已测试",
@@ -2647,7 +2657,6 @@
       "external": "外部驱动器",
       "externalDetail": "连接的外部驱动器已准备就绪。如果该模型消失，请重新连接驱动器。"
     },
-
     "tabs": {
       "stt": "演讲（STT）",
       "analysis": "语音分析",

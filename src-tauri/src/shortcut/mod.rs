@@ -1962,6 +1962,15 @@ pub async fn fetch_post_process_models(
         }
     }
 
+    if provider.id == crate::settings::VOX_JOT_LOCAL_PROVIDER_ID {
+        let mut models = crate::local_llm::discover_models(&app)?
+            .into_iter()
+            .map(|model| model.runtime_model_id)
+            .collect::<Vec<_>>();
+        models.sort();
+        return Ok(models);
+    }
+
     // Get API key
     let api_key = secret_store::get_post_process_api_key(&provider_id)
         .unwrap_or_else(|error| {

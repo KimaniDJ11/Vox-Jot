@@ -5,6 +5,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFER
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Instant;
+use tauri::AppHandle;
 use tokio::sync::mpsc::Sender;
 
 /// Sink that receives the *accumulated* LLM output each time new tokens arrive.
@@ -161,18 +162,20 @@ fn create_client(provider: &PostProcessProvider, api_key: &str) -> Result<reqwes
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
 pub async fn send_chat_completion(
+    app: Option<&AppHandle>,
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
     prompt: String,
 ) -> Result<Option<String>, String> {
-    send_chat_completion_with_schema(provider, api_key, model, prompt, None, None).await
+    send_chat_completion_with_schema(app, provider, api_key, model, prompt, None, None).await
 }
 
 /// Send a chat completion request with structured output support
 /// When json_schema is provided, uses structured outputs mode
 /// system_prompt is used as the system message when provided
 pub async fn send_chat_completion_with_schema(
+    app: Option<&AppHandle>,
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
@@ -181,6 +184,7 @@ pub async fn send_chat_completion_with_schema(
     json_schema: Option<Value>,
 ) -> Result<Option<String>, String> {
     send_chat_completion_with_schema_streaming(
+        app,
         provider,
         api_key,
         model,
@@ -198,6 +202,7 @@ pub async fn send_chat_completion_with_schema(
 /// Providers that do not support incremental streaming emit the final content
 /// as a single chunk immediately before returning.
 pub async fn send_chat_completion_with_schema_streaming(
+    app: Option<&AppHandle>,
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
@@ -206,6 +211,26 @@ pub async fn send_chat_completion_with_schema_streaming(
     json_schema: Option<Value>,
     chunk_tx: Option<ChunkSink>,
 ) -> Result<Option<String>, String> {
+    if provider.id == crate::settings::VOX_JOT_LOCAL_PROVIDER_ID {
+        let app = app.ok_or_else(|| {
+            "Vox Jot Local requires the running app context to resolve its managed model store."
+                .to_string()
+        })?;
+        let endpoint = crate::local_llm::ensure_server(app, model).await?;
+        let mut runtime_provider = provider.clone();
+        runtime_provider.base_url = endpoint.base_url;
+        return send_openai_compatible_chat_completion(
+            &runtime_provider,
+            api_key,
+            endpoint.model_alias,
+            user_content,
+            system_prompt,
+            json_schema,
+            chunk_tx,
+        )
+        .await;
+    }
+
     if provider.id == OLLAMA_PROVIDER_ID && json_schema.is_none() {
         return send_ollama_chat_completion(
             provider,
@@ -218,6 +243,27 @@ pub async fn send_chat_completion_with_schema_streaming(
         .await;
     }
 
+    send_openai_compatible_chat_completion(
+        provider,
+        api_key,
+        model,
+        user_content,
+        system_prompt,
+        json_schema,
+        chunk_tx,
+    )
+    .await
+}
+
+async fn send_openai_compatible_chat_completion(
+    provider: &PostProcessProvider,
+    api_key: String,
+    model: &str,
+    user_content: String,
+    system_prompt: Option<String>,
+    json_schema: Option<Value>,
+    chunk_tx: Option<ChunkSink>,
+) -> Result<Option<String>, String> {
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/chat/completions", base_url);
     let request_started_at = Instant::now();

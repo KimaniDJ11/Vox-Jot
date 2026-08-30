@@ -489,6 +489,7 @@ pub(crate) async fn post_process_transcription(
         };
 
         let structured_result = crate::llm_client::send_chat_completion_with_schema_streaming(
+            app_handle,
             &provider,
             api_key.clone(),
             &model,
@@ -598,6 +599,7 @@ pub(crate) async fn post_process_transcription(
     };
 
     let plain_result = crate::llm_client::send_chat_completion_with_schema_streaming(
+        app_handle,
         &provider,
         api_key,
         &model,

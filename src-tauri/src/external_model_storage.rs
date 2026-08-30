@@ -522,6 +522,9 @@ pub fn refresh_and_notify(app: &AppHandle) -> ExternalModelStorageStatus {
 }
 
 fn apply_catalog_refresh(app: &AppHandle, disconnected: bool, volume_name: Option<&str>) {
+    if disconnected {
+        crate::local_llm::stop_if_external_model();
+    }
     if let Some(model_manager) =
         app.try_state::<std::sync::Arc<crate::managers::model::ModelManager>>()
     {

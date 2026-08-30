@@ -31,6 +31,7 @@ mod http_api;
 mod input;
 mod lfm_audio_gguf;
 mod llm_client;
+mod local_llm;
 #[cfg(target_os = "macos")]
 mod loopback_capability;
 mod managers;
@@ -573,6 +574,23 @@ async fn maybe_warm_selected_ollama_model(
     }
 }
 
+async fn maybe_warm_selected_vox_jot_local_model(app_handle: AppHandle) {
+    let settings = settings::get_settings(&app_handle);
+    if !settings.post_process_enabled
+        || settings.post_process_provider_id != settings::VOX_JOT_LOCAL_PROVIDER_ID
+        || !crate::local_llm::runtime_installed(&app_handle)
+    {
+        return;
+    }
+
+    // Keep startup non-blocking and let the main window settle before touching
+    // external storage or loading model weights.
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    if let Err(error) = crate::local_llm::warm_selected_model(&app_handle).await {
+        log::warn!("Failed to pre-warm the selected Vox Jot Local model: {error}");
+    }
+}
+
 fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     // Note: Enigo (keyboard/mouse simulation) is NOT initialized here.
     // The frontend is responsible for calling the `initialize_enigo` command
@@ -842,6 +860,7 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
         app_handle.clone(),
         settings,
     ));
+    tauri::async_runtime::spawn(maybe_warm_selected_vox_jot_local_model(app_handle.clone()));
 
     Ok(())
 }
@@ -887,6 +906,7 @@ fn shutdown_core_logic(app: &AppHandle) {
     }
 
     crate::ocr_runtime::shared().shutdown();
+    crate::local_llm::shutdown();
     log::info!("Finished Vox Jot shutdown");
 }
 

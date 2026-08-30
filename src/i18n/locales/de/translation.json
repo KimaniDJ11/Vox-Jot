@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Suche nach verfeinerten Modellen",
         "description": "Filtern Sie nach Modellname, Quelle, Laufzeit oder Repo.",
-        "placeholder": "Versuchen Sie es mit: Qwen, Nemotron, Ollama, LM Studio"
+        "placeholder": "Versuchen Sie es mit: Qwen, Nemotron, Ollama, LM Studio",
+        "localPlaceholder": "Beispiel: qwen, lokal, externes Laufwerk, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Jetzt bereit",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Verfügbar zum Hinzufügen",
         "availableToAddDescription": "Diese Einträge können in Ollama heruntergeladen und nach Abschluss der Installation automatisch ausgewählt werden.",
         "availableToAddEmpty": "Zu dieser Suche passen keine herunterladbaren Refine-Modelle.",
-        "availableToAddEmptyDescription": "Versuchen Sie es mit einem anderen Suchbegriff oder importieren Sie unten ein benutzerdefiniertes Hugging Face GGUF."
+        "availableToAddEmptyDescription": "Versuchen Sie es mit einem anderen Suchbegriff oder importieren Sie unten ein benutzerdefiniertes Hugging Face GGUF.",
+        "readyNowLocalDescription": "Diese Modelle befinden sich bereits auf diesem Mac oder einem verbundenen externen Laufwerk. Vox Jot Local-Modelle werden direkt ohne Ollama-Import ausgeführt."
       },
       "badges": {
         "ready": "Bereit",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Installation in Ollama...",
         "removeFromOllama": "Entfernen Sie {{title}}",
         "confirmRemoveModel": "{{title}} aus Ollama entfernen und lokale Importdateien löschen? Wenn dieses Modell für „Verfeinern“ ausgewählt wird, greift Vox Jot auf den Standardmodelleintrag Ollama zurück.",
-        "apiKeyRequired": "API-Schlüssel erforderlich"
+        "apiKeyRequired": "API-Schlüssel erforderlich",
+        "setupLocalRuntime": "Einrichten & Verwenden",
+        "downloadingLocalRuntime": "Lokale Laufzeitumgebung wird heruntergeladen...",
+        "installingLocalRuntime": "Lokale Laufzeitumgebung wird installiert...",
+        "installingLocalRuntimeDetail": "Prüfsumme verifiziert · Modelldateien bleiben am Speicherort"
       },
       "customImport": {
         "title": "Benutzerdefinierter Import",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Laufzeitziel",
         "runtimeDescription": "Importe werden in Ollama installiert und dann als aktives Verfeinerungsmodell ausgewählt.",
         "importAndUse": "Importieren und verwenden",
-        "importingCustom": "Importieren..."
+        "importingCustom": "Importieren...",
+        "localDescription": "Importieren Sie jedes Hugging Face GGUF-Repository, speichern Sie es im verwalteten LLM-Ordner von Vox Jot und führen Sie es ohne Ollama oder LM Studio aus.",
+        "localModelNameLabel": "Lokaler Modellname",
+        "localRuntimeDescription": "Modelle werden über Vox Jot Local direkt aus dem konfigurierten lokalen oder externen Modellordner ausgeführt."
       },
       "source": "Quelle: {{repoId}}",
       "loading": "Verfeinerungsmodelle werden geladen...",
@@ -1453,7 +1462,8 @@
         "importError": "Fehler beim Importieren von Hugging Face GGUF.",
         "importSuccess": "{{modelId}} wurde in Ollama importiert und ausgewählt.",
         "enterRepo": "Geben Sie zuerst ein Hugging Face-Repo ID ein.",
-        "removed": "{{title}} wurde aus Ollama entfernt."
+        "removed": "{{title}} wurde aus Ollama entfernt.",
+        "localImportSuccess": "{{modelId}} wurde zu Vox Jot Local hinzugefügt und ausgewählt."
       },
       "evaluation": {
         "tested": "Getestet",
@@ -2651,7 +2661,6 @@
       "external": "Externes Laufwerk",
       "externalDetail": "Bereit auf dem angeschlossenen externen Laufwerk. Schließen Sie das Laufwerk erneut an, wenn dieses Modell verschwindet."
     },
-
     "tabs": {
       "stt": "Sprache (STT)",
       "analysis": "Sprachanalyse",

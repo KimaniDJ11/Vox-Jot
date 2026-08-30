@@ -17,6 +17,7 @@ use uuid::Uuid;
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
+pub const VOX_JOT_LOCAL_PROVIDER_ID: &str = "vox_jot_local";
 pub const TTS_PROVIDER_SYSTEM_BUILTIN_ID: &str = "system_builtin";
 pub const TTS_PROVIDER_SHERPA_PACK_ID: &str = "sherpa_pack";
 pub const TTS_PROVIDER_LOCAL_SIDECAR_API_ID: &str = "local_sidecar_api";
@@ -1388,6 +1389,14 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
         models_endpoint: Some("/models".to_string()),
         supports_structured_output: false,
     });
+    providers.push(PostProcessProvider {
+        id: VOX_JOT_LOCAL_PROVIDER_ID.to_string(),
+        label: "Vox Jot Local".to_string(),
+        base_url: "vox-jot-local://llama.cpp".to_string(),
+        allow_base_url_edit: false,
+        models_endpoint: None,
+        supports_structured_output: false,
+    });
     // Custom provider always comes last
     providers.push(PostProcessProvider {
         id: "custom".to_string(),
@@ -2485,6 +2494,10 @@ impl AppSettings {
             return Some(APPLE_INTELLIGENCE_PROVIDER_ID.to_string());
         }
 
+        if self.is_post_process_provider_local(VOX_JOT_LOCAL_PROVIDER_ID) {
+            return Some(VOX_JOT_LOCAL_PROVIDER_ID.to_string());
+        }
+
         if self.is_post_process_provider_local("custom") {
             return Some("custom".to_string());
         }
@@ -2518,6 +2531,10 @@ impl AppSettings {
 
         if self.is_post_process_provider_local(APPLE_INTELLIGENCE_PROVIDER_ID) {
             return Some(APPLE_INTELLIGENCE_PROVIDER_ID.to_string());
+        }
+
+        if self.is_post_process_provider_local(VOX_JOT_LOCAL_PROVIDER_ID) {
+            return Some(VOX_JOT_LOCAL_PROVIDER_ID.to_string());
         }
 
         if self.is_post_process_provider_local("custom") {
@@ -2746,7 +2763,7 @@ pub fn is_local_base_url(base_url: &str) -> bool {
 }
 
 pub fn post_process_provider_is_local(provider: &PostProcessProvider) -> bool {
-    if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+    if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID || provider.id == VOX_JOT_LOCAL_PROVIDER_ID {
         return true;
     }
 
@@ -3314,6 +3331,42 @@ mod tests {
         assert!(changed);
         assert_ne!(settings.post_process_provider_id, "openai");
         assert!(settings.active_post_process_provider_is_local());
+    }
+
+    #[test]
+    fn default_settings_include_managed_vox_jot_local_provider() {
+        let settings = get_default_settings();
+        let provider = settings
+            .post_process_provider(VOX_JOT_LOCAL_PROVIDER_ID)
+            .expect("managed local provider should always be available");
+
+        assert_eq!(provider.label, "Vox Jot Local");
+        assert_eq!(provider.base_url, "vox-jot-local://llama.cpp");
+        assert!(post_process_provider_is_local(provider));
+        assert!(!provider.allow_base_url_edit);
+    }
+
+    #[test]
+    fn local_privacy_fallback_prefers_managed_runtime_over_custom_endpoint() {
+        let mut settings = get_default_settings();
+        settings.post_process_provider_id = "openai".to_string();
+        settings.translation_provider_id = "openai".to_string();
+        settings
+            .post_process_providers
+            .retain(|provider| provider.id != APPLE_INTELLIGENCE_PROVIDER_ID);
+
+        assert_eq!(
+            settings
+                .preferred_local_post_process_provider_id()
+                .as_deref(),
+            Some(VOX_JOT_LOCAL_PROVIDER_ID)
+        );
+        assert_eq!(
+            settings
+                .preferred_local_translation_provider_id()
+                .as_deref(),
+            Some(VOX_JOT_LOCAL_PROVIDER_ID)
+        );
     }
 
     #[test]

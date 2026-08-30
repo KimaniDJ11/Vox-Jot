@@ -287,7 +287,7 @@ pub async fn reader_transform_text(
         .unwrap_or_default();
 
     let combined_prompt = format!("{system_prompt}\n\n{user_prompt}");
-    crate::llm_client::send_chat_completion(&provider, api_key, &model, combined_prompt)
+    crate::llm_client::send_chat_completion(Some(&app), &provider, api_key, &model, combined_prompt)
         .await
         .map_err(|err| format!("AI request failed: {err}"))?
         .ok_or_else(|| "The AI provider returned an empty response.".to_string())

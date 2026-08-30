@@ -163,6 +163,7 @@ const HISTORY_FIELD_OBSERVATION_WINDOW_SECS: u64 = 30;
 const HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS: u64 = 500;
 
 async fn rewrite_selected_text(
+    app: &AppHandle,
     settings: &AppSettings,
     selected_text: &str,
     instruction: &str,
@@ -224,7 +225,7 @@ async fn rewrite_selected_text(
         })
         .unwrap_or_default();
 
-    crate::llm_client::send_chat_completion(&provider, api_key, &model, user_prompt)
+    crate::llm_client::send_chat_completion(Some(app), &provider, api_key, &model, user_prompt)
         .await
         .ok()
         .flatten()
@@ -251,6 +252,7 @@ async fn run_translate_selection(app: AppHandle) {
     };
 
     let mut execution = match translate_text(
+        &app,
         &settings,
         &selected_text,
         normalize_language_code(Some(&settings.selected_language)).as_deref(),
@@ -1150,6 +1152,7 @@ impl ShortcutAction for TranscribeAction {
                                     return;
                                 }
                                 match translate_text(
+                                    &ah,
                                     &effective_settings,
                                     &final_text,
                                     source_language_hint.as_deref(),
@@ -1363,6 +1366,7 @@ impl ShortcutAction for TranscribeAction {
                                 match utils::capture_selected_text(&ah) {
                                     Ok(Some(selected_text)) => {
                                         if let Some(rewritten) = rewrite_selected_text(
+                                            &ah,
                                             &effective_settings,
                                             &selected_text,
                                             &final_text,

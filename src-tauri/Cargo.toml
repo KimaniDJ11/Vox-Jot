@@ -1,6 +1,6 @@
 [package]
 name = "vox_jot"
-version = "1.0.19"
+version = "1.0.20"
 description = "Vox Jot"
 authors = ["Irie Dinamik", "cjpais"]
 edition = "2021"

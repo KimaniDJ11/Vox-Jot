@@ -1610,6 +1610,109 @@ function RuleGuidedMusicMark({ size, color }: { size: number; color: string }) {
   );
 }
 
+function DemucsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 6.5h16M4 17.5h16"
+        stroke="#818CF8"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeDasharray="2 3"
+      />
+      <path
+        d="M4 12h2.2l1.6-4.5 2.8 9 3-7 2.4 4.5 1.8-2 2.2H20"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={9} cy={12} r={1.6} fill="#38BDF8" />
+      <circle cx={15} cy={12} r={1.6} fill="#38BDF8" />
+    </svg>
+  );
+}
+
+function StepFunMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4.5 18.5h4v-4h4v-4h4v-4h3"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 18.5V9.5l4-3 4 3v9"
+        fill="none"
+        stroke="#38BDF8"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={16.5} cy={6.5} r={2} fill="#38BDF8" />
+    </svg>
+  );
+}
+
+function Audio8Mark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle
+        cx={12}
+        cy={8}
+        r={3.8}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+      />
+      <circle
+        cx={12}
+        cy={15.5}
+        r={4.8}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+      />
+      <path
+        d="M4.5 12c1.8-2.2 1.8-4.8 0-7M19.5 12c-1.8-2.2-1.8-4.8 0-7M3 15c2.6-3.2 2.6-7.8 0-11M21 15c-2.6-3.2-2.6-7.8 0-11"
+        fill="none"
+        stroke="#38BDF8"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ModelScopeMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3.5 19.5 8v8L12 20.5 4.5 16V8L12 3.5Z"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 3.5v17M4.5 8l15 8M4.5 16l15-8"
+        stroke="#A5B4FC"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      <circle cx={12} cy={12} r={2.4} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
 // ---------- Brand Configurations ----------
 
 type MarkComponent = (props: {
@@ -1639,6 +1742,24 @@ const BRANDS: Record<string, BrandConfig> = {
     fg: "#FFFFFF",
     letter: "DF",
     mark: DeepFilterNetMark,
+  },
+  demucs: {
+    bg: "#4338CA",
+    fg: "#FFFFFF",
+    letter: "D",
+    mark: DemucsMark,
+  },
+  stepfun: {
+    bg: "#0F172A",
+    fg: "#FFFFFF",
+    letter: "SF",
+    mark: StepFunMark,
+  },
+  audio8: {
+    bg: "#0284C7",
+    fg: "#FFFFFF",
+    letter: "A8",
+    mark: Audio8Mark,
   },
   nvidia: { bg: "#76B900", fg: "#FFFFFF", letter: "N", mark: NvidiaMark },
   apple: { bg: "#F5F5F7", fg: "#111827", letter: "", mark: AppleMark },
@@ -1706,7 +1827,12 @@ const BRANDS: Record<string, BrandConfig> = {
   tencent: { bg: "#2563EB", fg: "#FFFFFF", letter: "T", mark: TencentMark },
   groq: { bg: "#F55036", fg: "#FFFFFF", letter: "G", mark: GroqMark },
   cerebras: { bg: "#0F172A", fg: "#FFFFFF", letter: "C", mark: CerebrasMark },
-  modelscope: { bg: "#5B4FE0", fg: "#FFFFFF", letter: "MS" },
+  modelscope: {
+    bg: "#5B4FE0",
+    fg: "#FFFFFF",
+    letter: "MS",
+    mark: ModelScopeMark,
+  },
   falcon: { bg: "#6D28D9", fg: "#FFFFFF", letter: "F", mark: FalconMark },
   ibm: { bg: "#0F62FE", fg: "#FFFFFF", letter: "IBM", mark: IbmMark },
   openrouter: {
@@ -1730,6 +1856,12 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: UsefulSensorsMark,
   },
   funaudillm: {
+    bg: "#FF6A00",
+    fg: "#FFFFFF",
+    letter: "F",
+    mark: FunAudioMark,
+  },
+  funasr: {
     bg: "#FF6A00",
     fg: "#FFFFFF",
     letter: "F",
@@ -1889,10 +2021,26 @@ const PROVIDER_BRAND: Record<string, string> = {
   rnnoise: "rnnoise",
   spectral: "spectral",
   deepfilternet: "deepfilternet",
+  deepfilternet3: "deepfilternet",
+  deepfilternet_3: "deepfilternet",
+  deepfilter: "deepfilternet",
+  "deep-filter": "deepfilternet",
+  df: "deepfilternet",
+  demucs: "demucs",
+  htdemucs: "demucs",
   stt_parakeet: "nvidia",
   stt_moonshine: "useful_sensors",
   stt_moonshine_streaming: "useful_sensors",
   stt_sensevoice: "funaudillm",
+  stt_funasr: "funaudillm",
+  funasr: "funaudillm",
+  fun_asr: "funaudillm",
+  "fun-asr": "funaudillm",
+  funaudiollm: "funaudillm",
+  funaudio: "funaudillm",
+  "fun-audio": "funaudillm",
+  emotion2vec: "funaudillm",
+  emotion2vec_plus: "funaudillm",
   stt_gigaam: "sber",
   stt_qwen: "qwen",
   apple: "apple",
@@ -1902,6 +2050,12 @@ const PROVIDER_BRAND: Record<string, string> = {
   musicgen: "meta",
   audioldm2: "audioldm2",
   audioldm2_music: "audioldm2",
+  audioldm: "audioldm2",
+  declare_lab: "audioldm2",
+  declarelab: "audioldm2",
+  cvssp: "audioldm2",
+  facebook: "meta",
+  audiocraft: "meta",
   ace_step: "ace_step",
   yue: "yue",
   diffrhythm: "diffrhythm",
@@ -1910,7 +2064,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   rule_guided_music: "rule_guided_music",
   stt_mlx_audio: "apple",
   stt_gemma_audio: "google",
-  stt_higgs_audio: "huggingface",
+  stt_higgs_audio: "boson",
   stt_apple_speech: "apple",
   stt_hf_verified: "huggingface",
   polyvoice: "polyvoice",
@@ -1918,13 +2072,23 @@ const PROVIDER_BRAND: Record<string, string> = {
   silero: "polyvoice",
   nvidia: "nvidia",
   useful_sensors: "useful_sensors",
-  funaudillm: "funaudillm",
   sber: "sber",
   mediatek: "mediatek",
   paddlepaddle: "paddlepaddle",
+  stepfun: "stepfun",
+  got_ocr: "stepfun",
+  "got-ocr": "stepfun",
+  "got-ocr2": "stepfun",
+  got: "stepfun",
+  audio8: "audio8",
+  ark_asr: "audio8",
+  "ark-asr": "audio8",
   lighton: "lighton",
   datalab: "datalab",
   dots: "dots",
+  rednote: "dots",
+  rednote_hilab: "dots",
+  "rednote-hilab": "dots",
   nanonets: "nanonets",
   allen_ai: "ai2",
   ai2: "ai2",
@@ -2005,12 +2169,17 @@ const PROVIDER_BRAND: Record<string, string> = {
   soprano: "soprano",
   melotts: "melotts",
   openmoss: "openmoss",
+  mossformer: "openmoss",
+  mossformer2: "openmoss",
   irodori: "irodori",
   indextts: "indextts",
   kitten: "kitten",
   miso: "miso",
   k2fsa: "k2fsa",
   firered: "firered",
+  cam_plus: "modelscope",
+  "cam-plus": "modelscope",
+  eres2net: "modelscope",
   // Speech-analysis / file-ASR providers
   cohere: "cohere",
   cohere_labs: "cohere",
@@ -2117,6 +2286,16 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "moonshine", providerId: "stt_moonshine" },
   { keyword: "sensevoice", providerId: "stt_sensevoice" },
   { keyword: "sense voice", providerId: "stt_sensevoice" },
+  { keyword: "fun-asr-nano", providerId: "funasr" },
+  { keyword: "fun asr nano", providerId: "funasr" },
+  { keyword: "fun-asr", providerId: "funasr" },
+  { keyword: "fun asr", providerId: "funasr" },
+  { keyword: "funasr", providerId: "funasr" },
+  { keyword: "funaudiollm", providerId: "funasr" },
+  { keyword: "funaudio", providerId: "funasr" },
+  { keyword: "fun audio", providerId: "funasr" },
+  { keyword: "emotion2vec+", providerId: "funasr" },
+  { keyword: "emotion2vec", providerId: "funasr" },
   { keyword: "gigaam", providerId: "stt_gigaam" },
   { keyword: "qwen3-asr", providerId: "stt_qwen" },
   { keyword: "qwen3_asr", providerId: "stt_qwen" },
@@ -2136,6 +2315,48 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "reverb", providerId: "revai" },
   { keyword: "revai", providerId: "revai" },
   { keyword: "sortformer", providerId: "nvidia" },
+  // Audio cleanup / Noise removal / Vocal isolation
+  { keyword: "deepfilternet3", providerId: "deepfilternet" },
+  { keyword: "deepfilternet 3", providerId: "deepfilternet" },
+  { keyword: "deepfilternet", providerId: "deepfilternet" },
+  { keyword: "deepfilter", providerId: "deepfilternet" },
+  { keyword: "deep-filter", providerId: "deepfilternet" },
+  { keyword: "htdemucs", providerId: "demucs" },
+  { keyword: "demucs", providerId: "demucs" },
+  { keyword: "rnnoise", providerId: "rnnoise" },
+  { keyword: "spectral subtraction", providerId: "spectral" },
+  // OCR models & vendors
+  { keyword: "got-ocr", providerId: "stepfun" },
+  { keyword: "got ocr", providerId: "stepfun" },
+  { keyword: "got_ocr", providerId: "stepfun" },
+  { keyword: "stepfun", providerId: "stepfun" },
+  { keyword: "paddleocr", providerId: "paddlepaddle" },
+  { keyword: "paddlepaddle", providerId: "paddlepaddle" },
+  { keyword: "pp-ocr", providerId: "paddlepaddle" },
+  { keyword: "lightonocr", providerId: "lighton" },
+  { keyword: "lighton", providerId: "lighton" },
+  { keyword: "chandra", providerId: "datalab" },
+  { keyword: "dots.ocr", providerId: "dots" },
+  { keyword: "dots.mocr", providerId: "dots" },
+  { keyword: "rednote-hilab", providerId: "dots" },
+  { keyword: "rednote", providerId: "dots" },
+  { keyword: "nanonets", providerId: "nanonets" },
+  { keyword: "olmocr", providerId: "ai2" },
+  { keyword: "allen ai", providerId: "ai2" },
+  { keyword: "deepseek", providerId: "deepseek" },
+  { keyword: "glm-ocr", providerId: "zai" },
+  { keyword: "zhipu", providerId: "zai" },
+  { keyword: "tesseract", providerId: "tesseract" },
+  // Audio8 & Speech / Speaker Recognition
+  { keyword: "audio8-tts", providerId: "audio8" },
+  { keyword: "audio8", providerId: "audio8" },
+  { keyword: "ark-asr", providerId: "audio8" },
+  { keyword: "ark asr", providerId: "audio8" },
+  { keyword: "mossformer2", providerId: "openmoss" },
+  { keyword: "mossformer", providerId: "openmoss" },
+  { keyword: "cam++", providerId: "modelscope" },
+  { keyword: "cam-plus", providerId: "modelscope" },
+  { keyword: "eres2net", providerId: "modelscope" },
   // HF TTS Verified collection labels
   { keyword: "piper-voices", providerId: "piper" },
   { keyword: "piper voices", providerId: "piper" },
@@ -2158,16 +2379,33 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "liquid", providerId: "liquid_ai" },
   { keyword: "hunyuan", providerId: "tencent" },
   { keyword: "tencent", providerId: "tencent" },
+  { keyword: "granite-speech", providerId: "ibm" },
+  { keyword: "granite speech", providerId: "ibm" },
   { keyword: "granite", providerId: "ibm" },
   { keyword: "falcon", providerId: "falcon" },
   { keyword: "tii", providerId: "tii" },
   { keyword: "smollm", providerId: "huggingface" },
   { keyword: "smol lm", providerId: "huggingface" },
   { keyword: "vibevoice", providerId: "microsoft" },
+  // Creative audio / Sound design
+  { keyword: "stable-audio", providerId: "stability_ai" },
+  { keyword: "stable audio", providerId: "stability_ai" },
   { keyword: "musicgen", providerId: "musicgen" },
   { keyword: "music gen", providerId: "musicgen" },
   { keyword: "audioldm2", providerId: "audioldm2" },
   { keyword: "audioldm 2", providerId: "audioldm2" },
+  { keyword: "audioldm", providerId: "audioldm2" },
+  { keyword: "ace-step", providerId: "ace_step" },
+  { keyword: "ace step", providerId: "ace_step" },
+  { keyword: "acestep", providerId: "ace_step" },
+  { keyword: "diffrhythm", providerId: "diffrhythm" },
+  { keyword: "diff-rhythm", providerId: "diffrhythm" },
+  { keyword: "diff rhythm", providerId: "diffrhythm" },
+  { keyword: "figaro", providerId: "figaro" },
+  { keyword: "magenta", providerId: "magenta" },
+  { keyword: "rule-guided", providerId: "rule_guided_music" },
+  { keyword: "rule guided", providerId: "rule_guided_music" },
+  { keyword: "yue", providerId: "yue" },
   { keyword: "openvoice", providerId: "openvoice" },
   { keyword: "chatterbox", providerId: "chatterbox" },
   { keyword: "supertonic", providerId: "supertonic" },
@@ -2200,6 +2438,8 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "irodori", providerId: "mlx_irodori_tts" },
   { keyword: "indextts", providerId: "mlx_indextts" },
   { keyword: "index tts", providerId: "mlx_indextts" },
+  { keyword: "inflect-micro", providerId: "sherpa" },
+  { keyword: "inflect", providerId: "sherpa" },
   { keyword: "omnivoice", providerId: "mlx_omnivoice" },
   { keyword: "kittentts", providerId: "mlx_kitten_tts" },
   { keyword: "kitten tts", providerId: "mlx_kitten_tts" },
@@ -2213,21 +2453,6 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "orpheus", providerId: "mlx_orpheus" },
   { keyword: "zonos", providerId: "mlx_zonos2" },
   { keyword: "zyphra", providerId: "mlx_zonos2" },
-  { keyword: "paddleocr", providerId: "paddlepaddle" },
-  { keyword: "paddlepaddle", providerId: "paddlepaddle" },
-  { keyword: "pp-ocr", providerId: "paddlepaddle" },
-  { keyword: "lightonocr", providerId: "lighton" },
-  { keyword: "lighton", providerId: "lighton" },
-  { keyword: "chandra", providerId: "datalab" },
-  { keyword: "dots.ocr", providerId: "dots" },
-  { keyword: "dots.mocr", providerId: "dots" },
-  { keyword: "nanonets", providerId: "nanonets" },
-  { keyword: "olmocr", providerId: "ai2" },
-  { keyword: "allen ai", providerId: "ai2" },
-  { keyword: "deepseek", providerId: "deepseek" },
-  { keyword: "glm-ocr", providerId: "zai" },
-  { keyword: "zhipu", providerId: "zai" },
-  { keyword: "tesseract", providerId: "tesseract" },
   { keyword: "llama", providerId: "meta" },
   { keyword: "gemma", providerId: "google" },
   { keyword: "gemini", providerId: "google" },
@@ -2297,10 +2522,19 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   rnnoise: "RNNoise",
   spectral: "Spectral Subtraction",
   deepfilternet: "DeepFilterNet",
+  deepfilternet3: "DeepFilterNet3",
+  deepfilter: "DeepFilterNet",
+  demucs: "Demucs Vocal Isolation",
+  stepfun: "StepFun GOT-OCR",
+  audio8: "Audio8",
   stt_parakeet: "NVIDIA Parakeet",
   stt_moonshine: "Useful Sensors Moonshine",
   stt_moonshine_streaming: "Useful Sensors Moonshine",
   stt_sensevoice: "FunAudioLLM SenseVoice",
+  stt_funasr: "FunAudioLLM FunASR",
+  funasr: "FunAudioLLM FunASR",
+  funaudiollm: "FunAudioLLM",
+  emotion2vec: "FunAudioLLM emotion2vec",
   stt_gigaam: "Sber GigaAM",
   stt_qwen: "Alibaba Qwen",
   stt_mlx_audio: "MLX Audio",

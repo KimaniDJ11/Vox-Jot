@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Cerca modelli perfezionati",
         "description": "Filtra per nome del modello, origine, runtime o repository.",
-        "placeholder": "Prova: qwen, nemotron, ollama, lm studio"
+        "placeholder": "Prova: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "Prova: qwen, locale, unità esterna, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Pronto adesso",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Disponibile per aggiungere",
         "availableToAddDescription": "Queste voci possono essere scaricate in Ollama e selezionate automaticamente al termine dell'installazione.",
         "availableToAddEmpty": "Nessun modello di perfezionamento scaricabile corrisponde a questa ricerca.",
-        "availableToAddEmptyDescription": "Prova un termine di ricerca diverso o importa un Hugging Face GGUF personalizzato di seguito."
+        "availableToAddEmptyDescription": "Prova un termine di ricerca diverso o importa un Hugging Face GGUF personalizzato di seguito.",
+        "readyNowLocalDescription": "Questi modelli sono già presenti su questo Mac o su un'unità esterna collegata. I modelli Vox Jot Local vengono eseguiti direttamente senza importazione in Ollama."
       },
       "badges": {
         "ready": "Pronto",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Installazione in Ollama...",
         "removeFromOllama": "Rimuovere {{title}}",
         "confirmRemoveModel": "Rimuovere {{title}} da Ollama ed eliminare i file di importazione locale? Se questo modello è selezionato per Perfeziona, Vox Jot tornerà alla voce del modello Ollama predefinita.",
-        "apiKeyRequired": "È richiesta la chiave API"
+        "apiKeyRequired": "È richiesta la chiave API",
+        "setupLocalRuntime": "Configura e usa",
+        "downloadingLocalRuntime": "Download del runtime locale in corso...",
+        "installingLocalRuntime": "Installazione del runtime locale in corso...",
+        "installingLocalRuntimeDetail": "Checksum verificato · i file del modello rimangono nella posizione originale"
       },
       "customImport": {
         "title": "Importazione personalizzata",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Obiettivo di esecuzione",
         "runtimeDescription": "Le importazioni vengono installate in Ollama, quindi selezionate come modello di perfezionamento attivo.",
         "importAndUse": "Importa e utilizza",
-        "importingCustom": "Importazione..."
+        "importingCustom": "Importazione...",
+        "localDescription": "Importa qualsiasi repository GGUF di Hugging Face, salvalo nella cartella LLM gestita di Vox Jot ed eseguilo senza Ollama o LM Studio.",
+        "localModelNameLabel": "Nome del modello locale",
+        "localRuntimeDescription": "I modelli vengono eseguiti tramite Vox Jot Local direttamente dalla cartella dei modelli locale o esterna configurata."
       },
       "source": "Fonte: {{repoId}}",
       "loading": "Caricamento perfezionamento modelli...",
@@ -1453,7 +1462,8 @@
         "importError": "Impossibile importare Hugging Face GGUF.",
         "importSuccess": "{{modelId}} è stato importato in Ollama e selezionato.",
         "enterRepo": "Inserisci prima un repository Hugging Face ID.",
-        "removed": "{{title}} è stato rimosso da Ollama."
+        "removed": "{{title}} è stato rimosso da Ollama.",
+        "localImportSuccess": "{{modelId}} è stato aggiunto a Vox Jot Local e selezionato."
       },
       "evaluation": {
         "tested": "Testato",
@@ -2651,7 +2661,6 @@
       "external": "Unità esterna",
       "externalDetail": "Pronto sull'unità esterna collegata. Ricollegare l'unità se questo modello scompare."
     },
-
     "tabs": {
       "stt": "Discorso (STT)",
       "analysis": "Analisi del discorso",

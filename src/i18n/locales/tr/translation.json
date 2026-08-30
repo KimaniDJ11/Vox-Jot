@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Hassaslaştırma modellerini arayın",
         "description": "Model adına, kaynağa, çalışma zamanına veya depoya göre filtreleyin.",
-        "placeholder": "Deneyin: qwen, nemotron, ollama, lm studio"
+        "placeholder": "Deneyin: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "Deneyin: qwen, yerel, harici sürücü, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Şimdi Hazır",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Eklenebilir",
         "availableToAddDescription": "Bu girişler Ollama'ya indirilebilir ve kurulum tamamlandığında otomatik olarak seçilebilir.",
         "availableToAddEmpty": "Bu aramayla eşleşen indirilebilir hassaslaştırma modeli yok.",
-        "availableToAddEmptyDescription": "Farklı bir arama terimi deneyin veya aşağıda özel bir Hugging Face GGUF içe aktarın."
+        "availableToAddEmptyDescription": "Farklı bir arama terimi deneyin veya aşağıda özel bir Hugging Face GGUF içe aktarın.",
+        "readyNowLocalDescription": "Bu modeller zaten bu Mac'te veya bağlı bir harici sürücüde mevcut. Vox Jot Local modelleri bir Ollama içe aktarması olmadan doğrudan yerinde çalışır."
       },
       "badges": {
         "ready": "Hazır",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Ollama'ya yükleniyor...",
         "removeFromOllama": "{{title}}'yu kaldırın",
         "confirmRemoveModel": "{{title}}, Ollama'dan kaldırılsın ve yerel içe aktarma dosyaları silinsin mi? Bu model İyileştirme için seçilirse Vox Jot, varsayılan Ollama model girişine geri dönecektir.",
-        "apiKeyRequired": "API anahtarı gerekli"
+        "apiKeyRequired": "API anahtarı gerekli",
+        "setupLocalRuntime": "Ayarla ve Kullan",
+        "downloadingLocalRuntime": "Yerel çalışma zamanı indiriliyor...",
+        "installingLocalRuntime": "Yerel çalışma zamanı yükleniyor...",
+        "installingLocalRuntimeDetail": "Sağlama toplamı doğrulandı · model dosyaları yerinde kalır"
       },
       "customImport": {
         "title": "Özel İçe Aktarma",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Çalışma zamanı hedefi",
         "runtimeDescription": "İçe aktarmalar Ollama'ya yüklenir ve ardından etkin iyileştirme modeli olarak seçilir.",
         "importAndUse": "İçe Aktar ve Kullan",
-        "importingCustom": "İçe aktarılıyor..."
+        "importingCustom": "İçe aktarılıyor...",
+        "localDescription": "Herhangi bir Hugging Face GGUF deposunu getirin, Vox Jot'un yönetilen LLM klasöründe saklayın ve Ollama veya LM Studio olmadan çalıştırın.",
+        "localModelNameLabel": "Yerel model adı",
+        "localRuntimeDescription": "Modeller yapılandırılmış yerel veya harici model klasöründen doğrudan Vox Jot Local aracılığıyla çalışır."
       },
       "source": "Kaynak: {{repoId}}",
       "loading": "İnceltme modelleri yükleniyor...",
@@ -1453,7 +1462,8 @@
         "importError": "Hugging Face GGUF içe aktarılamadı.",
         "importSuccess": "{{modelId}}, Ollama'ya aktarıldı ve seçildi.",
         "enterRepo": "Önce bir Hugging Face deposu ID girin.",
-        "removed": "{{title}}, Ollama'dan kaldırıldı."
+        "removed": "{{title}}, Ollama'dan kaldırıldı.",
+        "localImportSuccess": "{{modelId}} Vox Jot Local'a eklendi ve seçildi."
       },
       "evaluation": {
         "tested": "Test edildi",
@@ -2651,7 +2661,6 @@
       "external": "Harici sürücü",
       "externalDetail": "Bağlı harici sürücüde hazır. Bu model kaybolursa sürücüyü yeniden bağlayın."
     },
-
     "tabs": {
       "stt": "Konuşma (STT)",
       "analysis": "Konuşma Analizi",

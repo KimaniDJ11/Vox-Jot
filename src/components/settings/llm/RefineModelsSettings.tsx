@@ -72,7 +72,11 @@ import { useSettings } from "@/hooks/useSettings";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 
 type RefineModelSourceKind =
-  "ollama" | "lm_studio" | "hugging_face" | "managed_provider";
+  | "ollama"
+  | "lm_studio"
+  | "hugging_face"
+  | "vox_jot_local"
+  | "managed_provider";
 
 type RefineProviderStatus = {
   id: string;
@@ -220,7 +224,9 @@ type RefineDownloadProgress = {
     | "installing_ollama"
     | "starting_ollama"
     | "downloading"
+    | "downloading_runtime"
     | "importing"
+    | "installing_runtime"
     | "cancelling"
     | "cancelled"
     | "complete"
@@ -638,6 +644,12 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       catalog?.providers.find((provider) => provider.id === "ollama") ?? null,
     [catalog?.providers],
   );
+  const voxJotLocalProvider = useMemo(
+    () =>
+      catalog?.providers.find((provider) => provider.id === "vox_jot_local") ??
+      null,
+    [catalog?.providers],
+  );
   const evaluatedModels = useMemo(
     () =>
       filteredModels
@@ -865,9 +877,8 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       sanitizeModelId(customModelId) || defaultModelIdFromRepo(repoId);
     setCustomBusy(true);
     try {
-      await ensureOllamaReady();
       await invoke("install_refine_model", {
-        providerId: "ollama",
+        providerId: "vox_jot_local",
         modelId,
         sourceRepoId: repoId,
         sourceFileName: customFileName.trim() || null,
@@ -877,7 +888,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       setCustomFileName("");
       setCustomModelId(modelId);
       toast.success(
-        t("settings.refineModels.toast.importSuccess", { modelId }),
+        t("settings.refineModels.toast.localImportSuccess", { modelId }),
       );
     } catch (err) {
       const message =
@@ -970,6 +981,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       model.runtime_provider_id === "ollama" &&
       ollamaProvider?.installed !== false &&
       ollamaProvider?.running === false;
+    const needsVoxJotLocalRuntime =
+      model.runtime_provider_id === "vox_jot_local" &&
+      voxJotLocalProvider?.installed === false;
 
     if (model.requires_api_key) {
       const label = t("settings.refineModels.actions.apiKeyRequired", {
@@ -1036,6 +1050,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         label = t("settings.refineModels.actions.installOllama");
       } else if (needsOllamaStart) {
         label = t("settings.refineModels.actions.startOllama");
+      } else if (needsVoxJotLocalRuntime) {
+        label = t("settings.refineModels.actions.setupLocalRuntime", {
+          defaultValue: "Set Up & Use",
+        });
       } else {
         label = t("settings.refineModels.actions.downloadAndUse");
       }
@@ -1168,6 +1186,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       `${model.title} ${model.id} ${model.runtime_model_id} ${model.source_repo_id ?? ""}`.toLowerCase();
     const isLocal =
       model.runtime_provider_id === "ollama" ||
+      model.runtime_provider_id === "vox_jot_local" ||
       model.runtime_provider_id === "lmstudio" ||
       model.runtime_provider_id === "apple_intelligence" ||
       model.source_kind === "hugging_face";
@@ -1277,7 +1296,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       progress.stage === "cancelling" ||
       cancellingModelIds.has(model.runtime_model_id);
     const cancellable =
-      progress.stage === "downloading" || progress.stage === "importing";
+      progress.stage === "downloading" ||
+      progress.stage === "downloading_runtime" ||
+      progress.stage === "importing";
     const cancelFields = cancellable
       ? {
           cancelling: isCancelling,
@@ -1300,7 +1321,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       };
     }
 
-    if (progress.stage === "downloading") {
+    if (
+      progress.stage === "downloading" ||
+      progress.stage === "downloading_runtime"
+    ) {
       const downloaded = progress.downloaded ?? 0;
       const total = progress.total ?? 0;
       const hasKnownTotal = total > 0;
@@ -1321,7 +1345,12 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         .join(" · ");
 
       return {
-        label: downloadingModelFilesLabel(t),
+        label:
+          progress.stage === "downloading_runtime"
+            ? t("settings.refineModels.actions.downloadingLocalRuntime", {
+                defaultValue: "Downloading local runtime...",
+              })
+            : downloadingModelFilesLabel(t),
         detail,
         progress: hasKnownTotal ? percentage : null,
         indeterminate: !hasKnownTotal,
@@ -1372,6 +1401,22 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           defaultValue: "Installing into Ollama...",
         }),
         detail: model.runtime_label,
+        indeterminate: true,
+        ...cancelFields,
+      };
+    }
+
+    if (progress.stage === "installing_runtime") {
+      return {
+        label: t("settings.refineModels.actions.installingLocalRuntime", {
+          defaultValue: "Installing local runtime...",
+        }),
+        detail: t(
+          "settings.refineModels.actions.installingLocalRuntimeDetail",
+          {
+            defaultValue: "Checksum verified · model files stay in place",
+          },
+        ),
         indeterminate: true,
         ...cancelFields,
       };
@@ -1682,7 +1727,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                   className="mt-3 w-full"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder={t("settings.refineModels.search.placeholder")}
+                  placeholder={t(
+                    "settings.refineModels.search.localPlaceholder",
+                  )}
                 />
               </div>
             ) : null}
@@ -1705,7 +1752,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
               <div className="space-y-6">
                 {renderSection(
                   "Downloaded Models",
-                  t("settings.refineModels.sections.readyNowDescription"),
+                  t("settings.refineModels.sections.readyNowLocalDescription"),
                   downloadedModels,
                   t("settings.refineModels.sections.readyNowEmpty"),
                   t("settings.refineModels.sections.readyNowEmptyDescription"),
@@ -1729,7 +1776,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         {!useHubSearch ? (
           <SettingsGroup
             title={t("settings.refineModels.customImport.title")}
-            description={t("settings.refineModels.customImport.description")}
+            description={t(
+              "settings.refineModels.customImport.localDescription",
+            )}
           >
             <div className="space-y-4 px-5 py-5">
               <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4">
@@ -1769,7 +1818,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                    {t("settings.refineModels.customImport.modelNameLabel")}
+                    {t(
+                      "settings.refineModels.customImport.localModelNameLabel",
+                    )}
                   </label>
                   <Input
                     value={customModelId}
@@ -1807,7 +1858,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                     </p>
                     <p className="text-sm leading-6 text-[var(--muted)]">
                       {t(
-                        "settings.refineModels.customImport.runtimeDescription",
+                        "settings.refineModels.customImport.localRuntimeDescription",
                       )}
                     </p>
                   </div>

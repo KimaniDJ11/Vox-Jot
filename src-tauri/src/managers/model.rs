@@ -1386,7 +1386,26 @@ impl ModelManager {
                 0.0,
                 &["ja"],
             );
-
+            insert_mlx_audio_stt(
+                "mlx-granite-4.0-1b-speech-8bit",
+                "IBM Granite 4.0 1B Speech (8-bit MLX)",
+                "Ranked #1 in Vox Jot's 35-clip Live STT benchmark with 0.9% weighted WER.",
+                "mlx-community/granite-4.0-1b-speech-8bit",
+                2772,
+                0.99,
+                0.90,
+                &["en", "fr", "de", "es", "pt", "ja"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-granite-speech-4.1-2b-nar",
+                "IBM Granite Speech 4.1 2B NAR (MLX)",
+                "Non-autoregressive Granite Speech 4.1 model for English, French, German, Spanish, and Portuguese on Apple Silicon.",
+                "mlx-community/granite-speech-4.1-2b-nar-mlx",
+                4303,
+                0.0,
+                0.0,
+                &["en", "fr", "de", "es", "pt"],
+            );
             let mut insert_gemma_audio_stt =
                 |id: &str,
                  name: &str,

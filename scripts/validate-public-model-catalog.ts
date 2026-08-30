@@ -12,6 +12,7 @@ const SPEECH_ANALYSIS = readFileSync(
 );
 const TTS_CATALOG = readFileSync("src-tauri/src/tts/catalog.rs", "utf8");
 const TTS_MANAGER = readFileSync("src-tauri/src/tts.rs", "utf8");
+const STT_EVALUATIONS = readFileSync("src/lib/sttEvaluationResults.ts", "utf8");
 
 type HfRepoInfo = {
   id?: string;
@@ -39,6 +40,38 @@ function recommendedModelBlocks(): string[] {
   return MODEL_MANAGER.split(/available_models\.insert\(/).filter((block) =>
     block.includes("is_recommended: true"),
   );
+}
+
+function helperCallArguments(source: string, helper: string): string[][] {
+  const pattern = new RegExp(`${helper}\\((.*?)\\n\\s*\\);`, "gs");
+  return [...source.matchAll(pattern)].map((match) =>
+    [...match[1].matchAll(/"([^"]+)"/g)].map((value) => value[1]),
+  );
+}
+
+function sttCatalogModelIds(): Set<string> {
+  return new Set([
+    ...extractAll(
+      MODEL_MANAGER,
+      /available_models\.insert\(\s*"([^"]+)"\.to_string\(\)/gs,
+    ),
+    ...helperCallArguments(MODEL_MANAGER, "insert_mlx_audio_stt").map(
+      (args) => args[0],
+    ),
+    ...helperCallArguments(MODEL_MANAGER, "insert_gemma_audio_stt").map(
+      (args) => args[0],
+    ),
+  ]);
+}
+
+function rankedSttModelIds(): string[] {
+  return [
+    ...STT_EVALUATIONS.matchAll(
+      /\{\s*modelId:\s*"([^"]+)"([\s\S]*?)\n\s{2}\},/g,
+    ),
+  ]
+    .filter((match) => /status:\s*"tested"/.test(match[2]))
+    .map((match) => match[1]);
 }
 
 async function headOk(url: string): Promise<boolean> {
@@ -133,6 +166,12 @@ async function assertVoxJotModelAssetsExist() {
 async function assertHfReposAreNotPrivateOrDisabled() {
   const repoIds = unique([
     ...extractAll(MODEL_MANAGER, /hf_snapshot_url\("([^"]+)"\)/g),
+    ...helperCallArguments(MODEL_MANAGER, "insert_mlx_audio_stt").map(
+      (args) => args[3],
+    ),
+    ...helperCallArguments(MODEL_MANAGER, "insert_gemma_audio_stt").map(
+      (args) => args[3],
+    ),
     ...extractAll(SPEECH_ANALYSIS, /Some\("([A-Za-z0-9_.-]+\/[^"]+)"\)/g),
     ...extractAll(TTS_CATALOG, /hf_repo_id: Some\("([^"]+)"\)/g),
     ...extractAll(TTS_CATALOG, /hf_model_id: "([^"]+)"/g),
@@ -152,12 +191,24 @@ async function assertHfReposAreNotPrivateOrDisabled() {
   }
 }
 
+function assertRankedSttModelsExistInModelHub() {
+  const catalogIds = sttCatalogModelIds();
+  for (const modelId of rankedSttModelIds()) {
+    if (!catalogIds.has(modelId)) {
+      fail(
+        `Ranked Live STT model ${modelId} has no matching canonical Model Hub catalog entry.`,
+      );
+    }
+  }
+}
+
 async function main() {
   assertNoPrivateReleaseReferences();
   await assertManagedSpeechRuntimeIsPublic();
   await assertRecommendedModelsArePublic();
   await assertVoxJotModelAssetsExist();
   await assertHfReposAreNotPrivateOrDisabled();
+  assertRankedSttModelsExistInModelHub();
 
   if (errors.length > 0) {
     console.error(errors.map((error) => `- ${error}`).join("\n"));

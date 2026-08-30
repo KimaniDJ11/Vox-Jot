@@ -258,29 +258,127 @@ EOF
   echo "Using Apple signing identity: ${APPLE_SIGNING_IDENTITY}"
 }
 
+run_notary_submit() {
+  local credential_description="$1"
+  shift
+
+  local attempt=1
+  local max_attempts=3
+  local output status submission_id
+
+  while [[ "${attempt}" -le "${max_attempts}" ]]; do
+    if [[ "${attempt}" -gt 1 ]]; then
+      echo "Retrying notarization submission (${attempt}/${max_attempts})..."
+    fi
+
+    set +e
+    output="$("$@" 2>&1)"
+    status="$?"
+    set -e
+
+    echo "${output}"
+
+    if [[ "${status}" -eq 0 ]]; then
+      return 0
+    fi
+
+    submission_id="$(echo "${output}" | /usr/bin/awk '/^[[:space:]]*id: / { print $2; exit }')"
+    if [[ -n "${submission_id}" ]]; then
+      echo "Submission ID ${submission_id} was registered with Apple. Polling for ticket..."
+      local poll_attempt=1
+      while [[ "${poll_attempt}" -le 120 ]]; do
+        local info_out
+        info_out="$(notary_submission_info "${submission_id}" 2>&1 || true)"
+        if echo "${info_out}" | /usr/bin/grep -q "status: Accepted"; then
+          echo "Notarization accepted for submission ${submission_id}."
+          return 0
+        elif echo "${info_out}" | /usr/bin/grep -q "status: Invalid"; then
+          echo "Notarization rejected by Apple:" >&2
+          echo "${info_out}" >&2
+          return 1
+        fi
+        sleep 10
+        poll_attempt=$((poll_attempt + 1))
+      done
+
+      echo "Timed out waiting for registered notarization submission ${submission_id} using ${credential_description}. Refusing to create a duplicate submission." >&2
+      return 1
+    fi
+
+    if [[ "${attempt}" -eq "${max_attempts}" ]]; then
+      return "${status}"
+    fi
+
+    if [[ "${output}" == *"HTTPClientError.deadlineExceeded"* ||
+      "${output}" == *"abortedUpload"* ]]; then
+      echo "Notary upload timed out; retrying after a short delay..." >&2
+      sleep 15
+      attempt=$((attempt + 1))
+      continue
+    fi
+
+    sleep 15
+    attempt=$((attempt + 1))
+  done
+
+  notary_submit_failed "${credential_description}"
+}
+
+notary_submission_info() {
+  local submission_id="$1"
+
+  case "${NOTARY_CREDENTIAL_MODE}" in
+  keychain_profile)
+    /usr/bin/xcrun notarytool info "${submission_id}" \
+      --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}"
+    ;;
+  apple_id)
+    /usr/bin/xcrun notarytool info "${submission_id}" \
+      --apple-id "${APPLE_ID}" \
+      --team-id "${APPLE_TEAM_ID}" \
+      --password "${APPLE_NOTARY_PASSWORD}"
+    ;;
+  api_key)
+    /usr/bin/xcrun notarytool info "${submission_id}" \
+      --key "${APPLE_API_KEY_PATH}" \
+      --key-id "${APPLE_API_KEY}" \
+      --issuer "${APPLE_API_ISSUER}"
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
 submit_for_notarization() {
   local dmg_path="$1"
 
   case "${NOTARY_CREDENTIAL_MODE}" in
   keychain_profile)
-    /usr/bin/xcrun notarytool submit "${dmg_path}" \
+    run_notary_submit "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\"" \
+      /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\""
     return
     ;;
   apple_id)
-    /usr/bin/xcrun notarytool submit "${dmg_path}" \
+    run_notary_submit "Apple ID environment credentials" \
+      /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --apple-id "${APPLE_ID}" \
       --team-id "${APPLE_TEAM_ID}" \
       --password "${APPLE_NOTARY_PASSWORD}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "Apple ID environment credentials"
     return
     ;;
   api_key)
-    /usr/bin/xcrun notarytool submit "${dmg_path}" \
+    run_notary_submit "App Store Connect API environment credentials" \
+      /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --key "${APPLE_API_KEY_PATH}" \
       --key-id "${APPLE_API_KEY}" \
       --issuer "${APPLE_API_ISSUER}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "App Store Connect API environment credentials"
     return
     ;;

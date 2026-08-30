@@ -1388,7 +1388,8 @@
       "search": {
         "title": "بحث تحسين النماذج",
         "description": "قم بالتصفية حسب اسم الطراز أو المصدر أو وقت التشغيل أو الريبو.",
-        "placeholder": "جرب: كوين، نيموترون، أولاما، إل إم ستوديو"
+        "placeholder": "جرب: كوين، نيموترون، أولاما، إل إم ستوديو",
+        "localPlaceholder": "جرّب: qwen، محلي، محرك أقراص خارجي، ollama، lm studio"
       },
       "sections": {
         "readyNow": "جاهز الآن",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "متاح للإضافة",
         "availableToAddDescription": "يمكن تنزيل هذه الإدخالات إلى Ollama وتحديدها تلقائيًا عند انتهاء التثبيت.",
         "availableToAddEmpty": "لا توجد نماذج تحسين قابلة للتنزيل تتطابق مع هذا البحث.",
-        "availableToAddEmptyDescription": "جرب مصطلح بحث مختلف أو قم باستيراد Hugging Face GGUF المخصص أدناه."
+        "availableToAddEmptyDescription": "جرب مصطلح بحث مختلف أو قم باستيراد Hugging Face GGUF المخصص أدناه.",
+        "readyNowLocalDescription": "هذه النماذج موجودة بالفعل على جهاز Mac هذا أو محرك أقراص خارجي متصل. تعمل نماذج Vox Jot Local في مكانها دون الحاجة إلى استيراد Ollama."
       },
       "badges": {
         "ready": "جاهز",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "التثبيت في Ollama...",
         "removeFromOllama": "إزالة {{title}}",
         "confirmRemoveModel": "هل تريد إزالة {{title}} من Ollama وحذف ملفات الاستيراد المحلية؟ إذا تم تحديد هذا النموذج للتصفية، فسيعود Vox Jot إلى إدخال النموذج الافتراضي Ollama.",
-        "apiKeyRequired": "مطلوب مفتاح API"
+        "apiKeyRequired": "مطلوب مفتاح API",
+        "setupLocalRuntime": "إعداد واستخدام",
+        "downloadingLocalRuntime": "جارٍ تنزيل بيئة التشغيل المحلية...",
+        "installingLocalRuntime": "جارٍ تثبيت بيئة التشغيل المحلية...",
+        "installingLocalRuntimeDetail": "تم التحقق من المجموع الاختباري · تبقى ملفات النماذج في مكانها"
       },
       "customImport": {
         "title": "استيراد مخصص",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "هدف وقت التشغيل",
         "runtimeDescription": "يتم تثبيت الواردات في Ollama، ثم يتم تحديدها كنموذج التحسين النشط.",
         "importAndUse": "الاستيراد والاستخدام",
-        "importingCustom": "جارٍ الاستيراد..."
+        "importingCustom": "جارٍ الاستيراد...",
+        "localDescription": "استورد أي مستودع Hugging Face GGUF، واحفظه في مجلد LLM المُدار بواسطة Vox Jot، وشغّله بدون Ollama أو LM Studio.",
+        "localModelNameLabel": "اسم النموذج المحلي",
+        "localRuntimeDescription": "تعمل النماذج عبر Vox Jot Local مباشرة من مجلد النماذج المحلي أو الخارجي الذي تم تكوينه."
       },
       "source": "المصدر: {{repoId}}",
       "loading": "جارٍ تحميل نماذج التحسين...",
@@ -1453,7 +1462,8 @@
         "importError": "فشل استيراد Hugging Face GGUF.",
         "importSuccess": "تم استيراد {{modelId}} إلى Ollama وتم تحديده.",
         "enterRepo": "أدخل Hugging Face repo ID أولاً.",
-        "removed": "تمت إزالة {{title}} من Ollama."
+        "removed": "تمت إزالة {{title}} من Ollama.",
+        "localImportSuccess": "تمت إضافة {{modelId}} إلى Vox Jot Local وتحديده."
       },
       "evaluation": {
         "tested": "تم اختباره",
@@ -2651,7 +2661,6 @@
       "external": "محرك خارجي",
       "externalDetail": "جاهز على محرك الأقراص الخارجي المتصل. أعد توصيل محرك الأقراص في حالة اختفاء هذا الطراز."
     },
-
     "tabs": {
       "stt": "الكلام (STT)",
       "analysis": "تحليل الكلام",

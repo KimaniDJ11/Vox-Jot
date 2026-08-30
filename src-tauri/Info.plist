@@ -5,8 +5,8 @@
   <key>ITSAppUsesNonExemptEncryption</key>
   <false/>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Vox Jot uses the microphone only when you start dictation, so it can turn your speech into text.</string>
+  <string>Vox Jot uses the microphone only when you start assistive voice dictation, so it can turn your speech into text.</string>
   <key>NSScreenCaptureUsageDescription</key>
-  <string>Vox Jot uses Screen Recording only when Screen Context is enabled, to read visible text locally for better dictation context.</string>
+  <string>Vox Jot uses Screen Recording only when Screen Context is enabled, to read visible text locally for better assistive dictation context.</string>
 </dict>
 </plist>

@@ -20,6 +20,13 @@ directly or mirrors/converts assets for app-managed installation.
 - Voice cloning models require user permission for any reference voice sample,
   regardless of the model license.
 
+## Local LLM Runtime
+
+- llama.cpp / GGML runtime - MIT, Copyright (c) 2023-2026 The ggml authors.
+  Vox Jot downloads a pinned, checksum-verified platform archive and preserves
+  the upstream `LICENSE` beside `llama-server`. Source:
+  https://github.com/ggml-org/llama.cpp.
+
 ## Speech-to-Text And File ASR
 
 - OpenAI Whisper / whisper.cpp assets - MIT. Sources:
@@ -39,6 +46,12 @@ directly or mirrors/converts assets for app-managed installation.
 - Qwen3 ASR MLX conversions - Apache-2.0. Sources:
   https://huggingface.co/Qwen and
   https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit.
+- IBM Granite 4.0 1B Speech 8-bit MLX conversion - Apache-2.0. Sources:
+  https://huggingface.co/ibm-granite/granite-4.0-1b-speech and
+  https://huggingface.co/mlx-community/granite-4.0-1b-speech-8bit.
+- IBM Granite Speech 4.1 2B NAR MLX conversion - Apache-2.0. Sources:
+  https://huggingface.co/ibm-granite/granite-speech-4.1-2b-nar and
+  https://huggingface.co/mlx-community/granite-speech-4.1-2b-nar-mlx.
 - FireRedASR2 AED MLX conversion - Apache-2.0 per current catalog policy.
   Source: https://huggingface.co/mlx-community/FireRedASR2-AED-mlx.
 - Microsoft VibeVoice ASR MLX conversion - MIT. Source:

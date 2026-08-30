@@ -1388,7 +1388,8 @@
       "search": {
         "title": "検索絞り込みモデル",
         "description": "モデル名、ソース、ランタイム、またはリポジトリでフィルターします。",
-        "placeholder": "試してください: qwen、nemotron、ollam、lm studio"
+        "placeholder": "試してください: qwen、nemotron、ollam、lm studio",
+        "localPlaceholder": "検索例: qwen、ローカル、外付けドライブ、ollama、lm studio"
       },
       "sections": {
         "readyNow": "準備完了",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "追加可能",
         "availableToAddDescription": "これらのエントリは Ollama にダウンロードでき、インストールの完了時に自動的に選択されます。",
         "availableToAddEmpty": "この検索に一致するダウンロード可能な絞り込みモデルはありません。",
-        "availableToAddEmptyDescription": "別の検索語を試すか、以下のカスタム Hugging Face GGUF をインポートしてください。"
+        "availableToAddEmptyDescription": "別の検索語を試すか、以下のカスタム Hugging Face GGUF をインポートしてください。",
+        "readyNowLocalDescription": "これらのモデルはこのMacまたは接続された外付けドライブにすでに存在します。Vox Jot LocalモデルはOllamaへのインポートなしで直接実行されます。"
       },
       "badges": {
         "ready": "準備完了",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Ollama にインストール中...",
         "removeFromOllama": "{{title}} を削除",
         "confirmRemoveModel": "{{title}} を Ollama から削除し、ローカルインポートファイルを削除しますか?このモデルがリファインに選択された場合、Vox Jot はデフォルトの Ollama モデル エントリに戻ります。",
-        "apiKeyRequired": "API キーが必要です"
+        "apiKeyRequired": "API キーが必要です",
+        "setupLocalRuntime": "セットアップして使用",
+        "downloadingLocalRuntime": "ローカルランタイムをダウンロード中...",
+        "installingLocalRuntime": "ローカルランタイムをインストール中...",
+        "installingLocalRuntimeDetail": "チェックサム検証済み · モデルファイルはそのまま保持されます"
       },
       "customImport": {
         "title": "カスタムインポート",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "ランタイムターゲット",
         "runtimeDescription": "インポートは Ollama にインストールされ、アクティブなリファイン モデルとして選択されます。",
         "importAndUse": "インポートと使用",
-        "importingCustom": "インポート中..."
+        "importingCustom": "インポート中...",
+        "localDescription": "任意のHugging Face GGUFリポジトリを取り込み、Vox Jotの管理対象LLMフォルダーに保存して、OllamaやLM Studioなしで実行できます。",
+        "localModelNameLabel": "ローカルモデル名",
+        "localRuntimeDescription": "設定されたローカルまたは外付けモデルフォルダーからVox Jot Localを通じて直接モデルを実行します。"
       },
       "source": "出典: {{repoId}}",
       "loading": "改良モデルを読み込んでいます...",
@@ -1453,7 +1462,8 @@
         "importError": "Hugging Face GGUF のインポートに失敗しました。",
         "importSuccess": "{{modelId}} は Ollama にインポートされ、選択されました。",
         "enterRepo": "まず、Hugging Face リポジトリ ID を入力します。",
-        "removed": "{{title}} は Ollama から削除されました。"
+        "removed": "{{title}} は Ollama から削除されました。",
+        "localImportSuccess": "{{modelId}} がVox Jot Localに追加され、選択されました。"
       },
       "evaluation": {
         "tested": "テスト済み",
@@ -2651,7 +2661,6 @@
       "external": "外付けドライブ",
       "externalDetail": "接続された外付けドライブで準備が完了しました。このモデルが表示されなくなった場合は、ドライブを再接続します。"
     },
-
     "tabs": {
       "stt": "スピーチ (STT)",
       "analysis": "音声分析",

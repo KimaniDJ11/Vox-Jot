@@ -559,6 +559,112 @@ describe("resolveModelProviderId", () => {
         runtimeProviderId: "local_sidecar_api",
         expected: "mlx_oute",
       },
+      // STT models
+      {
+        title: "Fun-ASR Nano 2512 (MLX)",
+        runtimeProviderId: "stt_mlx_audio",
+        expected: "funasr",
+      },
+      {
+        title: "Fun-ASR-Nano-2512 (4-bit MLX)",
+        runtimeProviderId: "stt_mlx_audio",
+        expected: "funasr",
+      },
+      {
+        title: "emotion2vec+ Large emotion2vec/emotion2vec_plus_large",
+        runtimeProviderId: "huggingface",
+        expected: "funasr",
+      },
+      {
+        title: "DeepFilterNet3 Core ML (Apple Neural Engine)",
+        runtimeProviderId: "generic",
+        expected: "deepfilternet",
+      },
+      {
+        title: "DeepFilterNet3",
+        runtimeProviderId: "generic",
+        expected: "deepfilternet",
+      },
+      {
+        title: "Demucs (vocal isolation)",
+        runtimeProviderId: "demucs",
+        expected: "demucs",
+      },
+      {
+        title: "HTDemucs MLX",
+        runtimeProviderId: "demucs",
+        expected: "demucs",
+      },
+      {
+        title: "GOT-OCR 2.0 (General OCR Theory) stepfun-ai/GOT-OCR2_0",
+        runtimeProviderId: "generic",
+        expected: "stepfun",
+      },
+      {
+        title: "Audio8-TTS-Preview-0.6B INT4",
+        runtimeProviderId: "audio8",
+        expected: "audio8",
+      },
+      {
+        title: "ARK-ASR-0.6B Audio8/ARK-ASR-0.6B",
+        runtimeProviderId: "huggingface",
+        expected: "audio8",
+      },
+      {
+        title: "MossFormer2_SE 48K (Metal GPU)",
+        runtimeProviderId: "generic",
+        expected: "openmoss",
+      },
+      {
+        title: "CAM++ Multilingual Speaker Recognition",
+        runtimeProviderId: "generic",
+        expected: "modelscope",
+      },
+      {
+        title: "ERes2NetV2 48K Speaker Verification",
+        runtimeProviderId: "generic",
+        expected: "modelscope",
+      },
+      {
+        title: "YuE Full Song",
+        runtimeProviderId: "yue",
+        expected: "yue",
+      },
+      {
+        title: "DiffRhythm Fast",
+        runtimeProviderId: "diffrhythm",
+        expected: "diffrhythm",
+      },
+      {
+        title: "FIGARO Symbolic Music",
+        runtimeProviderId: "figaro",
+        expected: "figaro",
+      },
+      {
+        title: "Magenta Music Model",
+        runtimeProviderId: "magenta",
+        expected: "magenta",
+      },
+      {
+        title: "Rule-Guided Music Engine",
+        runtimeProviderId: "rule_guided_music",
+        expected: "rule_guided_music",
+      },
+      {
+        title: "ACE-Step 1.5 Music",
+        runtimeProviderId: "ace_step",
+        expected: "ace_step",
+      },
+      {
+        title: "Stable Audio 3 Small Music",
+        runtimeProviderId: "stability_ai",
+        expected: "stability_ai",
+      },
+      {
+        title: "Inflect-Micro-v2 ONNX",
+        runtimeProviderId: "sherpa_pack",
+        expected: "sherpa_pack",
+      },
       {
         title: "tada-1b tada/tada-1b",
         runtimeProviderId: "local_sidecar_api",
@@ -590,10 +696,19 @@ describe("resolveModelProviderId", () => {
       "stt_apple_speech",
       "stt_moonshine",
       "stt_sensevoice",
+      "stt_funasr",
+      "funasr",
+      "funaudiollm",
       "stt_gigaam",
       "musicgen",
       "audioldm2",
       "audioldm2_music",
+      "ace_step",
+      "yue",
+      "diffrhythm",
+      "magenta",
+      "figaro",
+      "rule_guided_music",
       "liquid_ai",
       "tencent",
       "falcon",
@@ -652,8 +767,10 @@ describe("resolveModelProviderId", () => {
       "cerebras",
       "openrouter",
       "lmstudio",
+      "modelscope",
       // OCR providers
       "paddlepaddle",
+      "stepfun",
       "tesseract",
       "dots",
       // File ASR / Speech analysis
@@ -668,10 +785,13 @@ describe("resolveModelProviderId", () => {
       "boson",
       "k2fsa",
       "mediatek",
+      "audio8",
       // Audio cleanup
       "rnnoise",
       "spectral",
       "deepfilternet",
+      "deepfilternet3",
+      "demucs",
       // Misc
       "nvidia",
       "sherpa",

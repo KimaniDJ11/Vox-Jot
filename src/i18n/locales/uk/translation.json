@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Пошук уточнення моделей",
         "description": "Фільтруйте за назвою моделі, джерелом, часом виконання чи репозиторієм.",
-        "placeholder": "Спробуйте: qwen, nemotron, ollama, lm studio"
+        "placeholder": "Спробуйте: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "Спробуйте: qwen, локально, зовнішній диск, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Готовий зараз",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Доступний для додавання",
         "availableToAddDescription": "Ці записи можна завантажити в Ollama і вибрати автоматично після завершення встановлення.",
         "availableToAddEmpty": "Жодна модель уточнення, яку можна завантажити, не відповідає цьому пошуку.",
-        "availableToAddEmptyDescription": "Спробуйте інший пошуковий термін або імпортуйте спеціальний Hugging Face GGUF нижче."
+        "availableToAddEmptyDescription": "Спробуйте інший пошуковий термін або імпортуйте спеціальний Hugging Face GGUF нижче.",
+        "readyNowLocalDescription": "Ці моделі вже знаходяться на цьому Mac або підключеному зовнішньому диску. Моделі Vox Jot Local запускаються безпосередньо без імпорту в Ollama."
       },
       "badges": {
         "ready": "Готовий",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Встановлення в Ollama...",
         "removeFromOllama": "Видаліть {{title}}",
         "confirmRemoveModel": "Видалити {{title}} із Ollama і видалити локальні файли імпорту? Якщо цю модель вибрано для Уточнення, Vox Jot повернеться до стандартного запису моделі Ollama.",
-        "apiKeyRequired": "Потрібен ключ API"
+        "apiKeyRequired": "Потрібен ключ API",
+        "setupLocalRuntime": "Налаштувати та використовувати",
+        "downloadingLocalRuntime": "Завантаження локального середовища виконання...",
+        "installingLocalRuntime": "Встановлення локального середовища виконання...",
+        "installingLocalRuntimeDetail": "Контрольну суму перевірено · файли моделей залишаються на місці"
       },
       "customImport": {
         "title": "Спеціальний імпорт",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Цільове виконання",
         "runtimeDescription": "Імпортовані файли встановлюються в Ollama, а потім вибираються як активна модель уточнення.",
         "importAndUse": "Імпорт і використання",
-        "importingCustom": "Імпорт..."
+        "importingCustom": "Імпорт...",
+        "localDescription": "Імпортуйте будь-який репозиторій Hugging Face GGUF, збережіть його в керованій папці LLM Vox Jot і запускайте без Ollama або LM Studio.",
+        "localModelNameLabel": "Назва локальної моделі",
+        "localRuntimeDescription": "Моделі запускаються через Vox Jot Local безпосередньо з налаштованої локальної або зовнішньої папки моделей."
       },
       "source": "Джерело: {{repoId}}",
       "loading": "Завантаження уточнених моделей...",
@@ -1453,7 +1462,8 @@
         "importError": "Не вдалося імпортувати Hugging Face GGUF.",
         "importSuccess": "{{modelId}} було імпортовано в Ollama і вибрано.",
         "enterRepo": "Спочатку введіть репо Hugging Face ID.",
-        "removed": "{{title}} було видалено з Ollama."
+        "removed": "{{title}} було видалено з Ollama.",
+        "localImportSuccess": "{{modelId}} додано до Vox Jot Local і вибрано."
       },
       "evaluation": {
         "tested": "Перевірено",
@@ -2651,7 +2661,6 @@
       "external": "Зовнішній накопичувач",
       "externalDetail": "Готовий на підключеному зовнішньому диску. Повторно підключіть диск, якщо ця модель зникне."
     },
-
     "tabs": {
       "stt": "Мовлення (STT)",
       "analysis": "Аналіз мовлення",

@@ -7,6 +7,7 @@ use crate::settings::{
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use tauri::AppHandle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -175,6 +176,7 @@ fn format_translation_output(
 }
 
 pub async fn translate_text(
+    app: &AppHandle,
     settings: &AppSettings,
     text: &str,
     source_language_hint: Option<&str>,
@@ -291,6 +293,7 @@ pub async fn translate_text(
             })
             .unwrap_or_default();
         crate::llm_client::send_chat_completion_with_schema(
+            Some(app),
             &provider,
             api_key,
             &model,

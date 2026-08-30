@@ -1193,6 +1193,20 @@ test.describe("Vox Jot app", () => {
       "aria-selected",
       "true",
     );
+    await expect(
+      page.getByRole("button", { name: "Manage in Model Hub" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Benchmark results are read-only. Install and select models in Model Hub.",
+      ),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Manage in Model Hub" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("vox-jot-model-hub-tab")),
+      )
+      .toBe("stt");
     await expect(page.getByText("multi-domain real speech clips")).toHaveCount(
       0,
     );

@@ -1388,7 +1388,8 @@
       "search": {
         "title": "Vyhledávání upřesňuje modely",
         "description": "Filtrujte podle názvu modelu, zdroje, runtime nebo úložiště.",
-        "placeholder": "Zkuste: qwen, nemotron, ollama, lm studio"
+        "placeholder": "Zkuste: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "Zkuste: qwen, místní, externí disk, ollama, lm studio"
       },
       "sections": {
         "readyNow": "Připraveno hned",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "Dostupné pro přidání",
         "availableToAddDescription": "Tyto položky lze stáhnout do Ollama a vybrat je automaticky po dokončení instalace.",
         "availableToAddEmpty": "Tomuto vyhledávání neodpovídají žádné zpřesňující modely ke stažení.",
-        "availableToAddEmptyDescription": "Zkuste jiný hledaný výraz nebo importujte vlastní Hugging Face GGUF níže."
+        "availableToAddEmptyDescription": "Zkuste jiný hledaný výraz nebo importujte vlastní Hugging Face GGUF níže.",
+        "readyNowLocalDescription": "Tyto modely jsou již k dispozici na tomto Macu nebo připojeném externím disku. Modely Vox Jot Local běží přímo na místě bez importu do Ollama."
       },
       "badges": {
         "ready": "Připraveno",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Instalace do Ollama...",
         "removeFromOllama": "Odebrat {{title}}",
         "confirmRemoveModel": "Odebrat {{title}} z Ollama a odstranit místní importované soubory? Pokud je tento model vybrán pro Upřesnit, Vox Jot se vrátí zpět na výchozí položku modelu Ollama.",
-        "apiKeyRequired": "Je vyžadován klíč API"
+        "apiKeyRequired": "Je vyžadován klíč API",
+        "setupLocalRuntime": "Nastavit a použít",
+        "downloadingLocalRuntime": "Stahování místního běhového prostředí...",
+        "installingLocalRuntime": "Instalace místního běhového prostředí...",
+        "installingLocalRuntimeDetail": "Kontrolní součet ověřen · soubory modelů zůstávají na místě"
       },
       "customImport": {
         "title": "Vlastní import",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "Cíl za běhu",
         "runtimeDescription": "Importy se nainstalují do Ollama a poté se vyberou jako aktivní model zpřesnění.",
         "importAndUse": "Import a použití",
-        "importingCustom": "Import..."
+        "importingCustom": "Import...",
+        "localDescription": "Importujte jakékoli úložiště Hugging Face GGUF, uložte jej do spravované složky LLM Vox Jot a spusťte jej bez Ollama nebo LM Studio.",
+        "localModelNameLabel": "Název místního modelu",
+        "localRuntimeDescription": "Modely běží přes Vox Jot Local přímo z nakonfigurované místní nebo externí složky modelů."
       },
       "source": "Zdroj: {{repoId}}",
       "loading": "Načítání upřesňujících modelů...",
@@ -1453,7 +1462,8 @@
         "importError": "Import Hugging Face GGUF se nezdařil.",
         "importSuccess": "{{modelId}} byl importován do Ollama a vybrán.",
         "enterRepo": "Nejprve zadejte repo Hugging Face ID.",
-        "removed": "{{title}} byl odstraněn z Ollama."
+        "removed": "{{title}} byl odstraněn z Ollama.",
+        "localImportSuccess": "Model {{modelId}} byl přidán do Vox Jot Local a vybrán."
       },
       "evaluation": {
         "tested": "Testováno",
@@ -2651,7 +2661,6 @@
       "external": "Externí disk",
       "externalDetail": "Připraveno na připojeném externím disku. Pokud tento model zmizí, znovu připojte disk."
     },
-
     "tabs": {
       "stt": "Řeč (STT)",
       "analysis": "Analýza řeči",

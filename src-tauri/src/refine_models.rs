@@ -1,6 +1,8 @@
 use crate::llm_client;
 use crate::ollama;
-use crate::settings::{self, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID};
+use crate::settings::{
+    self, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID, VOX_JOT_LOCAL_PROVIDER_ID,
+};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -61,6 +63,7 @@ pub enum RefineModelSourceKind {
     Ollama,
     LmStudio,
     HuggingFace,
+    VoxJotLocal,
     ManagedProvider,
 }
 
@@ -232,6 +235,13 @@ const HF_IMPORT_SPECS: &[HfImportSpec] = &[
     },
 ];
 
+pub(crate) fn runtime_model_id_for_hf_file_name(file_name: &str) -> Option<&'static str> {
+    HF_IMPORT_SPECS
+        .iter()
+        .find(|spec| spec.file_name.eq_ignore_ascii_case(file_name))
+        .map(|spec| spec.runtime_model_id)
+}
+
 #[derive(Debug, Deserialize)]
 struct HfSibling {
     rfilename: String,
@@ -292,6 +302,11 @@ fn provider_detail(provider: &settings::PostProcessProvider) -> String {
             return "Built into macOS on supported Apple Silicon Macs.".to_string();
         }
         return "Requires an Apple Silicon Mac with Apple Intelligence enabled.".to_string();
+    }
+
+    if provider.id == VOX_JOT_LOCAL_PROVIDER_ID {
+        return "Managed llama.cpp runtime; model weights stay in Vox Jot's local or external LLM folder."
+            .to_string();
     }
 
     if provider.base_url.trim().is_empty() {
@@ -493,7 +508,8 @@ mod tests {
     use super::{
         ollama_model_ids_equivalent, ollama_model_matches,
         remove_local_ollama_rows_shadowed_by_installed_hf_imports, replacement_ollama_model_id,
-        RefineModelDescriptor, RefineModelSourceKind, OLLAMA_PROVIDER_ID,
+        runtime_model_id_for_hf_file_name, RefineModelDescriptor, RefineModelSourceKind,
+        OLLAMA_PROVIDER_ID,
     };
 
     fn refine_model(
@@ -611,6 +627,19 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn known_external_gguf_names_resolve_to_canonical_catalog_ids() {
+        assert_eq!(
+            runtime_model_id_for_hf_file_name("qWeN3.5-0.8b-q4_k_m.GGUF"),
+            Some("qwen3.5-0.8b-q4km")
+        );
+        assert_eq!(
+            runtime_model_id_for_hf_file_name("granite-4.0-micro-Q4_K_M.gguf"),
+            Some("granite-4.0-micro-3b")
+        );
+        assert_eq!(runtime_model_id_for_hf_file_name("custom.gguf"), None);
+    }
 }
 
 fn sanitize_runtime_model_id(value: &str) -> String {
@@ -630,6 +659,16 @@ fn sanitize_runtime_model_id(value: &str) -> String {
     }
 
     sanitized.trim_matches('-').to_string()
+}
+
+fn format_file_size(bytes: u64) -> String {
+    const GIB: f64 = 1024.0 * 1024.0 * 1024.0;
+    const MIB: f64 = 1024.0 * 1024.0;
+    if bytes >= 1024 * 1024 * 1024 {
+        format!("{:.2} GB", bytes as f64 / GIB)
+    } else {
+        format!("{:.1} MB", bytes as f64 / MIB)
+    }
 }
 
 fn parse_parameter_billions(repo_id: &str) -> Option<f32> {
@@ -1044,6 +1083,7 @@ async fn build_hf_catalog_models(
     settings: &settings::AppSettings,
     ollama_status: &ollama::OllamaStatus,
 ) -> (Vec<RefineModelDescriptor>, String) {
+    let mut models = build_hf_fallback_models(settings, ollama_status);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))
         .build()
@@ -1051,7 +1091,8 @@ async fn build_hf_catalog_models(
 
     match fetch_dynamic_hf_repo_ids(&client).await {
         Ok((repo_ids, source)) => {
-            let models = build_dynamic_hf_models(settings, ollama_status, &repo_ids, source);
+            let dynamic_models =
+                build_dynamic_hf_models(settings, ollama_status, &repo_ids, source);
             let detail = match source {
                 HfDiscoverySource::Collection => {
                     "Auto-updating verified Hugging Face collection. Add or remove collection items to update this catalog without an app release.".to_string()
@@ -1060,12 +1101,20 @@ async fn build_hf_catalog_models(
                     "Auto-discovered small Hugging Face GGUF instruct models ranked by downloads with safety filters.".to_string()
                 }
             };
+            for dynamic in dynamic_models {
+                if !models.iter().any(|existing| {
+                    existing.source_repo_id == dynamic.source_repo_id
+                        || existing.runtime_model_id == dynamic.runtime_model_id
+                }) {
+                    models.push(dynamic);
+                }
+            }
             (models, detail)
         }
         Err(err) => {
             log::warn!("Hugging Face dynamic model discovery failed, using fallback list: {err}");
             (
-                build_hf_fallback_models(settings, ollama_status),
+                models,
                 "Using bundled verified Hugging Face imports (offline-safe fallback).".to_string(),
             )
         }
@@ -1075,8 +1124,79 @@ async fn build_hf_catalog_models(
 pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineModelCatalog, String> {
     let settings = settings::get_settings(app);
     let ollama_status = ollama::get_ollama_status().await;
-    let (hf_models, hf_provider_detail) = build_hf_catalog_models(&settings, &ollama_status).await;
-    let mut providers = vec![make_ollama_provider_status(&ollama_status)];
+    let local_models = crate::local_llm::discover_models(app)?;
+    let local_runtime_installed = crate::local_llm::runtime_installed(app);
+    let local_runtime_running = crate::local_llm::runtime_running();
+    let local_storage_status = crate::external_model_storage::cached_status();
+    let local_model_count = local_models.len();
+    let (mut hf_models, hf_provider_detail) =
+        build_hf_catalog_models(&settings, &ollama_status).await;
+    for model in &mut hf_models {
+        let local = local_models
+            .iter()
+            .find(|candidate| candidate.runtime_model_id == model.runtime_model_id);
+        model.runtime_provider_id = VOX_JOT_LOCAL_PROVIDER_ID.to_string();
+        model.runtime_label = "Vox Jot Local · llama.cpp".to_string();
+        model.installed = local.is_some();
+        model.active = is_active_model(
+            &settings,
+            VOX_JOT_LOCAL_PROVIDER_ID,
+            &model.runtime_model_id,
+        );
+        model.runnable = model.installed && local_runtime_installed;
+        model.downloadable = !model.installed || !local_runtime_installed;
+        model.note = match (local, local_runtime_installed) {
+            (Some(local), true) => Some(format!(
+                "Runs directly from {} storage without an Ollama or LM Studio import.",
+                match local.storage_location {
+                    crate::external_model_storage::ModelStorageLocation::Local => "local",
+                    crate::external_model_storage::ModelStorageLocation::External => "external",
+                }
+            )),
+            (Some(_), false) => Some(
+                "Model found. Set up the small Vox Jot Local runtime once to use it.".to_string(),
+            ),
+            (None, _) => Some(
+                "Downloads into Vox Jot's managed LLM folder and runs without Ollama.".to_string(),
+            ),
+        };
+    }
+
+    let local_provider_detail = if local_model_count == 0 {
+        "No GGUF models were found in Vox Jot's local or connected external LLM folders."
+            .to_string()
+    } else if !local_runtime_installed {
+        format!(
+            "Found {local_model_count} GGUF model{}. Select one to install the small local runtime on {}.",
+            if local_model_count == 1 { "" } else { "s" },
+            local_storage_status
+                .volume_name
+                .as_deref()
+                .map(|name| format!("{name} external storage"))
+                .unwrap_or_else(|| "this Mac".to_string())
+        )
+    } else {
+        format!(
+            "Ready to run {local_model_count} GGUF model{} directly{}.",
+            if local_model_count == 1 { "" } else { "s" },
+            local_storage_status
+                .volume_name
+                .as_deref()
+                .map(|name| format!(" from {name}"))
+                .unwrap_or_default()
+        )
+    };
+
+    let mut providers = vec![RefineProviderStatus {
+        id: VOX_JOT_LOCAL_PROVIDER_ID.to_string(),
+        label: "Vox Jot Local".to_string(),
+        available: local_model_count > 0 && local_runtime_installed,
+        local_only: true,
+        installed: local_runtime_installed,
+        running: local_runtime_running,
+        detail: local_provider_detail,
+    }];
+    providers.push(make_ollama_provider_status(&ollama_status));
     providers.push(RefineProviderStatus {
         id: "huggingface".to_string(),
         label: "Hugging Face".to_string(),
@@ -1129,6 +1249,62 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
     providers.push(lmstudio_status);
     remove_local_ollama_rows_shadowed_by_installed_hf_imports(&mut models, &hf_models);
     models.extend(lmstudio_models);
+    let hf_runtime_ids = hf_models
+        .iter()
+        .map(|model| model.runtime_model_id.as_str())
+        .collect::<HashSet<_>>();
+    models.extend(
+        local_models
+            .iter()
+            .filter(|local| !hf_runtime_ids.contains(local.runtime_model_id.as_str()))
+            .map(|local| RefineModelDescriptor {
+                id: format!("vox-jot-local:{}", local.runtime_model_id),
+                title: local.title.clone(),
+                description: format!(
+                    "GGUF model stored in Vox Jot's {} model folder ({}).",
+                    match local.storage_location {
+                        crate::external_model_storage::ModelStorageLocation::Local => "local",
+                        crate::external_model_storage::ModelStorageLocation::External => "external",
+                    },
+                    format_file_size(local.file_size_bytes)
+                ),
+                source_kind: RefineModelSourceKind::VoxJotLocal,
+                source_label: match local.storage_location {
+                    crate::external_model_storage::ModelStorageLocation::Local => {
+                        "Vox Jot local storage".to_string()
+                    }
+                    crate::external_model_storage::ModelStorageLocation::External => {
+                        local_storage_status
+                            .volume_name
+                            .as_deref()
+                            .map(|name| format!("{name} external drive"))
+                            .unwrap_or_else(|| "External drive".to_string())
+                    }
+                },
+                runtime_provider_id: VOX_JOT_LOCAL_PROVIDER_ID.to_string(),
+                runtime_model_id: local.runtime_model_id.clone(),
+                runtime_label: "Vox Jot Local · llama.cpp".to_string(),
+                installed: true,
+                active: is_active_model(
+                    &settings,
+                    VOX_JOT_LOCAL_PROVIDER_ID,
+                    &local.runtime_model_id,
+                ),
+                runnable: local_runtime_installed,
+                downloadable: !local_runtime_installed,
+                requires_api_key: false,
+                source_repo_id: None,
+                source_file_name: local
+                    .relative_path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned()),
+                source_url: None,
+                note: (!local_runtime_installed).then(|| {
+                    "Set up the Vox Jot Local runtime once; the model file stays where it is."
+                        .to_string()
+                }),
+            }),
+    );
     models.extend(hf_models);
 
     let mut seen_provider_ids = providers
@@ -1152,7 +1328,10 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
         .collect::<HashSet<_>>();
 
     for provider in &settings.post_process_providers {
-        if provider.id == OLLAMA_PROVIDER_ID || provider.id == "lmstudio" {
+        if provider.id == OLLAMA_PROVIDER_ID
+            || provider.id == "lmstudio"
+            || provider.id == VOX_JOT_LOCAL_PROVIDER_ID
+        {
             continue;
         }
         let Some(model) = make_managed_provider_model(&settings, provider) else {
@@ -1231,6 +1410,14 @@ pub async fn set_refine_model_selection_impl(
                 model_id
             ));
         }
+    } else if provider_id == VOX_JOT_LOCAL_PROVIDER_ID {
+        if !crate::local_llm::runtime_installed(app) {
+            return Err(
+                "Set up the Vox Jot Local runtime before selecting this GGUF model.".to_string(),
+            );
+        }
+        crate::local_llm::resolve_model_path(app, &model_id)?;
+        crate::local_llm::ensure_server(app, &model_id).await?;
     } else if provider_id == "lmstudio" {
         let Some(provider) = find_provider(&settings, "lmstudio") else {
             return Err("LM Studio is not configured in this build.".to_string());
@@ -1391,7 +1578,7 @@ async fn ensure_hf_gguf_downloaded(
             let remote_size = resolve_remote_file_size(&client, &url).await;
 
             if let Some(expected) = remote_size {
-                if local_size >= expected {
+                if local_size == expected {
                     ensure_refine_install_not_cancelled(&cancel_flag)?;
                     log::info!("ensure_hf_gguf_downloaded: {file_name} already complete ({local_size} / {expected} bytes)");
                     let _ = app.emit(
@@ -1407,7 +1594,7 @@ async fn ensure_hf_gguf_downloaded(
                     return Ok(());
                 }
                 log::warn!(
-                    "ensure_hf_gguf_downloaded: {file_name} is truncated ({local_size} / {expected} bytes), re-downloading"
+                    "ensure_hf_gguf_downloaded: {file_name} size mismatch ({local_size} / {expected} bytes), re-downloading"
                 );
             } else {
                 ensure_refine_install_not_cancelled(&cancel_flag)?;
@@ -1617,6 +1804,58 @@ async fn import_hf_gguf_to_ollama(
     Ok(())
 }
 
+async fn install_hf_gguf_for_vox_jot_local(
+    app: &AppHandle,
+    model_id: &str,
+    repo_id: &str,
+    file_name: Option<String>,
+    cancel_flag: Arc<AtomicBool>,
+) -> Result<String, String> {
+    ensure_refine_install_not_cancelled(&cancel_flag)?;
+    if crate::local_llm::resolve_model_path(app, model_id).is_ok() {
+        return Ok(model_id.to_string());
+    }
+
+    let resolved_file = match file_name {
+        Some(file) if !file.trim().is_empty() => file,
+        _ => resolve_hf_gguf_file(repo_id).await?,
+    };
+    let file_component = Path::new(&resolved_file)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| name.to_ascii_lowercase().ends_with(".gguf"))
+        .ok_or_else(|| "The selected Hugging Face file is not a safe GGUF filename.".to_string())?;
+    let install_dir =
+        crate::local_llm::preferred_llm_root(app)?.join(sanitize_runtime_model_id(model_id));
+    let gguf_path = install_dir.join(file_component);
+
+    if !gguf_path.exists() {
+        if let Some(staged) = locate_managed_staging_gguf(app, file_component) {
+            tokio_fs::create_dir_all(&install_dir)
+                .await
+                .map_err(|error| format!("Failed to create the local LLM folder: {error}"))?;
+            tokio_fs::copy(&staged, &gguf_path).await.map_err(|error| {
+                format!(
+                    "Failed to copy the existing GGUF from '{}': {error}",
+                    staged.display()
+                )
+            })?;
+        }
+    }
+
+    ensure_hf_gguf_downloaded(
+        app,
+        model_id,
+        repo_id,
+        file_component,
+        &gguf_path,
+        Arc::clone(&cancel_flag),
+    )
+    .await?;
+    ensure_refine_install_not_cancelled(&cancel_flag)?;
+    crate::local_llm::runtime_model_id_for_path(app, &gguf_path)
+}
+
 fn ensure_refine_install_not_cancelled(cancel_flag: &Arc<AtomicBool>) -> Result<(), String> {
     if cancel_flag.load(Ordering::Relaxed) {
         Err(crate::artifact_download::DOWNLOAD_CANCELLED_MESSAGE.to_string())
@@ -1772,9 +2011,9 @@ pub async fn install_refine_model_impl(
     source_repo_id: Option<String>,
     source_file_name: Option<String>,
 ) -> Result<(), String> {
-    if provider_id != OLLAMA_PROVIDER_ID {
+    if provider_id != OLLAMA_PROVIDER_ID && provider_id != VOX_JOT_LOCAL_PROVIDER_ID {
         return Err(format!(
-            "Downloading is only supported for Ollama-backed refine models right now, not '{}'.",
+            "Downloading is only supported for Vox Jot Local and Ollama refine models, not '{}'.",
             provider_id
         ));
     }
@@ -1792,25 +2031,45 @@ pub async fn install_refine_model_impl(
     }
 
     let result = async {
-        if let Some(repo_id) = source_repo_id {
-            import_hf_gguf_to_ollama(
-                app,
-                &model_id,
-                &repo_id,
-                source_file_name,
-                Arc::clone(&cancel_flag),
-            )
-            .await?;
+        let selected_model_id = if provider_id == VOX_JOT_LOCAL_PROVIDER_ID {
+            let selected_model_id = if let Some(repo_id) = source_repo_id {
+                install_hf_gguf_for_vox_jot_local(
+                    app,
+                    &model_id,
+                    &repo_id,
+                    source_file_name,
+                    Arc::clone(&cancel_flag),
+                )
+                .await?
+            } else {
+                crate::local_llm::resolve_model_path(app, &model_id)?;
+                model_id.clone()
+            };
+            crate::local_llm::ensure_runtime_installed(app, &model_id, Arc::clone(&cancel_flag))
+                .await?;
+            selected_model_id
         } else {
-            ollama::pull_ollama_model_with_cancel_impl(
-                app,
-                model_id.clone(),
-                Some(Arc::clone(&cancel_flag)),
-            )
-            .await?;
-        }
+            if let Some(repo_id) = source_repo_id {
+                import_hf_gguf_to_ollama(
+                    app,
+                    &model_id,
+                    &repo_id,
+                    source_file_name,
+                    Arc::clone(&cancel_flag),
+                )
+                .await?;
+            } else {
+                ollama::pull_ollama_model_with_cancel_impl(
+                    app,
+                    model_id.clone(),
+                    Some(Arc::clone(&cancel_flag)),
+                )
+                .await?;
+            }
+            model_id.clone()
+        };
         ensure_refine_install_not_cancelled(&cancel_flag)?;
-        set_refine_model_selection_impl(app, provider_id, model_id.clone()).await
+        set_refine_model_selection_impl(app, provider_id, selected_model_id).await
     }
     .await;
 

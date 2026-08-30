@@ -1388,7 +1388,8 @@
       "search": {
         "title": "搜尋細化模型",
         "description": "依模型名稱、來源、運行時或儲存庫進行過濾。",
-        "placeholder": "嘗試：qwen、nemotron、ollama、lm studio"
+        "placeholder": "嘗試：qwen、nemotron、ollama、lm studio",
+        "localPlaceholder": "嘗試搜尋：qwen、本機、外接硬碟、ollama、lm studio"
       },
       "sections": {
         "readyNow": "立即準備",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "可添加",
         "availableToAddDescription": "這些條目可以下載到 Ollama 中，並在安裝完成時自動選擇。",
         "availableToAddEmpty": "沒有可下載的優化模型與此搜尋相符。",
-        "availableToAddEmptyDescription": "嘗試使用不同的搜尋字詞或匯入下面的自訂 Hugging Face GGUF。"
+        "availableToAddEmptyDescription": "嘗試使用不同的搜尋字詞或匯入下面的自訂 Hugging Face GGUF。",
+        "readyNowLocalDescription": "這些模型已存在於此 Mac 或連接的外接硬碟上。Vox Jot Local 模型無需匯入 Ollama 即可直接就地執行。"
       },
       "badges": {
         "ready": "準備好",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "正在安裝到 Ollama...",
         "removeFromOllama": "刪除{{title}}",
         "confirmRemoveModel": "從Ollama中刪除{{title}}並刪除本地匯入檔案？如果選擇此模型進行最佳化，Vox Jot 將回退到預設的 Ollama 模型條目。",
-        "apiKeyRequired": "需要 API 金鑰"
+        "apiKeyRequired": "需要 API 金鑰",
+        "setupLocalRuntime": "設定並使用",
+        "downloadingLocalRuntime": "正在下載本機執行階段...",
+        "installingLocalRuntime": "正在安裝本機執行階段...",
+        "installingLocalRuntimeDetail": "總和檢查碼已驗證 · 模型檔案保留在原位"
       },
       "customImport": {
         "title": "客製化進口",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "運行時目標",
         "runtimeDescription": "導入被安裝到 Ollama 中，然後選擇作為活動最佳化模型。",
         "importAndUse": "導入及使用",
-        "importingCustom": "正在導入..."
+        "importingCustom": "正在導入...",
+        "localDescription": "匯入任何 Hugging Face GGUF 存放庫，儲存在 Vox Jot 受管理的 LLM 資料夾中，無需 Ollama 或 LM Studio 即可直接執行。",
+        "localModelNameLabel": "本機模型名稱",
+        "localRuntimeDescription": "模型直接從設定的本機或外接模型資料夾透過 Vox Jot Local 執行。"
       },
       "source": "來源：{{repoId}}",
       "loading": "正在載入優化模型...",
@@ -1453,7 +1462,8 @@
         "importError": "導入 Hugging Face GGUF 失敗。",
         "importSuccess": "將{{modelId}}匯入到Ollama中並選擇。",
         "enterRepo": "首先輸入 Hugging Face 儲存庫 ID。",
-        "removed": "{{title}} 已從 Ollama 移除。"
+        "removed": "{{title}} 已從 Ollama 移除。",
+        "localImportSuccess": "{{modelId}} 已新增至 Vox Jot Local 並已選取。"
       },
       "evaluation": {
         "tested": "已測試",
@@ -2647,7 +2657,6 @@
       "external": "外部驅動器",
       "externalDetail": "連接的外部驅動器已準備就緒。如果該模型消失，請重新連接磁碟機。"
     },
-
     "tabs": {
       "stt": "演講（STT）",
       "analysis": "語音分析",

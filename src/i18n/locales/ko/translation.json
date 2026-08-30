@@ -1388,7 +1388,8 @@
       "search": {
         "title": "구체화 모델 검색",
         "description": "모델 이름, 소스, 런타임 또는 저장소별로 필터링합니다.",
-        "placeholder": "시도: qwen, nemotron, ollama, lm studio"
+        "placeholder": "시도: qwen, nemotron, ollama, lm studio",
+        "localPlaceholder": "예: qwen, 로컬, 외장 드라이브, ollama, lm studio"
       },
       "sections": {
         "readyNow": "지금 준비",
@@ -1398,7 +1399,8 @@
         "availableToAdd": "추가 가능",
         "availableToAddDescription": "이러한 항목은 Ollama로 다운로드할 수 있으며 설치가 완료되면 자동으로 선택됩니다.",
         "availableToAddEmpty": "이 검색과 일치하는 다운로드 가능한 구체화 모델이 없습니다.",
-        "availableToAddEmptyDescription": "다른 검색어를 사용해 보거나 아래에서 맞춤 Hugging Face GGUF를 가져오세요."
+        "availableToAddEmptyDescription": "다른 검색어를 사용해 보거나 아래에서 맞춤 Hugging Face GGUF를 가져오세요.",
+        "readyNowLocalDescription": "이 모델들은 이미 이 Mac 또는 연결된 외장 드라이브에 있습니다. Vox Jot Local 모델은 Ollama 가져오기 없이 바로 실행됩니다."
       },
       "badges": {
         "ready": "준비",
@@ -1425,7 +1427,11 @@
         "installingIntoOllama": "Ollama에 설치 중...",
         "removeFromOllama": "{{title}} 제거",
         "confirmRemoveModel": "Ollama에서 {{title}}를 제거하고 로컬 가져오기 파일을 삭제하시겠습니까? 구체화를 위해 이 모델을 선택하면 Vox Jot는 기본 Ollama 모델 항목으로 대체됩니다.",
-        "apiKeyRequired": "API 키가 필요합니다"
+        "apiKeyRequired": "API 키가 필요합니다",
+        "setupLocalRuntime": "설정 및 사용",
+        "downloadingLocalRuntime": "로컬 런타임 다운로드 중...",
+        "installingLocalRuntime": "로컬 런타임 설치 중...",
+        "installingLocalRuntimeDetail": "체크섬 확인됨 · 모델 파일이 제자리에 유지됩니다"
       },
       "customImport": {
         "title": "맞춤 가져오기",
@@ -1441,7 +1447,10 @@
         "runtimeTarget": "런타임 타겟",
         "runtimeDescription": "가져오기는 Ollama에 설치된 다음 활성 구체화 모델로 선택됩니다.",
         "importAndUse": "가져오기 및 사용",
-        "importingCustom": "가져오는 중..."
+        "importingCustom": "가져오는 중...",
+        "localDescription": "Hugging Face GGUF 저장소를 가져와 Vox Jot의 관리형 LLM 폴더에 저장하고 Ollama 또는 LM Studio 없이 실행하세요.",
+        "localModelNameLabel": "로컬 모델 이름",
+        "localRuntimeDescription": "구성된 로컬 또는 외장 모델 폴더에서 Vox Jot Local을 통해 직접 모델이 실행됩니다."
       },
       "source": "출처: {{repoId}}",
       "loading": "모델 개선 로드 중...",
@@ -1453,7 +1462,8 @@
         "importError": "Hugging Face GGUF를 가져오지 못했습니다.",
         "importSuccess": "{{modelId}}를 Ollama로 가져와서 선택했습니다.",
         "enterRepo": "먼저 Hugging Face 저장소 ID를 입력하세요.",
-        "removed": "{{title}}가 Ollama에서 제거되었습니다."
+        "removed": "{{title}}가 Ollama에서 제거되었습니다.",
+        "localImportSuccess": "{{modelId}}이(가) Vox Jot Local에 추가되고 선택되었습니다."
       },
       "evaluation": {
         "tested": "테스트됨",
@@ -2651,7 +2661,6 @@
       "external": "외장 드라이브",
       "externalDetail": "연결된 외장 드라이브가 준비되었습니다. 이 모델이 사라지면 드라이브를 다시 연결하십시오."
     },
-
     "tabs": {
       "stt": "음성(STT)",
       "analysis": "음성 분석",

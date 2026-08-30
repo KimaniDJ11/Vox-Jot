@@ -133,6 +133,36 @@
       "catalog_ids": ["mlx-qwen3-asr", "mlx-qwen3-asr-0.6b"]
     },
     {
+      "id": "granite-4-0-1b-speech-mlx",
+      "domains": ["stt"],
+      "name": "IBM Granite 4.0 1B Speech 8-bit MLX conversion",
+      "upstream": "https://huggingface.co/ibm-granite/granite-4.0-1b-speech",
+      "distribution_source": "https://huggingface.co/mlx-community/granite-4.0-1b-speech-8bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-granite-4.0-1b-speech-8bit"]
+    },
+    {
+      "id": "granite-speech-4-1-2b-nar-mlx",
+      "domains": ["stt"],
+      "name": "IBM Granite Speech 4.1 2B NAR MLX conversion",
+      "upstream": "https://huggingface.co/ibm-granite/granite-speech-4.1-2b-nar",
+      "distribution_source": "https://huggingface.co/mlx-community/granite-speech-4.1-2b-nar-mlx",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-granite-speech-4.1-2b-nar"]
+    },
+    {
       "id": "fireredasr2-aed",
       "domains": ["stt", "speech_analysis"],
       "name": "FireRedASR2 AED MLX conversion",

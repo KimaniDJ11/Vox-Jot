@@ -70,6 +70,20 @@ const SHARED_MLX_ASR_MODELS: &[SharedModelAssetDefinition] = &[
         canonical_root: SharedModelStorageRoot::Stt,
         legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
     },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::MlxAsr,
+        model_ids: &["mlx-granite-4.0-1b-speech-8bit"],
+        repo_id: "mlx-community/granite-4.0-1b-speech-8bit",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[SharedModelStorageRoot::SpeechAnalysis],
+    },
+    SharedModelAssetDefinition {
+        family: SharedModelAssetFamily::MlxAsr,
+        model_ids: &["mlx-granite-speech-4.1-2b-nar"],
+        repo_id: "mlx-community/granite-speech-4.1-2b-nar-mlx",
+        canonical_root: SharedModelStorageRoot::Stt,
+        legacy_roots: &[],
+    },
 ];
 
 const SHARED_GEMMA_AUDIO_MODELS: &[SharedModelAssetDefinition] = &[
@@ -401,6 +415,14 @@ mod tests {
             Some("mlx-community/Qwen3-ASR-1.7B-8bit")
         );
         assert_eq!(
+            shared_model_repo_id("mlx-granite-4.0-1b-speech-8bit"),
+            Some("mlx-community/granite-4.0-1b-speech-8bit")
+        );
+        assert_eq!(
+            shared_model_repo_id("mlx-granite-speech-4.1-2b-nar"),
+            Some("mlx-community/granite-speech-4.1-2b-nar-mlx")
+        );
+        assert_eq!(
             shared_model_primary_relative_path("gemma4-e2b-audio-mlx").unwrap(),
             Path::new("GemmaMLX").join("mlx-community/gemma-4-e2b-it-4bit")
         );
@@ -427,6 +449,8 @@ mod tests {
                 "mlx-vibevoice-asr-bf16",
                 "mlx-nemotron-asr-streaming-0.6b",
                 "mlx-mega-asr",
+                "mlx-granite-4.0-1b-speech-8bit",
+                "mlx-granite-speech-4.1-2b-nar",
             ]
         );
     }

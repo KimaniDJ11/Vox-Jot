@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutGroup, motion } from "framer-motion";
+import { Boxes } from "lucide-react";
 
 import {
   FILE_ASR_EVALUATION_RESULTS,
@@ -58,6 +59,11 @@ import {
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { press } from "@/motion/springs";
 import { Tooltip } from "@/components/ui/Tooltip";
+import {
+  openModelHub,
+  type ModelHubScope,
+  type ModelHubTabId,
+} from "@/components/model-hub/modelHubTabs";
 
 type TestingTabId =
   | "file-asr"
@@ -139,6 +145,23 @@ const TABS: Array<{
     run: CREATIVE_AUDIO_EVALUATION_RUN,
   },
 ];
+
+interface ModelHubTarget {
+  tab: ModelHubTabId;
+  scope?: ModelHubScope;
+}
+
+const MODEL_HUB_TARGETS: Record<TestingTabId, ModelHubTarget> = {
+  stt: { tab: "stt" },
+  "file-asr": { tab: "analysis", scope: "analysis" },
+  "speaker-isolation": { tab: "analysis", scope: "analysis" },
+  "screen-ocr": { tab: "ocr" },
+  llm: { tab: "llm" },
+  tts: { tab: "tts" },
+  "tts-style": { tab: "tts" },
+  "tts-voice-clone": { tab: "tts" },
+  "creative-audio": { tab: "creative_audio", scope: "creative_audio" },
+};
 
 function splitRanked<
   T extends { status: string; rank?: number; label: string },
@@ -264,6 +287,7 @@ export const ModelTestingSection: React.FC = () => {
   const screenOcr = splitRanked(SCREEN_OCR_EVALUATION_RESULTS);
   const activePanelId = `model-testing-panel-${activeTab}`;
   const activeTabId = `model-testing-tab-${activeTab}`;
+  const modelHubTarget = MODEL_HUB_TARGETS[activeTab];
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -304,7 +328,32 @@ export const ModelTestingSection: React.FC = () => {
               </div>
             </LayoutGroup>
           </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            transition={press}
+            onClick={() =>
+              void openModelHub(modelHubTarget.tab, {
+                scope: modelHubTarget.scope,
+              })
+            }
+            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--card))] ${interactiveFocusRingClass}`}
+          >
+            <Boxes
+              className="h-4 w-4 text-[var(--accent)]"
+              aria-hidden="true"
+            />
+            {t("testing.manageInModelHub", {
+              defaultValue: "Manage in Model Hub",
+            })}
+          </motion.button>
         </div>
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {t("testing.readOnlyExplanation", {
+            defaultValue:
+              "Benchmark results are read-only. Install and select models in Model Hub.",
+          })}
+        </p>
       </div>
 
       <div

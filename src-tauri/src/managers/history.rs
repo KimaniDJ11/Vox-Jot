@@ -79,9 +79,16 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN speaker_segments_json TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN speaker_transcript_text TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN speaker_display_names_json TEXT;"),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN markdown_export_status TEXT NOT NULL DEFAULT 'not_requested';",
+    ),
+    M::up("ALTER TABLE transcription_history ADD COLUMN markdown_export_path TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN markdown_export_error TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN markdown_exported_at INTEGER;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN markdown_export_settings_json TEXT;"),
 ];
 
-const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json";
+const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json, markdown_export_status, markdown_export_path, markdown_export_error, markdown_exported_at";
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -92,6 +99,39 @@ pub enum FieldSnapshotStatus {
     Captured,
     Skipped,
     Failed,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MarkdownExportStatus {
+    #[default]
+    NotRequested,
+    Pending,
+    Complete,
+    Skipped,
+    Failed,
+}
+
+impl MarkdownExportStatus {
+    pub(crate) fn as_db_str(&self) -> &'static str {
+        match self {
+            Self::NotRequested => "not_requested",
+            Self::Pending => "pending",
+            Self::Complete => "complete",
+            Self::Skipped => "skipped",
+            Self::Failed => "failed",
+        }
+    }
+
+    fn from_db_str(value: Option<&str>) -> Self {
+        match value {
+            Some("pending") => Self::Pending,
+            Some("complete") => Self::Complete,
+            Some("skipped") => Self::Skipped,
+            Some("failed") => Self::Failed,
+            _ => Self::NotRequested,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
@@ -198,6 +238,10 @@ pub struct HistoryEntry {
     pub speaker_segments_json: Option<String>,
     pub speaker_transcript_text: Option<String>,
     pub speaker_display_names_json: Option<String>,
+    pub markdown_export_status: MarkdownExportStatus,
+    pub markdown_export_path: Option<String>,
+    pub markdown_export_error: Option<String>,
+    pub markdown_exported_at: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -220,6 +264,13 @@ pub struct TranslationHistoryContext {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Type)]
+pub struct SpokenRetractionHistoryMetadata {
+    pub outcome: String,
+    pub cue_count: usize,
+    pub removed_character_count: usize,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Type)]
 pub struct ScreenContextHistoryMetadata {
     pub source: Option<String>,
     pub capture_status: ContextCaptureStatus,
@@ -229,6 +280,12 @@ pub struct ScreenContextHistoryMetadata {
     pub active_app_name: Option<String>,
     pub sent_externally: bool,
     pub changed_output: bool,
+    #[serde(default)]
+    pub asr_prompt_biasing_used: bool,
+    #[serde(default)]
+    pub dictation_intent: Option<String>,
+    #[serde(default)]
+    pub spoken_retraction: Option<SpokenRetractionHistoryMetadata>,
 }
 
 /// Parse a database row into a HistoryEntry, deserializing the dictionary_hits JSON column.
@@ -317,6 +374,14 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         speaker_segments_json: row.get("speaker_segments_json").unwrap_or(None),
         speaker_transcript_text: row.get("speaker_transcript_text").unwrap_or(None),
         speaker_display_names_json: row.get("speaker_display_names_json").unwrap_or(None),
+        markdown_export_status: MarkdownExportStatus::from_db_str(
+            row.get::<_, Option<String>>("markdown_export_status")
+                .unwrap_or(None)
+                .as_deref(),
+        ),
+        markdown_export_path: row.get("markdown_export_path").unwrap_or(None),
+        markdown_export_error: row.get("markdown_export_error").unwrap_or(None),
+        markdown_exported_at: row.get("markdown_exported_at").unwrap_or(None),
     }
 }
 
@@ -532,6 +597,7 @@ fn read_wav_duration_ms(path: &Path) -> Option<i64> {
         .filter(|duration| *duration > 0)
 }
 
+#[derive(Clone)]
 pub struct HistoryManager {
     app_handle: AppHandle,
     recordings_dir: PathBuf,
@@ -649,6 +715,13 @@ impl HistoryManager {
         }
 
         self.ensure_history_columns(&conn)?;
+        let interrupted_exports = Self::reset_interrupted_markdown_exports_with_conn(&conn)?;
+        if interrupted_exports > 0 {
+            warn!(
+                "Marked {} interrupted Markdown export job(s) as failed so they can be retried",
+                interrupted_exports
+            );
+        }
         let recovered = Self::reset_interrupted_speaker_analyses_with_conn(&conn)?;
         if recovered > 0 {
             warn!(
@@ -668,6 +741,21 @@ impl HistoryManager {
             params![
                 SpeakerAnalysisStatus::NotAnalyzed.as_db_str(),
                 SpeakerAnalysisStatus::Running.as_db_str()
+            ],
+        )?)
+    }
+
+    fn reset_interrupted_markdown_exports_with_conn(conn: &Connection) -> Result<usize> {
+        Ok(conn.execute(
+            "UPDATE transcription_history
+             SET markdown_export_status = ?1,
+                 markdown_export_error = ?2,
+                 markdown_exported_at = NULL
+             WHERE markdown_export_status = ?3",
+            params![
+                MarkdownExportStatus::Failed.as_db_str(),
+                "Export was interrupted before completion. Retry it from History.",
+                MarkdownExportStatus::Pending.as_db_str()
             ],
         )?)
     }
@@ -744,6 +832,26 @@ impl HistoryManager {
             (
                 "speaker_display_names_json",
                 "ALTER TABLE transcription_history ADD COLUMN speaker_display_names_json TEXT",
+            ),
+            (
+                "markdown_export_status",
+                "ALTER TABLE transcription_history ADD COLUMN markdown_export_status TEXT NOT NULL DEFAULT 'not_requested'",
+            ),
+            (
+                "markdown_export_path",
+                "ALTER TABLE transcription_history ADD COLUMN markdown_export_path TEXT",
+            ),
+            (
+                "markdown_export_error",
+                "ALTER TABLE transcription_history ADD COLUMN markdown_export_error TEXT",
+            ),
+            (
+                "markdown_exported_at",
+                "ALTER TABLE transcription_history ADD COLUMN markdown_exported_at INTEGER",
+            ),
+            (
+                "markdown_export_settings_json",
+                "ALTER TABLE transcription_history ADD COLUMN markdown_export_settings_json TEXT",
             ),
         ];
 
@@ -848,10 +956,18 @@ impl HistoryManager {
             duration_ms,
             timestamp,
         );
+        let is_rewrite_selection = screen_context_metadata
+            .as_ref()
+            .and_then(|metadata| metadata.dictation_intent.as_deref())
+            == Some("rewrite_selection")
+            || translation_context.translation_origin.as_deref() == Some("selection");
 
         // Save WAV file
         let file_path = self.recordings_dir.join(&file_name);
         save_wav_file(file_path, audio_samples.as_slice()).await?;
+
+        let title_for_export = display_title.clone();
+        let transcription_for_export = transcription_text.clone();
 
         // Save to database
         let id = self.save_to_database(
@@ -859,10 +975,10 @@ impl HistoryManager {
             timestamp,
             title,
             transcription_text,
-            post_processed_text,
+            post_processed_text.clone(),
             post_process_prompt,
             dictionary_hits,
-            pasted_text,
+            pasted_text.clone(),
             translation_context,
             tts_context,
             screen_context_metadata,
@@ -883,6 +999,19 @@ impl HistoryManager {
             &self.app_handle,
             id,
             duration_ms,
+        );
+
+        crate::markdown_export::maybe_export_markdown(
+            &self.app_handle,
+            self.clone(),
+            id,
+            timestamp,
+            &transcription_for_export,
+            post_processed_text.as_deref(),
+            pasted_text.as_deref(),
+            duration_ms,
+            &title_for_export,
+            is_rewrite_selection,
         );
 
         Ok(id)
@@ -1580,6 +1709,98 @@ impl HistoryManager {
         Ok(entry)
     }
 
+    pub(crate) fn set_markdown_export_state(
+        &self,
+        id: i64,
+        status: MarkdownExportStatus,
+        path: Option<&Path>,
+        error_message: Option<&str>,
+        exported_at: Option<i64>,
+        settings_snapshot_json: Option<&str>,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        let path = path.map(|value| value.to_string_lossy().into_owned());
+        let updated = conn.execute(
+            "UPDATE transcription_history
+             SET markdown_export_status = ?1,
+                 markdown_export_path = ?2,
+                 markdown_export_error = ?3,
+                 markdown_exported_at = ?4,
+                 markdown_export_settings_json = COALESCE(?5, markdown_export_settings_json)
+             WHERE id = ?6",
+            params![
+                status.as_db_str(),
+                path,
+                error_message,
+                exported_at,
+                settings_snapshot_json,
+                id
+            ],
+        )?;
+        if updated == 0 {
+            anyhow::bail!("History entry not found: {id}");
+        }
+
+        if let Err(error) = self.app_handle.emit("history-updated", ()) {
+            error!("Failed to emit history-updated after Markdown export: {error}");
+        }
+        Ok(())
+    }
+
+    fn claim_markdown_export_retry_with_conn(
+        conn: &Connection,
+        id: i64,
+        path: &Path,
+        settings_snapshot_json: &str,
+    ) -> Result<bool> {
+        let updated = conn.execute(
+            "UPDATE transcription_history
+             SET markdown_export_status = ?1,
+                 markdown_export_path = ?2,
+                 markdown_export_error = NULL,
+                 markdown_exported_at = NULL,
+                 markdown_export_settings_json = ?5
+             WHERE id = ?3 AND markdown_export_status = ?4",
+            params![
+                MarkdownExportStatus::Pending.as_db_str(),
+                path.to_string_lossy().into_owned(),
+                id,
+                MarkdownExportStatus::Failed.as_db_str(),
+                settings_snapshot_json
+            ],
+        )?;
+        Ok(updated == 1)
+    }
+
+    pub(crate) fn claim_markdown_export_retry(
+        &self,
+        id: i64,
+        path: &Path,
+        settings_snapshot_json: &str,
+    ) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let claimed =
+            Self::claim_markdown_export_retry_with_conn(&conn, id, path, settings_snapshot_json)?;
+        if claimed {
+            if let Err(error) = self.app_handle.emit("history-updated", ()) {
+                error!("Failed to emit history-updated after Markdown retry claim: {error}");
+            }
+        }
+        Ok(claimed)
+    }
+
+    pub(crate) fn markdown_export_settings_snapshot(&self, id: i64) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        conn.query_row(
+            "SELECT markdown_export_settings_json FROM transcription_history WHERE id = ?1",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(Into::into)
+        .map(|value| value.flatten())
+    }
+
     fn hydrate_display_titles_with_conn(
         conn: &Connection,
         entries: &mut [HistoryEntry],
@@ -1729,7 +1950,12 @@ mod tests {
                 speaker_labels_visible BOOLEAN NOT NULL DEFAULT 1,
                 speaker_segments_json TEXT,
                 speaker_transcript_text TEXT,
-                speaker_display_names_json TEXT
+                speaker_display_names_json TEXT,
+                markdown_export_status TEXT NOT NULL DEFAULT 'not_requested',
+                markdown_export_path TEXT,
+                markdown_export_error TEXT,
+                markdown_exported_at INTEGER,
+                markdown_export_settings_json TEXT
             );",
         )
         .expect("create transcription_history table");
@@ -1861,6 +2087,49 @@ mod tests {
         assert!(!next_page.has_more);
         assert_eq!(next_page.entries.len(), 1);
         assert_eq!(next_page.entries[0].timestamp, 100);
+    }
+
+    #[test]
+    fn markdown_retry_claim_is_atomic() {
+        let conn = setup_conn();
+        insert_entry(&conn, 100, "retry me", None);
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "UPDATE transcription_history
+             SET markdown_export_status = ?1, markdown_export_error = ?2
+             WHERE id = ?3",
+            params![
+                MarkdownExportStatus::Failed.as_db_str(),
+                "temporary failure",
+                id
+            ],
+        )
+        .expect("mark export failed");
+
+        let path = Path::new("/tmp/retry.md");
+        assert!(HistoryManager::claim_markdown_export_retry_with_conn(
+            &conn,
+            id,
+            path,
+            "{\"renewed\":true}"
+        )
+        .expect("claim first retry"));
+        assert!(
+            !HistoryManager::claim_markdown_export_retry_with_conn(&conn, id, path, "{}")
+                .expect("reject duplicate retry")
+        );
+
+        let (status, saved_path, error): (String, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT markdown_export_status, markdown_export_path, markdown_export_error
+                 FROM transcription_history WHERE id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("read claimed retry");
+        assert_eq!(status, MarkdownExportStatus::Pending.as_db_str());
+        assert_eq!(saved_path.as_deref(), Some("/tmp/retry.md"));
+        assert!(error.is_none());
     }
 
     #[test]

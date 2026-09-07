@@ -114,6 +114,36 @@ pub async fn reveal_history_recording_in_folder(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn retry_history_markdown_export(
+    app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+) -> Result<(), String> {
+    let entry = history_manager
+        .get_entry_by_id(id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("History entry not found: {id}"))?;
+    crate::markdown_export::retry_markdown_export(&app, Arc::clone(history_manager.inner()), entry)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn reveal_history_markdown_export(
+    app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+) -> Result<(), String> {
+    let entry = history_manager
+        .get_entry_by_id(id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("History entry not found: {id}"))?;
+    crate::markdown_export::reveal_markdown_export(&app, history_manager.inner(), &entry)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn delete_history_entry(
     _app: AppHandle,
     history_manager: State<'_, Arc<HistoryManager>>,

@@ -749,7 +749,7 @@ class EngineWorker:
         voices = []
         for voice_id, label in SUPERTONIC_VOICES:
             if (voice_styles_dir / f"{voice_id}.json").exists():
-                voices.append(self._voice_entry(voice_id, label, None))
+                voices.append(self._voice_entry(voice_id, label, "mul"))
         return voices
 
     def _synthesize_supertonic(self, payload: dict[str, Any], output_path: Path) -> None:

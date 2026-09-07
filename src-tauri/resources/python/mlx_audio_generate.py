@@ -92,7 +92,7 @@ VOICE_DESIGN_DEFAULT_INSTRUCT = (
 
 
 def effective_instruct_for_model(model, args: argparse.Namespace) -> str | None:
-    """Return generation instruct, supplying a safe default for VoiceDesign when omitted."""
+    """Return generation instruct, supplying a safe default for VoiceDesign and Breeze when omitted."""
     raw = args.instruct
     if raw is not None and str(raw).strip():
         return str(raw).strip()
@@ -100,6 +100,12 @@ def effective_instruct_for_model(model, args: argparse.Namespace) -> str | None:
     tts_model_type = getattr(config, "tts_model_type", None) if config is not None else None
     if tts_model_type == "voice_design":
         return VOICE_DESIGN_DEFAULT_INSTRUCT
+    model_type = getattr(config, "model_type", "") if config is not None else ""
+    if model_type in {"breeze", "breeze_tts"} or "breeze" in str(
+        getattr(args, "model", "")
+    ).lower():
+        if not getattr(args, "ref_audio", None):
+            return VOICE_DESIGN_DEFAULT_INSTRUCT
     return None
 
 
@@ -289,6 +295,8 @@ def display_model_name(model_name: str) -> str:
         return "Qwen3 TTS 0.6B"
     if "kugelaudio" in model_name or "kugel-audio" in model_name:
         return "KugelAudio"
+    if "breeze" in model_name:
+        return "Breeze TTS 2"
     return Path(model_name).name or "the selected MLX model"
 
 
@@ -343,6 +351,9 @@ def build_generation_kwargs(
         "top_k": args.top_k,
         "min_p": args.min_p,
         "cfg_weight": args.cfg_weight,
+        "cfg_scale": (
+            args.cfg_weight if args.cfg_weight is not None else 4.0
+        ) if model_type in {"breeze", "breeze_tts"} else None,
         "exaggeration": args.exaggeration,
         "max_tokens": args.max_tokens,
         "stream": False,

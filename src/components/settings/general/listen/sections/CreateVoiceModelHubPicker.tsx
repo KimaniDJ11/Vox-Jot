@@ -544,8 +544,14 @@ export const CreateVoiceModelHubPicker: React.FC<
     for (const model of pendingModels) {
       const key = `${model.provider_id}::${model.id}`;
       loadingVoiceKeysRef.current.add(key);
-      setLoadingVoiceKeys((current) => new Set(current).add(key));
     }
+    setLoadingVoiceKeys((current) => {
+      const next = new Set(current);
+      for (const key of scheduledKeys) {
+        next.add(key);
+      }
+      return next;
+    });
 
     const loadModelVoices = async (model: CatalogModelDescriptor) => {
       const key = `${model.provider_id}::${model.id}`;

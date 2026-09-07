@@ -310,7 +310,11 @@ pub fn warm_recording_overlay(app_handle: &AppHandle) {
     });
 }
 
-fn show_overlay_state(app_handle: &AppHandle, state: &'static str) {
+pub fn show_overlay_state_with_mode(
+    app_handle: &AppHandle,
+    state: &'static str,
+    mode: Option<&'static str>,
+) {
     let app_handle_clone = app_handle.clone();
     let _ = app_handle.run_on_main_thread(move || {
         let app_handle = &app_handle_clone;
@@ -340,25 +344,25 @@ fn show_overlay_state(app_handle: &AppHandle, state: &'static str) {
                 RecordingOverlayStyle::Minimal => "minimal",
                 RecordingOverlayStyle::Notch => "notch",
             };
-            let payload = serde_json::json!({ "state": state, "style": style_str });
+            let payload = serde_json::json!({
+                "state": state,
+                "style": style_str,
+                "mode": mode.unwrap_or("dictate"),
+            });
             let _ = overlay_window.emit("show-overlay", payload);
         }
     });
 }
 
-/// Shows the recording overlay window with fade-in animation
-pub fn show_recording_overlay(app_handle: &AppHandle) {
-    show_overlay_state(app_handle, "recording");
+pub fn show_recording_overlay_with_mode(app_handle: &AppHandle, mode: &'static str) {
+    show_overlay_state_with_mode(app_handle, "recording", Some(mode));
 }
 
-/// Shows the transcribing overlay window
-pub fn show_transcribing_overlay(app_handle: &AppHandle) {
-    show_overlay_state(app_handle, "transcribing");
-}
-
-/// Shows the processing overlay window
-pub fn show_processing_overlay(app_handle: &AppHandle) {
-    show_overlay_state(app_handle, "processing");
+/// Dynamically updates the mode (e.g. "dictate" -> "rewrite_selection") on a live overlay
+pub fn emit_overlay_mode(app_handle: &AppHandle, mode: &str) {
+    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        let _ = overlay_window.emit("overlay-mode", serde_json::json!({ "mode": mode }));
+    }
 }
 
 /// Shows a short, non-activating confirmation after a user edit is approved as

@@ -180,6 +180,12 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/kugelaudio/kugelaudio-0-open.
 - Bark Small MLX conversion - MIT. Source:
   https://huggingface.co/mlx-community/bark-small.
+- Breeze TTS 2 MLX conversions - BreezeBlue Research and Non-Commercial
+  License Agreement; gated before download for non-commercial terms and
+  reference-voice consent. Commercial use requires a separate written license
+  from BreezeBlue. Sources: https://huggingface.co/BreezeBlue/Breeze-TTS-2,
+  https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit, and
+  https://huggingface.co/mlx-community/Breeze-TTS-2-mlx.
 - Fish Audio S2 Pro - Fish Audio Research License; gated before download and
   commercial use requires a separate license. Source:
   https://huggingface.co/mlx-community/fish-audio-s2-pro-bf16.
@@ -4216,7 +4222,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ----- END UPSTREAM FILE: LICENSE -----
 
-@humanfs/core 0.19.1
+@humanfs/core 0.19.2
 --------------------
 Ecosystem: npm
 Declared license: Apache-2.0
@@ -4427,7 +4433,7 @@ Upstream source: git+https://github.com/humanwhocodes/humanfs.git
    limitations under the License.
 ----- END UPSTREAM FILE: LICENSE -----
 
-@humanfs/node 0.16.7
+@humanfs/node 0.16.8
 --------------------
 Ecosystem: npm
 Declared license: Apache-2.0
@@ -4637,6 +4643,14 @@ Upstream source: git+https://github.com/humanwhocodes/humanfs.git
    See the License for the specific language governing permissions and
    limitations under the License.
 ----- END UPSTREAM FILE: LICENSE -----
+
+@humanfs/types 0.15.0
+---------------------
+Ecosystem: npm
+Declared license: Apache-2.0
+Upstream attribution: Nicholas C. Zakas
+Upstream source: git+https://github.com/humanwhocodes/humanfs.git
+Preserved notice files: none published in the installed package; metadata above is reproduced verbatim.
 
 @humanwhocodes/module-importer 1.0.1
 ------------------------------------

@@ -152,10 +152,55 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
 /// Create an HTTP client with provider-specific headers
 fn create_client(provider: &PostProcessProvider, api_key: &str) -> Result<reqwest::Client, String> {
     let headers = build_headers(provider, api_key)?;
-    reqwest::Client::builder()
-        .default_headers(headers)
+    let mut builder = reqwest::Client::builder().default_headers(headers);
+    if crate::settings::post_process_provider_is_local(provider) {
+        // Local-only selection rewrites and meeting summaries must not forward
+        // their bodies through an environment proxy or an HTTP redirect.
+        builder = builder
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none());
+    }
+    builder
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))
+}
+
+#[cfg(test)]
+mod privacy_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn local_model_client_never_follows_redirects() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            let received = socket.read(&mut request).await.unwrap();
+            assert!(received > 0);
+            let response = format!("HTTP/1.1 307 Temporary Redirect\r\nLocation: http://{address}/redirected\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+            socket.write_all(response.as_bytes()).await.unwrap();
+        });
+        let provider = PostProcessProvider {
+            id: "test-local".into(),
+            label: "Local test".into(),
+            base_url: format!("http://{address}"),
+            allow_base_url_edit: true,
+            models_endpoint: None,
+            supports_structured_output: false,
+        };
+        let response = create_client(&provider, "")
+            .unwrap()
+            .post(&provider.base_url)
+            .body("NON_SENSITIVE_TEST_FIXTURE")
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::TEMPORARY_REDIRECT);
+        server.await.unwrap();
+    }
 }
 
 /// Send a chat completion request to an OpenAI-compatible API

@@ -60,6 +60,13 @@ pub fn refresh_external_model_storage(
 
 #[tauri::command]
 #[specta::specta]
+pub fn get_external_model_storage_disconnect_event(
+) -> Option<crate::external_model_storage::ExternalModelStorageDisconnectEvent> {
+    None
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn pick_external_model_storage_dir(
     app: AppHandle,
 ) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {

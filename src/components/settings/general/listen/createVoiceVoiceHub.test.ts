@@ -5,7 +5,9 @@ import {
   buildCreateVoiceHubRows,
   countryFlagFromLocale,
   inferVoiceGender,
+  languageDisplayName,
   orderCreateVoiceHubRows,
+  splitCompoundLocales,
   voiceAccentFromLocale,
   voiceAvatarGradient,
   voiceLanguageFromLocale,
@@ -71,6 +73,32 @@ describe("createVoiceVoiceHub", () => {
     expect(countryFlagFromLocale("en-US")).toBe("🇺🇸");
     expect(countryFlagFromLocale("en-IN")).toBe("🇺🇸🇮🇳");
     expect(voiceAccentFromLocale("fr-FR")).toBe("French");
+    expect(countryFlagFromLocale("zh-TW")).toBe("🇹🇼");
+    expect(countryFlagFromLocale("zh-CN")).toBe("🇨🇳");
+    expect(countryFlagFromLocale("mul")).toBe("🌐");
+    expect(languageDisplayName("mul")).toBe("Multiple languages");
+    expect(countryFlagFromLocale("ru")).toBe("🇷🇺");
+    expect(countryFlagFromLocale("pl")).toBe("🇵🇱");
+    expect(countryFlagFromLocale("tr")).toBe("🇹🇷");
+    expect(countryFlagFromLocale("sv")).toBe("🇸🇪");
+    expect(countryFlagFromLocale("vi")).toBe("🇻🇳");
+    expect(countryFlagFromLocale("uk")).toBe("🇺🇦");
+  });
+
+  it("handles compound locales with flags and formatted language names", () => {
+    expect(splitCompoundLocales("en/zh")).toEqual(["en", "zh"]);
+    expect(splitCompoundLocales("en/zh-TW")).toEqual(["en", "zh-TW"]);
+    expect(splitCompoundLocales("en, zh-TW")).toEqual(["en", "zh-TW"]);
+
+    expect(voiceLanguageFromLocale("en/zh")).toBe("en/zh");
+    expect(voiceLanguageFromLocale("en/zh-TW")).toBe("en/zh-tw");
+
+    expect(countryFlagFromLocale("en/zh")).toBe("🇺🇸🇨🇳");
+    expect(countryFlagFromLocale("en/zh-TW")).toBe("🇺🇸🇹🇼");
+    expect(countryFlagFromLocale("zh-TW/en")).toBe("🇹🇼🇺🇸");
+
+    expect(languageDisplayName("en/zh")).toBe("English & Chinese");
+    expect(languageDisplayName("en/zh-TW")).toBe("English & Chinese (Taiwan)");
   });
 
   it("uses deterministic avatar gradients", () => {
@@ -82,9 +110,13 @@ describe("createVoiceVoiceHub", () => {
     );
   });
 
-  it("infers gender only from known two-letter voice prefixes", () => {
+  it("infers gender from voice IDs and prefixes", () => {
     expect(inferVoiceGender("af_heart")).toBe("female");
     expect(inferVoiceGender("am_adam")).toBe("male");
+    expect(inferVoiceGender("F1")).toBe("female");
+    expect(inferVoiceGender("f2")).toBe("female");
+    expect(inferVoiceGender("M1")).toBe("male");
+    expect(inferVoiceGender("m5")).toBe("male");
     expect(inferVoiceGender("neutral_storyteller")).toBeNull();
     expect(inferVoiceGender("alice")).toBeNull();
   });
@@ -151,5 +183,119 @@ describe("createVoiceVoiceHub", () => {
       "Neutral",
       "Xiaobei",
     ]);
+  });
+
+  it("builds multilingual rows with globe flag and inferring gender for Supertonic voices", () => {
+    const supertonicModel = model({
+      id: "supertonic-3",
+      provider_id: "supertonic",
+      label: "Supertonic 3",
+      locale: "mul",
+      supported_languages: [
+        "en",
+        "ko",
+        "ja",
+        "ar",
+        "bg",
+        "cs",
+        "da",
+        "de",
+        "el",
+        "es",
+        "et",
+        "fi",
+        "fr",
+        "hi",
+        "hr",
+        "hu",
+        "id",
+        "it",
+        "lt",
+        "lv",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "ru",
+        "sk",
+        "sl",
+        "sv",
+        "tr",
+        "uk",
+        "vi",
+      ],
+    });
+    const m1Voice = voice({
+      id: "M1",
+      label: "Male 1",
+      locale: "mul",
+    });
+    const f1Voice = voice({
+      id: "F1",
+      label: "Female 1",
+      locale: "mul",
+    });
+    const rows = buildCreateVoiceHubRows(
+      [supertonicModel],
+      new Map([
+        [
+          `${supertonicModel.provider_id}::${supertonicModel.id}`,
+          [m1Voice, f1Voice],
+        ],
+      ]),
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      modelLabel: "Supertonic 3",
+      voiceId: "M1",
+      voiceLabel: "Male 1",
+      countryFlag: "🌐",
+      gender: "male",
+      description:
+        "male voice preset for Multiple languages, from Supertonic 3.",
+    });
+    expect(rows[1]).toMatchObject({
+      modelLabel: "Supertonic 3",
+      voiceId: "F1",
+      voiceLabel: "Female 1",
+      countryFlag: "🌐",
+      gender: "female",
+      description:
+        "female voice preset for Multiple languages, from Supertonic 3.",
+    });
+  });
+
+  it("builds bilingual Breeze speaker rows with the Taiwan locale", () => {
+    const breezeModel = model({
+      id: "breeze-tts-2-4bit",
+      provider_id: "mlx_breeze_tts",
+      label: "Breeze TTS 2 4-bit",
+      locale: "en/zh-TW",
+      supported_languages: ["en", "zh-TW"],
+    });
+    const rows = buildCreateVoiceHubRows(
+      [breezeModel],
+      new Map([
+        [
+          `${breezeModel.provider_id}::${breezeModel.id}`,
+          [
+            voice({
+              id: "S0",
+              label: "Speaker S0 (Default)",
+              locale: "en/zh-TW",
+            }),
+          ],
+        ],
+      ]),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      modelLabel: "Breeze TTS 2 4-bit",
+      voiceId: "S0",
+      countryFlag: "🇺🇸🇹🇼",
+      description:
+        "Voice preset for English & Chinese (Taiwan), from Breeze TTS 2 4-bit.",
+    });
   });
 });

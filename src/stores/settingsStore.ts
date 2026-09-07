@@ -226,6 +226,8 @@ const settingUpdaters: {
     commands.changeAudioEnhancementEnabledSetting(value as boolean),
   audio_enhancement_model: (value) =>
     commands.changeAudioEnhancementModelSetting(value as string),
+  acoustic_profile: (value) =>
+    commands.changeAcousticProfileSetting(value as string),
   speech_runtime_path: (value) =>
     commands.changeSpeechRuntimePathSetting((value as string | null) ?? null),
   tts_model_store_path: (value) =>
@@ -268,6 +270,26 @@ const settingUpdaters: {
     commands.updateHistoryAutoAnalyzeSpeakersMinDurationMs(value as number),
   post_process_enabled: (value) =>
     commands.changePostProcessEnabledSetting(value as boolean),
+  adaptive_selection_rewrite_enabled: (value) =>
+    commands.changeAdaptiveSelectionRewriteEnabledSetting(value as boolean),
+  cloud_selection_rewrite_allowed: (value) =>
+    commands.changeCloudSelectionRewriteAllowedSetting(value as boolean),
+  markdown_export_enabled: (value) =>
+    commands.changeMarkdownExportEnabledSetting(value as boolean),
+  markdown_export_dir: (value) =>
+    commands.changeMarkdownExportDirSetting((value as string | null) ?? null),
+  markdown_export_min_words: (value) =>
+    commands.changeMarkdownExportMinWordsSetting(value as number),
+  markdown_export_content_source: (value) =>
+    commands.changeMarkdownExportContentSourceSetting(value as string),
+  markdown_export_frontmatter: (value) =>
+    commands.changeMarkdownExportFrontmatterSetting(value as boolean),
+  markdown_export_include_rewrite_selection: (value) =>
+    commands.changeMarkdownExportIncludeRewriteSelectionSetting(
+      value as boolean,
+    ),
+  markdown_export_include_failed_paste: (value) =>
+    commands.changeMarkdownExportIncludeFailedPasteSetting(value as boolean),
   local_privacy_mode: (value) =>
     commands.changeLocalPrivacyModeSetting(value as boolean),
   screen_context_enabled: (value) =>

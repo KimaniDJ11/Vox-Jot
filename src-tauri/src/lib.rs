@@ -21,6 +21,7 @@ pub mod cli;
 pub mod cli_client;
 mod clipboard;
 mod commands;
+pub mod context_hints;
 mod convo;
 mod correction_tracker;
 mod detail_view;
@@ -35,7 +36,9 @@ mod local_llm;
 #[cfg(target_os = "macos")]
 mod loopback_capability;
 mod managers;
+pub mod markdown_export;
 mod mcp;
+mod meeting_capture;
 mod model_platform;
 mod ocr_backend;
 mod ocr_models;
@@ -62,6 +65,7 @@ mod sidecar;
 mod signal_handle;
 pub mod snippets;
 pub mod speech_analysis;
+pub mod spoken_edits;
 mod storage_paths;
 mod telemetry;
 mod transcription_coordinator;
@@ -657,6 +661,16 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     app_handle.manage(watch_folder_manager.clone());
     app_handle.manage(http_api_manager.clone());
     app_handle.manage(DetailViewRoutingState::default());
+    app_handle.manage(meeting_capture::MeetingCaptureManager::default());
+    {
+        let app = app_handle.clone();
+        // Recovery is independent of recording startup and window creation.
+        std::thread::spawn(move || {
+            if let Err(error) = meeting_capture::recover(&app) {
+                log::warn!("Meeting recovery needs attention: {error}");
+            }
+        });
+    }
 
     // The watch-folders supervisor reads `settings.watch_folders` lazily
     // when its config_version bumps. We bump it once at startup so it
@@ -803,6 +817,9 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
             "start_recording" => {
                 signal_handle::send_transcription_input(app, "transcribe", "Tray");
             }
+            "stop_meeting" => {
+                meeting_capture::stop_active(app);
+            }
             "cancel" => {
                 use crate::utils::cancel_current_operation;
 
@@ -836,7 +853,7 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
     // Refresh tray menu when model state changes
     let app_handle_for_listener = app_handle.clone();
     app_handle.listen("model-state-changed", move |_| {
-        tray::update_tray_menu(&app_handle_for_listener, &tray::TrayIconState::Idle, None);
+        tray::refresh_current_menu(&app_handle_for_listener);
     });
 
     let settings = settings::get_settings(app_handle);
@@ -1000,6 +1017,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_tts_stop_on_record_setting,
         shortcut::change_audio_enhancement_enabled_setting,
         shortcut::change_audio_enhancement_model_setting,
+        shortcut::change_acoustic_profile_setting,
         shortcut::change_tts_model_store_path_setting,
         shortcut::change_external_model_storage_enabled_setting,
         shortcut::change_external_model_storage_auto_detect_setting,
@@ -1018,6 +1036,15 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_auto_submit_setting,
         shortcut::change_auto_submit_key_setting,
         shortcut::change_post_process_enabled_setting,
+        shortcut::change_adaptive_selection_rewrite_enabled_setting,
+        shortcut::change_cloud_selection_rewrite_allowed_setting,
+        shortcut::change_markdown_export_enabled_setting,
+        shortcut::change_markdown_export_dir_setting,
+        shortcut::change_markdown_export_min_words_setting,
+        shortcut::change_markdown_export_content_source_setting,
+        shortcut::change_markdown_export_frontmatter_setting,
+        shortcut::change_markdown_export_include_rewrite_selection_setting,
+        shortcut::change_markdown_export_include_failed_paste_setting,
         shortcut::change_local_privacy_mode_setting,
         settings::set_onboarding_completed,
         shortcut::change_screen_context_enabled_setting,
@@ -1080,6 +1107,7 @@ pub fn run(cli_args: CliArgs) {
         commands::cancel_operation,
         commands::get_app_dir_path,
         commands::get_external_model_storage_status,
+        commands::get_external_model_storage_disconnect_event,
         commands::refresh_external_model_storage,
         commands::pick_external_model_storage_dir,
         commands::open_external_model_storage_dir,
@@ -1182,6 +1210,17 @@ pub fn run(cli_args: CliArgs) {
         commands::denoise::prepare_denoise_runtime,
         commands::denoise::cancel_denoise_runtime_setup,
         commands::transcription::transcribe_file,
+        meeting_capture::get_meeting_capabilities,
+        meeting_capture::request_meeting_permissions,
+        meeting_capture::list_meetings,
+        meeting_capture::start_meeting,
+        meeting_capture::stop_meeting,
+        meeting_capture::read_meeting,
+        meeting_capture::transcribe_meeting,
+        meeting_capture::summarize_meeting,
+        meeting_capture::reveal_meeting,
+        meeting_capture::delete_meeting,
+        meeting_capture::cancel_meeting_analysis,
         commands::transcription::export_subtitles_srt,
         commands::transcription::export_subtitles_vtt,
         commands::transcription::list_watch_folders,
@@ -1227,6 +1266,8 @@ pub fn run(cli_args: CliArgs) {
         commands::history::toggle_history_entry_saved,
         commands::history::get_audio_file_path,
         commands::history::reveal_history_recording_in_folder,
+        commands::history::retry_history_markdown_export,
+        commands::history::reveal_history_markdown_export,
         commands::history::delete_history_entry,
         commands::history::update_history_limit,
         commands::history::update_history_auto_analyze_speakers_long_recordings_enabled,
@@ -1736,6 +1777,21 @@ pub fn run(cli_args: CliArgs) {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                if meeting_capture::prepare_exit(app) {
+                    api.prevent_exit();
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        for _ in 0..80 {
+                            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                            if !meeting_capture::stop_active(&app) { app.exit(0); return; }
+                        }
+                        // Partial WAVs remain recoverable even if native capture stalls.
+                        app.exit(0);
+                    });
+                    return;
+                }
+            }
             if matches!(
                 &event,
                 tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit

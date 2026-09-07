@@ -124,6 +124,34 @@
   animation: dot-breathe 2.4s ease-in-out infinite;
 }
 
+.overlay-edit-glyph {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ov-accent);
+  border-radius: 5px;
+  color: var(--ov-text);
+  background: var(--ov-bg);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.overlay-edit-glyph--recording,
+.overlay-edit-glyph--processing {
+  animation: dot-breathe 1.8s ease-in-out infinite;
+}
+
+.overlay-edit-label {
+  flex-shrink: 0;
+  color: var(--ov-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 @keyframes dot-breathe {
   0%,
   100% {
@@ -291,6 +319,10 @@
 .recording-overlay--compact .waveform-canvas {
   height: 14px;
   width: 60px;
+}
+
+.recording-overlay--compact.recording-overlay--selection-edit .waveform-canvas {
+  width: 34px;
 }
 
 .partial-text {

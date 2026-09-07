@@ -27,7 +27,17 @@ export function useTauriEvent<T>(
     void listen<T>(eventName, (event) => handlerRef.current(event))
       .then((registeredUnlisten) => {
         if (disposed) {
-          registeredUnlisten();
+          try {
+            const maybePromise: unknown = registeredUnlisten();
+            if (
+              maybePromise &&
+              typeof (maybePromise as Promise<void>).catch === "function"
+            ) {
+              void (maybePromise as Promise<void>).catch(() => {});
+            }
+          } catch {
+            // Ignore unlisten race on early unmount
+          }
         } else {
           unlisten = registeredUnlisten;
         }
@@ -43,7 +53,19 @@ export function useTauriEvent<T>(
 
     return () => {
       disposed = true;
-      unlisten?.();
+      if (unlisten) {
+        try {
+          const maybePromise: unknown = unlisten();
+          if (
+            maybePromise &&
+            typeof (maybePromise as Promise<void>).catch === "function"
+          ) {
+            void (maybePromise as Promise<void>).catch(() => {});
+          }
+        } catch {
+          // Ignore unlisten error on unmount
+        }
+      }
     };
   }, [eventName]);
 }

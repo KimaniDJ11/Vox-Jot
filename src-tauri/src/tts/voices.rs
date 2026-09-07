@@ -1,5 +1,14 @@
 use crate::settings::{
-    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_ORPHEUS_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+    TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_BREEZE_TTS_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
+    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
+    TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID, TTS_PROVIDER_MLX_IRODORI_TTS_ID,
+    TTS_PROVIDER_MLX_KITTEN_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
+    TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
+    TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MISO_TTS_ID,
+    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID,
+    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
+    TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
+    TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_MLX_ZONOS2_ID,
 };
 #[cfg(target_os = "macos")]
 use regex::Regex;
@@ -73,8 +82,51 @@ pub fn mlx_voice_locale_for_provider(provider_id: &str, voice_id: &str) -> Optio
         return locale.map(str::to_string);
     }
 
-    if provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID {
+    if provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID
+        || provider_id == TTS_PROVIDER_MLX_DIA_ID
+        || provider_id == TTS_PROVIDER_MLX_CSM_ID
+        || provider_id == TTS_PROVIDER_MLX_OUTE_ID
+        || provider_id == TTS_PROVIDER_MLX_KUGEL_ID
+        || provider_id == TTS_PROVIDER_MLX_LFM_AUDIO_ID
+        || provider_id == TTS_PROVIDER_MLX_POCKET_TTS_ID
+        || provider_id == TTS_PROVIDER_MLX_SOPRANO_ID
+        || provider_id == TTS_PROVIDER_MLX_MELOTTS_ID
+        || provider_id == TTS_PROVIDER_MLX_VIBEVOICE_ID
+        || provider_id == TTS_PROVIDER_MLX_KITTEN_TTS_ID
+        || provider_id == TTS_PROVIDER_MLX_MISO_TTS_ID
+        || provider_id == TTS_PROVIDER_MLX_ZONOS2_ID
+    {
         return Some("en-US".to_string());
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_IRODORI_TTS_ID {
+        return Some("ja-JP".to_string());
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_BREEZE_TTS_ID {
+        return Some("en/zh-TW".to_string());
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_SPARK_ID || provider_id == TTS_PROVIDER_MLX_MING_OMNI_ID {
+        return Some("en/zh".to_string());
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID
+        || provider_id == TTS_PROVIDER_MLX_INDEXTTS_ID
+        || provider_id == TTS_PROVIDER_MLX_VOXCPM_ID
+        || provider_id == TTS_PROVIDER_MLX_HIGGS_AUDIO_ID
+        || provider_id == TTS_PROVIDER_MLX_MOSS_TTS_ID
+    {
+        return Some("zh/en".to_string());
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_BARK_ID
+        || provider_id == TTS_PROVIDER_MLX_FISH_AUDIO_ID
+        || provider_id == TTS_PROVIDER_MLX_OMNIVOICE_ID
+        || provider_id == TTS_PROVIDER_MLX_CHATTERBOX_ID
+        || provider_id == TTS_PROVIDER_MLX_QWEN3TTS_ID
+    {
+        return Some("mul".to_string());
     }
 
     None

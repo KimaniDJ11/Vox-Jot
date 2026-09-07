@@ -1713,6 +1713,35 @@ function ModelScopeMark({ size }: { size: number; color: string }) {
   );
 }
 
+function BreezeBlueMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 8c4-2 7 2 11 0a3 3 0 1 0-3-3"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2 13c5-2 9 2 14 0a3 3 0 1 0-3-3"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 18c3-1 6 1 9 0a2 2 0 1 0-2-2"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // ---------- Brand Configurations ----------
 
 type MarkComponent = (props: {
@@ -1780,6 +1809,12 @@ const BRANDS: Record<string, BrandConfig> = {
   google: { bg: "#FFFFFF", fg: "#4285F4", letter: "G", mark: GoogleMark },
   deepseek: { bg: "#4D6BFE", fg: "#FFFFFF", letter: "D", mark: DeepSeekMark },
   mediatek: { bg: "#E60012", fg: "#FFFFFF", letter: "MT", mark: MediatekMark },
+  breezeblue: {
+    bg: "#0EA5E9",
+    fg: "#FFFFFF",
+    letter: "BB",
+    mark: BreezeBlueMark,
+  },
   stability_ai: {
     bg: "#111827",
     fg: "#FFFFFF",
@@ -2118,6 +2153,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   mlx_ming_omni: "inclusion_ai",
   mlx_kugel: "kugelaudio",
   mlx_bark: "suno",
+  mlx_breeze_tts: "breezeblue",
   mlx_fish_audio: "fish_audio",
   mlx_lfm_audio: "liquid_ai",
   mlx_longcat_audiodit: "meituan",
@@ -2276,6 +2312,9 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "we speaker", providerId: "wespeaker" },
   { keyword: "silero", providerId: "silero" },
   { keyword: "distil-whisper", providerId: "huggingface" },
+  { keyword: "breeze-tts", providerId: "breezeblue" },
+  { keyword: "breeze tts", providerId: "breezeblue" },
+  { keyword: "breezeblue", providerId: "breezeblue" },
   { keyword: "breeze-asr", providerId: "mediatek" },
   { keyword: "breeze asr", providerId: "mediatek" },
   { keyword: "whisper diarization", providerId: "whisperx" },

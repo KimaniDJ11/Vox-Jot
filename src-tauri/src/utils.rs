@@ -80,6 +80,7 @@ pub fn cancel_current_operation(app: &AppHandle) {
     let audio_manager = app.state::<Arc<AudioRecordingManager>>();
     let recording_was_active = audio_manager.is_recording();
     audio_manager.cancel_recording();
+    crate::actions::clear_all_active_dictation_intents();
 
     if let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() {
         tts_manager.stop();

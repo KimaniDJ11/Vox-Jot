@@ -24,6 +24,8 @@ pub struct TranscriptionTiming {
 
 pub struct TimedTranscription {
     pub text: String,
+    pub segments: Vec<TimedSegment>,
+    pub asr_prompt_biasing_used: bool,
     pub timing: TranscriptionTiming,
 }
 
@@ -40,6 +42,10 @@ impl TranscriptionManager {
     }
 
     pub fn is_model_loaded(&self) -> bool {
+        false
+    }
+
+    pub fn supports_asr_context_hints(&self, _model_id: &str) -> bool {
         false
     }
 
@@ -109,9 +115,12 @@ impl TranscriptionManager {
         &self,
         _audio: Arc<Vec<f32>>,
         settings: AppSettings,
+        _hints: Option<&crate::context_hints::AsrContextHints>,
     ) -> Result<TimedTranscription> {
         Ok(TimedTranscription {
             text: String::new(),
+            segments: Vec::new(),
+            asr_prompt_biasing_used: false,
             timing: TranscriptionTiming {
                 model_id: settings.selected_model,
                 audio_duration_ms: 0,
@@ -132,6 +141,8 @@ impl TranscriptionManager {
     ) -> TimedTranscription {
         TimedTranscription {
             text: raw_text,
+            segments: Vec::new(),
+            asr_prompt_biasing_used: false,
             timing: TranscriptionTiming {
                 model_id: settings.selected_model,
                 audio_duration_ms: 0,
@@ -146,6 +157,14 @@ impl TranscriptionManager {
     pub fn transcribe_with_segments(
         &self,
         _audio: Arc<Vec<f32>>,
+    ) -> Result<(String, Vec<TimedSegment>)> {
+        Ok((String::new(), Vec::new()))
+    }
+
+    pub fn transcribe_with_segments_and_settings(
+        &self,
+        _audio: Arc<Vec<f32>>,
+        _settings: AppSettings,
     ) -> Result<(String, Vec<TimedSegment>)> {
         Ok((String::new(), Vec::new()))
     }

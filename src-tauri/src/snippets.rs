@@ -2,6 +2,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
+use std::collections::HashMap;
 
 /// A text expansion snippet: when the trigger phrase is spoken,
 /// it gets replaced with the full expansion text.
@@ -18,14 +19,126 @@ fn default_enabled() -> bool {
     true
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SnippetContext {
+    pub clipboard: Option<String>,
+    pub selected_text: Option<String>,
+    pub now: Option<chrono::DateTime<chrono::Local>>,
+    pub locale: Option<String>,
+    pub protect_sensitive_values: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SnippetContextRequirements {
+    pub clipboard: bool,
+    pub selected_text: bool,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SnippetExpansionResult {
     pub text: String,
     pub hits: Vec<String>,
+    pub sensitive_placeholders: HashMap<String, String>,
+    pub limit_exceeded: bool,
+}
+
+impl SnippetExpansionResult {
+    /// Restore any sensitive placeholders (e.g. clipboard content) that were
+    /// shielded from remote LLM prompts.
+    pub fn restore_sensitive_values(&mut self) {
+        for (placeholder, real_value) in &self.sensitive_placeholders {
+            self.text = self.text.replace(placeholder, real_value);
+        }
+    }
+
+    pub fn placeholders_intact_in(&self, text: &str) -> bool {
+        self.sensitive_placeholders
+            .keys()
+            .all(|placeholder| text.match_indices(placeholder).count() == 1)
+    }
 }
 
 const MAX_IMPORT_SNIPPETS: usize = 1000;
 const MAX_TRIGGER_CHARS: usize = 60;
 const MAX_EXPANSION_CHARS: usize = 4000;
+pub const MAX_RENDERED_SNIPPET_OUTPUT_CHARS: usize = 64_000;
+
+fn variable_name(tag: &str) -> &str {
+    tag.split_once(':')
+        .map(|(name, _)| name)
+        .unwrap_or(tag)
+        .trim()
+}
+
+pub fn unsupported_template_variables(template: &str) -> Vec<String> {
+    let mut unknown = Vec::new();
+    let mut rest = template;
+    while let Some(open) = rest.find("{{") {
+        let after_open = &rest[open + 2..];
+        let Some(close) = after_open.find("}}") else {
+            break;
+        };
+        let tag = after_open[..close].trim();
+        let name = variable_name(tag);
+        let valid = matches!(name, "date" | "time" | "clipboard" | "selected_text")
+            && (!matches!(name, "clipboard" | "selected_text") || !tag.contains(':'));
+        if !valid && !tag.is_empty() && !unknown.iter().any(|item| item == tag) {
+            unknown.push(tag.to_string());
+        }
+        rest = &after_open[close + 2..];
+    }
+    unknown
+}
+
+fn template_requirements(template: &str) -> SnippetContextRequirements {
+    let mut requirements = SnippetContextRequirements::default();
+    let mut rest = template;
+    while let Some(open) = rest.find("{{") {
+        let after_open = &rest[open + 2..];
+        let Some(close) = after_open.find("}}") else {
+            break;
+        };
+        match after_open[..close].trim() {
+            "clipboard" => requirements.clipboard = true,
+            "selected_text" => requirements.selected_text = true,
+            _ => {}
+        }
+        rest = &after_open[close + 2..];
+    }
+    requirements
+}
+
+fn localized_date(now: chrono::DateTime<chrono::Local>, locale: Option<&str>) -> String {
+    let locale = locale.unwrap_or_default().to_ascii_lowercase();
+    if locale.starts_with("en-us") || locale == "en" {
+        now.format("%B %-d, %Y").to_string()
+    } else if locale.starts_with("zh") || locale.starts_with("ja") {
+        now.format("%Y年%-m月%-d日").to_string()
+    } else if locale.starts_with("ko") {
+        now.format("%Y년 %-m월 %-d일").to_string()
+    } else if locale.starts_with("en-gb") {
+        now.format("%-d %B %Y").to_string()
+    } else if locale.starts_with("de") {
+        now.format("%d.%m.%Y").to_string()
+    } else if locale.starts_with("fr")
+        || locale.starts_with("es")
+        || locale.starts_with("it")
+        || locale.starts_with("pt")
+    {
+        now.format("%d/%m/%Y").to_string()
+    } else {
+        now.format("%Y-%m-%d").to_string()
+    }
+}
+
+fn localized_time(now: chrono::DateTime<chrono::Local>, locale: Option<&str>) -> String {
+    let locale = locale.unwrap_or_default().to_ascii_lowercase();
+    if locale.starts_with("en-us") || locale == "en" {
+        now.format("%-I:%M %p").to_string()
+    } else {
+        now.format("%H:%M").to_string()
+    }
+}
 
 #[derive(Deserialize)]
 struct LooseSnippet {
@@ -112,6 +225,14 @@ pub fn parse_snippet_import_json(json: &str) -> Result<Vec<Snippet>, String> {
         {
             continue;
         }
+        let unsupported = unsupported_template_variables(&expansion);
+        if !unsupported.is_empty() {
+            return Err(format!(
+                "Phrase key '{}' uses unsupported variable(s): {}",
+                trigger,
+                unsupported.join(", ")
+            ));
+        }
 
         let id = if imported.id.trim().is_empty() {
             format!("snippet_import_{}", index)
@@ -145,16 +266,105 @@ fn normalize_for_match(s: &str) -> String {
         .join(" ")
 }
 
-/// Apply snippet expansions to the given text.
+/// Renders dynamic variables within snippet expansions non-recursively.
+///
+/// Supported variables:
+/// - `{{date}}` (default format: `%Y-%m-%d`) or `{{date:%format}}`
+/// - `{{time}}` (default format: `%H:%M:%S`) or `{{time:%format}}`
+/// - `{{clipboard}}` (evaluates current system clipboard)
+/// - `{{selected_text}}` (evaluates current active selection)
+pub fn render_template(
+    template: &str,
+    context: &SnippetContext,
+    sensitive_placeholders: &mut HashMap<String, String>,
+) -> String {
+    let now = context.now.unwrap_or_else(chrono::Local::now);
+    let mut result = String::with_capacity(template.len());
+    let mut rest = template;
+
+    while let Some(start_idx) = rest.find("{{") {
+        result.push_str(&rest[..start_idx]);
+        let after_open = &rest[start_idx + 2..];
+        if let Some(close_idx) = after_open.find("}}") {
+            let tag_content = after_open[..close_idx].trim();
+            let tag_name = variable_name(tag_content);
+            if tag_name == "date" {
+                let formatted = if let Some((_, stripped)) = tag_content.split_once(':') {
+                    let fmt = stripped.trim();
+                    std::panic::catch_unwind(|| now.format(fmt).to_string())
+                        .unwrap_or_else(|_| localized_date(now, context.locale.as_deref()))
+                } else {
+                    localized_date(now, context.locale.as_deref())
+                };
+                result.push_str(&formatted);
+            } else if tag_name == "time" {
+                let formatted = if let Some((_, stripped)) = tag_content.split_once(':') {
+                    let fmt = stripped.trim();
+                    std::panic::catch_unwind(|| now.format(fmt).to_string())
+                        .unwrap_or_else(|_| localized_time(now, context.locale.as_deref()))
+                } else {
+                    localized_time(now, context.locale.as_deref())
+                };
+                result.push_str(&formatted);
+            } else if tag_content == "clipboard" {
+                if let Some(ref cb) = context.clipboard {
+                    if context.protect_sensitive_values {
+                        let placeholder =
+                            format!("__VOX_JOT_LOCAL_SLOT_{}__", uuid::Uuid::new_v4().simple());
+                        sensitive_placeholders.insert(placeholder.clone(), cb.clone());
+                        result.push_str(&placeholder);
+                    } else {
+                        result.push_str(cb);
+                    }
+                }
+            } else if tag_content == "selected_text" {
+                if let Some(ref sel) = context.selected_text {
+                    if context.protect_sensitive_values {
+                        let placeholder =
+                            format!("__VOX_JOT_LOCAL_SLOT_{}__", uuid::Uuid::new_v4().simple());
+                        sensitive_placeholders.insert(placeholder.clone(), sel.clone());
+                        result.push_str(&placeholder);
+                    } else {
+                        result.push_str(sel);
+                    }
+                }
+            } else {
+                result.push_str("{{");
+                result.push_str(tag_content);
+                result.push_str("}}");
+            }
+            rest = &after_open[close_idx + 2..];
+        } else {
+            result.push_str("{{");
+            rest = after_open;
+        }
+    }
+    result.push_str(rest);
+    result
+}
+
+/// Apply snippet expansions to the given text using default context.
+pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResult {
+    apply_snippets_with_context(text, snippets, &SnippetContext::default())
+}
+
+/// Apply snippet expansions to the given text with dynamic variables evaluated
+/// against the provided context.
 ///
 /// Matching is case-insensitive and punctuation-tolerant (a trailing period
 /// from STT won't block a match). Longer triggers are tried first to avoid
 /// shorter triggers shadowing them.
-pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResult {
+pub fn apply_snippets_with_context(
+    text: &str,
+    snippets: &[Snippet],
+    context: &SnippetContext,
+) -> SnippetExpansionResult {
     if text.trim().is_empty() || snippets.is_empty() {
         return SnippetExpansionResult {
             text: text.to_string(),
             hits: Vec::new(),
+            sensitive_placeholders: HashMap::new(),
+            limit_exceeded: false,
         };
     }
 
@@ -180,6 +390,8 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
     let words: Vec<&str> = text.split_whitespace().collect();
     let mut output = Vec::new();
     let mut hits = Vec::new();
+    let mut sensitive_placeholders = HashMap::new();
+    let mut output_chars = 0usize;
     let mut i = 0;
 
     while i < words.len() {
@@ -246,11 +458,26 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
                         last.chars().rev().take(user_trailing_count).collect();
                     let trailing: String = trailing_rev.chars().rev().collect();
 
-                    output.push(format!("{}{}{}", leading, snippet.expansion, trailing));
+                    let rendered_expansion =
+                        render_template(&snippet.expansion, context, &mut sensitive_placeholders);
+                    let expanded = format!("{}{}{}", leading, rendered_expansion, trailing);
+                    let expanded_chars = expanded.chars().count();
+                    if output_chars.saturating_add(expanded_chars)
+                        > MAX_RENDERED_SNIPPET_OUTPUT_CHARS
+                    {
+                        return SnippetExpansionResult {
+                            text: text.to_string(),
+                            hits: Vec::new(),
+                            sensitive_placeholders: HashMap::new(),
+                            limit_exceeded: true,
+                        };
+                    }
+                    output_chars = output_chars.saturating_add(expanded_chars + 1);
+                    output.push(expanded);
                     hits.push(snippet.trigger.clone());
                     debug!(
-                        "Snippet expanded: '{}' → '{}'",
-                        snippet.trigger, snippet.expansion
+                        "Snippet expanded: '{}' ({} output characters)",
+                        snippet.trigger, expanded_chars
                     );
                     i += window;
                     matched = true;
@@ -264,15 +491,63 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
         }
 
         if !matched {
-            output.push(words[i].to_string());
+            let word = words[i].to_string();
+            output_chars = output_chars.saturating_add(word.chars().count() + 1);
+            if output_chars > MAX_RENDERED_SNIPPET_OUTPUT_CHARS {
+                return SnippetExpansionResult {
+                    text: text.to_string(),
+                    hits: Vec::new(),
+                    sensitive_placeholders: HashMap::new(),
+                    limit_exceeded: true,
+                };
+            }
+            output.push(word);
             i += 1;
         }
     }
 
-    SnippetExpansionResult {
-        text: output.join(" "),
-        hits,
+    let rendered_text = output.join(" ");
+    let restored_chars = sensitive_placeholders.iter().fold(
+        rendered_text.chars().count(),
+        |count, (placeholder, value)| {
+            count
+                .saturating_sub(placeholder.chars().count())
+                .saturating_add(value.chars().count())
+        },
+    );
+    if restored_chars > MAX_RENDERED_SNIPPET_OUTPUT_CHARS {
+        return SnippetExpansionResult {
+            text: text.to_string(),
+            hits: Vec::new(),
+            sensitive_placeholders: HashMap::new(),
+            limit_exceeded: true,
+        };
     }
+
+    SnippetExpansionResult {
+        text: rendered_text,
+        hits,
+        sensitive_placeholders,
+        limit_exceeded: false,
+    }
+}
+
+/// Determine which sensitive sources are needed by snippets that actually
+/// match this transcription. This does not read either source.
+pub fn required_dynamic_context(text: &str, snippets: &[Snippet]) -> SnippetContextRequirements {
+    let matched = apply_snippets(text, snippets);
+    let mut requirements = SnippetContextRequirements::default();
+    for snippet in snippets.iter().filter(|snippet| {
+        matched
+            .hits
+            .iter()
+            .any(|trigger| trigger.eq_ignore_ascii_case(&snippet.trigger))
+    }) {
+        let next = template_requirements(&snippet.expansion);
+        requirements.clipboard |= next.clipboard;
+        requirements.selected_text |= next.selected_text;
+    }
+    requirements
 }
 
 #[cfg(test)]
@@ -414,5 +689,182 @@ mod tests {
     #[test]
     fn import_rejects_object_without_text_expansions() {
         assert!(parse_snippet_import_json(r#"{"snippets":{}}"#).is_err());
+    }
+
+    #[test]
+    fn test_dynamic_variables_date_and_time_default_and_formatted() {
+        use chrono::TimeZone;
+        let fixed_time = chrono::Local
+            .with_ymd_and_hms(2026, 9, 3, 14, 30, 45)
+            .single()
+            .unwrap();
+        let context = SnippetContext {
+            now: Some(fixed_time),
+            locale: Some("en-US".to_string()),
+            ..Default::default()
+        };
+
+        let snippets = vec![
+            snippet("insert date", "Today is {{date}}."),
+            snippet("insert formatted date", "Date: {{date:%B %d, %Y}}"),
+            snippet("insert time", "Time: {{time}}"),
+            snippet("insert short time", "Time: {{time:%H:%M}}"),
+        ];
+
+        let r1 = apply_snippets_with_context("please insert date thanks", &snippets, &context);
+        assert_eq!(r1.text, "please Today is September 3, 2026. thanks");
+
+        let r2 = apply_snippets_with_context("insert formatted date", &snippets, &context);
+        assert_eq!(r2.text, "Date: September 03, 2026");
+
+        let r3 = apply_snippets_with_context("insert time", &snippets, &context);
+        assert_eq!(r3.text, "Time: 2:30 PM");
+
+        let r4 = apply_snippets_with_context("insert short time", &snippets, &context);
+        assert_eq!(r4.text, "Time: 14:30");
+    }
+
+    #[test]
+    fn test_dynamic_variables_clipboard_and_selected_text() {
+        let context = SnippetContext {
+            clipboard: Some("https://example.com/pr/123".to_string()),
+            selected_text: Some("fn main() {}".to_string()),
+            ..Default::default()
+        };
+
+        let snippets = vec![
+            snippet("insert link", "Link: {{clipboard}}"),
+            snippet("wrap code", "```rust\n{{selected_text}}\n```"),
+        ];
+
+        let r1 = apply_snippets_with_context("insert link", &snippets, &context);
+        assert_eq!(r1.text, "Link: https://example.com/pr/123");
+
+        let r2 = apply_snippets_with_context("wrap code", &snippets, &context);
+        assert_eq!(r2.text, "```rust\nfn main() {}\n```");
+    }
+
+    #[test]
+    fn test_missing_variables_fallback_to_empty() {
+        let context = SnippetContext::default();
+        let snippets = vec![snippet(
+            "paste empty",
+            "Clipboard: [{{clipboard}}], Selection: [{{selected_text}}]",
+        )];
+
+        let r = apply_snippets_with_context("paste empty", &snippets, &context);
+        assert_eq!(r.text, "Clipboard: [], Selection: []");
+    }
+
+    #[test]
+    fn test_non_recursive_evaluation_prevents_injection() {
+        use chrono::TimeZone;
+        let fixed_time = chrono::Local
+            .with_ymd_and_hms(2026, 9, 3, 14, 30, 45)
+            .single()
+            .unwrap();
+        // Clipboard malicious payload contains {{date}} and {{time}}
+        let context = SnippetContext {
+            clipboard: Some("Malicious {{date}} and {{time}} payload".to_string()),
+            now: Some(fixed_time),
+            ..Default::default()
+        };
+
+        let snippets = vec![snippet("paste payload", "Data: {{clipboard}}")];
+
+        let r = apply_snippets_with_context("paste payload", &snippets, &context);
+        // The expanded clipboard must be literal, not re-evaluated as date/time!
+        assert_eq!(r.text, "Data: Malicious {{date}} and {{time}} payload");
+    }
+
+    #[test]
+    fn test_sensitive_values_are_protected_from_model_prompts() {
+        let context = SnippetContext {
+            clipboard: Some("SUPER_SECRET_TOKEN_12345".to_string()),
+            selected_text: Some("PRIVATE SELECTION".to_string()),
+            protect_sensitive_values: true,
+            ..Default::default()
+        };
+
+        let snippets = vec![snippet(
+            "send secret",
+            "Auth: {{clipboard}} / Selected: {{selected_text}}",
+        )];
+
+        let mut r = apply_snippets_with_context("send secret", &snippets, &context);
+        // Prompt text does NOT contain the secret token!
+        assert!(!r.text.contains("SUPER_SECRET_TOKEN_12345"));
+        assert!(!r.text.contains("PRIVATE SELECTION"));
+        assert!(r.text.contains("__VOX_JOT_LOCAL_SLOT_"));
+        assert!(r.placeholders_intact_in(&r.text));
+        let duplicated = format!("{} {}", r.text, r.text);
+        assert!(!r.placeholders_intact_in(&duplicated));
+
+        // When restored after LLM run, the secret token returns intact
+        r.restore_sensitive_values();
+        assert_eq!(
+            r.text,
+            "Auth: SUPER_SECRET_TOKEN_12345 / Selected: PRIVATE SELECTION"
+        );
+    }
+
+    #[test]
+    fn sensitive_sources_are_requested_only_for_matching_snippets() {
+        let snippets = vec![
+            snippet("insert date", "{{date}}"),
+            snippet("insert link", "{{clipboard}}"),
+            snippet("wrap this", "{{selected_text}}"),
+        ];
+        assert_eq!(
+            required_dynamic_context("insert date", &snippets),
+            SnippetContextRequirements::default()
+        );
+        assert_eq!(
+            required_dynamic_context(
+                "spaced",
+                &[snippet("spaced", "{{ clipboard }} {{ selected_text }}")]
+            ),
+            SnippetContextRequirements {
+                clipboard: true,
+                selected_text: true
+            },
+        );
+        assert_eq!(
+            required_dynamic_context("please insert link", &snippets),
+            SnippetContextRequirements {
+                clipboard: true,
+                selected_text: false,
+            }
+        );
+    }
+
+    #[test]
+    fn protected_values_cannot_bypass_the_rendered_output_limit() {
+        let context = SnippetContext {
+            clipboard: Some("x".repeat(MAX_RENDERED_SNIPPET_OUTPUT_CHARS + 1)),
+            protect_sensitive_values: true,
+            ..Default::default()
+        };
+        let result = apply_snippets_with_context(
+            "insert clipboard",
+            &[snippet("insert clipboard", "{{clipboard}}")],
+            &context,
+        );
+        assert!(result.limit_exceeded);
+        assert_eq!(result.text, "insert clipboard");
+        assert!(result.sensitive_placeholders.is_empty());
+    }
+
+    #[test]
+    fn imports_report_unsupported_variables() {
+        let error = parse_snippet_import_json(r#"[{"trigger":"bad","expansion":"{{shell:rm}}"}]"#)
+            .unwrap_err();
+        assert!(error.contains("shell:rm"));
+    }
+
+    #[test]
+    fn unknown_variables_remain_literal() {
+        let rendered = apply_snippets("insert token", &[snippet("insert token", "{{unknown}}")]);
+        assert_eq!(rendered.text, "{{unknown}}");
     }
 }

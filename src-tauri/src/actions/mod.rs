@@ -28,7 +28,7 @@ use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::shortcut;
-use crate::snippets::apply_snippets;
+use crate::snippets::{apply_snippets_with_context, required_dynamic_context, SnippetContext};
 use crate::translation::{
     destination_label_for_dictation, dictation_requires_preview, normalize_language_code,
     selection_destination_label, selection_requires_preview, translate_text, TranslationOrigin,
@@ -38,15 +38,16 @@ use crate::tts::{
     build_auto_speak_plan, choose_readback_locale, normalize_locale, speak_on_dedicated_thread,
     SpeakRequest, TtsHistoryContext, TtsManager,
 };
-use crate::utils::{
-    self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
-};
+use crate::utils::{self, show_recording_overlay_with_mode};
 use crate::write_rules::apply_resolved_rule_to_settings;
 use crate::TranscriptionCoordinator;
 use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+};
 use std::time::Duration;
 use std::time::Instant;
 use tauri::Manager;
@@ -147,10 +148,159 @@ pub trait ShortcutAction: Send + Sync {
     fn stop(&self, app: &AppHandle, binding_id: &str, shortcut_str: &str);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum DictationMode {
+    Dictate { post_process: bool },
+    RewriteSelection,
+    Adaptive { post_process: bool },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DictationIntent {
+    Dictate {
+        post_process: bool,
+    },
+    RewriteSelection {
+        selected_text: String,
+        source: RewriteSelectionSource,
+        target_guard: Option<crate::clipboard::SelectionGuard>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RewriteSelectionSource {
+    ExplicitShortcut,
+    AdaptiveShortcut,
+}
+
+#[derive(Debug, Clone)]
+struct ActiveDictationIntent {
+    run_id: u64,
+    intent: DictationIntent,
+    selection_probe_pending: bool,
+}
+
+static NEXT_DICTATION_RUN_ID: AtomicU64 = AtomicU64::new(1);
+static ACTIVE_DICTATION_INTENTS: Lazy<Mutex<HashMap<String, ActiveDictationIntent>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn begin_active_dictation_intent(
+    binding_id: &str,
+    intent: DictationIntent,
+    selection_probe_pending: bool,
+) -> u64 {
+    let run_id = NEXT_DICTATION_RUN_ID.fetch_add(1, Ordering::Relaxed);
+    let mut guard = ACTIVE_DICTATION_INTENTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    guard.insert(
+        binding_id.to_string(),
+        ActiveDictationIntent {
+            run_id,
+            intent,
+            selection_probe_pending,
+        },
+    );
+    run_id
+}
+
+fn finish_selection_probe(binding_id: &str, run_id: u64, selected_text: Option<String>) -> bool {
+    finish_selection_probe_with_guard(binding_id, run_id, selected_text, None)
+}
+
+fn finish_selection_probe_with_guard(
+    binding_id: &str,
+    run_id: u64,
+    selected_text: Option<String>,
+    target_guard: Option<crate::clipboard::SelectionGuard>,
+) -> bool {
+    let mut guard = ACTIVE_DICTATION_INTENTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let Some(active) = guard.get_mut(binding_id) else {
+        return false;
+    };
+    if active.run_id != run_id || !active.selection_probe_pending {
+        return false;
+    }
+
+    if let Some(selected_text) = selected_text.filter(|text| !text.trim().is_empty()) {
+        active.intent = DictationIntent::RewriteSelection {
+            selected_text,
+            target_guard,
+            source: match &active.intent {
+                DictationIntent::RewriteSelection { source, .. } => *source,
+                DictationIntent::Dictate { .. } => RewriteSelectionSource::AdaptiveShortcut,
+            },
+        };
+    }
+    active.selection_probe_pending = false;
+    true
+}
+
+fn clear_active_dictation_intent(binding_id: &str, run_id: u64) {
+    let mut guard = ACTIVE_DICTATION_INTENTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if guard
+        .get(binding_id)
+        .is_some_and(|active| active.run_id == run_id)
+    {
+        guard.remove(binding_id);
+    }
+}
+
+pub(crate) fn clear_all_active_dictation_intents() {
+    ACTIVE_DICTATION_INTENTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clear();
+}
+
+fn take_active_dictation_intent(binding_id: &str, default_mode: &DictationMode) -> DictationIntent {
+    let mut guard = ACTIVE_DICTATION_INTENTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+
+    guard
+        .remove(binding_id)
+        .map(|active| {
+            if active.selection_probe_pending {
+                // Never delay microphone stop for an unfinished selection probe.
+                // For adaptive dictation, fail closed: treating this as normal
+                // dictation could paste spoken edit instructions over a real
+                // selection discovered by the late probe.
+                match active.intent {
+                    DictationIntent::Dictate { .. } => DictationIntent::RewriteSelection {
+                        selected_text: String::new(),
+                        source: RewriteSelectionSource::AdaptiveShortcut,
+                        target_guard: None,
+                    },
+                    rewrite => rewrite,
+                }
+            } else {
+                active.intent
+            }
+        })
+        .unwrap_or_else(|| match default_mode {
+            DictationMode::Dictate { post_process } => DictationIntent::Dictate {
+                post_process: *post_process,
+            },
+            DictationMode::Adaptive { post_process } => DictationIntent::Dictate {
+                post_process: *post_process,
+            },
+            DictationMode::RewriteSelection => DictationIntent::RewriteSelection {
+                selected_text: String::new(),
+                source: RewriteSelectionSource::ExplicitShortcut,
+                target_guard: None,
+            },
+        })
+}
+
 // Transcribe Action
 struct TranscribeAction {
-    post_process: bool,
-    rewrite_selection: bool,
+    mode: DictationMode,
 }
 
 struct TranslateSelectionAction;
@@ -167,12 +317,32 @@ async fn rewrite_selected_text(
     settings: &AppSettings,
     selected_text: &str,
     instruction: &str,
+    source: RewriteSelectionSource,
 ) -> Option<String> {
     let provider = settings.active_post_process_provider()?.clone();
-    if settings.local_privacy_mode && !post_process_provider_is_local(&provider) {
+    let is_local = post_process_provider_is_local(&provider);
+    if settings.local_privacy_mode && !is_local {
         warn!(
             "Local privacy mode blocked non-local provider '{}' for rewrite-selection",
             provider.id
+        );
+        let _ = app.emit(
+            "rewrite-error",
+            "Local privacy mode blocked cloud rewrite provider",
+        );
+        return None;
+    }
+    if !is_local
+        && source == RewriteSelectionSource::AdaptiveShortcut
+        && !settings.cloud_selection_rewrite_allowed
+    {
+        warn!(
+            "Cloud selection rewrite is disabled by privacy settings for provider '{}'",
+            provider.id
+        );
+        let _ = app.emit(
+            "rewrite-error",
+            "Cloud selection rewrite is disabled in Settings (requires explicit enablement)",
         );
         return None;
     }
@@ -728,9 +898,9 @@ impl ShortcutAction for TranscribeAction {
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
         let settings = get_settings(app);
-        if (self.post_process || self.rewrite_selection) && !settings.post_process_enabled {
+        if matches!(self.mode, DictationMode::RewriteSelection) && !settings.post_process_enabled {
             debug!(
-                "Ignoring post-process binding '{}' because post-processing is disabled",
+                "Ignoring rewrite-selection binding '{}' because post-processing is disabled",
                 binding_id
             );
             return;
@@ -742,15 +912,46 @@ impl ShortcutAction for TranscribeAction {
             }
         }
 
-        // Load after recording starts so rule URL capture cannot add start latency.
+        // Load/capture context only after recording starts so auxiliary work
+        // cannot add microphone activation latency.
         let tm = app.state::<Arc<TranscriptionManager>>();
-        if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
-            context_manager.request_immediate_capture("dictation_start");
-        }
 
         let binding_id = binding_id.to_string();
         change_tray_icon(app, TrayIconState::Recording);
-        show_recording_overlay(app);
+        let initial_overlay_mode = match self.mode {
+            DictationMode::RewriteSelection => "rewrite_selection",
+            _ => "dictate",
+        };
+        show_recording_overlay_with_mode(app, initial_overlay_mode);
+
+        let initial_intent = match self.mode {
+            DictationMode::RewriteSelection => DictationIntent::RewriteSelection {
+                selected_text: String::new(),
+                source: RewriteSelectionSource::ExplicitShortcut,
+                target_guard: None,
+            },
+            DictationMode::Dictate { post_process } => DictationIntent::Dictate { post_process },
+            DictationMode::Adaptive { post_process } => DictationIntent::Dictate { post_process },
+        };
+        let should_probe_selection = match self.mode {
+            DictationMode::RewriteSelection => true,
+            DictationMode::Adaptive { .. } => {
+                let provider_allows_adaptive_selection = settings
+                    .active_post_process_provider()
+                    .map(|provider| {
+                        post_process_provider_is_local(provider)
+                            || settings.cloud_selection_rewrite_allowed
+                    })
+                    .unwrap_or(false);
+                cfg!(target_os = "macos")
+                    && settings.adaptive_selection_rewrite_enabled
+                    && settings.post_process_enabled
+                    && provider_allows_adaptive_selection
+            }
+            DictationMode::Dictate { .. } => false,
+        };
+        let dictation_run_id =
+            begin_active_dictation_intent(&binding_id, initial_intent, should_probe_selection);
 
         let rm = app.state::<Arc<AudioRecordingManager>>();
 
@@ -808,6 +1009,76 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
+            if should_probe_selection {
+                let app_clone = app.clone();
+                let b_id_clone = binding_id.clone();
+                let passive_probe = matches!(self.mode, DictationMode::Adaptive { .. });
+                let target_pid = passive_probe
+                    .then(crate::clipboard::passive_selection_app_pid)
+                    .flatten();
+                std::thread::spawn(move || {
+                    if passive_probe {
+                        crate::clipboard::observe_selected_text_passive(target_pid, |result| {
+                            match result {
+                                Ok(selection) => {
+                                    let (selected, guard) = match selection {
+                                        Some((text, guard)) => (Some(text), Some(guard)),
+                                        None => (None, None),
+                                    };
+                                    let has_selection = selected.is_some();
+                                    if finish_selection_probe_with_guard(
+                                        &b_id_clone,
+                                        dictation_run_id,
+                                        selected,
+                                        guard,
+                                    ) && has_selection
+                                    {
+                                        crate::overlay::emit_overlay_mode(
+                                            &app_clone,
+                                            "rewrite_selection",
+                                        );
+                                    }
+                                }
+                                Err(error) => {
+                                    let _ = app_clone.emit("rewrite-error", error);
+                                }
+                            }
+                        });
+                        return;
+                    }
+                    let capture = crate::clipboard::capture_selected_text(&app_clone);
+                    let selected_text = match capture {
+                        Ok(Some(selected_text)) if !selected_text.trim().is_empty() => {
+                            debug!(
+                                "Selection snapshot captured: {} chars",
+                                selected_text.chars().count()
+                            );
+                            Some(selected_text)
+                        }
+                        Ok(_) => {
+                            debug!("No active selection captured for binding '{}'", b_id_clone);
+                            None
+                        }
+                        Err(err) => {
+                            warn!("Selection probe failed: {}", err);
+                            let _ = app_clone.emit("rewrite-error", err);
+                            // Keep this run unresolved so stop fails closed instead
+                            // of turning an unreadable selection into ordinary paste.
+                            return;
+                        }
+                    };
+
+                    let has_selection = selected_text.is_some();
+                    let probe_was_accepted =
+                        finish_selection_probe(&b_id_clone, dictation_run_id, selected_text);
+                    if has_selection && probe_was_accepted {
+                        crate::overlay::emit_overlay_mode(&app_clone, "rewrite_selection");
+                    }
+                });
+            }
+            if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
+                context_manager.request_immediate_capture("dictation_start");
+            }
             let prepared_context = capture_prepared_write_context(app, &settings);
             let resolved_rule = resolve_active_write_rule(&settings, &prepared_context);
             emit_write_rule_resolution(app, resolved_rule.as_ref());
@@ -831,6 +1102,7 @@ impl ShortcutAction for TranscribeAction {
             // Starting failed (for example due to blocked microphone permissions).
             // Revert UI state so we don't stay stuck in the recording overlay.
             tm.stop_partial_provider();
+            clear_active_dictation_intent(&binding_id, dictation_run_id);
             clear_prepared_active_app_context(&binding_id);
             utils::hide_recording_overlay(app);
             change_tray_icon(app, TrayIconState::Idle);
@@ -858,8 +1130,15 @@ impl ShortcutAction for TranscribeAction {
         let hm = Arc::clone(&app.state::<Arc<HistoryManager>>());
         let context_manager = Arc::clone(&app.state::<Arc<ContextCaptureManager>>());
 
+        let binding_id = binding_id.to_string();
+        let intent = take_active_dictation_intent(&binding_id, &self.mode);
+        let overlay_mode = if matches!(&intent, DictationIntent::RewriteSelection { .. }) {
+            "rewrite_selection"
+        } else {
+            "dictate"
+        };
         change_tray_icon(app, TrayIconState::Transcribing);
-        show_transcribing_overlay(app);
+        crate::overlay::show_overlay_state_with_mode(app, "transcribing", Some(overlay_mode));
 
         // Unmute before playing audio feedback so the stop sound is audible
         rm.remove_mute();
@@ -867,12 +1146,25 @@ impl ShortcutAction for TranscribeAction {
         // Play audio feedback for recording stop
         play_feedback_sound(app, SoundType::Stop);
 
-        let binding_id = binding_id.to_string(); // Clone binding_id for the async task
-        let post_process = self.post_process;
-        let rewrite_selection = self.rewrite_selection;
         let processing_generation = tm.begin_processing_run();
 
         tauri::async_runtime::spawn(async move {
+            let (
+                post_process,
+                rewrite_selection,
+                captured_selection,
+                rewrite_source,
+                selection_guard,
+            ) = match intent {
+                DictationIntent::RewriteSelection {
+                    selected_text,
+                    source,
+                    target_guard,
+                } => (true, true, Some(selected_text), Some(source), target_guard),
+                DictationIntent::Dictate { post_process } => {
+                    (post_process, false, None, None, None)
+                }
+            };
             // Held in an Option so we can transfer ownership into the main-thread
             // paste closure. If the pipeline exits before scheduling a paste, the
             // guard drops here and ProcessingFinished fires. If paste is scheduled,
@@ -946,12 +1238,49 @@ impl ShortcutAction for TranscribeAction {
                         .unwrap_or(post_process)
                 };
 
+                // Merge auto-learned corrections into the personal dictionary early
+                // so both ASR context hints and post-ASR corrections benefit.
+                if let Some(correction_store) = ah.try_state::<Arc<CorrectionStore>>() {
+                    let merged =
+                        crate::correction_tracker::store::build_effective_personal_dictionary(
+                            &effective_settings,
+                            correction_store.as_ref(),
+                            active_app_context
+                                .as_ref()
+                                .map(|ctx| ctx.bundle_id.as_str()),
+                        );
+                    if merged != effective_settings.personal_dictionary {
+                        debug!("Merged correction-store entries into personal dictionary");
+                    }
+                    effective_settings.personal_dictionary = merged;
+                }
+
+                // Decoder hints may only use the existing cache here. The full
+                // context resolver performs Accessibility IPC, so it remains
+                // after ASR as before and cannot inflate engine inference.
+                let asr_hints = if tm.supports_asr_context_hints(&effective_settings.selected_model)
+                {
+                    let asr_screen_context = context_manager.resolve_cached_context_for_asr(
+                        &effective_settings,
+                        active_app_context.as_ref(),
+                    );
+                    crate::context_hints::build_asr_context_hints(
+                        &effective_settings,
+                        asr_screen_context.as_ref(),
+                        active_app_context.as_ref(),
+                        &effective_settings.personal_dictionary,
+                    )
+                } else {
+                    None
+                };
+
                 let transcription_result = {
                     let tm_for_transcription = Arc::clone(&tm);
                     let transcribe_settings = effective_settings.clone();
                     let transcribe_model_id = transcribe_settings.selected_model.clone();
                     let transcribe_binding_id = binding_id.clone();
                     let samples_for_transcription = Arc::clone(&samples);
+                    let asr_hints_for_worker = asr_hints.clone();
                     tokio::task::spawn_blocking(move || {
                         if let Some((streamed_text, streaming_finalize_ms)) = tm_for_transcription
                             .finish_partial_provider(
@@ -970,6 +1299,7 @@ impl ShortcutAction for TranscribeAction {
                             tm_for_transcription.transcribe_with_settings_timed(
                                 samples_for_transcription,
                                 transcribe_settings,
+                                asr_hints_for_worker.as_ref(),
                             )
                         }
                     })
@@ -982,7 +1312,9 @@ impl ShortcutAction for TranscribeAction {
                 match transcription_result {
                     Ok(transcription_outcome) => {
                         let transcription_elapsed = transcription_time.elapsed();
+                        let asr_prompt_biasing_used = transcription_outcome.asr_prompt_biasing_used;
                         let timing = transcription_outcome.timing;
+                        let timed_segments = transcription_outcome.segments;
                         let transcription = transcription_outcome.text;
                         crate::product_architecture::record_dictation_latency(
                             "model_ready_wait",
@@ -1021,6 +1353,10 @@ impl ShortcutAction for TranscribeAction {
                             ) {
                                 return;
                             }
+                            let screen_context = context_manager.resolve_context_for_dictation(
+                                &effective_settings,
+                                active_app_context.clone(),
+                            );
                             let mut final_text = transcription.clone();
                             let mut post_processed_text: Option<String> = None;
                             let mut post_process_prompt: Option<String> = None;
@@ -1049,36 +1385,17 @@ impl ShortcutAction for TranscribeAction {
                                 && effective_settings.post_process_enabled
                                 && effective_settings.post_process_cleanup_level.should_run()
                                 && !rewrite_selection;
-                            // Always capture app context — needed for correction tracking
-                            // and field snapshots, not just post-processing.
-                            let screen_context = context_manager.resolve_context_for_dictation(
-                                &effective_settings,
-                                active_app_context.clone(),
-                            );
                             let mut context_impact = ContextImpactMetadata::default();
                             let screen_context_summary = screen_context
                                 .as_ref()
                                 .map(|packet| summarize_packet_for_prompt(packet, false))
                                 .filter(|summary| !summary.trim().is_empty());
-                            if should_post_process {
-                                show_processing_overlay(&ah);
-                            }
-
-                            // Merge auto-learned corrections into the personal dictionary
-                            // and always include user-approved manual corrections
-                            // from the corrections store.
-                            if let Some(correction_store) = ah.try_state::<Arc<CorrectionStore>>() {
-                                let merged = crate::correction_tracker::store::build_effective_personal_dictionary(
-                                    &effective_settings,
-                                    correction_store.as_ref(),
-                                    active_app_context.as_ref().map(|ctx| ctx.bundle_id.as_str()),
+                            if should_post_process || rewrite_selection {
+                                crate::overlay::show_overlay_state_with_mode(
+                                    &ah,
+                                    "processing",
+                                    Some(overlay_mode),
                                 );
-                                if merged != effective_settings.personal_dictionary {
-                                    debug!(
-                                        "Merged correction-store entries into personal dictionary"
-                                    );
-                                }
-                                effective_settings.personal_dictionary = merged;
                             }
 
                             // Always apply personal dictionary (including learned corrections)
@@ -1110,13 +1427,103 @@ impl ShortcutAction for TranscribeAction {
                                 dictionary_hits_for_history.extend(contextual_hits);
                             }
 
-                            // Apply snippet expansions (after dictionary, before post-processing)
-                            if effective_settings.snippets_enabled
+                            // Deterministic spoken retraction before snippets, translation, LLM, and paste
+                            let retraction_result = crate::spoken_edits::apply_spoken_retraction(
+                                &final_text,
+                                &timed_segments,
+                            );
+                            let paste_aborted_by_retraction = matches!(
+                                &retraction_result,
+                                crate::spoken_edits::RetractionResult::AbortPaste { .. }
+                            );
+                            let mut spoken_retraction_metadata = None;
+                            match retraction_result {
+                                crate::spoken_edits::RetractionResult::AbortPaste {
+                                    reason,
+                                    cue_count,
+                                    ..
+                                } => {
+                                    info!("Spoken retraction aborted paste: {}", reason);
+                                    spoken_retraction_metadata = Some(
+                                        crate::managers::history::SpokenRetractionHistoryMetadata {
+                                            outcome: "aborted".to_string(),
+                                            cue_count,
+                                            removed_character_count: 0,
+                                        },
+                                    );
+                                    crate::overlay::emit_partial_transcription(&ah, "Retracted");
+                                }
+                                crate::spoken_edits::RetractionResult::Edited {
+                                    text,
+                                    removed_span,
+                                    cue_count,
+                                } => {
+                                    info!(
+                                        "Applied {} spoken retraction cue(s), removing {} characters",
+                                        cue_count,
+                                        removed_span.chars().count()
+                                    );
+                                    spoken_retraction_metadata = Some(
+                                        crate::managers::history::SpokenRetractionHistoryMetadata {
+                                            outcome: "edited".to_string(),
+                                            cue_count,
+                                            removed_character_count: removed_span.chars().count(),
+                                        },
+                                    );
+                                    final_text = text;
+                                }
+                                crate::spoken_edits::RetractionResult::Unchanged(_) => {}
+                            }
+
+                            // Apply snippet expansions (after dictionary and retraction, before post-processing)
+                            let mut snippet_placeholders = std::collections::HashMap::new();
+                            let mut snippet_fallback_text: Option<String> = None;
+                            if !paste_aborted_by_retraction
+                                && effective_settings.snippets_enabled
                                 && !effective_settings.snippets.is_empty()
                             {
-                                let snippet_result =
-                                    apply_snippets(&final_text, &effective_settings.snippets);
-                                if snippet_result.text != final_text {
+                                let requirements = required_dynamic_context(
+                                    &final_text,
+                                    &effective_settings.snippets,
+                                );
+                                let clipboard = requirements
+                                    .clipboard
+                                    .then(|| crate::clipboard::get_clipboard_text(&ah))
+                                    .flatten();
+                                let selected_text = if requirements.selected_text {
+                                    captured_selection.clone().or_else(|| {
+                                        crate::clipboard::capture_selected_text(&ah).unwrap_or(None)
+                                    })
+                                } else {
+                                    None
+                                };
+
+                                let snippet_context = SnippetContext {
+                                    clipboard,
+                                    selected_text,
+                                    now: None,
+                                    locale: Some(effective_settings.app_language.clone()),
+                                    // Keep local values opaque for every model route. They
+                                    // are restored only after model/translation work.
+                                    protect_sensitive_values: true,
+                                };
+
+                                let snippet_result = apply_snippets_with_context(
+                                    &final_text,
+                                    &effective_settings.snippets,
+                                    &snippet_context,
+                                );
+                                if snippet_result.limit_exceeded {
+                                    warn!(
+                                        "Phrase Key expansion exceeded the output limit; leaving the spoken trigger unchanged"
+                                    );
+                                    let _ = ah.emit(
+                                        "recording-error",
+                                        "Phrase Key expansion was skipped because it exceeded the 64,000-character safety limit.",
+                                    );
+                                } else if snippet_result.text != final_text {
+                                    snippet_placeholders =
+                                        snippet_result.sensitive_placeholders.clone();
                                     debug!(
                                         "Applied {} snippet expansion(s)",
                                         snippet_result.hits.len()
@@ -1135,39 +1542,41 @@ impl ShortcutAction for TranscribeAction {
                                         .map(|snippet| snippet.trigger.clone())
                                         .collect();
                                     final_text = snippet_result.text;
+                                    snippet_fallback_text = Some(final_text.clone());
                                 }
                             }
 
                             let source_language_hint = normalize_language_code(Some(
                                 &effective_settings.selected_language,
                             ));
-                            let mut translation_execution = if rewrite_selection {
-                                None
-                            } else {
-                                if dictation_run_cancelled(
-                                    &tm,
-                                    processing_generation,
-                                    "before translation",
-                                ) {
-                                    return;
-                                }
-                                match translate_text(
-                                    &ah,
-                                    &effective_settings,
-                                    &final_text,
-                                    source_language_hint.as_deref(),
-                                    TranslationOrigin::Dictation,
-                                )
-                                .await
-                                {
-                                    Ok(execution) => Some(execution),
-                                    Err(err) => {
-                                        warn!("Translation failed: {}", err);
-                                        let _ = ah.emit("translation-error", err.clone());
-                                        None
+                            let mut translation_execution =
+                                if rewrite_selection || paste_aborted_by_retraction {
+                                    None
+                                } else {
+                                    if dictation_run_cancelled(
+                                        &tm,
+                                        processing_generation,
+                                        "before translation",
+                                    ) {
+                                        return;
                                     }
-                                }
-                            };
+                                    match translate_text(
+                                        &ah,
+                                        &effective_settings,
+                                        &final_text,
+                                        source_language_hint.as_deref(),
+                                        TranslationOrigin::Dictation,
+                                    )
+                                    .await
+                                    {
+                                        Ok(execution) => Some(execution),
+                                        Err(err) => {
+                                            warn!("Translation failed: {}", err);
+                                            let _ = ah.emit("translation-error", err.clone());
+                                            None
+                                        }
+                                    }
+                                };
 
                             if dictation_run_cancelled(
                                 &tm,
@@ -1183,7 +1592,7 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
-                            let safe_plain_text_fallback = translation_execution
+                            let mut safe_plain_text_fallback = translation_execution
                                 .as_ref()
                                 .and_then(|execution| {
                                     execution
@@ -1193,13 +1602,17 @@ impl ShortcutAction for TranscribeAction {
                                 })
                                 .unwrap_or_else(|| final_text.clone());
 
-                            let mut text_to_paste = Some(final_text.clone());
+                            let mut text_to_paste = if paste_aborted_by_retraction {
+                                None
+                            } else {
+                                Some(final_text.clone())
+                            };
                             let post_process_input = translation_execution
                                 .as_ref()
                                 .and_then(|execution| execution.translated_text.clone())
                                 .unwrap_or_else(|| final_text.clone());
 
-                            let processed = if should_post_process {
+                            let processed = if should_post_process && !paste_aborted_by_retraction {
                                 if dictation_run_cancelled(
                                     &tm,
                                     processing_generation,
@@ -1363,13 +1776,24 @@ impl ShortcutAction for TranscribeAction {
                                 ) {
                                     return;
                                 }
-                                match utils::capture_selected_text(&ah) {
-                                    Ok(Some(selected_text)) => {
+                                // Use only the activation-time snapshot. Re-reading the
+                                // selection here could rewrite text from a different app or
+                                // focus target after the user finished speaking.
+                                let selection_to_rewrite = captured_selection
+                                    .as_ref()
+                                    .filter(|text| !text.trim().is_empty())
+                                    .cloned();
+
+                                match selection_to_rewrite {
+                                    Some(selected_text) if !selected_text.trim().is_empty() => {
                                         if let Some(rewritten) = rewrite_selected_text(
                                             &ah,
                                             &effective_settings,
                                             &selected_text,
                                             &final_text,
+                                            rewrite_source.unwrap_or(
+                                                RewriteSelectionSource::ExplicitShortcut,
+                                            ),
                                         )
                                         .await
                                         {
@@ -1377,19 +1801,19 @@ impl ShortcutAction for TranscribeAction {
                                             post_processed_text = Some(final_text.clone());
                                         } else {
                                             warn!(
-                                                "Rewrite-selection failed; keeping selected text unchanged"
+                                                "Rewrite-selection failed or blocked by policy; leaving selection untouched"
                                             );
                                             text_to_paste = None;
                                         }
                                     }
-                                    Ok(None) => {
+                                    _ => {
                                         warn!(
-                                            "Rewrite-selection shortcut used without selected text"
+                                            "Rewrite-selection triggered without selected text; keeping selection untouched"
                                         );
-                                        text_to_paste = None;
-                                    }
-                                    Err(err) => {
-                                        error!("Failed to capture selected text: {}", err);
+                                        let _ = ah.emit(
+                                            "rewrite-error",
+                                            "No text selection was captured when dictation started.",
+                                        );
                                         text_to_paste = None;
                                     }
                                 }
@@ -1399,6 +1823,59 @@ impl ShortcutAction for TranscribeAction {
                                     "after selection rewrite",
                                 ) {
                                     return;
+                                }
+                            }
+
+                            if !snippet_placeholders.is_empty() {
+                                let slots_intact = |value: &str| {
+                                    snippet_placeholders.keys().all(|placeholder| {
+                                        value.match_indices(placeholder).count() == 1
+                                    })
+                                };
+                                let output_slots_intact = slots_intact(&final_text)
+                                    && text_to_paste.as_deref().is_none_or(slots_intact);
+
+                                if !output_slots_intact {
+                                    warn!(
+                                        "A model altered a protected Phrase Key slot; rejecting model output"
+                                    );
+                                    let _ = ah.emit(
+                                        "recording-error",
+                                        "AI processing changed a protected Phrase Key variable. The AI result was discarded so local clipboard or selection data was not lost.",
+                                    );
+                                    post_processed_text = None;
+                                    if rewrite_selection {
+                                        // Never paste the spoken instruction over the
+                                        // original selection when rewrite safety fails.
+                                        text_to_paste = None;
+                                    } else if let Some(fallback) = snippet_fallback_text.clone() {
+                                        final_text = fallback.clone();
+                                        text_to_paste = Some(fallback);
+                                    }
+                                }
+
+                                let restore = |value: &str| {
+                                    snippet_placeholders.iter().fold(
+                                        value.to_string(),
+                                        |restored, (placeholder, local_value)| {
+                                            restored.replace(placeholder, local_value)
+                                        },
+                                    )
+                                };
+                                final_text = restore(&final_text);
+                                safe_plain_text_fallback = restore(&safe_plain_text_fallback);
+                                if let Some(value) = text_to_paste.as_mut() {
+                                    *value = restore(value);
+                                }
+                                if let Some(value) = post_processed_text.as_mut() {
+                                    *value = restore(value);
+                                }
+                                if let Some(execution) = translation_execution.as_mut() {
+                                    execution.source_text = restore(&execution.source_text);
+                                    execution.final_text = restore(&execution.final_text);
+                                    if let Some(value) = execution.translated_text.as_mut() {
+                                        *value = restore(value);
+                                    }
                                 }
                             }
 
@@ -1543,6 +2020,16 @@ impl ShortcutAction for TranscribeAction {
                                                     .unwrap_or(true),
                                             ),
                                         changed_output: context_impact.context_changed_output,
+                                        asr_prompt_biasing_used,
+                                        dictation_intent: Some(
+                                            if rewrite_selection {
+                                                "rewrite_selection"
+                                            } else {
+                                                "dictate"
+                                            }
+                                            .to_string(),
+                                        ),
+                                        spoken_retraction: spoken_retraction_metadata,
                                     }),
                                 field_snapshot_app_id: active_app_context
                                     .as_ref()
@@ -1557,6 +2044,38 @@ impl ShortcutAction for TranscribeAction {
                                 ) {
                                     return;
                                 }
+                                // Revalidate the activation-time selection immediately before
+                                // scheduling the paste. Adaptive selection uses its AX observer
+                                // plus an exact text read; the explicit shortcut uses the same
+                                // clipboard snapshot mechanism it supports across otherwise
+                                // inaccessible fields. Any read failure fails closed.
+                                let selection_changed_before_paste = match rewrite_source {
+                                    Some(RewriteSelectionSource::AdaptiveShortcut) => {
+                                        let guard = selection_guard.clone();
+                                        tokio::task::spawn_blocking(move || {
+                                            guard.is_none_or(|guard| !guard.is_valid())
+                                        })
+                                        .await
+                                        .unwrap_or(true)
+                                    }
+                                    Some(RewriteSelectionSource::ExplicitShortcut) => {
+                                        let expected = captured_selection.clone();
+                                        let app = ah.clone();
+                                        tokio::task::spawn_blocking(move || {
+                                            let Some(expected) = expected else {
+                                                return true;
+                                            };
+                                            crate::clipboard::capture_selected_text(&app)
+                                                .ok()
+                                                .flatten()
+                                                .as_deref()
+                                                != Some(expected.as_str())
+                                        })
+                                        .await
+                                        .unwrap_or(true)
+                                    }
+                                    None => false,
+                                };
                                 let correction_monitoring_request = if effective_settings
                                     .correction_tracking_enabled
                                     && effective_settings.paste_method
@@ -1620,7 +2139,22 @@ impl ShortcutAction for TranscribeAction {
                                     ) {
                                         return;
                                     }
-                                    let paste_result = if let Some(submit_key) = submit_override {
+                                    let selection_changed = if rewrite_source == Some(RewriteSelectionSource::AdaptiveShortcut) {
+                                        selection_changed_before_paste
+                                            || selection_guard
+                                                .as_ref()
+                                                .is_none_or(|guard| !guard.is_observer_valid())
+                                    } else {
+                                        selection_changed_before_paste
+                                            || selection_guard.as_ref().is_some_and(|guard| {
+                                                !guard.is_observer_valid()
+                                            })
+                                    };
+                                    let paste_result = if selection_changed {
+                                        let message = "Selection or focus changed while the rewrite was running. Nothing was replaced; the result is saved in History.".to_string();
+                                        let _ = ah_clone.emit("rewrite-error", &message);
+                                        Err(message)
+                                    } else if let Some(submit_key) = submit_override {
                                         utils::paste_with_settings_and_submit_override(
                                             text_for_paste,
                                             ah_clone.clone(),
@@ -1903,6 +2437,75 @@ mod tests {
         WriteRuleOverrides,
     };
     use crate::settings::{get_default_settings, AutoSubmitKey};
+
+    #[test]
+    fn adaptive_selection_probe_is_bound_to_its_recording() {
+        let binding = "test-adaptive-selection-run";
+        let mode = super::DictationMode::Adaptive {
+            post_process: false,
+        };
+        let initial = super::DictationIntent::Dictate {
+            post_process: false,
+        };
+        let old_run = super::begin_active_dictation_intent(binding, initial.clone(), true);
+        let current_run = super::begin_active_dictation_intent(binding, initial, true);
+        assert!(!super::finish_selection_probe(
+            binding,
+            old_run,
+            Some("stale text".into())
+        ));
+        assert!(super::finish_selection_probe(
+            binding,
+            current_run,
+            Some("current text".into())
+        ));
+        assert!(!super::finish_selection_probe(
+            binding,
+            current_run,
+            Some("second result".into())
+        ));
+        assert_eq!(
+            super::take_active_dictation_intent(binding, &mode),
+            super::DictationIntent::RewriteSelection {
+                selected_text: "current text".into(),
+                source: super::RewriteSelectionSource::AdaptiveShortcut,
+                target_guard: None,
+            },
+        );
+        assert!(!super::finish_selection_probe(
+            binding,
+            current_run,
+            Some("late text".into())
+        ));
+    }
+
+    #[test]
+    fn unfinished_adaptive_probe_fails_closed_without_waiting() {
+        let binding = "test-adaptive-selection-pending";
+        let mode = super::DictationMode::Adaptive {
+            post_process: false,
+        };
+        let run = super::begin_active_dictation_intent(
+            binding,
+            super::DictationIntent::Dictate {
+                post_process: false,
+            },
+            true,
+        );
+        assert_eq!(
+            super::take_active_dictation_intent(binding, &mode),
+            super::DictationIntent::RewriteSelection {
+                selected_text: String::new(),
+                source: super::RewriteSelectionSource::AdaptiveShortcut,
+                target_guard: None,
+            },
+        );
+        assert!(!super::finish_selection_probe(
+            binding,
+            run,
+            Some("late text".into())
+        ));
+    }
 
     #[test]
     fn apple_prompt_uses_selected_mode_and_strength() {
@@ -2642,22 +3245,21 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
     map.insert(
         "transcribe".to_string(),
         Arc::new(TranscribeAction {
-            post_process: false,
-            rewrite_selection: false,
+            mode: DictationMode::Adaptive {
+                post_process: false,
+            },
         }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "transcribe_with_post_process".to_string(),
         Arc::new(TranscribeAction {
-            post_process: true,
-            rewrite_selection: false,
+            mode: DictationMode::Adaptive { post_process: true },
         }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "rewrite_selection".to_string(),
         Arc::new(TranscribeAction {
-            post_process: true,
-            rewrite_selection: true,
+            mode: DictationMode::RewriteSelection,
         }) as Arc<dyn ShortcutAction>,
     );
     map.insert(

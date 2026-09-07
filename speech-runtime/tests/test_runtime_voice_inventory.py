@@ -408,6 +408,7 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
 
         self.assertEqual([voice["id"] for voice in voices], ["M1", "M5", "F2"])
         self.assertEqual(voices[0]["label"], "Male 1")
+        self.assertEqual(voices[0]["locale"], "mul")
         self.assertTrue(all(voice["installed"] for voice in voices))
 
     def test_supertonic_locale_and_voice_fallbacks_match_model_support(self):

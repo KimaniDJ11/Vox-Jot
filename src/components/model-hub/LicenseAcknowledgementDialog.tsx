@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  Download,
   ExternalLink,
   Loader2,
   ShieldCheck,
@@ -158,7 +157,7 @@ const LicenseAcknowledgementDialog: React.FC<
                   })
                 : t("modelHub.licenseGate.description", {
                     defaultValue:
-                      "{{modelName}} is distributed under {{licenseLabel}}. Review the publisher terms before downloading.",
+                      "{{modelName}} is distributed under {{licenseLabel}}. Review the publisher terms before downloading or using it.",
                     modelName,
                     licenseLabel: gate.licenseLabel,
                   })}
@@ -296,10 +295,10 @@ const LicenseAcknowledgementDialog: React.FC<
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
-              <Download className="h-3.5 w-3.5" aria-hidden />
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
             )}
-            {t("modelHub.licenseGate.download", {
-              defaultValue: "Download",
+            {t("modelHub.licenseGate.continue", {
+              defaultValue: "Continue",
             })}
           </Button>
         </div>

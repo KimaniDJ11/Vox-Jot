@@ -67,6 +67,7 @@ reqwest = { version = "0.13", features = ["json", "stream", "blocking", "multipa
 ureq = { version = "3.3", features = ["multipart"] }
 tungstenite = "0.30.0"
 dirs = "6"
+tempfile = "3"
 futures-util = "0.3"
 rustfft = "6.4.0"
 nnnoiseless = { version = "0.5.2", default-features = false }
@@ -156,7 +157,6 @@ png = "0.18"
 transcribe-rs = { version = "0.3.11", default-features = false, features = ["onnx", "whisper-cpp"], optional = true }
 
 [dev-dependencies]
-tempfile = "3"
 tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
 
 # crates.io 0.31.10 still pins vulnerable quick-xml 0.39.4. This public fork

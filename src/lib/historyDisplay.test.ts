@@ -57,6 +57,10 @@ const baseEntry = (overrides: Partial<HistoryEntry> = {}): HistoryEntry => ({
   speaker_segments_json: null,
   speaker_transcript_text: null,
   speaker_display_names_json: null,
+  markdown_export_status: "not_requested",
+  markdown_export_path: null,
+  markdown_export_error: null,
+  markdown_exported_at: null,
   ...overrides,
 });
 

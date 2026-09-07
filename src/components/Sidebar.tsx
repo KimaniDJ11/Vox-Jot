@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings } from "lucide-react";
 import { LayoutGroup } from "framer-motion";
+import { MeetingRecordingStatus } from "@/components/meetings/MeetingRecordingStatus";
 
 import SidebarModelLaunchers, {
   MODEL_HUB_ROW_ID,
@@ -188,6 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
 
           <div className="sidebar__lower-stack">
+            <MeetingRecordingStatus />
             <div className="sidebar__footer mt-4 flex flex-col gap-0.5 pt-3">
               {showStatusCards ? (
                 <SidebarModelLaunchers

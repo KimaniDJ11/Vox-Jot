@@ -24,6 +24,11 @@ type OverlayStyle = "compact" | "detailed" | "minimal" | "notch";
 interface ShowOverlayPayload {
   state: OverlayState;
   style: OverlayStyle;
+  mode?: "dictate" | "rewrite_selection";
+}
+
+interface OverlayModePayload {
+  mode: "dictate" | "rewrite_selection";
 }
 
 interface CorrectionOverlayPayload {
@@ -254,6 +259,9 @@ const RecordingOverlay: React.FC = () => {
   const [matchedRule, setMatchedRule] = useState<ResolvedWriteRule | null>(
     null,
   );
+  const [overlayMode, setOverlayMode] = useState<
+    "dictate" | "rewrite_selection"
+  >("dictate");
   const direction = getLanguageDirection(i18n.language);
 
   const isCompact = style === "compact";
@@ -320,8 +328,13 @@ const RecordingOverlay: React.FC = () => {
     const payload = event.payload;
     setState(payload.state);
     setStyle(payload.style);
+    setOverlayMode(payload.mode || "dictate");
     setCorrection(null);
     setIsVisible(true);
+  });
+
+  useTauriEvent<OverlayModePayload>("overlay-mode", (event) => {
+    setOverlayMode(event.payload.mode);
   });
 
   useTauriEvent<CorrectionOverlayPayload>(
@@ -338,6 +351,7 @@ const RecordingOverlay: React.FC = () => {
     setCorrection(null);
     setPartialText("");
     setMatchedRule(null);
+    setOverlayMode("dictate");
     clearScreenContextPulse();
   });
 
@@ -432,13 +446,24 @@ const RecordingOverlay: React.FC = () => {
     screenContextPulseVisible &&
     screenContextStatus !== "disabled" &&
     screenContextStatus !== "excluded_app";
+  const isEditingSelection = overlayMode === "rewrite_selection";
   const statusLabel = correction
     ? t("overlay.correctionPreview", { defaultValue: "Correction preview" })
-    : state === "recording"
-      ? t("overlay.recording")
-      : state === "transcribing"
-        ? t("overlay.transcribing")
-        : t("overlay.processing");
+    : isEditingSelection
+      ? state === "recording"
+        ? t("overlay.editingSelection", { defaultValue: "Editing selection" })
+        : state === "transcribing"
+          ? t("overlay.transcribingSelectionEdit", {
+              defaultValue: "Transcribing selection edit",
+            })
+          : t("overlay.applyingSelectionEdit", {
+              defaultValue: "Applying selection edit",
+            })
+      : state === "recording"
+        ? t("overlay.recording")
+        : state === "transcribing"
+          ? t("overlay.transcribing")
+          : t("overlay.processing");
 
   return (
     <AnimatePresence>
@@ -450,6 +475,7 @@ const RecordingOverlay: React.FC = () => {
             isCompact ? "recording-overlay--compact" : "",
             isMinimal ? "recording-overlay--minimal" : "",
             isNotch ? "recording-overlay--notch" : "",
+            isEditingSelection ? "recording-overlay--selection-edit" : "",
             correction ? "recording-overlay--correction" : "",
             !isCompact && !isMinimal && !isNotch && state === "recording"
               ? "is-interactive"
@@ -468,20 +494,25 @@ const RecordingOverlay: React.FC = () => {
           {correction ? (
             <CorrectionBody payload={correction} />
           ) : isMinimal ? (
-            // Minimal: just a single dot — pulsing while recording,
-            // amber while transcribing, slow while post-processing.
-            <span
-              className={`overlay-dot overlay-dot--${state}`}
-              aria-label={
-                state === "recording"
-                  ? t("overlay.recording")
-                  : state === "transcribing"
-                    ? t("overlay.transcribing")
-                    : t("overlay.processing")
-              }
-            />
+            isEditingSelection ? (
+              <span
+                className={`overlay-edit-glyph overlay-edit-glyph--${state}`}
+                aria-label={statusLabel}
+              >
+                E
+              </span>
+            ) : (
+              <span
+                className={`overlay-dot overlay-dot--${state}`}
+                aria-label={statusLabel}
+              />
+            )
           ) : isCompact || isNotch ? (
-            <CompactBody state={state} canvasRef={canvasRef} />
+            <CompactBody
+              state={state}
+              isEditingSelection={isEditingSelection}
+              canvasRef={canvasRef}
+            />
           ) : (
             <>
               <div
@@ -498,7 +529,19 @@ const RecordingOverlay: React.FC = () => {
                       aria-hidden
                     />
                     <div className="overlay-meta-row">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                        {isEditingSelection && (
+                          <span
+                            className="inline-flex flex-shrink-0 items-center rounded border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text)]"
+                            title={t("overlay.editingSelection", {
+                              defaultValue: "Editing selection",
+                            })}
+                          >
+                            {t("overlay.editingSelection", {
+                              defaultValue: "Editing selection",
+                            })}
+                          </span>
+                        )}
                         {partialText.trim().length > 0 ? (
                           <div className="partial-text" title={partialText}>
                             {partialText}
@@ -525,9 +568,7 @@ const RecordingOverlay: React.FC = () => {
                   <div className="overlay-meta-row">
                     <div className="status-text">
                       <span className="status-dot" />
-                      {state === "transcribing"
-                        ? t("overlay.transcribing")
-                        : t("overlay.processing")}
+                      {statusLabel}
                     </div>
                     <ScreenContextPulse visible={showScreenContextPulse} />
                   </div>
@@ -554,12 +595,31 @@ const RecordingOverlay: React.FC = () => {
 
 const CompactBody: React.FC<{
   state: OverlayState;
+  isEditingSelection: boolean;
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
-}> = ({ state, canvasRef }) => {
+}> = ({ state, isEditingSelection, canvasRef }) => {
+  const { t } = useTranslation();
+  const editLabel = t("overlay.selectionEditShort", {
+    defaultValue: "Edit",
+  });
   if (state === "recording") {
-    return <canvas ref={canvasRef} className="waveform-canvas" aria-hidden />;
+    return (
+      <div className="flex items-center gap-1.5">
+        {isEditingSelection && (
+          <span className="overlay-edit-label">{editLabel}</span>
+        )}
+        <canvas ref={canvasRef} className="waveform-canvas" aria-hidden />
+      </div>
+    );
   }
-  return <span className="status-dot" />;
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="status-dot" />
+      {isEditingSelection && (
+        <span className="overlay-edit-label">{editLabel}</span>
+      )}
+    </span>
+  );
 };
 
 const ScreenContextPulse: React.FC<{ visible: boolean }> = ({ visible }) => {

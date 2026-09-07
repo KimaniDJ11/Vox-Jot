@@ -1,9 +1,9 @@
 use crate::audio_toolkit::{
     ducking::AudioDucker, list_input_devices, vad::SmoothedVad, AudioEnhancementConfig,
-    AudioRecorder, SileroVad,
+    AudioRecorder, SileroVad, VadFallbackConfig,
 };
 use crate::helpers::clamshell;
-use crate::settings::{get_settings, AppSettings};
+use crate::settings::{get_settings, AcousticProfile, AppSettings};
 use crate::utils;
 use log::{debug, error, info, warn};
 use std::path::PathBuf;
@@ -236,15 +236,36 @@ fn create_audio_recorder(
     stream_failed: Arc<AtomicBool>,
 ) -> Result<AudioRecorder, anyhow::Error> {
     let settings = get_settings(app_handle);
-    let silero = SileroVad::new(vad_path, 0.3)
+    let is_quiet = settings.acoustic_profile == AcousticProfile::Quiet;
+
+    // Normal remains neutral at the pre-gain stage. Quiet / Whisper uses a
+    // moderately lower VAD threshold, longer context, and a bounded 2x gain.
+    let (vad_threshold, prefill_frames, hangover_frames, onset_frames, pre_gain) = if is_quiet {
+        (0.20, 20, 25, 1, 2.0f32)
+    } else {
+        (0.30, 15, 15, 2, 1.0f32)
+    };
+
+    let silero = SileroVad::new(vad_path, vad_threshold)
         .map_err(|e| anyhow::anyhow!("Failed to create SileroVad: {}", e))?;
-    let smoothed_vad = SmoothedVad::new(Box::new(silero), 15, 15, 2);
+    let smoothed_vad = SmoothedVad::new(
+        Box::new(silero),
+        prefill_frames,
+        hangover_frames,
+        onset_frames,
+    );
 
     // Recorder with VAD plus a spectrum-level callback that forwards updates to
     // the frontend.
     let recorder = AudioRecorder::new()
         .map_err(|e| anyhow::anyhow!("Failed to create AudioRecorder: {}", e))?
         .with_vad(Box::new(smoothed_vad))
+        .with_pre_gain(pre_gain)
+        .with_vad_fallback_config(if is_quiet {
+            VadFallbackConfig::quiet()
+        } else {
+            VadFallbackConfig::default()
+        })
         .with_level_callback({
             let app_handle = app_handle.clone();
             move |levels| {
@@ -770,6 +791,36 @@ impl AudioRecordingManager {
 
         if was_open {
             self.start_microphone_stream()?;
+        }
+        Ok(())
+    }
+
+    pub fn update_acoustic_profile(&self, profile: AcousticProfile) -> Result<(), anyhow::Error> {
+        // Serialize this settings-only reconfiguration against recorder start.
+        // Checking is_recording() separately leaves a check/use race that can
+        // tear down a recording which began between those operations.
+        let state = self.state.try_lock().map_err(|_| {
+            anyhow::anyhow!("The microphone is busy. Try changing the profile again.")
+        })?;
+        if !matches!(*state, RecordingState::Idle) || self.is_recording() {
+            anyhow::bail!("Stop recording before changing the acoustic profile.");
+        }
+        let mut settings = get_settings(&self.app_handle);
+        let previous_profile = settings.acoustic_profile;
+        if previous_profile == profile {
+            return Ok(());
+        }
+        settings.acoustic_profile = profile;
+        crate::settings::write_settings(&self.app_handle, settings);
+        if let Err(error) = self.update_audio_enhancement() {
+            let mut settings = get_settings(&self.app_handle);
+            settings.acoustic_profile = previous_profile;
+            crate::settings::write_settings(&self.app_handle, settings);
+            // Discard a partially prepared profile so the next start rebuilds
+            // the restored settings instead of reporting a false UI success.
+            *self.recorder.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            self.stream_failed.store(true, Ordering::SeqCst);
+            return Err(error);
         }
         Ok(())
     }

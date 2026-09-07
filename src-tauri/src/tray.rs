@@ -2,6 +2,7 @@ use crate::managers::history::{HistoryEntry, HistoryManager};
 use crate::settings;
 use crate::tray_i18n::get_tray_translations;
 use log::{error, info, warn};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -14,6 +15,24 @@ pub enum TrayIconState {
     Idle,
     Recording,
     Transcribing,
+}
+
+static CURRENT_TRAY_STATE: AtomicU8 = AtomicU8::new(0);
+
+fn current_tray_state() -> TrayIconState {
+    match CURRENT_TRAY_STATE.load(Ordering::Acquire) {
+        1 => TrayIconState::Recording,
+        2 => TrayIconState::Transcribing,
+        _ => TrayIconState::Idle,
+    }
+}
+
+pub fn refresh_current_menu(app: &AppHandle) {
+    update_tray_menu(app, &current_tray_state(), None);
+}
+
+pub fn refresh_current_menu_with_locale(app: &AppHandle, locale: &str) {
+    update_tray_menu(app, &current_tray_state(), Some(locale));
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -94,6 +113,14 @@ pub fn load_tray_icon(
 }
 
 pub fn change_tray_icon(app: &AppHandle, icon: TrayIconState) {
+    CURRENT_TRAY_STATE.store(
+        match icon {
+            TrayIconState::Idle => 0,
+            TrayIconState::Recording => 1,
+            TrayIconState::Transcribing => 2,
+        },
+        Ordering::Release,
+    );
     let Some(tray) = app.try_state::<TrayIcon>() else {
         warn!("Skipping tray icon update because no tray icon is registered");
         return;
@@ -184,6 +211,13 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             true,
             None::<&str>,
         )?;
+        let stop_meeting_i = MenuItem::with_id(
+            app,
+            "stop_meeting",
+            "Stop meeting recording",
+            crate::meeting_capture::is_active(app),
+            None::<&str>,
+        )?;
         let menu = match state {
             TrayIconState::Recording | TrayIconState::Transcribing => {
                 let cancel_i =
@@ -192,6 +226,7 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
                     app,
                     &[
                         &cancel_i,
+                        &stop_meeting_i,
                         &separator()?,
                         &copy_last_transcript_i,
                         &navigate_settings_i,
@@ -204,6 +239,7 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
                 app,
                 &[
                     &start_recording_i,
+                    &stop_meeting_i,
                     &copy_last_transcript_i,
                     &speak_selected_i,
                     &separator()?,
@@ -320,6 +356,10 @@ mod tests {
             speaker_segments_json: None,
             speaker_transcript_text: None,
             speaker_display_names_json: None,
+            markdown_export_status: crate::managers::history::MarkdownExportStatus::NotRequested,
+            markdown_export_path: None,
+            markdown_export_error: None,
+            markdown_exported_at: None,
         }
     }
 

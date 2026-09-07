@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   Sparkles,
   Type,
+  FileOutput,
+  RefreshCw,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -680,6 +682,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const { t, i18n } = useTranslation();
   const [showCopied, setShowCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRetryingMarkdown, setIsRetryingMarkdown] = useState(false);
 
   const handleLoadAudio = useCallback(
     () => getAudioUrl(entry.file_name),
@@ -700,6 +703,51 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       console.error("Failed to delete entry:", error);
       toast.error(t("settings.history.deleteError"));
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleRevealMarkdown = async () => {
+    try {
+      const result = await commands.revealHistoryMarkdownExport(entry.id);
+      if (result.status === "ok") return;
+      toast.error(
+        t("settings.history.markdown.revealError", {
+          defaultValue: "Could not show Markdown file: {{error}}",
+          error: result.error,
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        t("settings.history.markdown.revealError", {
+          defaultValue: "Could not show Markdown file: {{error}}",
+          error: String(error),
+        }),
+      );
+    }
+  };
+
+  const handleRetryMarkdown = async () => {
+    if (isRetryingMarkdown) return;
+    setIsRetryingMarkdown(true);
+    try {
+      const result = await commands.retryHistoryMarkdownExport(entry.id);
+      if (result.status !== "ok") {
+        toast.error(
+          t("settings.history.markdown.retryError", {
+            defaultValue: "Could not retry Markdown export: {{error}}",
+            error: result.error,
+          }),
+        );
+      }
+    } catch (error) {
+      toast.error(
+        t("settings.history.markdown.retryError", {
+          defaultValue: "Could not retry Markdown export: {{error}}",
+          error: String(error),
+        }),
+      );
+    } finally {
+      setIsRetryingMarkdown(false);
     }
   };
 
@@ -757,6 +805,24 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const showFieldObservationBadge =
     fieldSnapshotStatus !== "not_requested" &&
     fieldSnapshotStatus !== "skipped";
+  const markdownStatusLabel =
+    entry.markdown_export_status === "pending"
+      ? t("settings.history.markdown.pending", {
+          defaultValue: "Saving Markdown…",
+        })
+      : entry.markdown_export_status === "complete"
+        ? t("settings.history.markdown.complete", {
+            defaultValue: "Markdown saved",
+          })
+        : entry.markdown_export_status === "skipped"
+          ? t("settings.history.markdown.skipped", {
+              defaultValue: "Markdown skipped",
+            })
+          : entry.markdown_export_status === "failed"
+            ? t("settings.history.markdown.failed", {
+                defaultValue: "Markdown save failed",
+              })
+            : null;
 
   const actions = (
     <>
@@ -781,6 +847,36 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       >
         <FolderOpen aria-hidden />
       </ActionIconButton>
+      {entry.markdown_export_status === "complete" ? (
+        <ActionIconButton
+          onClick={() => void handleRevealMarkdown()}
+          title={t("settings.history.markdown.showFile", {
+            defaultValue: "Show Markdown file in folder",
+          })}
+          aria-label={t("settings.history.markdown.showFile", {
+            defaultValue: "Show Markdown file in folder",
+          })}
+        >
+          <FileOutput aria-hidden />
+        </ActionIconButton>
+      ) : null}
+      {entry.markdown_export_status === "failed" ? (
+        <ActionIconButton
+          onClick={() => void handleRetryMarkdown()}
+          disabled={isRetryingMarkdown}
+          title={t("settings.history.markdown.retry", {
+            defaultValue: "Retry Markdown export",
+          })}
+          aria-label={t("settings.history.markdown.retry", {
+            defaultValue: "Retry Markdown export",
+          })}
+        >
+          <RefreshCw
+            aria-hidden
+            className={isRetryingMarkdown ? "animate-spin" : undefined}
+          />
+        </ActionIconButton>
+      ) : null}
       <ActionIconButton
         onClick={onToggleSaved}
         active={entry.saved}
@@ -984,6 +1080,22 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     );
   }
 
+  if (markdownStatusLabel) {
+    const markdownToneClass =
+      entry.markdown_export_status === "failed"
+        ? "font-semibold text-[var(--danger)]"
+        : entry.markdown_export_status === "pending"
+          ? "font-semibold text-[var(--warning)]"
+          : entry.markdown_export_status === "complete"
+            ? "font-semibold text-[var(--success)]"
+            : "font-semibold text-[var(--muted)]";
+    metaParts.push(
+      <span key="markdown" className={markdownToneClass}>
+        {markdownStatusLabel}
+      </span>,
+    );
+  }
+
   return (
     <article
       className="card-linear group/history-row relative cursor-pointer px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)]"
@@ -1017,6 +1129,18 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                   title={snippet}
                 >
                   {snippet}
+                </span>
+              ) : null}
+              {entry.markdown_export_status === "failed" &&
+              entry.markdown_export_error ? (
+                <span
+                  className="block min-w-0 truncate text-xs font-medium text-[var(--danger)]"
+                  title={entry.markdown_export_error}
+                >
+                  {t("settings.history.markdown.failureReason", {
+                    defaultValue: "Markdown: {{error}}",
+                    error: entry.markdown_export_error,
+                  })}
                 </span>
               ) : null}
             </div>

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, RefreshCcw } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { platform } from "@tauri-apps/plugin-os";
+import { isLocalBaseUrl } from "@/lib/providerPrivacy";
 import { commands, type PostProcessResult } from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
@@ -37,19 +39,6 @@ interface ProviderSectionProps {
 type SetupStatus = {
   variant: "info" | "warning" | "error" | "success";
   message: React.ReactNode;
-};
-
-const isLocalBaseUrl = (baseUrl: string): boolean => {
-  const lower = baseUrl.trim().toLowerCase();
-  if (!lower) return false;
-  return (
-    lower.startsWith("http://localhost") ||
-    lower.startsWith("https://localhost") ||
-    lower.startsWith("http://127.0.0.1") ||
-    lower.startsWith("https://127.0.0.1") ||
-    lower.startsWith("http://[::1]") ||
-    lower.startsWith("https://[::1]")
-  );
 };
 
 const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
@@ -968,12 +957,59 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
   const providerState = usePostProcessProviderState();
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
+  const adaptiveSelectionRewriteEnabled =
+    getSetting("adaptive_selection_rewrite_enabled") ?? false;
+  const cloudSelectionRewriteAllowed =
+    getSetting("cloud_selection_rewrite_allowed") ?? false;
   const controlsDisabled = !postProcessEnabled;
+  const supportsAdaptiveSelection = platform() === "macos";
 
   return (
     <div className="w-full space-y-6">
       <SettingsGroup title={t("settings.postProcessing.sections.setup.title")}>
         <PostProcessingToggle descriptionMode="inline" grouped={true} />
+        <ToggleSwitch
+          checked={adaptiveSelectionRewriteEnabled}
+          onChange={(enabled) =>
+            void updateSetting("adaptive_selection_rewrite_enabled", enabled)
+          }
+          disabled={controlsDisabled || !supportsAdaptiveSelection}
+          isUpdating={isUpdating("adaptive_selection_rewrite_enabled")}
+          label={t("settings.postProcessing.adaptiveSelection.label", {
+            defaultValue: "Edit selected text with the main shortcut",
+          })}
+          description={t(
+            "settings.postProcessing.adaptiveSelection.description",
+            {
+              defaultValue:
+                "On macOS, reads the selection through Accessibility without sending Copy. Selected text becomes the source and your speech becomes the edit instruction. Unsupported text fields stop safely without pasting; use the dedicated selection-edit shortcut there.",
+            },
+          )}
+          descriptionMode="inline"
+          grouped={true}
+        />
+        {adaptiveSelectionRewriteEnabled && !providerState.isLocalProvider && (
+          <ToggleSwitch
+            checked={cloudSelectionRewriteAllowed}
+            onChange={(allowed) =>
+              void updateSetting("cloud_selection_rewrite_allowed", allowed)
+            }
+            disabled={controlsDisabled || localPrivacyMode}
+            isUpdating={isUpdating("cloud_selection_rewrite_allowed")}
+            label={t("settings.postProcessing.adaptiveSelection.cloudLabel", {
+              defaultValue: "Allow selected text to use this cloud provider",
+            })}
+            description={t(
+              "settings.postProcessing.adaptiveSelection.cloudDescription",
+              {
+                defaultValue:
+                  "Off by default. When off, the main shortcut dictates normally instead of sending selected text to a remote provider. The dedicated selection-edit shortcut remains explicit.",
+              },
+            )}
+            descriptionMode="inline"
+            grouped={true}
+          />
+        )}
         <CleanupLevelSettings disabled={controlsDisabled} />
         {!omitLocalPrivacy && (
           <>

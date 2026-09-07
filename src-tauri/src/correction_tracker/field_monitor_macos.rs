@@ -226,7 +226,7 @@ fn application_pid_for_bundle(bundle_id: &str) -> Result<Option<i32>> {
     }
 }
 
-fn frontmost_application_pid() -> Option<i32> {
+pub(crate) fn frontmost_application_pid() -> Option<i32> {
     use objc::runtime::Object;
     use objc::{class, msg_send, sel, sel_impl};
 
@@ -249,6 +249,159 @@ fn frontmost_application_pid() -> Option<i32> {
         let _: () = msg_send![pool, drain];
         pid
     }
+}
+
+/// Passive shortcut probe: never sends Copy, replaces the clipboard, or opens
+/// a permission prompt. Unsupported fields are an error, not proof of no selection.
+pub(crate) fn read_selected_text_for_app(expected_pid: i32) -> Result<Option<String>> {
+    use accessibility_sys::{kAXSelectedTextAttribute, AXUIElementRef};
+    use core_foundation::base::TCFType;
+
+    if !unsafe { accessibility_sys::AXIsProcessTrusted() } {
+        return Err(anyhow!(
+            "Accessibility permission is required for automatic selection editing."
+        ));
+    }
+    if frontmost_application_pid() != Some(expected_pid) {
+        return Err(anyhow!(
+            "The active application changed before selection capture."
+        ));
+    }
+    let focused = focused_element_for_pid(expected_pid)?
+        .ok_or_else(|| anyhow!("This application does not expose a focused text field."))?;
+    let (error, selected) = string_attribute(
+        focused.as_CFTypeRef() as AXUIElementRef,
+        kAXSelectedTextAttribute,
+    );
+    if frontmost_application_pid() != Some(expected_pid) {
+        return Err(anyhow!(
+            "The active application changed during selection capture."
+        ));
+    }
+    // kAXErrorNoValue denotes an empty selection. Other errors, including an
+    // unsupported AXSelectedText attribute, must not trigger ordinary paste.
+    if error == -25212 {
+        return Ok(None);
+    }
+    if error != 0 || selected.is_none() {
+        return Err(anyhow!("This text field does not support automatic selection detection (AXError={error}). Use the dedicated selection-edit shortcut or turn off automatic selection editing."));
+    }
+    Ok(selected.filter(|text| !text.trim().is_empty()))
+}
+
+/// Own every AX/CF object on this one probe thread. Only an atomic invalidation
+/// token crosses threads; no AX element is sent to a different worker.
+pub(crate) fn observe_selected_text_for_app(
+    expected_pid: i32,
+    complete: impl FnOnce(
+        std::result::Result<Option<(String, crate::clipboard::SelectionGuard)>, String>,
+    ),
+) {
+    use accessibility_sys::*;
+    use core_foundation::base::{CFType, TCFType};
+    use core_foundation::runloop::*;
+    use core_foundation::string::{CFString, CFStringRef};
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+    extern "C" fn invalidated(
+        _: AXObserverRef,
+        _: AXUIElementRef,
+        _: CFStringRef,
+        context: *mut std::ffi::c_void,
+    ) {
+        if !context.is_null() {
+            unsafe { &*(context as *const AtomicBool) }.store(false, Ordering::Release);
+        }
+    }
+    let initial = match read_selected_text_for_app(expected_pid) {
+        Ok(Some(text)) => text,
+        Ok(None) => {
+            complete(Ok(None));
+            return;
+        }
+        Err(error) => {
+            complete(Err(error.to_string()));
+            return;
+        }
+    };
+    let focused = match focused_element_for_pid(expected_pid) {
+        Ok(Some(value)) => value,
+        _ => {
+            complete(Err("Selected field is no longer available.".into()));
+            return;
+        }
+    };
+    let app =
+        unsafe { CFType::wrap_under_create_rule(AXUIElementCreateApplication(expected_pid) as _) };
+    let mut raw_observer: AXObserverRef = std::ptr::null_mut();
+    let error = unsafe { AXObserverCreate(expected_pid, invalidated, &mut raw_observer) };
+    if error != 0 || raw_observer.is_null() {
+        complete(Err("This application does not support safe automatic selection monitoring. Use the explicit selection-edit shortcut.".into()));
+        return;
+    }
+    let _observer = unsafe { CFType::wrap_under_create_rule(raw_observer as _) };
+    let valid = Arc::new(AtomicBool::new(true));
+    let context = Arc::as_ptr(&valid) as *mut std::ffi::c_void;
+    let notifications = [
+        (
+            app.as_CFTypeRef() as AXUIElementRef,
+            kAXApplicationDeactivatedNotification,
+        ),
+        (
+            app.as_CFTypeRef() as AXUIElementRef,
+            kAXFocusedUIElementChangedNotification,
+        ),
+        (
+            app.as_CFTypeRef() as AXUIElementRef,
+            kAXFocusedWindowChangedNotification,
+        ),
+        (
+            focused.as_CFTypeRef() as AXUIElementRef,
+            kAXSelectedTextChangedNotification,
+        ),
+        (
+            focused.as_CFTypeRef() as AXUIElementRef,
+            kAXValueChangedNotification,
+        ),
+    ];
+    for (element, notification) in notifications {
+        let name = CFString::new(notification);
+        let error = unsafe {
+            AXObserverAddNotification(raw_observer, element, name.as_concrete_TypeRef(), context)
+        };
+        if error != 0 {
+            complete(Err(format!("This field cannot reliably monitor selection changes (AXError={error}). Use the explicit selection-edit shortcut.")));
+            return;
+        }
+    }
+    let run_loop = unsafe { CFRunLoopGetCurrent() };
+    let source = unsafe { AXObserverGetRunLoopSource(raw_observer) };
+    unsafe { CFRunLoopAddSource(run_loop, source, kCFRunLoopDefaultMode) };
+    // Close the registration race without changing the original snapshot.
+    let stable = read_selected_text_for_app(expected_pid)
+        .is_ok_and(|text| text.as_deref() == Some(initial.as_str()));
+    if stable {
+        let expected_text = Arc::<str>::from(initial.clone());
+        complete(Ok(Some((
+            initial,
+            crate::clipboard::SelectionGuard {
+                valid: valid.clone(),
+                app_pid: expected_pid,
+                expected_text,
+            },
+        ))));
+        while Arc::strong_count(&valid) > 1 && valid.load(Ordering::Acquire) {
+            unsafe { CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, 1) };
+        }
+    } else {
+        complete(Err(
+            "Selection changed during activation. Nothing will be replaced.".into(),
+        ));
+    }
+    unsafe { CFRunLoopRemoveSource(run_loop, source, kCFRunLoopDefaultMode) };
+    drop(_observer);
 }
 
 fn focused_element_for_pid(app_pid: i32) -> Result<Option<core_foundation::base::CFType>> {

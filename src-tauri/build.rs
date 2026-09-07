@@ -134,6 +134,8 @@ fn build_apple_intelligence_bridge() {
     const ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE: &str =
         "swift/active_browser_url_unavailable.swift";
     const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
+    const SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE: &str = "swift/security_scoped_bookmarks.swift";
+    const MEETING_CAPTURE_SWIFT_FILE: &str = "swift/meeting_capture.swift";
     const BRIDGE_HEADER: &str = "swift/apple_intelligence_bridge.h";
 
     println!("cargo:rerun-if-changed={REAL_SWIFT_FILE}");
@@ -143,6 +145,8 @@ fn build_apple_intelligence_bridge() {
     println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={MEETING_CAPTURE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
@@ -168,6 +172,8 @@ fn build_apple_intelligence_bridge() {
         out_dir.join("screen_context.o"),
         out_dir.join("apple_speech.o"),
         out_dir.join("active_browser_url.o"),
+        out_dir.join("security_scoped_bookmarks.o"),
+        out_dir.join("meeting_capture.o"),
     ];
     let static_lib_path = out_dir.join("libapple_intelligence.a");
 
@@ -234,6 +240,8 @@ fn build_apple_intelligence_bridge() {
         SCREEN_CONTEXT_SWIFT_FILE,
         speech_source_file,
         browser_url_source_file,
+        SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE,
+        MEETING_CAPTURE_SWIFT_FILE,
     ] {
         if !Path::new(source).exists() {
             panic!("Source file {} is missing!", source);
@@ -318,6 +326,8 @@ fn build_apple_intelligence_bridge() {
         (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
         (speech_source_file, &object_paths[2]),
         (browser_url_source_file, &object_paths[3]),
+        (SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE, &object_paths[4]),
+        (MEETING_CAPTURE_SWIFT_FILE, &object_paths[5]),
     ] {
         let output = compile_swift_source(source, object_path);
         if !output.status.success() {

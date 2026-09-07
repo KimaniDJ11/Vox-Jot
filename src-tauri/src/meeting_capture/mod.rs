@@ -104,6 +104,7 @@ struct AudioPacket {
     rate: i32,
     channels: i32,
 }
+#[cfg_attr(not(all(target_os = "macos", target_arch = "aarch64")), allow(dead_code))]
 struct Sink {
     sender: mpsc::SyncSender<AudioPacket>,
     signals: Arc<RunSignals>,
@@ -221,6 +222,7 @@ struct NativeStatus {
     error: Option<String>,
 }
 
+#[cfg_attr(not(all(target_os = "macos", target_arch = "aarch64")), allow(dead_code))]
 extern "C" fn receive_audio(
     key: u64,
     track: i32,
@@ -597,7 +599,7 @@ pub async fn list_meetings(app: AppHandle) -> Result<Vec<MeetingSession>, String
                 sessions.push(session);
             }
         }
-        sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        sessions.sort_by_key(|a| std::cmp::Reverse(a.created_at));
         Ok(sessions)
     })
     .await

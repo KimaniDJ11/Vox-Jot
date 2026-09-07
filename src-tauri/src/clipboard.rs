@@ -19,6 +19,7 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 pub struct SelectionGuard {
     pub(crate) valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
     pub(crate) app_pid: i32,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub(crate) expected_text: std::sync::Arc<str>,
 }
 

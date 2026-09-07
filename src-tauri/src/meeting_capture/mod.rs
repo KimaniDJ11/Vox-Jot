@@ -104,7 +104,10 @@ struct AudioPacket {
     rate: i32,
     channels: i32,
 }
-#[cfg_attr(not(all(target_os = "macos", target_arch = "aarch64")), allow(dead_code))]
+#[cfg_attr(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    allow(dead_code)
+)]
 struct Sink {
     sender: mpsc::SyncSender<AudioPacket>,
     signals: Arc<RunSignals>,
@@ -222,7 +225,10 @@ struct NativeStatus {
     error: Option<String>,
 }
 
-#[cfg_attr(not(all(target_os = "macos", target_arch = "aarch64")), allow(dead_code))]
+#[cfg_attr(
+    not(all(target_os = "macos", target_arch = "aarch64")),
+    allow(dead_code)
+)]
 extern "C" fn receive_audio(
     key: u64,
     track: i32,

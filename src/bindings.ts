@@ -34,6 +34,7 @@ export const commands = {
 	changeTtsStopOnRecordSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_tts_stop_on_record_setting", { enabled })),
 	changeAudioEnhancementEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_enabled_setting", { enabled })),
 	changeAudioEnhancementModelSetting: (model: string) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_model_setting", { model })),
+	changeAcousticProfileSetting: (profile: string) => typedError<null, string>(__TAURI_INVOKE("change_acoustic_profile_setting", { profile })),
 	changeTtsModelStorePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_model_store_path_setting", { path })),
 	changeExternalModelStorageEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_enabled_setting", { enabled })),
 	changeExternalModelStorageAutoDetectSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_auto_detect_setting", { enabled })),
@@ -52,6 +53,15 @@ export const commands = {
 	changeAutoSubmitSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_setting", { enabled })),
 	changeAutoSubmitKeySetting: (key: string) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_key_setting", { key })),
 	changePostProcessEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_post_process_enabled_setting", { enabled })),
+	changeAdaptiveSelectionRewriteEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_adaptive_selection_rewrite_enabled_setting", { enabled })),
+	changeCloudSelectionRewriteAllowedSetting: (allowed: boolean) => typedError<null, string>(__TAURI_INVOKE("change_cloud_selection_rewrite_allowed_setting", { allowed })),
+	changeMarkdownExportEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_enabled_setting", { enabled })),
+	changeMarkdownExportDirSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_dir_setting", { path })),
+	changeMarkdownExportMinWordsSetting: (minWords: number) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_min_words_setting", { minWords })),
+	changeMarkdownExportContentSourceSetting: (source: string) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_content_source_setting", { source })),
+	changeMarkdownExportFrontmatterSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_frontmatter_setting", { enabled })),
+	changeMarkdownExportIncludeRewriteSelectionSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_rewrite_selection_setting", { enabled })),
+	changeMarkdownExportIncludeFailedPasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_failed_paste_setting", { enabled })),
 	changeLocalPrivacyModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_local_privacy_mode_setting", { enabled })),
 	/**
 	 *  Persist whether the first-run onboarding wizard has been completed. The
@@ -138,6 +148,10 @@ export const commands = {
 	cancelOperation: () => __TAURI_INVOKE<void>("cancel_operation"),
 	getAppDirPath: () => typedError<string, string>(__TAURI_INVOKE("get_app_dir_path")),
 	getExternalModelStorageStatus: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("get_external_model_storage_status")),
+	getExternalModelStorageDisconnectEvent: () => __TAURI_INVOKE<{
+	volume_name: string | null,
+	fell_back: boolean,
+} | null>("get_external_model_storage_disconnect_event"),
 	refreshExternalModelStorage: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("refresh_external_model_storage")),
 	pickExternalModelStorageDir: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("pick_external_model_storage_dir")),
 	openExternalModelStorageDir: () => typedError<null, string>(__TAURI_INVOKE("open_external_model_storage_dir")),
@@ -309,6 +323,17 @@ export const commands = {
 	prepareDenoiseRuntime: () => typedError<null, string>(__TAURI_INVOKE("prepare_denoise_runtime")),
 	cancelDenoiseRuntimeSetup: () => typedError<null, string>(__TAURI_INVOKE("cancel_denoise_runtime_setup")),
 	transcribeFile: (path: string) => typedError<TranscriptionFileResult, string>(__TAURI_INVOKE("transcribe_file", { path })),
+	getMeetingCapabilities: () => typedError<MeetingCapabilities, string>(__TAURI_INVOKE("get_meeting_capabilities")),
+	requestMeetingPermissions: () => __TAURI_INVOKE<void>("request_meeting_permissions"),
+	listMeetings: () => typedError<MeetingSession[], string>(__TAURI_INVOKE("list_meetings")),
+	startMeeting: (title: string, processId: number, microphoneId: string, includeMicrophone: boolean) => typedError<MeetingSession, string>(__TAURI_INVOKE("start_meeting", { title, processId, microphoneId, includeMicrophone })),
+	stopMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("stop_meeting", { id })),
+	readMeeting: (id: string) => typedError<MeetingDetail, string>(__TAURI_INVOKE("read_meeting", { id })),
+	transcribeMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("transcribe_meeting", { id })),
+	summarizeMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("summarize_meeting", { id })),
+	revealMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("reveal_meeting", { id })),
+	deleteMeeting: (id: string, confirmed: boolean) => typedError<null, string>(__TAURI_INVOKE("delete_meeting", { id, confirmed })),
+	cancelMeetingAnalysis: (id: string) => typedError<null, string>(__TAURI_INVOKE("cancel_meeting_analysis", { id })),
 	/**
 	 *  Render `segments` as SubRip (`.srt`) text and write it to `path`.
 	 *
@@ -454,10 +479,16 @@ export const commands = {
 	speaker_segments_json: string | null,
 	speaker_transcript_text: string | null,
 	speaker_display_names_json: string | null,
+	markdown_export_status: MarkdownExportStatus,
+	markdown_export_path: string | null,
+	markdown_export_error: string | null,
+	markdown_exported_at: number | null,
 } | null, string>(__TAURI_INVOKE("get_latest_history_entry")),
 	toggleHistoryEntrySaved: (id: number) => typedError<null, string>(__TAURI_INVOKE("toggle_history_entry_saved", { id })),
 	getAudioFilePath: (fileName: string) => typedError<string, string>(__TAURI_INVOKE("get_audio_file_path", { fileName })),
 	revealHistoryRecordingInFolder: (fileName: string) => typedError<null, string>(__TAURI_INVOKE("reveal_history_recording_in_folder", { fileName })),
+	retryHistoryMarkdownExport: (id: number) => typedError<null, string>(__TAURI_INVOKE("retry_history_markdown_export", { id })),
+	revealHistoryMarkdownExport: (id: number) => typedError<null, string>(__TAURI_INVOKE("reveal_history_markdown_export", { id })),
 	deleteHistoryEntry: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_history_entry", { id })),
 	updateHistoryLimit: (limit: number) => typedError<null, string>(__TAURI_INVOKE("update_history_limit", { limit })),
 	updateHistoryAutoAnalyzeSpeakersLongRecordingsEnabled: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("update_history_auto_analyze_speakers_long_recordings_enabled", { enabled })),
@@ -620,6 +651,8 @@ export const commands = {
 };
 
 /* Types */
+export type AcousticProfile = "normal" | "quiet";
+
 export type ActiveAppContext = {
 	bundle_id: string,
 	localized_name: string,
@@ -643,6 +676,7 @@ export type AppSettings_Deserialize = {
 	selected_stt_model_id?: string,
 	always_on_microphone?: boolean,
 	selected_microphone?: string | null,
+	acoustic_profile?: AcousticProfile,
 	clamshell_microphone?: string | null,
 	selected_output_device?: string | null,
 	translate_to_english?: boolean,
@@ -697,6 +731,8 @@ export type AppSettings_Deserialize = {
 	auto_submit?: boolean,
 	auto_submit_key?: AutoSubmitKey,
 	post_process_enabled?: boolean,
+	adaptive_selection_rewrite_enabled?: boolean,
+	cloud_selection_rewrite_allowed?: boolean,
 	local_privacy_mode?: boolean,
 	screen_context_enabled?: boolean,
 	screen_context_excluded_bundle_ids?: string[],
@@ -771,6 +807,20 @@ export type AppSettings_Deserialize = {
 	 *  auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
 	 */
 	watch_folders?: WatchFolderConfig[],
+	/**  Whether automatic background export to Markdown files is enabled. */
+	markdown_export_enabled?: boolean,
+	/**  Destination directory for auto-exported Markdown notes. */
+	markdown_export_dir?: string | null,
+	/**  Minimum words required to trigger Markdown auto-export. */
+	markdown_export_min_words?: number,
+	/**  Whether an export uses the delivered/final text or the raw ASR transcript. */
+	markdown_export_content_source?: MarkdownExportContentSource,
+	/**  Whether to include YAML frontmatter in exported Markdown files. */
+	markdown_export_frontmatter?: boolean,
+	/**  Whether selection-rewrite records are eligible for auto-export. */
+	markdown_export_include_rewrite_selection?: boolean,
+	/**  Whether records that were not delivered to the destination app are eligible. */
+	markdown_export_include_failed_paste?: boolean,
 	/**
 	 *  Whether the loopback HTTP API server is enabled. Off by default;
 	 *  flipping this on starts an `axum` server on `127.0.0.1` so the
@@ -810,6 +860,7 @@ export type AppSettings_Serialize = {
 	selected_stt_model_id: string,
 	always_on_microphone: boolean,
 	selected_microphone: string | null,
+	acoustic_profile: AcousticProfile,
 	clamshell_microphone: string | null,
 	selected_output_device: string | null,
 	translate_to_english: boolean,
@@ -864,6 +915,8 @@ export type AppSettings_Serialize = {
 	auto_submit: boolean,
 	auto_submit_key: AutoSubmitKey,
 	post_process_enabled: boolean,
+	adaptive_selection_rewrite_enabled: boolean,
+	cloud_selection_rewrite_allowed: boolean,
 	local_privacy_mode: boolean,
 	screen_context_enabled: boolean,
 	screen_context_excluded_bundle_ids: string[],
@@ -938,6 +991,20 @@ export type AppSettings_Serialize = {
 	 *  auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
 	 */
 	watch_folders: WatchFolderConfig[],
+	/**  Whether automatic background export to Markdown files is enabled. */
+	markdown_export_enabled: boolean,
+	/**  Destination directory for auto-exported Markdown notes. */
+	markdown_export_dir: string | null,
+	/**  Minimum words required to trigger Markdown auto-export. */
+	markdown_export_min_words: number,
+	/**  Whether an export uses the delivered/final text or the raw ASR transcript. */
+	markdown_export_content_source: MarkdownExportContentSource,
+	/**  Whether to include YAML frontmatter in exported Markdown files. */
+	markdown_export_frontmatter: boolean,
+	/**  Whether selection-rewrite records are eligible for auto-export. */
+	markdown_export_include_rewrite_selection: boolean,
+	/**  Whether records that were not delivered to the destination app are eligible. */
+	markdown_export_include_failed_paste: boolean,
 	/**
 	 *  Whether the loopback HTTP API server is enabled. Off by default;
 	 *  flipping this on starts an `axum` server on `127.0.0.1` so the
@@ -1217,23 +1284,6 @@ export type EmotionScore = {
 
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "GemmaAudioStt" | "HiggsAudioStt" | "AppleSpeech" | "AppleSpeechStreaming";
 
-export type ExternalModelStorageDisconnectEvent = {
-	volume_name: string | null,
-	fell_back: boolean,
-};
-
-export type ExternalModelStorageStatus = {
-	enabled: boolean,
-	auto_detect: boolean,
-	connected: boolean,
-	configured_path: string | null,
-	resolved_path: string | null,
-	volume_name: string | null,
-	model_count: number,
-};
-
-export type ModelStorageLocation = "local" | "external";
-
 export type EnhanceAudioFileResult = {
 	output_path: string,
 	sample_rate: number,
@@ -1248,6 +1298,21 @@ export type EnhanceAudioOptions = {
 	outputSampleRate: number | null,
 	/**  Spectral-only strength in [0, 1] (default 0.75). */
 	strength: number | null,
+};
+
+export type ExternalModelStorageDisconnectEvent = {
+	volume_name: string | null,
+	fell_back: boolean,
+};
+
+export type ExternalModelStorageStatus = {
+	enabled: boolean,
+	auto_detect: boolean,
+	connected: boolean,
+	configured_path: string | null,
+	resolved_path: string | null,
+	volume_name: string | null,
+	model_count: number,
 };
 
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed";
@@ -1312,6 +1377,10 @@ export type HistoryEntry = {
 	speaker_segments_json: string | null,
 	speaker_transcript_text: string | null,
 	speaker_display_names_json: string | null,
+	markdown_export_status: MarkdownExportStatus,
+	markdown_export_path: string | null,
+	markdown_export_error: string | null,
+	markdown_exported_at: number | null,
 };
 
 export type HttpApiStatus = {
@@ -1348,6 +1417,63 @@ export type LLMPrompt = {
 };
 
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
+
+export type MarkdownExportContentSource = "final" | "raw";
+
+export type MarkdownExportStatus = "not_requested" | "pending" | "complete" | "skipped" | "failed";
+
+export type MeetingCapabilities = {
+	supported: boolean,
+	screen_permission: boolean,
+	microphone_permission: boolean,
+	applications: MeetingSource[],
+	microphones: MeetingMicrophone[],
+};
+
+export type MeetingDetail = {
+	session: MeetingSession,
+	segments: MeetingSegment[],
+	summary: string | null,
+};
+
+export type MeetingMicrophone = {
+	id: string,
+	name: string,
+};
+
+export type MeetingSegment = {
+	start_ms: number,
+	end_ms: number,
+	speaker: string,
+	text: string,
+};
+
+export type MeetingSession = {
+	id: string,
+	title: string,
+	created_at: number,
+	state: string,
+	error: string | null,
+	system_source: string,
+	system_process_id: number,
+	microphone_id: string,
+	include_microphone: boolean,
+	sample_rate: number,
+	duration_ms: number,
+	dropped_buffers: number,
+	system: TrackStats,
+	microphone: TrackStats,
+	transcript_ready: boolean,
+	summary_ready: boolean,
+	analysis_error: string | null,
+	backend: string,
+};
+
+export type MeetingSource = {
+	id: number,
+	name: string,
+	bundle_id: string,
+};
 
 export type ModelDomain = "stt" | "tts" | "llm";
 
@@ -1397,6 +1523,8 @@ export type ModelPlatformSelectionState = {
 	active_tts_provider_id: string | null,
 	active_tts_model_id: string | null,
 };
+
+export type ModelStorageLocation = "local" | "external";
 
 export type ModelUnloadTimeout = "never" | "immediately" | "min2" | "min5" | "min10" | "min15" | "hour1" | "sec5";
 
@@ -1774,7 +1902,7 @@ export type RefineModelDescriptor = {
 	note: string | null,
 };
 
-export type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face" | "managed_provider";
+export type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face" | "vox_jot_local" | "managed_provider";
 
 export type RefineProviderStatus = {
 	id: string,
@@ -1831,6 +1959,9 @@ export type ScreenContextHistoryMetadata = {
 	active_app_name: string | null,
 	sent_externally: boolean,
 	changed_output: boolean,
+	asr_prompt_biasing_used?: boolean,
+	dictation_intent?: string | null,
+	spoken_retraction?: SpokenRetractionHistoryMetadata | null,
 };
 
 /**
@@ -1946,6 +2077,12 @@ export type SpeechAnalysisSourceKind = "built_in" | "hugging_face" | "git_hub" |
 
 export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization" | "emotion";
 
+export type SpokenRetractionHistoryMetadata = {
+	outcome: string,
+	cue_count: number,
+	removed_character_count: number,
+};
+
 export type StableAudio3Status = {
 	installed: boolean,
 	sfx_ready: boolean,
@@ -2059,6 +2196,17 @@ export type ToneDefinition = {
 	id: string,
 	label: string,
 	instruction: string,
+};
+
+export type TrackStats = {
+	frames: number,
+	received_frames: number,
+	inserted_silence_frames: number,
+	overlap_frames: number,
+	first_timestamp_us: number | null,
+	source_sample_rates: number[],
+	source_channel_counts: number[],
+	peak: number | null,
 };
 
 /**

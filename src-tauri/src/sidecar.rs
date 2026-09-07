@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use log::{info, warn};
@@ -31,30 +31,24 @@ const MLX_AUDIO_HEALTH_ATTEMPTS: usize = 60;
 /// timeouts short because these probes run on startup and model-load paths where
 /// multi-second waits feel like app freezes. A build failure reports the sidecar
 /// as not running rather than panicking on first probe.
-fn health_client() -> Option<&'static reqwest::blocking::Client> {
-    static CLIENT: OnceLock<Option<reqwest::blocking::Client>> = OnceLock::new();
-    CLIENT
-        .get_or_init(|| {
-            match reqwest::blocking::Client::builder()
-                .connect_timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
-                .timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
-                .build()
-            {
-                Ok(client) => Some(client),
-                Err(err) => {
-                    log::error!("Failed to build the sidecar health HTTP client: {err}");
-                    None
-                }
-            }
-        })
-        .as_ref()
+fn health_agent() -> &'static ureq::Agent {
+    static AGENT: std::sync::LazyLock<ureq::Agent> = std::sync::LazyLock::new(|| {
+        ureq::Agent::new_with_config(
+            ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS)))
+                .proxy(None)
+                .max_redirects(0)
+                .build(),
+        )
+    });
+    &AGENT
 }
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
-    "mlx-audio[server,stt,tts]@git+https://github.com/Blaizzy/mlx-audio.git@4ee95391967e6ff802970a300d68c67bd8809158|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|phonemizer-fork|numpy>=1.26.4,<2.4|setuptools<81|patches=voxtral_eos_v1,parakeet_stt_remap_v1,kitten_sine_len_v1,server_stt_inline_v1,local_snac_v1";
+    "mlx-audio[server,stt,tts]@git+https://github.com/Blaizzy/mlx-audio.git@6b54ec6ecd99d0ad77dfa33dd129707e31bf051c|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|phonemizer-fork|numpy>=1.26.4,<2.4|setuptools<81|patches=voxtral_eos_v1,parakeet_stt_remap_v1,kitten_sine_len_v1,server_stt_inline_v1,local_snac_v1";
 const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
-    "mlx-audio[server,stt,tts] @ git+https://github.com/Blaizzy/mlx-audio.git@4ee95391967e6ff802970a300d68c67bd8809158",
+    "mlx-audio[server,stt,tts] @ git+https://github.com/Blaizzy/mlx-audio.git@6b54ec6ecd99d0ad77dfa33dd129707e31bf051c",
     "torch==2.11.0",
     "g2p_en==2.1.0",
     "misaki[zh]",
@@ -65,7 +59,7 @@ const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
 const SPEECH_ANALYSIS_RUNTIME_MARKER: &str =
-    "speech-analysis-runtime-2026-07-18-py311-torch-213-torchaudio-211-torchvision-028-torchcodec-015-transformers-550-hub-150-onnx-122-no-nemo-whisperx342-funasr139-v2";
+    "speech-analysis-runtime-2026-09-07-py311-torch-213-torchaudio-211-torchvision-028-torchcodec-015-transformers-5102-hub-150-onnx-122-no-nemo-whisperx342-funasr139-lightning-guard-v1-v3";
 const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
 const GEMMA_AUDIO_VENV_DIR: &str = "gemma-audio-venv";
 const GEMMA_AUDIO_VERSION_MARKER: &str = "gemma-audio.version";
@@ -337,12 +331,9 @@ impl SidecarManager {
     }
 
     pub fn is_mlx_audio_running(&self) -> bool {
-        let Some(client) = health_client() else {
-            return false;
-        };
-        client
-            .get(format!("http://127.0.0.1:{MLX_AUDIO_PORT}/v1/models"))
-            .send()
+        health_agent()
+            .get(&format!("http://127.0.0.1:{MLX_AUDIO_PORT}/v1/models"))
+            .call()
             .map(|resp| resp.status().is_success())
             .unwrap_or(false)
     }
@@ -351,17 +342,13 @@ impl SidecarManager {
     /// server currently listening on the sidecar port.  The speech-runtime
     /// exposes `/listen/prepare` which `mlx_audio.server` does not.
     pub fn is_speech_runtime_running(&self) -> bool {
-        let Some(client) = health_client() else {
-            return false;
-        };
-        client
-            .post(format!(
+        health_agent()
+            .post(&format!(
                 "http://127.0.0.1:{SPEECH_RUNTIME_PORT}/listen/prepare"
             ))
             .header("content-type", "application/json")
-            .body("{}")
-            .send()
-            .map(|resp| resp.status().as_u16() != 404)
+            .send("{}")
+            .map(|resp| resp.status().is_success())
             .unwrap_or(false)
     }
 
@@ -1729,7 +1716,7 @@ mod tests {
             "torchaudio==2.11.0",
             "torchvision==0.28.0",
             "torchcodec==0.15.0",
-            "transformers==5.5.0",
+            "transformers==5.10.2",
             "huggingface-hub==1.5.0",
             "onnx==1.22.0",
         ] {
@@ -1746,9 +1733,10 @@ mod tests {
             "torchaudio-211",
             "torchvision-028",
             "torchcodec-015",
-            "transformers-550",
+            "transformers-5102",
             "hub-150",
             "onnx-122",
+            "lightning-guard-v1",
         ] {
             assert!(
                 SPEECH_ANALYSIS_RUNTIME_MARKER.contains(marker_component),

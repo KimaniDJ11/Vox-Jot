@@ -45,6 +45,7 @@ const REGION_NAMES: Record<string, string> = {
   ES: "Spanish",
   FR: "French",
   GB: "British",
+  HK: "Hong Kong",
   IN: "Indian",
   IT: "Italian",
   JP: "Japanese",
@@ -52,23 +53,74 @@ const REGION_NAMES: Record<string, string> = {
   MX: "Mexican",
   NL: "Dutch",
   PT: "Portuguese",
+  SG: "Singapore",
+  TW: "Taiwanese",
   US: "US",
 };
 
 const LANGUAGE_DEFAULT_REGIONS: Record<string, string> = {
   ar: "SA",
+  be: "BY",
+  bg: "BG",
+  bn: "BD",
+  cs: "CZ",
+  da: "DK",
   de: "DE",
+  el: "GR",
   en: "US",
   es: "ES",
+  et: "EE",
+  fa: "IR",
+  fi: "FI",
   fr: "FR",
+  he: "IL",
   hi: "IN",
+  hr: "HR",
+  hu: "HU",
+  id: "ID",
   it: "IT",
   ja: "JP",
+  ka: "GE",
+  kk: "KZ",
+  kn: "IN",
   ko: "KR",
+  lt: "LT",
+  lv: "LV",
+  ms: "MY",
   nl: "NL",
+  no: "NO",
+  pl: "PL",
   pt: "PT",
+  ro: "RO",
+  ru: "RU",
+  sk: "SK",
+  sl: "SI",
+  sv: "SE",
+  sw: "KE",
+  ta: "IN",
+  te: "IN",
+  th: "TH",
+  tr: "TR",
+  uk: "UA",
+  ur: "PK",
+  vi: "VN",
   zh: "CN",
+  "zh-cn": "CN",
+  "zh-hans": "CN",
+  "zh-hant": "TW",
+  "zh-hk": "HK",
+  "zh-tw": "TW",
 };
+
+export function splitCompoundLocales(
+  locale: string | null | undefined,
+): string[] {
+  if (!locale) return [];
+  return locale
+    .split(/[/,+&]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
 
 function stableHash(value: string) {
   let hash = 0;
@@ -86,9 +138,24 @@ export function voiceAvatarGradient(seed: string) {
 }
 
 export function inferVoiceGender(voiceId: string): InferredVoiceGender | null {
-  const prefix = voiceId.trim().toLowerCase().split("_")[0] ?? "";
-  if (/^[a-z]f$/.test(prefix)) return "female";
-  if (/^[a-z]m$/.test(prefix)) return "male";
+  const trimmed = voiceId.trim().toLowerCase();
+  const prefix = trimmed.split("_")[0] ?? "";
+  if (
+    /^[a-z]f$/.test(prefix) ||
+    /^f\d+$/.test(prefix) ||
+    prefix === "female" ||
+    /(?:^|[_-])(?:female|woman|girl)(?:$|[_-])/.test(trimmed)
+  ) {
+    return "female";
+  }
+  if (
+    /^[a-z]m$/.test(prefix) ||
+    /^m\d+$/.test(prefix) ||
+    prefix === "male" ||
+    /(?:^|[_-])(?:male|man|boy)(?:$|[_-])/.test(trimmed)
+  ) {
+    return "male";
+  }
   return null;
 }
 
@@ -96,16 +163,37 @@ export function normalizeVoiceLocale(
   voice: Pick<VoiceInfo, "locale"> | null | undefined,
   model: Pick<CatalogModelDescriptor, "locale" | "supported_languages">,
 ) {
-  return (
-    voice?.locale ??
-    model.locale ??
-    model.supported_languages.find((language) => language.trim()) ??
-    null
+  if (voice?.locale) return voice.locale;
+  if (model.locale) return model.locale;
+  const supported = model.supported_languages.filter((language) =>
+    language.trim(),
   );
+  if (
+    supported.some(
+      (lang) =>
+        lang.toLowerCase() === "mul" || lang.toLowerCase() === "multiple",
+    ) ||
+    supported.length > 2
+  ) {
+    return "mul";
+  }
+  if (supported.length > 0 && supported.length <= 2) {
+    return supported.join("/");
+  }
+  return supported[0] ?? null;
 }
 
 export function voiceLanguageFromLocale(locale: string | null | undefined) {
-  return locale?.split(/[-_]/)[0]?.toLowerCase() || null;
+  if (!locale) return null;
+  const parts = splitCompoundLocales(locale);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) {
+    return parts[0].split(/[-_]/)[0]?.toLowerCase() || null;
+  }
+  return parts
+    .map((part) => part.toLowerCase())
+    .filter(Boolean)
+    .join("/");
 }
 
 function regionFromLocale(locale: string | null | undefined) {
@@ -116,8 +204,20 @@ function regionFromLocale(locale: string | null | undefined) {
 }
 
 export function voiceAccentFromLocale(locale: string | null | undefined) {
+  const parts = splitCompoundLocales(locale);
+  if (parts.length > 1) return null;
   const region = regionFromLocale(locale);
-  return region ? (REGION_NAMES[region] ?? region) : null;
+  if (!region) return null;
+  if (REGION_NAMES[region]) return REGION_NAMES[region];
+  try {
+    const display = new Intl.DisplayNames(["en"], { type: "region" }).of(
+      region,
+    );
+    if (display) return display;
+  } catch {
+    // fallback to region code
+  }
+  return region;
 }
 
 function flagFromRegion(region: string | null | undefined) {
@@ -127,28 +227,133 @@ function flagFromRegion(region: string | null | undefined) {
     .join("");
 }
 
-export function countryFlagFromLocale(locale: string | null | undefined) {
-  const language = voiceLanguageFromLocale(locale);
-  const languageRegion = language
+function singleLocaleFlag(subLocale: string): string[] {
+  const trimmed = subLocale.trim().toLowerCase();
+  if (trimmed === "mul" || trimmed === "multiple") {
+    return ["🌐"];
+  }
+  const parts = subLocale.split(/[-_]/).filter(Boolean);
+  const language = parts[0]?.toLowerCase() || null;
+  const explicitRegion =
+    parts
+      .slice(1)
+      .find((part) => /^[A-Za-z]{2}$/.test(part))
+      ?.toUpperCase() || null;
+  const defaultRegion = language
     ? (LANGUAGE_DEFAULT_REGIONS[language] ?? null)
     : null;
-  const accentRegion = regionFromLocale(locale);
-  const flags = [flagFromRegion(languageRegion)];
 
-  if (accentRegion && accentRegion !== languageRegion) {
-    flags.push(flagFromRegion(accentRegion));
+  if (
+    language === "zh" &&
+    explicitRegion &&
+    (explicitRegion === "TW" || explicitRegion === "HK")
+  ) {
+    return [flagFromRegion(explicitRegion)].filter(Boolean) as string[];
   }
 
-  return flags.filter(Boolean).join("") || null;
+  const flags = [flagFromRegion(defaultRegion)];
+  if (explicitRegion && explicitRegion !== defaultRegion) {
+    flags.push(flagFromRegion(explicitRegion));
+  }
+  return flags.filter(Boolean) as string[];
 }
 
-function languageDisplayName(language: string | null) {
-  if (!language) return null;
-  try {
-    return new Intl.DisplayNames(["en"], { type: "language" }).of(language);
-  } catch {
-    return language.toUpperCase();
+export function countryFlagFromLocale(locale: string | null | undefined) {
+  if (!locale) return null;
+  const trimmed = locale.trim().toLowerCase();
+  if (trimmed === "mul" || trimmed === "multiple") return "🌐";
+
+  const subLocales = splitCompoundLocales(locale);
+  if (subLocales.length === 0) return null;
+
+  if (subLocales.length === 1) {
+    const flags = singleLocaleFlag(subLocales[0]);
+    return flags.join("") || null;
   }
+
+  const flags: string[] = [];
+  for (const sub of subLocales) {
+    const subLower = sub.trim().toLowerCase();
+    if (subLower === "mul" || subLower === "multiple") {
+      if (!flags.includes("🌐")) flags.push("🌐");
+      continue;
+    }
+    const parts = sub.split(/[-_]/).filter(Boolean);
+    const lang = parts[0]?.toLowerCase() || null;
+    const explicitRegion =
+      parts
+        .slice(1)
+        .find((part) => /^[A-Za-z]{2}$/.test(part))
+        ?.toUpperCase() || null;
+
+    if (explicitRegion) {
+      const flag = flagFromRegion(explicitRegion);
+      if (flag && !flags.includes(flag)) flags.push(flag);
+    } else if (LANGUAGE_DEFAULT_REGIONS[subLower]) {
+      const flag = flagFromRegion(LANGUAGE_DEFAULT_REGIONS[subLower]);
+      if (flag && !flags.includes(flag)) flags.push(flag);
+    } else if (lang && LANGUAGE_DEFAULT_REGIONS[lang]) {
+      const flag = flagFromRegion(LANGUAGE_DEFAULT_REGIONS[lang]);
+      if (flag && !flags.includes(flag)) flags.push(flag);
+    }
+  }
+
+  return flags.join("") || null;
+}
+
+export function languageDisplayName(
+  languageOrLocale: string | null | undefined,
+): string | null {
+  if (!languageOrLocale) return null;
+  const parts = splitCompoundLocales(languageOrLocale);
+  if (parts.length === 0) return null;
+
+  const names = parts
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return null;
+      const lower = trimmed.toLowerCase();
+      if (lower === "mul" || lower === "multiple") {
+        return "Multiple languages";
+      }
+      if (lower === "zh-tw" || lower === "zh-hant" || lower === "zh-hant-tw") {
+        return "Chinese (Taiwan)";
+      }
+      if (lower === "zh-cn" || lower === "zh-hans") {
+        return "Chinese (Simplified)";
+      }
+      if (lower === "zh-hk") {
+        return "Chinese (Hong Kong)";
+      }
+      try {
+        const display = new Intl.DisplayNames(["en"], {
+          type: "language",
+        }).of(trimmed);
+        if (display && display.toLowerCase() !== lower) {
+          return display;
+        }
+      } catch {
+        // subtag fallback below
+      }
+      const langSubtag = trimmed.split(/[-_]/)[0]?.toLowerCase();
+      if (langSubtag && langSubtag !== lower) {
+        try {
+          const display = new Intl.DisplayNames(["en"], {
+            type: "language",
+          }).of(langSubtag);
+          if (display) return display;
+        } catch {
+          // ignore
+        }
+      }
+      return trimmed.toUpperCase();
+    })
+    .filter(Boolean) as string[];
+
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return names.join(", ");
 }
 
 export function voiceDescription(row: {

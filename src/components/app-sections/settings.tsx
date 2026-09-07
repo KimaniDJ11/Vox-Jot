@@ -56,6 +56,7 @@ import {
   Textarea,
   ToggleSwitch,
 } from "@/components/ui";
+import { AcousticProfileSelector } from "@/components/settings/AcousticProfileSelector";
 import { AlwaysOnMicrophone } from "@/components/settings/AlwaysOnMicrophone";
 import { AppendTrailingSpace } from "@/components/settings/AppendTrailingSpace";
 import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
@@ -81,6 +82,7 @@ import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
 import { ModelUnloadTimeoutSetting } from "@/components/settings/ModelUnloadTimeout";
 import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
+import { MarkdownExportSettings } from "@/components/settings/MarkdownExportSettings";
 import { PasteMethodSetting } from "@/components/settings/PasteMethod";
 import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
 import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
@@ -785,6 +787,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
       <SettingsGroup title={t("appSections.groups.microphoneInput")}>
         <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
+        <AcousticProfileSelector descriptionMode="inline" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="inline" grouped={true} />
         <MuteWhileRecording descriptionMode="inline" grouped={true} />
         <AudioDucking descriptionMode="inline" grouped={true} />
@@ -1776,6 +1779,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
       <SettingsGroup title={t("appSections.privacy.filesGroupTitle")}>
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />
+        <MarkdownExportSettings grouped={true} />
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.privacy.storageGroupTitle")}>

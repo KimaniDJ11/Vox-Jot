@@ -1507,10 +1507,39 @@ pub(crate) async fn transcribe_file_impl_with_models(
     diarization_model_id: String,
     emotion_model_id: String,
 ) -> Result<TranscriptionFileResult, String> {
+    transcribe_file_impl_with_snapshot(
+        app,
+        speech_sidecar_manager,
+        correction_store,
+        path,
+        asr_model_id,
+        diarization_model_id,
+        emotion_model_id,
+        None,
+    )
+    .await
+}
+
+pub(crate) async fn transcribe_file_impl_with_snapshot(
+    app: AppHandle,
+    speech_sidecar_manager: Arc<SidecarManager>,
+    correction_store: Arc<CorrectionStore>,
+    path: String,
+    asr_model_id: String,
+    diarization_model_id: String,
+    emotion_model_id: String,
+    snapshot: Option<crate::settings::AppSettings>,
+) -> Result<TranscriptionFileResult, String> {
     // File jobs run on the dedicated background engine (or the live manager
     // for remote-runtime models) so they never block live dictation.
-    let manager = crate::managers::file_transcription_engine(&app)
-        .ok_or_else(|| "TranscriptionManager not available".to_string())?;
+    let manager = if snapshot.is_some() {
+        app.try_state::<crate::managers::FileTranscriptionEngine>()
+            .map(|state| state.0.clone())
+    } else {
+        crate::managers::file_transcription_engine(&app)
+    }
+    .ok_or_else(|| "TranscriptionManager not available".to_string())?;
+    let request_settings = snapshot.unwrap_or_else(|| get_settings(&app));
     let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
     let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
     let use_emotion = speech_analysis::should_run_emotion(&emotion_model_id);
@@ -1594,7 +1623,7 @@ pub(crate) async fn transcribe_file_impl_with_models(
                 }
 
                 let (current_text, mut current_segments) = manager
-                    .transcribe_with_segments(Arc::new(audio_16k.clone()))
+                    .transcribe_with_segments_and_settings(Arc::new(audio_16k.clone()), request_settings.clone())
                     .map_err(|e| format!("Failed to transcribe file: {}", e))?;
 
                 // The current-dictation ASR runs in-process, but diarization and

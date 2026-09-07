@@ -28,6 +28,7 @@ const ARCH_PATTERNS: Array<[RegExp, string]> = [
   [/ming[-_\s]?omni/i, "Ming Omni"],
   [/kugel/i, "KugelAudio"],
   [/bark/i, "Bark"],
+  [/breeze/i, "Breeze"],
   [/fish[-_\s]?audio/i, "Fish Audio"],
   [/\blfm/i, "LFM Audio"],
   [/pocket/i, "Pocket TTS"],

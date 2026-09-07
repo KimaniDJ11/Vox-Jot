@@ -137,7 +137,7 @@ run_notary_submit() {
 
   local attempt=1
   local max_attempts=3
-  local output status
+  local output status submission_id
 
   while [[ "${attempt}" -le "${max_attempts}" ]]; do
     if [[ "${attempt}" -gt 1 ]]; then
@@ -145,12 +145,39 @@ run_notary_submit() {
     fi
 
     if output="$("$@" 2>&1)"; then
-      echo "${output}"
-      return 0
+      status=0
+    else
+      status="$?"
+    fi
+    echo "${output}"
+
+    # A failed --wait may still register the upload. Never turn that failure
+    # into success or submit the same archive again after Apple returned an ID.
+    submission_id="$(echo "${output}" | /usr/bin/awk '/^[[:space:]]*id: / { print $2; exit }')"
+    if [[ -n "${submission_id}" ]]; then
+      echo "Submission ${submission_id} registered. Waiting for Apple's acceptance..."
+      local poll_attempt=1 info_output
+      while [[ "${poll_attempt}" -le 120 ]]; do
+        if info_output="$(notary_submission_info "${submission_id}" 2>&1)"; then
+          if /usr/bin/grep -q '^[[:space:]]*status: Accepted' <<<"${info_output}"; then
+            echo "Notarization accepted for submission ${submission_id}."
+            return 0
+          elif /usr/bin/grep -q '^[[:space:]]*status: Invalid' <<<"${info_output}"; then
+            echo "Apple rejected submission ${submission_id}: ${info_output}" >&2
+            return 1
+          fi
+        fi
+        /bin/sleep 10
+        poll_attempt=$((poll_attempt + 1))
+      done
+      echo "Timed out waiting for submission ${submission_id}. Refusing duplicate submission; the installed app is unchanged." >&2
+      return 1
     fi
 
-    status="$?"
-    echo "${output}" >&2
+    if [[ "${status}" -eq 0 ]]; then
+      echo "No notarization submission ID was returned; cannot verify acceptance." >&2
+      return 1
+    fi
 
     if [[ "${attempt}" -eq "${max_attempts}" ]]; then
       return "${status}"
@@ -177,6 +204,22 @@ run_notary_submit() {
   done
 
   notary_submit_failed "${credential_description}"
+}
+
+notary_submission_info() {
+  local submission_id="$1"
+  case "${NOTARY_CREDENTIAL_MODE}" in
+  keychain_profile)
+    /usr/bin/xcrun notarytool info "${submission_id}" --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}"
+    ;;
+  apple_id)
+    /usr/bin/xcrun notarytool info "${submission_id}" --apple-id "${APPLE_ID}" --team-id "${APPLE_TEAM_ID}" --password "${APPLE_NOTARY_PASSWORD}"
+    ;;
+  api_key)
+    /usr/bin/xcrun notarytool info "${submission_id}" --key "${APPLE_API_KEY_PATH}" --key-id "${APPLE_API_KEY}" --issuer "${APPLE_API_ISSUER}"
+    ;;
+  *) return 1 ;;
+  esac
 }
 
 resolve_signing_identity() {

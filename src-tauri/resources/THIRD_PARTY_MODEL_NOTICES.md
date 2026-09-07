@@ -145,6 +145,12 @@ directly or mirrors/converts assets for app-managed installation.
   https://huggingface.co/kugelaudio/kugelaudio-0-open.
 - Bark Small MLX conversion - MIT. Source:
   https://huggingface.co/mlx-community/bark-small.
+- Breeze TTS 2 MLX conversions - BreezeBlue Research and Non-Commercial
+  License Agreement; gated before download for non-commercial terms and
+  reference-voice consent. Commercial use requires a separate written license
+  from BreezeBlue. Sources: https://huggingface.co/BreezeBlue/Breeze-TTS-2,
+  https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit, and
+  https://huggingface.co/mlx-community/Breeze-TTS-2-mlx.
 - Fish Audio S2 Pro - Fish Audio Research License; gated before download and
   commercial use requires a separate license. Source:
   https://huggingface.co/mlx-community/fish-audio-s2-pro-bf16.

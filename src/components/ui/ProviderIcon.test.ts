@@ -221,6 +221,11 @@ describe("resolveModelProviderId", () => {
         expected: "mlx_bark",
       },
       {
+        title: "Breeze TTS 2 4-bit",
+        runtimeProviderId: "mlx_breeze_tts",
+        expected: "mlx_breeze_tts",
+      },
+      {
         title: "Fish Audio S2 Pro",
         runtimeProviderId: "mlx_fish_audio",
         expected: "mlx_fish_audio",
@@ -734,6 +739,7 @@ describe("resolveModelProviderId", () => {
       "mlx_ming_omni",
       "mlx_kugel",
       "mlx_bark",
+      "mlx_breeze_tts",
       "mlx_fish_audio",
       "mlx_lfm_audio",
       "mlx_longcat_audiodit",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "../../../hooks/useSettings";
 import { commands, type PostProcessProvider } from "@/bindings";
+import { isLocalBaseUrl } from "@/lib/providerPrivacy";
 import type { ModelOption } from "./types";
 import type { DropdownOption } from "../../ui/Dropdown";
 
@@ -10,6 +11,7 @@ export type PostProcessProviderState = {
   selectedProvider: PostProcessProvider | undefined;
   isCustomProvider: boolean;
   isAppleProvider: boolean;
+  isLocalProvider: boolean;
   appleIntelligenceUnavailable: boolean;
   baseUrl: string;
   handleBaseUrlChange: (value: string) => void;
@@ -32,21 +34,10 @@ export type PostProcessProviderState = {
 const APPLE_PROVIDER_ID = "apple_intelligence";
 const OLLAMA_PROVIDER_ID = "ollama";
 
-const isLocalBaseUrl = (baseUrl: string): boolean => {
-  const lower = baseUrl.trim().toLowerCase();
-  if (!lower) return false;
-  return (
-    lower.startsWith("http://localhost") ||
-    lower.startsWith("https://localhost") ||
-    lower.startsWith("http://127.0.0.1") ||
-    lower.startsWith("https://127.0.0.1") ||
-    lower.startsWith("http://[::1]") ||
-    lower.startsWith("https://[::1]")
-  );
-};
-
-const isLocalProvider = (provider: PostProcessProvider): boolean => {
-  if (provider.id === APPLE_PROVIDER_ID) return true;
+const providerIsLocal = (provider: PostProcessProvider): boolean => {
+  if (provider.id === APPLE_PROVIDER_ID || provider.id === "vox_jot_local") {
+    return true;
+  }
   return isLocalBaseUrl(provider.base_url);
 };
 
@@ -68,7 +59,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   const visibleProviders = useMemo(
     () =>
       localPrivacyMode
-        ? providers.filter((provider) => isLocalProvider(provider))
+        ? providers.filter((provider) => providerIsLocal(provider))
         : providers,
     [localPrivacyMode, providers],
   );
@@ -92,6 +83,9 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   }, [visibleProviders, selectedProviderId]);
 
   const isAppleProvider = selectedProvider?.id === APPLE_PROVIDER_ID;
+  const isLocalProvider = selectedProvider
+    ? providerIsLocal(selectedProvider)
+    : true;
   const [appleIntelligenceUnavailable, setAppleIntelligenceUnavailable] =
     useState(false);
   const autoFetchedProvidersRef = useRef<Set<string>>(new Set());
@@ -318,6 +312,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
     selectedProvider,
     isCustomProvider,
     isAppleProvider,
+    isLocalProvider,
     appleIntelligenceUnavailable,
     baseUrl,
     handleBaseUrlChange,

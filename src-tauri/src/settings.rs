@@ -55,6 +55,7 @@ pub const TTS_PROVIDER_MLX_KITTEN_TTS_ID: &str = "mlx_kitten_tts";
 pub const TTS_PROVIDER_MLX_MISO_TTS_ID: &str = "mlx_miso_tts";
 pub const TTS_PROVIDER_MLX_ORPHEUS_ID: &str = "mlx_orpheus";
 pub const TTS_PROVIDER_MLX_ZONOS2_ID: &str = "mlx_zonos2";
+pub const TTS_PROVIDER_MLX_BREEZE_TTS_ID: &str = "mlx_breeze_tts";
 pub const TTS_PROVIDER_LFM_AUDIO_GGUF_ID: &str = "lfm_audio_gguf";
 pub const TTS_PROVIDER_VIBEVOICE_ID: &str = "vibevoice";
 pub const TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID: &str = "lfm2-5-audio-1-5b-q4-0";
@@ -607,6 +608,22 @@ pub struct TtsVoicePresetInput {
     pub tuning: TtsVoiceTuningSettings,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum AcousticProfile {
+    #[default]
+    Normal,
+    Quiet,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MarkdownExportContentSource {
+    #[default]
+    Final,
+    Raw,
+}
+
 /* still handy for composing the initial JSON in the store ------------- */
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct AppSettings {
@@ -637,6 +654,8 @@ pub struct AppSettings {
     pub always_on_microphone: bool,
     #[serde(default)]
     pub selected_microphone: Option<String>,
+    #[serde(default)]
+    pub acoustic_profile: AcousticProfile,
     #[serde(default)]
     pub clamshell_microphone: Option<String>,
     #[serde(default)]
@@ -745,6 +764,10 @@ pub struct AppSettings {
     pub auto_submit_key: AutoSubmitKey,
     #[serde(default = "default_post_process_enabled")]
     pub post_process_enabled: bool,
+    #[serde(default)]
+    pub adaptive_selection_rewrite_enabled: bool,
+    #[serde(default)]
+    pub cloud_selection_rewrite_allowed: bool,
     #[serde(default = "default_local_privacy_mode")]
     pub local_privacy_mode: bool,
     #[serde(default = "default_screen_context_enabled")]
@@ -870,6 +893,27 @@ pub struct AppSettings {
     /// auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
     #[serde(default)]
     pub watch_folders: Vec<WatchFolderConfig>,
+    /// Whether automatic background export to Markdown files is enabled.
+    #[serde(default)]
+    pub markdown_export_enabled: bool,
+    /// Destination directory for auto-exported Markdown notes.
+    #[serde(default)]
+    pub markdown_export_dir: Option<PathBuf>,
+    /// Minimum words required to trigger Markdown auto-export.
+    #[serde(default = "default_markdown_export_min_words")]
+    pub markdown_export_min_words: usize,
+    /// Whether an export uses the delivered/final text or the raw ASR transcript.
+    #[serde(default)]
+    pub markdown_export_content_source: MarkdownExportContentSource,
+    /// Whether to include YAML frontmatter in exported Markdown files.
+    #[serde(default = "default_true")]
+    pub markdown_export_frontmatter: bool,
+    /// Whether selection-rewrite records are eligible for auto-export.
+    #[serde(default)]
+    pub markdown_export_include_rewrite_selection: bool,
+    /// Whether records that were not delivered to the destination app are eligible.
+    #[serde(default)]
+    pub markdown_export_include_failed_paste: bool,
     /// Whether the loopback HTTP API server is enabled. Off by default;
     /// flipping this on starts an `axum` server on `127.0.0.1` so the
     /// `vox-jot` CLI and other tools can drive transcription externally.
@@ -939,6 +983,10 @@ pub struct WatchFolderConfig {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_markdown_export_min_words() -> usize {
+    3
 }
 
 fn default_experimental_enabled() -> bool {
@@ -2100,6 +2148,7 @@ pub fn get_default_settings() -> AppSettings {
         selected_stt_model_id: String::new(),
         always_on_microphone: false,
         selected_microphone: None,
+        acoustic_profile: AcousticProfile::Normal,
         clamshell_microphone: None,
         selected_output_device: None,
         translate_to_english: false,
@@ -2156,6 +2205,8 @@ pub fn get_default_settings() -> AppSettings {
         auto_submit: default_auto_submit(),
         auto_submit_key: AutoSubmitKey::default(),
         post_process_enabled: default_post_process_enabled(),
+        adaptive_selection_rewrite_enabled: false,
+        cloud_selection_rewrite_allowed: false,
         local_privacy_mode: default_local_privacy_mode(),
         screen_context_enabled: default_screen_context_enabled(),
         screen_context_excluded_bundle_ids: Vec::new(),
@@ -2214,6 +2265,13 @@ pub fn get_default_settings() -> AppSettings {
         app_font_scale: default_app_font_scale(),
         continuous_improvement_hq_capture: false,
         watch_folders: Vec::new(),
+        markdown_export_enabled: false,
+        markdown_export_dir: None,
+        markdown_export_min_words: default_markdown_export_min_words(),
+        markdown_export_content_source: MarkdownExportContentSource::Final,
+        markdown_export_frontmatter: true,
+        markdown_export_include_rewrite_selection: false,
+        markdown_export_include_failed_paste: false,
         http_api_enabled: false,
         http_api_port: default_http_api_port(),
         http_api_token: String::new(),
@@ -2749,17 +2807,23 @@ pub(crate) fn build_tts_preset_from_legacy(
 }
 
 pub fn is_local_base_url(base_url: &str) -> bool {
-    let lower = base_url.trim().to_ascii_lowercase();
-    if lower.is_empty() {
+    let Ok(url) = reqwest::Url::parse(base_url.trim()) else {
+        return false;
+    };
+    if !matches!(url.scheme(), "http" | "https")
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
         return false;
     }
-
-    lower.starts_with("http://localhost")
-        || lower.starts_with("https://localhost")
-        || lower.starts_with("http://127.0.0.1")
-        || lower.starts_with("https://127.0.0.1")
-        || lower.starts_with("http://[::1]")
-        || lower.starts_with("https://[::1]")
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    host == "localhost"
+        || host
+            .trim_matches(['[', ']'])
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
 }
 
 pub fn post_process_provider_is_local(provider: &PostProcessProvider) -> bool {
@@ -3049,6 +3113,28 @@ pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn local_provider_urls_require_a_real_loopback_host() {
+        for url in [
+            "http://localhost:11434/v1",
+            "https://127.0.0.1:8080",
+            "http://[::1]:11434/v1",
+            "http://127.2.3.4",
+        ] {
+            assert!(is_local_base_url(url), "should be local: {url}");
+        }
+        for url in [
+            "https://localhost.attacker.example",
+            "https://127.0.0.1.attacker.example",
+            "http://localhost@attacker.example",
+            "http://[::1]@attacker.example",
+            "file://localhost/v1",
+            "https://example.com",
+        ] {
+            assert!(!is_local_base_url(url), "should not be local: {url}");
+        }
+    }
     use crate::secret_store::{install_test_secret_store, TestSecretStore};
     use std::sync::Arc;
 

@@ -932,6 +932,7 @@ fn navigation_schema() -> NavigationSchemaResponse {
                     "history",
                     "corrections",
                     "file-transcription",
+                    "meetings",
                     "reader",
                     "enhance-audio",
                 ],
@@ -1070,7 +1071,7 @@ async fn handle_settings_command(
         return *response;
     }
 
-    match apply_settings_command(&state.app, request.key, request.value) {
+    match apply_settings_command(&state.app, request.key, request.value).await {
         Ok(updated_keys) => Json(SettingsPatchResponse {
             status: "ok",
             updated_keys,
@@ -1122,6 +1123,14 @@ async fn handle_shortcut_reset(
 
 fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
     match key {
+        "acoustic_profile" | "adaptive_selection_rewrite_enabled"
+        | "cloud_selection_rewrite_allowed" | "markdown_export_enabled"
+        | "markdown_export_dir" | "markdown_export_min_words"
+        | "markdown_export_content_source" | "markdown_export_frontmatter"
+        | "markdown_export_include_rewrite_selection" | "markdown_export_include_failed_paste" => Some((
+            "/v1/settings/command",
+            "These settings require privacy, folder authorization, or recording-pipeline validation.",
+        )),
         "http_api_token" => Some(("protected", "Local API token lives in the OS credential store.")),
         "post_process_api_keys" => {
             Some(("protected", "Provider API keys live in the OS credential store."))
@@ -1348,7 +1357,7 @@ fn apply_settings_patch(
     Ok((updated_keys, get_settings_without_secrets(app)))
 }
 
-fn apply_settings_command(
+async fn apply_settings_command(
     app: &AppHandle,
     key: String,
     value: Value,
@@ -1359,6 +1368,36 @@ fn apply_settings_command(
     }
 
     match key {
+        "acoustic_profile" => crate::shortcut::change_acoustic_profile_setting(
+            app.clone(), setting_string(&value, key)?,
+        ).await.map(|_| vec![key.to_string()]),
+        "adaptive_selection_rewrite_enabled" => crate::shortcut::change_adaptive_selection_rewrite_enabled_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "cloud_selection_rewrite_allowed" => crate::shortcut::change_cloud_selection_rewrite_allowed_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_enabled" => crate::shortcut::change_markdown_export_enabled_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_dir" => crate::shortcut::change_markdown_export_dir_setting(
+            app.clone(), if value.is_null() { None } else { Some(setting_string(&value, key)?) },
+        ).map(|_| vec![key.to_string(), "markdown_export_enabled".to_string()]),
+        "markdown_export_min_words" => crate::shortcut::change_markdown_export_min_words_setting(
+            app.clone(), value.as_u64().and_then(|n| usize::try_from(n).ok()).ok_or("Minimum words must be a nonnegative integer.")?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_content_source" => crate::shortcut::change_markdown_export_content_source_setting(
+            app.clone(), setting_string(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_frontmatter" => crate::shortcut::change_markdown_export_frontmatter_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_include_rewrite_selection" => crate::shortcut::change_markdown_export_include_rewrite_selection_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
+        "markdown_export_include_failed_paste" => crate::shortcut::change_markdown_export_include_failed_paste_setting(
+            app.clone(), setting_bool(&value, key)?,
+        ).map(|_| vec![key.to_string()]),
         "keyboard_implementation" => crate::shortcut::change_keyboard_implementation_setting(
             app.clone(),
             setting_string(&value, key)?,
@@ -1848,6 +1887,13 @@ fn normalize_phrase_key(
     }
     if expansion.chars().count() > PHRASE_KEY_MAX_EXPANSION_CHARS {
         return Err("expansion must be 4,000 characters or fewer.".to_string());
+    }
+    let unsupported = crate::snippets::unsupported_template_variables(&expansion);
+    if !unsupported.is_empty() {
+        return Err(format!(
+            "Unsupported Phrase Key variables: {}",
+            unsupported.join(", ")
+        ));
     }
     let id = id
         .as_deref()
@@ -4765,6 +4811,23 @@ mod tests {
 
     #[test]
     fn api_settings_patch_marks_side_effect_fields_unpatchable() {
+        for key in [
+            "acoustic_profile",
+            "adaptive_selection_rewrite_enabled",
+            "cloud_selection_rewrite_allowed",
+            "markdown_export_enabled",
+            "markdown_export_dir",
+            "markdown_export_min_words",
+            "markdown_export_content_source",
+            "markdown_export_frontmatter",
+            "markdown_export_include_rewrite_selection",
+            "markdown_export_include_failed_paste",
+        ] {
+            assert!(
+                !is_patchable_setting(key),
+                "{key} must use validated commands"
+            );
+        }
         assert!(is_patchable_setting("audio_feedback"));
         assert!(!is_patchable_setting("bindings"));
         assert!(!is_patchable_setting("app_theme"));

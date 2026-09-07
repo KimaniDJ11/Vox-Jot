@@ -15,6 +15,41 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
+#[derive(Debug, Clone)]
+pub struct SelectionGuard {
+    pub(crate) valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub(crate) app_pid: i32,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub(crate) expected_text: std::sync::Arc<str>,
+}
+
+impl PartialEq for SelectionGuard {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.valid, &other.valid) && self.app_pid == other.app_pid
+    }
+}
+impl Eq for SelectionGuard {}
+impl SelectionGuard {
+    pub fn is_observer_valid(&self) -> bool {
+        self.valid.load(Ordering::Acquire) && passive_selection_app_pid() == Some(self.app_pid)
+    }
+
+    pub fn is_valid(&self) -> bool {
+        if !self.is_observer_valid() {
+            return false;
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            crate::correction_tracker::field_monitor_macos::read_selected_text_for_app(self.app_pid)
+                .is_ok_and(|text| text.as_deref() == Some(self.expected_text.as_ref()))
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        false
+    }
+}
+
 #[cfg(target_os = "linux")]
 use crate::utils::{is_kde_wayland, is_wayland};
 
@@ -929,6 +964,47 @@ fn clipboard_copy_changed(
     match (current_change_count, sentinel_change_count) {
         (Some(after_copy), Some(after_sentinel)) => after_copy != after_sentinel,
         _ => selected_text != sentinel,
+    }
+}
+
+/// Read current plain text from the system clipboard without altering clipboard state.
+pub fn get_clipboard_text(app_handle: &AppHandle) -> Option<String> {
+    app_handle
+        .clipboard()
+        .read_text()
+        .ok()
+        .filter(|s| !s.is_empty())
+}
+
+pub fn passive_selection_app_pid() -> Option<i32> {
+    #[cfg(target_os = "macos")]
+    return crate::correction_tracker::field_monitor_macos::frontmost_application_pid();
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
+pub fn observe_selected_text_passive(
+    expected_pid: Option<i32>,
+    complete: impl FnOnce(Result<Option<(String, SelectionGuard)>, String>),
+) {
+    #[cfg(target_os = "macos")]
+    {
+        let Some(pid) = expected_pid else {
+            complete(Err(
+                "No active application was available for selection capture.".into(),
+            ));
+            return;
+        };
+        crate::correction_tracker::field_monitor_macos::observe_selected_text_for_app(
+            pid, complete,
+        );
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = expected_pid;
+        complete(Err(
+            "Automatic selection detection currently requires macOS Accessibility.".to_string(),
+        ));
     }
 }
 

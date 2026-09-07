@@ -779,6 +779,23 @@
       "ui_acknowledgement_required": true
     },
     {
+      "id": "breeze-tts-2",
+      "domains": ["tts"],
+      "name": "Breeze TTS 2 MLX conversions",
+      "upstream": "https://huggingface.co/BreezeBlue/Breeze-TTS-2",
+      "distribution_source": "https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit and https://huggingface.co/mlx-community/Breeze-TTS-2-mlx",
+      "license": "BreezeBlue Research and Non-Commercial License Agreement",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "accepted_terms",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["breeze-tts-2-4bit", "breeze-tts-2-bf16"],
+      "ui_acknowledgement_required": true
+    },
+    {
       "id": "outetts",
       "domains": ["tts"],
       "name": "Llama OuteTTS",

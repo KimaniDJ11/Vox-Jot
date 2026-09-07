@@ -9,22 +9,9 @@ import {
 
 import { commands } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
+import { isLocalBaseUrl } from "@/lib/providerPrivacy";
 
 const APPLE_INTELLIGENCE_PROVIDER_ID = "apple_intelligence";
-
-function isLocalBaseUrl(baseUrl: string | null | undefined): boolean {
-  const lower = baseUrl?.trim().toLowerCase();
-  if (!lower) return false;
-
-  return (
-    lower.startsWith("http://localhost") ||
-    lower.startsWith("https://localhost") ||
-    lower.startsWith("http://127.0.0.1") ||
-    lower.startsWith("https://127.0.0.1") ||
-    lower.startsWith("http://[::1]") ||
-    lower.startsWith("https://[::1]")
-  );
-}
 
 export function postProcessProviderNeedsCredentials(
   providerId: string,

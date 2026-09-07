@@ -6,9 +6,19 @@ import { HistorySettings } from "./HistorySettings";
 
 const mockState = vi.hoisted(() => ({
   getHistoryEntriesPage: vi.fn(),
+  retryHistoryMarkdownExport: vi.fn(),
+  revealHistoryMarkdownExport: vi.fn(),
   listeners: new Map<string, Set<() => void>>(),
-  t: (key: string, options?: { defaultValue?: string }) =>
-    options?.defaultValue ?? key,
+  t: (key: string, options?: Record<string, unknown>) => {
+    let translated =
+      typeof options?.defaultValue === "string" ? options.defaultValue : key;
+    for (const [name, value] of Object.entries(options ?? {})) {
+      if (name !== "defaultValue") {
+        translated = translated.split(`{{${name}}}`).join(String(value));
+      }
+    }
+    return translated;
+  },
 }));
 
 vi.mock("@/bindings", async () => {
@@ -24,6 +34,8 @@ vi.mock("@/bindings", async () => {
         status: "ok",
         data: null,
       })),
+      retryHistoryMarkdownExport: mockState.retryHistoryMarkdownExport,
+      revealHistoryMarkdownExport: mockState.revealHistoryMarkdownExport,
       toggleHistoryEntrySaved: vi.fn(async () => ({
         status: "ok",
         data: null,
@@ -129,6 +141,10 @@ const makeEntry = (
   speaker_segments_json: null,
   speaker_transcript_text: null,
   speaker_display_names_json: null,
+  markdown_export_status: "not_requested",
+  markdown_export_path: null,
+  markdown_export_error: null,
+  markdown_exported_at: null,
 });
 
 const render = async (node: React.ReactNode) => {
@@ -152,6 +168,16 @@ const flushEffects = async () => {
 describe("HistorySettings", () => {
   beforeEach(() => {
     mockState.getHistoryEntriesPage.mockReset();
+    mockState.retryHistoryMarkdownExport.mockReset();
+    mockState.retryHistoryMarkdownExport.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
+    mockState.revealHistoryMarkdownExport.mockReset();
+    mockState.revealHistoryMarkdownExport.mockResolvedValue({
+      status: "ok",
+      data: null,
+    });
     mockState.listeners.clear();
   });
 
@@ -277,5 +303,32 @@ describe("HistorySettings", () => {
     });
     expect(view.textContent).toContain("Completed transcript");
     expect(view.textContent).not.toContain("Stale running transcript");
+  });
+
+  it("shows Markdown failure details and offers a retry", async () => {
+    const failedEntry = {
+      ...makeEntry(3, "Export this transcript", 1_780_000_020),
+      markdown_export_status: "failed" as const,
+      markdown_export_error: "Destination folder is unavailable.",
+    };
+    mockState.getHistoryEntriesPage.mockResolvedValue({
+      status: "ok",
+      data: { entries: [failedEntry], has_more: false },
+    });
+
+    const view = await render(<HistorySettings />);
+    await flushEffects();
+
+    expect(view.textContent).toContain("Markdown save failed");
+    expect(view.textContent).toContain("Destination folder is unavailable.");
+    const retryButton = view.querySelector<HTMLButtonElement>(
+      'button[aria-label="Retry Markdown export"]',
+    );
+    expect(retryButton).not.toBeNull();
+
+    await act(async () => {
+      retryButton?.click();
+    });
+    expect(mockState.retryHistoryMarkdownExport).toHaveBeenCalledWith(3);
   });
 });

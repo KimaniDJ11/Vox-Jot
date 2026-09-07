@@ -29,13 +29,13 @@ use crate::secret_store;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use crate::settings::APPLE_INTELLIGENCE_DEFAULT_MODEL_ID;
 use crate::settings::{
-    self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
-    KeyboardImplementation, LLMPrompt, OcrQualityMode, OverlayPosition, PasteMethod,
-    RecordingOverlayStyle, ScreenContextOcrEngine, ShortcutBinding, SoundTheme,
-    TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
-    TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference,
-    TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID,
-    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
+    self, get_settings, is_local_base_url, AcousticProfile, AutoSubmitKey, ClipboardHandling,
+    ContextCaptureMode, KeyboardImplementation, LLMPrompt, MarkdownExportContentSource,
+    OcrQualityMode, OverlayPosition, PasteMethod, RecordingOverlayStyle, ScreenContextOcrEngine,
+    ShortcutBinding, SoundTheme, TranslationBilingualLayout, TranslationDestinationMode,
+    TranslationOutputMode, TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope,
+    TtsEnginePreference, TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_PROVIDER_ID,
+    OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
 };
 use crate::tray;
@@ -908,6 +908,27 @@ pub fn change_audio_enhancement_model_setting(app: AppHandle, model: String) -> 
 
 #[tauri::command]
 #[specta::specta]
+pub async fn change_acoustic_profile_setting(
+    app: AppHandle,
+    profile: String,
+) -> Result<(), String> {
+    let acoustic_profile = match profile.trim().to_ascii_lowercase().as_str() {
+        "normal" => AcousticProfile::Normal,
+        "quiet" => AcousticProfile::Quiet,
+        other => return Err(format!("Invalid acoustic profile '{other}'")),
+    };
+
+    let audio_manager = Arc::clone(&app.state::<Arc<AudioRecordingManager>>());
+    tauri::async_runtime::spawn_blocking(move || {
+        audio_manager.update_acoustic_profile(acoustic_profile)
+    })
+    .await
+    .map_err(|error| format!("Microphone profile worker failed: {error}"))?
+    .map_err(|error| format!("Failed to refresh the microphone profile: {error}"))
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_tts_model_store_path_setting(
     app: AppHandle,
     path: Option<String>,
@@ -1384,6 +1405,128 @@ pub fn change_post_process_enabled_setting(app: AppHandle, enabled: bool) -> Res
         }
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_adaptive_selection_rewrite_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    if enabled && !cfg!(target_os = "macos") {
+        return Err(
+            "Automatic selection detection currently requires macOS Accessibility.".to_string(),
+        );
+    }
+    let mut settings = settings::get_settings(&app);
+    settings.adaptive_selection_rewrite_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_cloud_selection_rewrite_allowed_setting(
+    app: AppHandle,
+    allowed: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.cloud_selection_rewrite_allowed = allowed;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    if enabled && settings.markdown_export_dir.is_none() {
+        return Err("Choose an export folder before enabling Markdown export.".to_string());
+    }
+    settings.markdown_export_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_dir_setting(
+    app: AppHandle,
+    path: Option<String>,
+) -> Result<(), String> {
+    let configured_path = crate::markdown_export::configure_export_directory(&app, path)?;
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_dir = configured_path;
+    if settings.markdown_export_dir.is_none() {
+        settings.markdown_export_enabled = false;
+    }
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_min_words_setting(
+    app: AppHandle,
+    min_words: usize,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_min_words = min_words.clamp(1, 1_000);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_content_source_setting(
+    app: AppHandle,
+    source: String,
+) -> Result<(), String> {
+    let source = match source.trim().to_ascii_lowercase().as_str() {
+        "final" => MarkdownExportContentSource::Final,
+        "raw" => MarkdownExportContentSource::Raw,
+        other => return Err(format!("Invalid Markdown export content source '{other}'")),
+    };
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_content_source = source;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_frontmatter_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_frontmatter = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_include_rewrite_selection_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_include_rewrite_selection = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_markdown_export_include_failed_paste_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.markdown_export_include_failed_paste = enabled;
+    settings::write_settings(&app, settings);
     Ok(())
 }
 
@@ -2047,7 +2190,7 @@ pub fn change_app_language_setting(app: AppHandle, language: String) -> Result<(
     settings::write_settings(&app, settings);
 
     // Refresh the tray menu with the new language
-    tray::update_tray_menu(&app, &tray::TrayIconState::Idle, Some(&language));
+    tray::refresh_current_menu_with_locale(&app, &language);
 
     Ok(())
 }
@@ -2116,6 +2259,28 @@ pub fn update_snippets(
     app: AppHandle,
     snippets: Vec<crate::snippets::Snippet>,
 ) -> Result<(), String> {
+    if snippets.len() > 1_000 {
+        return Err("Phrase Key limit is 1,000 entries.".to_string());
+    }
+    for snippet in &snippets {
+        if snippet.trigger.trim().is_empty() || snippet.expansion.trim().is_empty() {
+            return Err("Phrase Key triggers and expansions cannot be empty.".to_string());
+        }
+        if snippet.trigger.chars().count() > 60 || snippet.expansion.chars().count() > 4_000 {
+            return Err(format!(
+                "Phrase Key '{}' exceeds the supported length limit.",
+                snippet.trigger
+            ));
+        }
+        let unsupported = crate::snippets::unsupported_template_variables(&snippet.expansion);
+        if !unsupported.is_empty() {
+            return Err(format!(
+                "Phrase Key '{}' uses unsupported variable(s): {}",
+                snippet.trigger,
+                unsupported.join(", ")
+            ));
+        }
+    }
     let mut settings = settings::get_settings(&app);
     settings.snippets = snippets;
     settings::write_settings(&app, settings);

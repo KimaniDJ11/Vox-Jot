@@ -80,6 +80,9 @@ import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
+const MeetingsSection = lazy(
+  () => import("@/components/meetings/MeetingsSection"),
+);
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 import { useDictationEncouragementTitle } from "@/hooks/useDictationEncouragementTitle";
 import {
@@ -572,6 +575,17 @@ function App() {
           FileAudio,
           <FileTranscriptionSection />,
           "gold",
+        ),
+        makeSection(
+          "meetings",
+          "appSections.nav.dictate.meetings",
+          AudioWaveform,
+          <MeetingsSection
+            onConfigureModels={() => setActiveSectionId("file-transcription")}
+          />,
+          "violet",
+          undefined,
+          "Meetings",
         ),
         makeSection(
           "reader",

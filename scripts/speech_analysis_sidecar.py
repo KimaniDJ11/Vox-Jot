@@ -77,6 +77,13 @@ EMOTION_REPOS = {
     "emotion2vec-plus-large": "emotion2vec/emotion2vec_plus_large",
 }
 
+TRUSTED_LIGHTNING_INSTANTIATORS = frozenset(
+    {
+        "lightning.pytorch.cli.instantiate_module",
+        "pytorch_lightning.cli.instantiate_module",
+    }
+)
+
 
 @dataclass
 class Segment:
@@ -117,8 +124,8 @@ def disable_torch_jit_script(torch_module: Any) -> None:
             "because PyTorch has no patched release for CVE-2025-3000."
         )
 
-    setattr(jit_module, "script", _blocked_torch_jit_script)
-    setattr(jit_module, "_vox_jot_script_disabled", True)
+    jit_module.script = _blocked_torch_jit_script
+    jit_module._vox_jot_script_disabled = True
 
 
 def import_guarded_torch() -> Any:
@@ -126,6 +133,61 @@ def import_guarded_torch() -> Any:
 
     disable_torch_jit_script(torch)
     return torch
+
+
+def harden_lightning_checkpoint_loading(saving_module: Any | None = None) -> None:
+    """Backport Lightning's checkpoint-instantiator allowlist.
+
+    Lightning 2.6.5 has no patched wheel for GHSA-qqmf-gpg7-g8gw. Pyannote
+    and WhisperX run only in this one-shot process, so patch the shared loader
+    before importing either package and reject checkpoint-controlled imports.
+    """
+
+    if saving_module is None:
+        import lightning.pytorch.core.saving as saving_module
+
+    original_load_state = saving_module._load_state
+    if getattr(original_load_state, "_vox_jot_checkpoint_guarded", False):
+        return
+
+    old_hparam_keys = tuple(getattr(saving_module, "CHECKPOINT_PAST_HPARAMS_KEYS", ()))
+
+    def guarded_load_state(
+        cls: Any,
+        checkpoint: dict[str, Any],
+        strict: bool | None = None,
+        **cls_kwargs_new: Any,
+    ) -> Any:
+        checkpoint_keys = (*old_hparam_keys, cls.CHECKPOINT_HYPER_PARAMS_KEY)
+        for key in checkpoint_keys:
+            loaded = checkpoint.get(key)
+            if loaded is None:
+                continue
+            if not isinstance(loaded, dict):
+                loaded = vars(loaded) if hasattr(loaded, "__dict__") else {}
+            instantiator = loaded.get("_instantiator")
+            if instantiator is not None and (
+                not isinstance(instantiator, str)
+                or instantiator not in TRUSTED_LIGHTNING_INSTANTIATORS
+            ):
+                raise ValueError(
+                    f"Blocked untrusted Lightning checkpoint instantiator {instantiator!r}"
+                )
+
+        explicit_instantiator = cls_kwargs_new.get("_instantiator")
+        if explicit_instantiator is not None and (
+            not isinstance(explicit_instantiator, str)
+            or explicit_instantiator not in TRUSTED_LIGHTNING_INSTANTIATORS
+        ):
+            raise ValueError(
+                "Blocked untrusted explicit Lightning checkpoint instantiator "
+                f"{explicit_instantiator!r}"
+            )
+
+        return original_load_state(cls, checkpoint, strict=strict, **cls_kwargs_new)
+
+    guarded_load_state._vox_jot_checkpoint_guarded = True
+    saving_module._load_state = guarded_load_state
 
 
 def device_name() -> str:
@@ -661,6 +723,7 @@ def transcribe_granite(audio_path: str) -> tuple[str, list[Segment]]:
 
 def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
     torch = import_guarded_torch()
+    harden_lightning_checkpoint_loading()
     from pyannote.audio import Pipeline
 
     token = hf_token()
@@ -735,6 +798,7 @@ def diarize_mlx_sortformer(audio_path: str, model_id: str) -> list[SpeakerTurn]:
 
 
 def diarize_diarizen(audio_path: str) -> list[SpeakerTurn]:
+    harden_lightning_checkpoint_loading()
     from diarizen.pipelines.inference import DiariZenPipeline
     from huggingface_hub import hf_hub_download
 
@@ -839,6 +903,7 @@ def transcribe_whisperx(
     audio_path: str,
     run_diarization: bool,
 ) -> tuple[str, list[Segment], list[SpeakerTurn]]:
+    harden_lightning_checkpoint_loading()
     import whisperx
     from whisperx.diarize import DiarizationPipeline
 

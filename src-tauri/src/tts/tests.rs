@@ -1,7 +1,7 @@
 use crate::settings::{
     TtsAutoReadbackMode, TtsAutoReadbackScope, TtsReadbackTextMode, TtsVoiceTuningSettings,
-    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID,
-    TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_MLX_BREEZE_TTS_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID,
+    TTS_PROVIDER_MLX_INDEXTTS_ID, TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
     TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID, TTS_PROVIDER_MLX_MELOTTS_ID,
     TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID,
     TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID,
@@ -20,7 +20,9 @@ use super::readback::build_auto_speak_plan;
 use super::sidecar::{
     build_sidecar_request_payload, sidecar_error_detail, sidecar_request_url_from_base,
 };
-use super::voices::{is_valid_mlx_voice_id, mlx_voice_label, mlx_voice_locale};
+use super::voices::{
+    is_valid_mlx_voice_id, mlx_voice_label, mlx_voice_locale, mlx_voice_locale_for_provider,
+};
 
 #[test]
 fn chunk_text_splits_long_input() {
@@ -345,6 +347,8 @@ fn outetts_catalog_uses_working_llama_checkpoint() {
 fn inline_tags_are_limited_to_nonverbal_mlx_models() {
     assert!(mlx_audio_model_supports_inline_tags("dia-1.6b"));
     assert!(mlx_audio_model_supports_inline_tags("bark-small"));
+    assert!(mlx_audio_model_supports_inline_tags("breeze-tts-2-4bit"));
+    assert!(mlx_audio_model_supports_inline_tags("breeze-tts-2-bf16"));
     assert!(!mlx_audio_model_supports_inline_tags("qwen3-tts-1.7b"));
     assert!(!mlx_audio_model_supports_inline_tags("kokoro-82m"));
 }
@@ -538,6 +542,11 @@ fn sidecar_payload_maps_expanded_mlx_provider_catalog_to_huggingface_ids() {
             "zonos2",
             "mlx-community/Zyphra-ZONOS2",
         ),
+        (
+            TTS_PROVIDER_MLX_BREEZE_TTS_ID,
+            "breeze-tts-2-4bit",
+            "mlx-community/Breeze-TTS-2-mlx-4bit",
+        ),
     ];
 
     for (provider_id, model_id, expected_hf_id) in cases {
@@ -606,4 +615,44 @@ fn mlx_voice_helpers_format_kokoro_voice_metadata() {
     assert_eq!(mlx_voice_locale("af_heart"), Some("en-US"));
     assert_eq!(mlx_voice_locale("bf_isabella"), Some("en-GB"));
     assert_eq!(mlx_voice_locale("zf_xiaobei"), Some("zh-CN"));
+}
+
+#[test]
+fn mlx_voice_helpers_resolve_locales_across_providers() {
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_kokoro", "af_heart"),
+        Some("en-US".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_orpheus", "tara"),
+        Some("en-US".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_dia", "speaker_1"),
+        Some("en-US".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_irodori_tts", "default"),
+        Some("ja-JP".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_spark", "default"),
+        Some("en/zh".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_longcat_audiodit", "default"),
+        Some("zh/en".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_chatterbox", "default"),
+        Some("mul".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_bark", "default"),
+        Some("mul".to_string())
+    );
+    assert_eq!(
+        mlx_voice_locale_for_provider("mlx_breeze_tts", "S0"),
+        Some("en/zh-TW".to_string())
+    );
 }

@@ -80,6 +80,8 @@ static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::Agent::new_with_config(
         ureq::Agent::config_builder()
             .timeout_global(Some(MLX_AUDIO_STT_REQUEST_TIMEOUT))
+            .proxy(None)
+            .max_redirects(0)
             .build(),
     )
 });
@@ -158,7 +160,26 @@ pub struct TranscriptionTiming {
 #[derive(Clone, Debug)]
 pub struct TimedTranscription {
     pub text: String,
+    pub segments: Vec<TimedSegment>,
+    pub asr_prompt_biasing_used: bool,
     pub timing: TranscriptionTiming,
+}
+
+#[derive(Clone, Copy)]
+enum SegmentCollection {
+    None,
+    SpokenRetraction,
+    All,
+}
+
+impl SegmentCollection {
+    fn needs_segments(self, text: &str) -> bool {
+        match self {
+            Self::None => false,
+            Self::SpokenRetraction => crate::spoken_edits::has_retraction_command(text),
+            Self::All => true,
+        }
+    }
 }
 
 enum LoadedEngine {
@@ -1975,9 +1996,16 @@ impl TranscriptionManager {
         engine: &mut LoadedEngine,
         audio: &[f32],
         settings: &AppSettings,
+        hints: Option<&crate::context_hints::AsrContextHints>,
     ) -> Result<String> {
-        self.transcribe_with_loaded_engine_inner(engine, audio, settings, false)
-            .map(|(text, _)| text)
+        self.transcribe_with_loaded_engine_inner(
+            engine,
+            audio,
+            settings,
+            SegmentCollection::None,
+            hints,
+        )
+        .map(|(text, _)| text)
     }
 
     /// Same as `transcribe_with_loaded_engine` but ALSO returns timed
@@ -1990,8 +2018,15 @@ impl TranscriptionManager {
         engine: &mut LoadedEngine,
         audio: &[f32],
         settings: &AppSettings,
+        hints: Option<&crate::context_hints::AsrContextHints>,
     ) -> Result<(String, Vec<TimedSegment>)> {
-        self.transcribe_with_loaded_engine_inner(engine, audio, settings, true)
+        self.transcribe_with_loaded_engine_inner(
+            engine,
+            audio,
+            settings,
+            SegmentCollection::All,
+            hints,
+        )
     }
 
     fn transcribe_with_loaded_engine_inner(
@@ -1999,22 +2034,24 @@ impl TranscriptionManager {
         engine: &mut LoadedEngine,
         audio: &[f32],
         settings: &AppSettings,
-        want_segments: bool,
+        segment_collection: SegmentCollection,
+        hints: Option<&crate::context_hints::AsrContextHints>,
     ) -> Result<(String, Vec<TimedSegment>)> {
         // Helper to convert engine-side `TranscriptionSegment` (seconds)
         // to our shared `TimedSegment` (milliseconds). When the caller did
         // not request segments, returns an empty Vec so we never allocate
         // on the hot path.
-        let convert_segments =
-            |segs: Option<Vec<transcribe_rs::TranscriptionSegment>>| -> Vec<TimedSegment> {
-                if !want_segments {
-                    return Vec::new();
-                }
-                segs.unwrap_or_default()
-                    .into_iter()
-                    .map(|s| TimedSegment::from_seconds(s.start, s.end, s.text))
-                    .collect()
-            };
+        let convert_segments = |text: &str,
+                                segs: Option<Vec<transcribe_rs::TranscriptionSegment>>|
+         -> Vec<TimedSegment> {
+            if !segment_collection.needs_segments(text) {
+                return Vec::new();
+            }
+            segs.unwrap_or_default()
+                .into_iter()
+                .map(|s| TimedSegment::from_seconds(s.start, s.end, s.text))
+                .collect()
+        };
 
         let (result, segments) = match engine {
             LoadedEngine::Whisper(whisper_engine) => {
@@ -2040,16 +2077,18 @@ impl TranscriptionManager {
                             | crate::settings::TranslationRoutePreference::WhisperEnglish
                     );
 
+                let initial_prompt = hints.and_then(|h| h.format_initial_prompt());
                 let params = WhisperInferenceParams {
                     language: whisper_language,
                     translate: whisper_translate_to_english,
+                    initial_prompt,
                     ..Default::default()
                 };
 
                 let r = whisper_engine
                     .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::Parakeet(parakeet_engine) => {
@@ -2060,14 +2099,14 @@ impl TranscriptionManager {
                 let r = parakeet_engine
                     .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::Moonshine(moonshine_engine) => {
                 let r = moonshine_engine
                     .transcribe(audio, &TranscribeOptions::default())
                     .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::MoonshineStreaming(streaming_engine) => {
@@ -2077,7 +2116,7 @@ impl TranscriptionManager {
                     .map_err(|e| {
                         anyhow::anyhow!("Moonshine streaming transcription failed: {}", e)
                     })?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::SenseVoice(sense_voice_engine) => {
@@ -2093,14 +2132,14 @@ impl TranscriptionManager {
                 let r = sense_voice_engine
                     .transcribe_with(audio, &params)
                     .map_err(|e| anyhow::anyhow!("SenseVoice transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::GigaAM(gigaam_engine) => {
                 let r = gigaam_engine
                     .transcribe(audio, &TranscribeOptions::default())
                     .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::MlxAudioStt(mlx_engine) => {
@@ -2114,21 +2153,21 @@ impl TranscriptionManager {
                         sidecar.as_deref().map(Arc::as_ref),
                     )
                     .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::GemmaAudioStt(gemma_engine) => {
                 let r = gemma_engine
                     .transcribe(audio, 16_000)
                     .map_err(|e| anyhow::anyhow!("Gemma audio transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::HiggsAudioStt(higgs_engine) => {
                 let r = higgs_engine
                     .transcribe_with_recovery(&self.app_handle, audio, 16_000)
                     .map_err(|e| anyhow::anyhow!("Higgs audio transcription failed: {}", e))?;
-                let segs = convert_segments(r.segments);
+                let segs = convert_segments(&r.text, r.segments);
                 (r.text, segs)
             }
             LoadedEngine::AppleSpeech(apple_engine)
@@ -2179,7 +2218,7 @@ impl TranscriptionManager {
         settings: &AppSettings,
     ) -> PartialTranscriptionOutcome {
         match catch_unwind(AssertUnwindSafe(|| {
-            self.transcribe_with_loaded_engine(engine, &audio, settings)
+            self.transcribe_with_loaded_engine(engine, &audio, settings, None)
         })) {
             Ok(Ok(text)) => PartialTranscriptionOutcome::Success(text),
             Ok(Err(err)) => PartialTranscriptionOutcome::Error(err),
@@ -2582,6 +2621,12 @@ impl TranscriptionManager {
     pub fn is_model_loaded(&self) -> bool {
         let engine = self.lock_engine();
         engine.is_some()
+    }
+
+    pub fn supports_asr_context_hints(&self, model_id: &str) -> bool {
+        self.model_manager
+            .get_model_info(model_id)
+            .is_some_and(|model| matches!(model.engine_type, EngineType::Whisper))
     }
 
     pub fn start_partial_provider(
@@ -3031,6 +3076,14 @@ impl TranscriptionManager {
         &self,
         audio: Arc<Vec<f32>>,
     ) -> Result<(String, Vec<TimedSegment>)> {
+        self.transcribe_with_segments_and_settings(audio, get_settings(&self.app_handle))
+    }
+
+    pub fn transcribe_with_segments_and_settings(
+        &self,
+        audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+    ) -> Result<(String, Vec<TimedSegment>)> {
         let _transcribe_guard = self
             .transcribe_lock
             .lock()
@@ -3042,8 +3095,6 @@ impl TranscriptionManager {
         if audio.is_empty() {
             return Ok((String::new(), Vec::new()));
         }
-
-        let settings = get_settings(&self.app_handle);
 
         // Wait for any in-progress load, then load on demand. File jobs can
         // arrive while no engine is resident (idle-unloaded, or the dedicated
@@ -3091,6 +3142,7 @@ impl TranscriptionManager {
                     &mut engine,
                     audio.as_slice(),
                     &settings,
+                    None,
                 )
             }));
 
@@ -3138,7 +3190,7 @@ impl TranscriptionManager {
         audio: Arc<Vec<f32>>,
         settings: AppSettings,
     ) -> Result<String> {
-        self.transcribe_with_settings_timed(audio, settings)
+        self.transcribe_with_settings_timed(audio, settings, None)
             .map(|outcome| outcome.text)
     }
 
@@ -3172,6 +3224,8 @@ impl TranscriptionManager {
         let cleanup_ms = finalize_started.elapsed().as_millis() as u64;
         TimedTranscription {
             text: final_text,
+            segments: Vec::new(),
+            asr_prompt_biasing_used: false,
             timing: TranscriptionTiming {
                 model_id,
                 audio_duration_ms,
@@ -3187,6 +3241,7 @@ impl TranscriptionManager {
         &self,
         audio: Arc<Vec<f32>>,
         settings: AppSettings,
+        hints: Option<&crate::context_hints::AsrContextHints>,
     ) -> Result<TimedTranscription> {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
@@ -3214,6 +3269,8 @@ impl TranscriptionManager {
             self.maybe_unload_immediately("empty audio");
             return Ok(TimedTranscription {
                 text: String::new(),
+                segments: Vec::new(),
+                asr_prompt_biasing_used: false,
                 timing: TranscriptionTiming {
                     model_id: settings.selected_model.trim().to_string(),
                     audio_duration_ms: 0,
@@ -3294,11 +3351,20 @@ impl TranscriptionManager {
             // Release the lock before transcribing — no mutex held during the engine call
             drop(engine_guard);
 
+            let asr_prompt_biasing_used = matches!(&engine, LoadedEngine::Whisper(_))
+                && hints.is_some_and(|hints| !hints.is_empty());
+
             // All engines borrow the shared recording buffer. This avoids the
             // former full-recording Vec clone while history and continuous
             // voice cloning retain their cheap Arc references.
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| {
-                self.transcribe_with_loaded_engine(&mut engine, audio.as_slice(), &settings)
+                self.transcribe_with_loaded_engine_inner(
+                    &mut engine,
+                    audio.as_slice(),
+                    &settings,
+                    SegmentCollection::SpokenRetraction,
+                    hints,
+                )
             }));
 
             match transcribe_result {
@@ -3306,7 +3372,7 @@ impl TranscriptionManager {
                     // Success or normal error — put the engine back
                     let mut engine_guard = self.lock_engine();
                     *engine_guard = Some(engine);
-                    inner_result?
+                    (inner_result?, asr_prompt_biasing_used)
                 }
                 Err(panic_payload) => {
                     // Engine panicked — do NOT put it back (it's in an unknown state).
@@ -3367,7 +3433,7 @@ impl TranscriptionManager {
             translation_note
         );
 
-        let final_result = result;
+        let ((final_result, segments), asr_prompt_biasing_used) = result;
 
         if final_result.is_empty() {
             info!("Transcription result is empty");
@@ -3408,6 +3474,8 @@ impl TranscriptionManager {
 
         Ok(TimedTranscription {
             text: final_result,
+            segments,
+            asr_prompt_biasing_used,
             timing: TranscriptionTiming {
                 model_id: selected_model,
                 audio_duration_ms,

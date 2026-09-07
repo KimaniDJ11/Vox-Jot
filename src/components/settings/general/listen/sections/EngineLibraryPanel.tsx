@@ -121,6 +121,22 @@ const TTS_LICENSE_ACKNOWLEDGEMENT_GATES: Record<
     termsUrl: "https://huggingface.co/mlx-community/Llama-OuteTTS-1.0-1B-4bit",
     requiresVoiceConsent: true,
   },
+  "breeze-tts-2-4bit": {
+    kind: "non_commercial",
+    licenseLabel: "BreezeBlue Research and Non-Commercial License",
+    termsUrl:
+      "https://huggingface.co/mlx-community/Breeze-TTS-2-mlx-4bit/blob/main/LICENSE",
+    requiresVoiceConsent: true,
+    note: "Commercial use requires a separate written license from BreezeBlue.",
+  },
+  "breeze-tts-2-bf16": {
+    kind: "non_commercial",
+    licenseLabel: "BreezeBlue Research and Non-Commercial License",
+    termsUrl:
+      "https://huggingface.co/mlx-community/Breeze-TTS-2-mlx/blob/main/LICENSE",
+    requiresVoiceConsent: true,
+    note: "Commercial use requires a separate written license from BreezeBlue.",
+  },
   "voxtral-tts-4b": {
     kind: "non_commercial",
     licenseLabel: "CC-BY-NC-4.0",
@@ -148,6 +164,34 @@ const ttsModelLicenseGate = (
   model: CatalogModelDescriptor,
 ): LicenseAcknowledgementGate | null =>
   TTS_LICENSE_ACKNOWLEDGEMENT_GATES[model.id] ?? null;
+
+const ttsLicenseAcknowledgementId = (model: CatalogModelDescriptor) =>
+  `tts.${model.provider_id}.${model.id}`;
+
+const hasCurrentTtsLicenseAcknowledgement = (
+  model: CatalogModelDescriptor,
+  gate: LicenseAcknowledgementGate,
+) => {
+  try {
+    const raw = window.localStorage.getItem(
+      `voxjot.modelLicenseAcknowledgement.${ttsLicenseAcknowledgementId(model)}`,
+    );
+    if (!raw) return false;
+    const acknowledgement = JSON.parse(raw) as Record<string, unknown>;
+    return (
+      acknowledgement.schemaVersion === 2 &&
+      acknowledgement.acknowledgementId ===
+        ttsLicenseAcknowledgementId(model) &&
+      acknowledgement.licenseLabel === gate.licenseLabel &&
+      acknowledgement.termsUrl === gate.termsUrl &&
+      acknowledgement.usageAcknowledged === true &&
+      (!gate.requiresVoiceConsent ||
+        acknowledgement.voiceConsentAcknowledged === true)
+    );
+  } catch {
+    return false;
+  }
+};
 
 interface TtsHfDownloadProgress {
   repo_id: string;
@@ -219,7 +263,7 @@ const SpeechModelLibraryCard: React.FC<{
           icon: <AlertTriangle className="h-3 w-3" />,
           detail: t("modelHub.licenseGate.badgeDetail", {
             defaultValue:
-              "Requires acknowledging publisher license restrictions before download.",
+              "Requires acknowledging publisher license restrictions before download or use.",
           }),
         }
       : null,
@@ -369,7 +413,7 @@ const SpeechModelLibraryCard: React.FC<{
     if (downloadActive) return;
     setLocalDownloadError(null);
     onClearDownloadProgress(model);
-    if (canAcquire && onGatedDownloadRequest(model)) {
+    if (onGatedDownloadRequest(model)) {
       return;
     }
     setLocallyDownloading(canAcquire);
@@ -920,14 +964,18 @@ export const EngineLibraryPanel: React.FC<{
 
   const requestGatedDownload = useCallback(
     (model: CatalogModelDescriptor): boolean => {
-      if (ttsModelRequiresHfAccess(model)) {
+      if (!model.installed && ttsModelRequiresHfAccess(model)) {
         setGatedDownloadModel(model);
         setHfTokenDraft("");
         setHfTokenError(null);
         void loadHfTokenStatus();
         return true;
       }
-      if (ttsModelLicenseGate(model)) {
+      const licenseGate = ttsModelLicenseGate(model);
+      if (
+        licenseGate &&
+        !hasCurrentTtsLicenseAcknowledgement(model, licenseGate)
+      ) {
         setLicenseGateDownloadModel(model);
         return true;
       }
@@ -1037,13 +1085,15 @@ export const EngineLibraryPanel: React.FC<{
     const model = licenseGateDownloadModel;
     setLicenseGateDownloadModel(null);
 
-    setTtsDownloadProgress((current) => ({
-      ...current,
-      [model.id]: {
-        repo_id: huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id,
-        stage: "downloading",
-      },
-    }));
+    if (!model.installed) {
+      setTtsDownloadProgress((current) => ({
+        ...current,
+        [model.id]: {
+          repo_id: huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id,
+          stage: "downloading",
+        },
+      }));
+    }
 
     void speech
       .activateModel(model.provider_id, model.id)
@@ -1239,7 +1289,7 @@ export const EngineLibraryPanel: React.FC<{
         modelName={licenseGateDownloadModel?.label ?? ""}
         acknowledgementId={
           licenseGateDownloadModel
-            ? `tts.${licenseGateDownloadModel.provider_id}.${licenseGateDownloadModel.id}`
+            ? ttsLicenseAcknowledgementId(licenseGateDownloadModel)
             : "tts.unknown"
         }
         gate={

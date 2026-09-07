@@ -1,11 +1,15 @@
 #ifndef apple_intelligence_bridge_h
 #define apple_intelligence_bridge_h
 
+#include <stdint.h>
+
 // C-compatible function declarations for Swift bridge
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef void (*MeetingAudioCallback)(uint64_t context, int32_t track, const float *samples, int32_t count, int64_t timestamp_us, int32_t source_rate, int32_t source_channels);
 
 typedef struct {
     char* response;
@@ -42,6 +46,12 @@ typedef struct {
     int success; // 0 for failure, 1 for success
     char* error_message; // Only valid when success = 0
 } AppleSpeechTranscriptionResponse;
+
+typedef struct {
+    char* value;
+    int success; // 0 for failure, 1 for success
+    char* error_message; // Only valid when success = 0
+} AuthorizedFileResponse;
 
 // Check if Apple Intelligence is available on the device
 int is_apple_intelligence_available(void);
@@ -90,6 +100,19 @@ void free_apple_speech_transcription_response(AppleSpeechTranscriptionResponse* 
 
 // Return active browser URL for whitelisted browser bundle IDs, or NULL.
 char* active_browser_url_for_bundle_id(const char* bundle_id);
+
+// Persist and use user-selected folder access in sandboxed App Store builds.
+AuthorizedFileResponse* create_security_scoped_bookmark_apple(const char* directory_path);
+AuthorizedFileResponse* write_security_scoped_file_apple(
+    const char* bookmark_base64,
+    const char* filename,
+    const char* content
+);
+AuthorizedFileResponse* reveal_security_scoped_file_apple(
+    const char* bookmark_base64,
+    const char* filename
+);
+void free_authorized_file_response(AuthorizedFileResponse* response);
 
 #ifdef __cplusplus
 }

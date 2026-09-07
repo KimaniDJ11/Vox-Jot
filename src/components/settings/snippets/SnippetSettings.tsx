@@ -36,6 +36,130 @@ import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
 const IMPORT_MAX_BYTES = 3 * 1024 * 1024;
+const VARIABLE_OPTIONS = [
+  {
+    id: "date",
+    token: "{{date}}",
+    label: "Date",
+    description: "Current date using your app language and time zone",
+  },
+  {
+    id: "time",
+    token: "{{time}}",
+    label: "Time",
+    description: "Current time using your app language and time zone",
+  },
+  {
+    id: "clipboard",
+    token: "{{clipboard}}",
+    label: "Clipboard",
+    description: "Text clipboard contents, resolved locally when the key runs",
+  },
+  {
+    id: "selectedText",
+    token: "{{selected_text}}",
+    label: "Selected text",
+    description:
+      "The active text selection, resolved locally when the key runs",
+  },
+] as const;
+const KNOWN_VARIABLES = new Set(["date", "time", "clipboard", "selected_text"]);
+
+function unsupportedVariables(value: string): string[] {
+  const unknown = new Set<string>();
+  for (const match of value.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)) {
+    const tag = match[1].trim();
+    const [name] = tag.split(":", 1);
+    const valid =
+      KNOWN_VARIABLES.has(name.trim()) &&
+      (!tag.includes(":") || name.trim() === "date" || name.trim() === "time");
+    if (!valid) unknown.add(tag);
+  }
+  return [...unknown];
+}
+
+function previewExpansion(value: string, locale: string): string {
+  const now = new Date();
+  return value
+    .replace(/\{\{\s*(date|time)\s*:\s*([^{}]*)\}\}/g, "[$1 format: $2]")
+    .replace(
+      /\{\{\s*date\s*\}\}/g,
+      new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(now),
+    )
+    .replace(
+      /\{\{\s*time\s*\}\}/g,
+      new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(now),
+    )
+    .replace(/\{\{\s*clipboard\s*\}\}/g, "[clipboard text]")
+    .replace(/\{\{\s*selected_text\s*\}\}/g, "[selected text]");
+}
+
+const VariableTools: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+}> = ({ value, onChange }) => {
+  const { t, i18n } = useTranslation();
+  const unknown = unsupportedVariables(value);
+  const preview = previewExpansion(value, i18n.language || "en");
+
+  return (
+    <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold text-[var(--muted)]">
+          {t("settings.snippets.variables.insert", {
+            defaultValue: "Insert variable",
+          })}
+        </span>
+        {VARIABLE_OPTIONS.map((variable) => (
+          <button
+            key={variable.token}
+            type="button"
+            onClick={() => {
+              const separator =
+                value.length > 0 && !/\s$/.test(value) ? " " : "";
+              onChange(
+                `${value}${separator}${variable.token}`.slice(0, EXPANSION_MAX),
+              );
+            }}
+            title={variable.description}
+            className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--input)] px-2.5 py-1 text-xs font-medium text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            {t(`settings.snippets.variables.${variable.id}`, {
+              defaultValue: variable.label,
+            })}
+          </button>
+        ))}
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+          {t("settings.snippets.variables.preview", {
+            defaultValue: "Example preview",
+          })}
+        </p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-[var(--text)]">
+          {preview ||
+            t("settings.snippets.variables.previewEmpty", {
+              defaultValue: "Your expansion preview appears here.",
+            })}
+        </p>
+      </div>
+      {unknown.length > 0 ? (
+        <p className="text-xs text-[var(--danger)]" role="alert">
+          {t("settings.snippets.variables.unsupported", {
+            variables: unknown.join(", "),
+            defaultValue: "Unsupported variable: {{variables}}",
+          })}
+        </p>
+      ) : null}
+      <p className="text-[11px] leading-4 text-[var(--muted)]">
+        {t("settings.snippets.variables.privacy", {
+          defaultValue:
+            "Clipboard and selected text stay local and are inserted only after AI processing.",
+        })}
+      </p>
+    </div>
+  );
+};
 const phraseKeysEmptySurfaceClassName =
   "flex min-h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-5 py-8 text-center";
 
@@ -389,6 +513,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                   className="w-full resize-y rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
                 />
               </label>
+              <VariableTools value={newExpansion} onChange={setNewExpansion} />
               {duplicateNewTrigger ? (
                 <div className="text-xs text-[var(--danger)]" role="alert">
                   {t("settings.snippets.list.duplicateTrigger", {
@@ -415,7 +540,8 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                   snippetsUpdating ||
                   duplicateNewTrigger ||
                   !newTrigger.trim() ||
-                  !newExpansion.trim()
+                  !newExpansion.trim() ||
+                  unsupportedVariables(newExpansion).length > 0
                 }
               >
                 {t("settings.snippets.list.add")}
@@ -526,6 +652,12 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         }}
                       />
                     </div>
+                    <div className="pl-[4.5rem]">
+                      <VariableTools
+                        value={editExpansion}
+                        onChange={setEditExpansion}
+                      />
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button
                         type="button"
@@ -539,6 +671,9 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         type="button"
                         size="sm"
                         onClick={() => void commitEdit()}
+                        disabled={
+                          unsupportedVariables(editExpansion).length > 0
+                        }
                       >
                         <Check className="mr-1 h-3.5 w-3.5" />
                         {t("common.save")}

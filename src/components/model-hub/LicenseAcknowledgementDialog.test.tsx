@@ -111,11 +111,11 @@ describe("LicenseAcknowledgementDialog", () => {
       "It does not verify, upload, or manage license documents",
     );
 
-    const downloadButton = [...document.body.querySelectorAll("button")].find(
-      (button) => button.textContent?.includes("Download"),
+    const continueButton = [...document.body.querySelectorAll("button")].find(
+      (button) => button.textContent?.includes("Continue"),
     ) as HTMLButtonElement | undefined;
-    expect(downloadButton).toBeDefined();
-    expect(downloadButton?.disabled).toBe(true);
+    expect(continueButton).toBeDefined();
+    expect(continueButton?.disabled).toBe(true);
 
     const checkbox = document.body.querySelector(
       'input[type="checkbox"]',
@@ -125,10 +125,10 @@ describe("LicenseAcknowledgementDialog", () => {
     await act(async () => {
       checkbox!.click();
     });
-    expect(downloadButton?.disabled).toBe(false);
+    expect(continueButton?.disabled).toBe(false);
 
     await act(async () => {
-      downloadButton?.click();
+      continueButton?.click();
     });
 
     expect(onConfirm).toHaveBeenCalledTimes(1);

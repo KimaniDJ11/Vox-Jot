@@ -1,10 +1,10 @@
 use crate::settings::{
     TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LFM_AUDIO_GGUF_ID,
-    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
-    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
-    TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID, TTS_PROVIDER_MLX_IRODORI_TTS_ID,
-    TTS_PROVIDER_MLX_KITTEN_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
-    TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
+    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_BREEZE_TTS_ID,
+    TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID,
+    TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID,
+    TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KITTEN_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
     TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MISO_TTS_ID,
     TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID,
     TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
@@ -1219,6 +1219,38 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_BREEZE_TTS_ID,
+        provider_label: "MLX Breeze TTS 2",
+        provider_description: "BreezeBlue Breeze TTS 2 voice design and cloning via mlx-audio.",
+        model_id: "breeze-tts-2-4bit",
+        hf_model_id: "mlx-community/Breeze-TTS-2-mlx-4bit",
+        local_dir_names: &["Breeze-TTS-2-mlx-4bit"],
+        label: "Breeze TTS 2 4-bit",
+        description:
+            "Fast 4-bit quantized bilingual English/Chinese TTS with voice design, direction, and expressive tags.",
+        engine_family: "mlx_audio",
+        license_label: Some("BreezeBlue Research and Non-Commercial License"),
+        supported_languages: &["en", "zh-TW"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_BREEZE_TTS_ID,
+        provider_label: "MLX Breeze TTS 2",
+        provider_description: "BreezeBlue Breeze TTS 2 voice design and cloning via mlx-audio.",
+        model_id: "breeze-tts-2-bf16",
+        hf_model_id: "mlx-community/Breeze-TTS-2-mlx",
+        local_dir_names: &["Breeze-TTS-2-mlx"],
+        label: "Breeze TTS 2 bf16",
+        description:
+            "Full-precision bilingual English/Chinese TTS with voice design, direction, and expressive tags.",
+        engine_family: "mlx_audio",
+        license_label: Some("BreezeBlue Research and Non-Commercial License"),
+        supported_languages: &["en", "zh-TW"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
 ];
 
 pub fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
@@ -1263,6 +1295,7 @@ pub fn provider_is_mlx_audio(provider_id: &str) -> bool {
             | TTS_PROVIDER_MLX_KITTEN_TTS_ID
             | TTS_PROVIDER_MLX_MISO_TTS_ID
             | TTS_PROVIDER_MLX_ZONOS2_ID
+            | TTS_PROVIDER_MLX_BREEZE_TTS_ID
     )
 }
 
@@ -1311,7 +1344,10 @@ pub fn mlx_audio_definition_available(definition: &MlxAudioTtsModelDefinition) -
 }
 
 pub fn mlx_audio_model_supports_inline_tags(model_id: &str) -> bool {
-    matches!(model_id, "dia-1.6b" | "bark-small")
+    matches!(
+        model_id,
+        "dia-1.6b" | "bark-small" | "breeze-tts-2-4bit" | "breeze-tts-2-bf16"
+    )
 }
 
 pub fn ensure_mlx_audio_definition_available(
@@ -1418,6 +1454,7 @@ pub fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_KITTEN_TTS_ID
             | TTS_PROVIDER_MLX_MISO_TTS_ID
             | TTS_PROVIDER_MLX_ZONOS2_ID
+            | TTS_PROVIDER_MLX_BREEZE_TTS_ID
             | TTS_PROVIDER_LFM_AUDIO_GGUF_ID
             | TTS_PROVIDER_VIBEVOICE_ID
     )

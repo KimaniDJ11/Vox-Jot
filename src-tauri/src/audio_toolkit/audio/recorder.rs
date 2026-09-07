@@ -26,18 +26,47 @@ const VAD_FALLBACK_MIN_ACTIVE_FRAMES: usize = 2;
 const VAD_FALLBACK_SILENCE_KEEP_SAMPLES: usize = VAD_FALLBACK_FRAME_SAMPLES * 67;
 const VAD_FALLBACK_SILENCE_COMPACT_SAMPLES: usize = VAD_FALLBACK_FRAME_SAMPLES * 134;
 
+#[derive(Clone, Copy, Debug)]
+pub struct VadFallbackConfig {
+    min_frame_rms: f32,
+    min_frame_peak: f32,
+    min_active_frames: usize,
+}
+
+impl Default for VadFallbackConfig {
+    fn default() -> Self {
+        Self {
+            min_frame_rms: VAD_FALLBACK_MIN_FRAME_RMS,
+            min_frame_peak: VAD_FALLBACK_MIN_FRAME_PEAK,
+            min_active_frames: VAD_FALLBACK_MIN_ACTIVE_FRAMES,
+        }
+    }
+}
+
+impl VadFallbackConfig {
+    pub fn quiet() -> Self {
+        Self {
+            min_frame_rms: 0.0015,
+            min_frame_peak: 0.012,
+            min_active_frames: 2,
+        }
+    }
+}
+
 struct VadFallbackAudio {
     samples: Vec<f32>,
     consecutive_active_frames: usize,
     signal_detected: bool,
+    config: VadFallbackConfig,
 }
 
 impl VadFallbackAudio {
-    fn new() -> Self {
+    fn new(config: VadFallbackConfig) -> Self {
         Self {
             samples: Vec::with_capacity(160_000),
             consecutive_active_frames: 0,
             signal_detected: false,
+            config,
         }
     }
 
@@ -61,9 +90,9 @@ impl VadFallbackAudio {
             return;
         }
 
-        if frame_has_speech_like_energy(frame) {
+        if frame_has_speech_like_energy(frame, self.config) {
             self.consecutive_active_frames += 1;
-            if self.consecutive_active_frames >= VAD_FALLBACK_MIN_ACTIVE_FRAMES {
+            if self.consecutive_active_frames >= self.config.min_active_frames {
                 self.signal_detected = true;
                 return;
             }
@@ -107,7 +136,7 @@ struct FinalizedRecording {
 /// utterance into a silent no-op. Requiring both meaningful AC RMS energy and
 /// a clear peak keeps this rescue gate conservative for enhanced and plain
 /// resampled input while ignoring a steady microphone DC offset.
-fn frame_has_speech_like_energy(frame: &[f32]) -> bool {
+fn frame_has_speech_like_energy(frame: &[f32], config: VadFallbackConfig) -> bool {
     if frame.is_empty() {
         return false;
     }
@@ -129,7 +158,7 @@ fn frame_has_speech_like_energy(frame: &[f32]) -> bool {
     let mean = sample_sum / sample_count;
     let variance = (squared_sum / sample_count - mean * mean).max(0.0);
     let ac_rms = variance.sqrt() as f32;
-    ac_rms >= VAD_FALLBACK_MIN_FRAME_RMS && peak >= VAD_FALLBACK_MIN_FRAME_PEAK
+    ac_rms >= config.min_frame_rms && peak >= config.min_frame_peak
 }
 
 fn finalize_recording_samples(
@@ -183,6 +212,8 @@ pub struct AudioRecorder {
     enhancement_config: Option<AudioEnhancementConfig>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
     error_cb: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+    pre_gain: f32,
+    vad_fallback_config: VadFallbackConfig,
 }
 
 impl AudioRecorder {
@@ -195,11 +226,23 @@ impl AudioRecorder {
             enhancement_config: None,
             level_cb: None,
             error_cb: None,
+            pre_gain: 1.0,
+            vad_fallback_config: VadFallbackConfig::default(),
         })
     }
 
     pub fn with_vad(mut self, vad: Box<dyn VoiceActivityDetector>) -> Self {
         self.vad = Some(Arc::new(Mutex::new(vad)));
+        self
+    }
+
+    pub fn with_pre_gain(mut self, gain: f32) -> Self {
+        self.pre_gain = gain.max(1.0);
+        self
+    }
+
+    pub fn with_vad_fallback_config(mut self, config: VadFallbackConfig) -> Self {
+        self.vad_fallback_config = config;
         self
     }
 
@@ -252,6 +295,8 @@ impl AudioRecorder {
         let thread_device = device.clone();
         let vad = self.vad.clone();
         let enhancement_config = self.enhancement_config;
+        let pre_gain = self.pre_gain;
+        let vad_fallback_config = self.vad_fallback_config;
         // Move the optional level/error callbacks into the worker thread
         let level_cb = self.level_cb.clone();
         let error_cb = self.error_cb.clone();
@@ -372,6 +417,8 @@ impl AudioRecorder {
                         error_rx,
                         level_cb,
                         error_cb,
+                        pre_gain,
+                        vad_fallback_config,
                     );
                     drop(stream);
                 }
@@ -577,6 +624,26 @@ fn normalize_microphone_error(error_message: String) -> String {
     error_message
 }
 
+pub fn apply_pre_gain_soft_clip(samples: &mut [f32], gain: f32) {
+    if (gain - 1.0).abs() < 1e-3 {
+        return;
+    }
+    for sample in samples.iter_mut() {
+        let scaled = *sample * gain;
+        let magnitude = scaled.abs();
+        if magnitude <= 0.9 {
+            *sample = scaled;
+            continue;
+        }
+
+        // Preserve a linear response through ordinary speech levels, then
+        // transition smoothly into the remaining headroom. Applying tanh to
+        // every sample changes the timbre even when clipping is unnecessary.
+        let compressed = 0.9 + 0.1 * (1.0 - (-(magnitude - 0.9) / 0.1).exp());
+        *sample = compressed.copysign(scaled);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn run_consumer(
     in_sample_rate: u32,
@@ -590,14 +657,17 @@ fn run_consumer(
     error_rx: mpsc::Receiver<String>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
     error_cb: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+    pre_gain: f32,
+    vad_fallback_config: VadFallbackConfig,
 ) {
     // Pre-allocate for ~10 seconds of audio at 16kHz to avoid repeated reallocs
     let mut processed_samples = Vec::<f32>::with_capacity(160_000);
     // Retain enhanced/resampled audio only until VAD accepts its first frame.
     // This keeps the normal hot path bounded while giving fully rejected
     // utterances a conservative recovery path at stop time.
-    let mut vad_fallback_audio = VadFallbackAudio::new();
+    let mut vad_fallback_audio = VadFallbackAudio::new(vad_fallback_config);
     let mut recording = false;
+    let mut gain_buf = Vec::<f32>::with_capacity(1024);
 
     // ---------- spectrum visualisation setup ---------------------------- //
     const BUCKETS: usize = 16;
@@ -661,8 +731,16 @@ fn run_consumer(
                 // ---------- existing pipeline ----------------------------- //
                 if let Some(enhancer) = enhancer.as_mut() {
                     enhancer.push(&raw, &mut |frame: &[f32]| {
+                        let frame_to_handle = if pre_gain > 1.0 {
+                            gain_buf.clear();
+                            gain_buf.extend_from_slice(frame);
+                            apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                            &gain_buf[..]
+                        } else {
+                            frame
+                        };
                         handle_frame(
-                            frame,
+                            frame_to_handle,
                             recording,
                             &vad,
                             &mut processed_samples,
@@ -671,8 +749,16 @@ fn run_consumer(
                     });
                 } else {
                     frame_resampler.push(&raw, &mut |frame: &[f32]| {
+                        let frame_to_handle = if pre_gain > 1.0 {
+                            gain_buf.clear();
+                            gain_buf.extend_from_slice(frame);
+                            apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                            &gain_buf[..]
+                        } else {
+                            frame
+                        };
                         handle_frame(
-                            frame,
+                            frame_to_handle,
                             recording,
                             &vad,
                             &mut processed_samples,
@@ -731,8 +817,16 @@ fn run_consumer(
                     while let Ok(remaining) = sample_rx.try_recv() {
                         if let Some(enhancer) = enhancer.as_mut() {
                             enhancer.push(&remaining, &mut |frame: &[f32]| {
+                                let frame_to_handle = if pre_gain > 1.0 {
+                                    gain_buf.clear();
+                                    gain_buf.extend_from_slice(frame);
+                                    apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                                    &gain_buf[..]
+                                } else {
+                                    frame
+                                };
                                 handle_frame(
-                                    frame,
+                                    frame_to_handle,
                                     true,
                                     &vad,
                                     &mut processed_samples,
@@ -741,8 +835,16 @@ fn run_consumer(
                             });
                         } else {
                             frame_resampler.push(&remaining, &mut |frame: &[f32]| {
+                                let frame_to_handle = if pre_gain > 1.0 {
+                                    gain_buf.clear();
+                                    gain_buf.extend_from_slice(frame);
+                                    apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                                    &gain_buf[..]
+                                } else {
+                                    frame
+                                };
                                 handle_frame(
-                                    frame,
+                                    frame_to_handle,
                                     true,
                                     &vad,
                                     &mut processed_samples,
@@ -754,8 +856,16 @@ fn run_consumer(
 
                     if let Some(enhancer) = enhancer.as_mut() {
                         enhancer.finish(&mut |frame: &[f32]| {
+                            let frame_to_handle = if pre_gain > 1.0 {
+                                gain_buf.clear();
+                                gain_buf.extend_from_slice(frame);
+                                apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                                &gain_buf[..]
+                            } else {
+                                frame
+                            };
                             handle_frame(
-                                frame,
+                                frame_to_handle,
                                 true,
                                 &vad,
                                 &mut processed_samples,
@@ -764,8 +874,16 @@ fn run_consumer(
                         });
                     } else {
                         frame_resampler.finish(&mut |frame: &[f32]| {
+                            let frame_to_handle = if pre_gain > 1.0 {
+                                gain_buf.clear();
+                                gain_buf.extend_from_slice(frame);
+                                apply_pre_gain_soft_clip(&mut gain_buf, pre_gain);
+                                &gain_buf[..]
+                            } else {
+                                frame
+                            };
                             handle_frame(
-                                frame,
+                                frame_to_handle,
                                 true,
                                 &vad,
                                 &mut processed_samples,
@@ -813,9 +931,13 @@ fn run_consumer(
 #[cfg(test)]
 mod tests {
     use super::{
-        finalize_recording_samples, VadFallbackAudio, VAD_FALLBACK_FRAME_SAMPLES,
-        VAD_FALLBACK_SILENCE_COMPACT_SAMPLES,
+        finalize_recording_samples, VadFallbackAudio, VadFallbackConfig,
+        VAD_FALLBACK_FRAME_SAMPLES, VAD_FALLBACK_SILENCE_COMPACT_SAMPLES,
     };
+
+    fn fallback_audio() -> VadFallbackAudio {
+        VadFallbackAudio::new(VadFallbackConfig::default())
+    }
 
     fn voiced_frames(frame_count: usize) -> Vec<f32> {
         let sample_rate = 16_000.0f32;
@@ -837,7 +959,7 @@ mod tests {
     fn audible_audio_survives_when_vad_rejects_every_frame() {
         let mut vad_samples = Vec::new();
         let expected = voiced_frames(4);
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         push_frames(&mut fallback_audio, &expected);
 
         let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
@@ -849,7 +971,7 @@ mod tests {
     #[test]
     fn silence_is_not_sent_to_the_transcription_engine() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         push_frames(
             &mut fallback_audio,
             &vec![0.0; VAD_FALLBACK_FRAME_SAMPLES * 20],
@@ -865,7 +987,7 @@ mod tests {
     #[test]
     fn steady_low_level_noise_is_not_sent_to_the_transcription_engine() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         let low_noise = vec![0.01; VAD_FALLBACK_FRAME_SAMPLES * 20];
         push_frames(&mut fallback_audio, &low_noise);
 
@@ -878,7 +1000,7 @@ mod tests {
     #[test]
     fn steady_loud_dc_offset_is_not_sent_to_the_transcription_engine() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         let dc_offset = vec![0.04; VAD_FALLBACK_FRAME_SAMPLES * 20];
         push_frames(&mut fallback_audio, &dc_offset);
 
@@ -891,7 +1013,7 @@ mod tests {
     #[test]
     fn non_finite_frame_is_discarded_from_rescue_audio() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         let mut invalid = voiced_frames(4);
         invalid[VAD_FALLBACK_FRAME_SAMPLES] = f32::NAN;
         push_frames(&mut fallback_audio, &invalid);
@@ -906,7 +1028,7 @@ mod tests {
     #[test]
     fn one_isolated_loud_frame_is_treated_as_noise() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         for frame_index in 0..4 {
             let frame = if frame_index == 1 {
                 voiced_frames(1)
@@ -925,7 +1047,7 @@ mod tests {
     #[test]
     fn separated_loud_frames_are_treated_as_noise() {
         let mut vad_samples = Vec::new();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         for frame_index in 0..5 {
             let frame = if matches!(frame_index, 1 | 3) {
                 voiced_frames(1)
@@ -945,7 +1067,7 @@ mod tests {
     fn accepted_vad_audio_always_wins_over_the_fallback() {
         let expected = vec![0.1, -0.1, 0.2];
         let mut vad_samples = expected.clone();
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         push_frames(&mut fallback_audio, &voiced_frames(4));
 
         let finalized = finalize_recording_samples(&mut vad_samples, &mut fallback_audio);
@@ -957,7 +1079,7 @@ mod tests {
 
     #[test]
     fn long_silence_keeps_the_rescue_buffer_bounded() {
-        let mut fallback_audio = VadFallbackAudio::new();
+        let mut fallback_audio = fallback_audio();
         let silence = vec![0.0; VAD_FALLBACK_FRAME_SAMPLES];
 
         for _ in 0..1_000 {
@@ -966,5 +1088,27 @@ mod tests {
 
         assert!(fallback_audio.samples.len() <= VAD_FALLBACK_SILENCE_COMPACT_SAMPLES);
         assert!(!fallback_audio.signal_detected);
+    }
+
+    #[test]
+    fn test_pre_gain_neutral_leaves_samples_untouched() {
+        let mut samples = vec![0.05, -0.1, 0.2];
+        let original = samples.clone();
+        super::apply_pre_gain_soft_clip(&mut samples, 1.0);
+        assert_eq!(samples, original);
+    }
+
+    #[test]
+    fn test_pre_gain_boosts_quiet_signals_and_soft_clips_loud_signals() {
+        let mut samples = vec![0.02, 0.8, -0.9];
+        super::apply_pre_gain_soft_clip(&mut samples, 2.0);
+
+        // Quiet sample boosted
+        assert!(samples[0] > 0.02);
+        assert!((samples[0] - 0.04).abs() < 1e-6);
+
+        // Loud samples softly compressed within [-1.0, 1.0] without hard clipping
+        assert!(samples[1] < 1.0 && samples[1] > 0.95);
+        assert!(samples[2] > -1.0 && samples[2] < -0.95);
     }
 }

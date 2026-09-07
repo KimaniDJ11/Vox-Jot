@@ -10,10 +10,10 @@ use crate::settings::{
     TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
     TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_MODEL_VIBEVOICE_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID,
     TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LFM_AUDIO_GGUF_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
-    TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_DIA_ID,
-    TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID,
-    TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
-    TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
+    TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_BREEZE_TTS_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
+    TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID,
+    TTS_PROVIDER_MLX_INDEXTTS_ID, TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
     TTS_PROVIDER_MLX_MELOTTS_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_MOSS_TTS_ID,
     TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_ORPHEUS_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID,
     TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID,
@@ -301,18 +301,13 @@ where
         .acquire()
         .await
         .map_err(|_| "TTS command queue is unavailable.".to_string())?;
+    let handle = tokio::runtime::Handle::current();
     let (tx, rx) = tokio::sync::oneshot::channel();
     thread::Builder::new()
         .name(thread_name.to_string())
         .stack_size(TTS_COMMAND_STACK_BYTES)
         .spawn(move || {
-            let result = (|| {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|err| format!("Failed to start TTS command runtime: {err}"))?;
-                runtime.block_on(task())
-            })();
+            let result = handle.block_on(task());
             let _ = tx.send(result);
         })
         .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
@@ -624,15 +619,19 @@ impl TtsManager {
             self.kokoro_voice_inventory(&model_source)
         } else if provider_id == TTS_PROVIDER_MLX_ORPHEUS_ID {
             self.orpheus_voice_inventory()
+        } else if provider_id == TTS_PROVIDER_MLX_BREEZE_TTS_ID {
+            self.breeze_voice_inventory()
         } else {
-            self.mlx_embedded_voice_inventory(&model_source)
+            self.mlx_embedded_voice_inventory(&model_source, provider_id)
         };
 
         if !voices.is_empty() {
             return voices
                 .into_iter()
                 .map(|mut voice| {
-                    voice.locale = mlx_voice_locale_for_provider(provider_id, &voice.id);
+                    if voice.locale.is_none() {
+                        voice.locale = mlx_voice_locale_for_provider(provider_id, &voice.id);
+                    }
                     voice
                 })
                 .collect();
@@ -704,7 +703,29 @@ impl TtsManager {
             .collect()
     }
 
-    fn mlx_embedded_voice_inventory(&self, model_source: &Path) -> Vec<VoiceInfo> {
+    fn breeze_voice_inventory(&self) -> Vec<VoiceInfo> {
+        ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"]
+            .into_iter()
+            .map(|voice_id| VoiceInfo {
+                label: if voice_id == "S0" {
+                    "Speaker S0 (Default)".to_string()
+                } else {
+                    format!("Speaker {}", voice_id)
+                },
+                locale: Some("en/zh-TW".to_string()),
+                id: voice_id.to_string(),
+                engine: TtsEngineKind::MlxNative,
+                installed: true,
+                available: true,
+            })
+            .collect()
+    }
+
+    fn mlx_embedded_voice_inventory(
+        &self,
+        model_source: &Path,
+        provider_id: &str,
+    ) -> Vec<VoiceInfo> {
         let voices_dir = ["voice_embedding", "embeddings", "voices"]
             .into_iter()
             .map(|dir| model_source.join(dir))
@@ -737,7 +758,7 @@ impl TtsManager {
                 let voice_id = path.file_stem()?.to_str()?.to_string();
                 Some(VoiceInfo {
                     label: mlx_voice_label(&voice_id),
-                    locale: None,
+                    locale: mlx_voice_locale_for_provider(provider_id, &voice_id),
                     id: voice_id,
                     engine: TtsEngineKind::MlxNative,
                     installed: true,
@@ -3441,47 +3462,47 @@ impl TtsManager {
         let root_url = self
             .sidecar_root_url()
             .ok_or_else(|| "Failed to resolve the local speech runtime URL.".to_string())?;
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .map_err(|err| format!("Failed to create runtime client: {err}"))?;
+        static AGENT: std::sync::LazyLock<ureq::Agent> = std::sync::LazyLock::new(|| {
+            ureq::Agent::new_with_config(
+                ureq::Agent::config_builder()
+                    .timeout_global(Some(Duration::from_secs(10)))
+                    .proxy(None)
+                    .max_redirects(0)
+                    .build(),
+            )
+        });
         let url = root_url
             .join("listen/voices")
             .map_err(|err| format!("Failed to build runtime voice URL: {err}"))?;
 
-        let response = client
-            .get(url)
-            .query(&[
-                ("provider_id", provider_id),
-                ("model_id", model_id.unwrap_or("")),
-            ])
-            .send()
-            .map_err(|err| format!("Failed to fetch runtime voice inventory: {err}"))?;
+        let response = AGENT
+            .get(url.as_str())
+            .query("provider_id", provider_id)
+            .query("model_id", model_id.unwrap_or(""))
+            .call();
 
-        if response.status() == reqwest::StatusCode::NOT_FOUND {
-            warn!(
-                "Speech runtime does not expose /listen/voices yet for provider '{}' model '{}'; returning an empty voice inventory.",
-                provider_id,
-                model_id.unwrap_or("")
-            );
-            return Ok(Vec::new());
-        }
+        let mut response = match response {
+            Ok(response) => response,
+            Err(ureq::Error::StatusCode(404)) => {
+                warn!(
+                    "Speech runtime does not expose /listen/voices yet for provider '{}' model '{}'; returning an empty voice inventory.",
+                    provider_id,
+                    model_id.unwrap_or("")
+                );
+                return Ok(Vec::new());
+            }
+            Err(ureq::Error::StatusCode(code)) => {
+                return Err(format!("Failed to fetch runtime voices: status {code}"));
+            }
+            Err(err) => return Err(format!("Failed to fetch runtime voice inventory: {err}")),
+        };
 
-        if !response.status().is_success() {
-            let body = response.text().unwrap_or_default();
-            let detail = serde_json::from_str::<serde_json::Value>(&body)
-                .ok()
-                .and_then(|value| {
-                    value
-                        .get("detail")
-                        .and_then(|detail| detail.as_str().map(str::to_string))
-                })
-                .unwrap_or(body);
-            return Err(format!("Failed to fetch runtime voices: {detail}"));
-        }
+        let body = response
+            .body_mut()
+            .read_to_string()
+            .map_err(|err| format!("Failed to read runtime voice inventory: {err}"))?;
 
-        let runtime_voices = response
-            .json::<Vec<RuntimeListenVoiceEntry>>()
+        let runtime_voices = serde_json::from_str::<Vec<RuntimeListenVoiceEntry>>(&body)
             .map_err(|err| format!("Failed to decode runtime voice inventory: {err}"))?;
 
         Ok(runtime_voices

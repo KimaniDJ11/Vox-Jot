@@ -360,17 +360,14 @@ export const StoryStudioSection: React.FC = () => {
   // Lazy-load preset voices for each TTS model so they can populate the
   // Cast voice picker alongside saved presets.
   useEffect(() => {
+    const scheduledKeys: string[] = [];
     for (const model of availableTtsModels) {
       const key = `${model.provider_id}::${model.id}`;
       if (voicesByModelKey.has(key) || loadingVoiceKeysRef.current.has(key)) {
         continue;
       }
       loadingVoiceKeysRef.current.add(key);
-      setLoadingVoiceKeys((current) => {
-        const next = new Set(current);
-        next.add(key);
-        return next;
-      });
+      scheduledKeys.push(key);
       void getTtsVoicesForSelection(model.provider_id, model.id)
         .then((voices) => {
           setVoicesByModelKey((current) => {
@@ -394,6 +391,15 @@ export const StoryStudioSection: React.FC = () => {
             return next;
           });
         });
+    }
+    if (scheduledKeys.length > 0) {
+      setLoadingVoiceKeys((current) => {
+        const next = new Set(current);
+        for (const key of scheduledKeys) {
+          next.add(key);
+        }
+        return next;
+      });
     }
   }, [availableTtsModels, voicesByModelKey]);
 

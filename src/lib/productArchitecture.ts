@@ -10,6 +10,13 @@ export interface ProductModuleDescriptor {
 
 export const PRODUCT_MODULES: ProductModuleDescriptor[] = [
   {
+    id: "meetings",
+    tier: "advanced",
+    sectionIds: ["meetings"],
+    hotPath: false,
+    enabledByDefault: true,
+  },
+  {
     id: "dictation",
     tier: "core",
     sectionIds: [

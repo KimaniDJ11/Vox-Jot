@@ -345,6 +345,46 @@ impl ContextCaptureManager {
         )
     }
 
+    /// Return only an already-captured, fresh packet for decoder hinting.
+    ///
+    /// Unlike `resolve_context_for_dictation`, this never performs
+    /// Accessibility IPC and never requests a synchronous capture. It is safe
+    /// to call immediately before final ASR without adding a new stop-path
+    /// dependency.
+    pub fn resolve_cached_context_for_asr(
+        &self,
+        settings: &AppSettings,
+        active_app_context: Option<&ActiveAppContext>,
+    ) -> Option<DictationContextPacket> {
+        if !settings.screen_context_enabled {
+            return None;
+        }
+
+        // Screen-derived decoder hints must fail closed if the foreground app
+        // cannot be identified. Otherwise a fresh packet captured from a
+        // different (possibly excluded) app could be reused accidentally.
+        let active_app_context = active_app_context?;
+
+        if settings
+            .screen_context_excluded_bundle_ids
+            .iter()
+            .any(|bundle| bundle.eq_ignore_ascii_case(&active_app_context.bundle_id))
+        {
+            return None;
+        }
+
+        let Ok(state) = self.state.try_lock() else {
+            // Context is opportunistic: contention must not delay final ASR.
+            return None;
+        };
+        select_best_cached_packet(
+            &state.cache,
+            Some(active_app_context),
+            settings.screen_context_stale_threshold_ms as u64,
+            now_millis(),
+        )
+    }
+
     pub fn context_sent_externally(
         &self,
         settings: &AppSettings,
@@ -941,7 +981,7 @@ fn capture_interval(mode: ContextCaptureMode) -> Duration {
     }
 }
 
-fn now_millis() -> i64 {
+pub(crate) fn now_millis() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()

@@ -76,5 +76,82 @@ class TorchJitGuardTests(unittest.TestCase):
             imported_torch.jit.script(lambda value: value)
 
 
+class LightningCheckpointGuardTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sidecar = load_sidecar_module()
+
+    @staticmethod
+    def make_saving_module() -> tuple[types.SimpleNamespace, type, list[object]]:
+        calls: list[object] = []
+
+        def load_state(
+            cls: type,
+            checkpoint: dict[str, object],
+            strict: bool | None = None,
+            **kwargs: object,
+        ) -> str:
+            calls.append((cls, checkpoint, strict, kwargs))
+            return "loaded"
+
+        saving = types.SimpleNamespace(
+            _load_state=load_state,
+            CHECKPOINT_PAST_HPARAMS_KEYS=("hparams", "module_arguments"),
+        )
+
+        class FakeModel:
+            CHECKPOINT_HYPER_PARAMS_KEY = "hyper_parameters"
+
+        return saving, FakeModel, calls
+
+    def test_untrusted_checkpoint_instantiator_is_blocked(self) -> None:
+        saving, model_cls, calls = self.make_saving_module()
+        self.sidecar.harden_lightning_checkpoint_loading(saving)
+
+        with self.assertRaisesRegex(ValueError, "os.system"):
+            saving._load_state(
+                model_cls,
+                {"hyper_parameters": {"_instantiator": "os.system"}},
+            )
+
+        self.assertEqual(calls, [])
+
+    def test_non_string_checkpoint_instantiator_is_blocked(self) -> None:
+        saving, model_cls, calls = self.make_saving_module()
+        self.sidecar.harden_lightning_checkpoint_loading(saving)
+
+        with self.assertRaisesRegex(ValueError, "Blocked untrusted"):
+            saving._load_state(
+                model_cls,
+                {"hyper_parameters": {"_instantiator": ["os", "system"]}},
+            )
+
+        self.assertEqual(calls, [])
+
+    def test_trusted_checkpoint_instantiator_reaches_loader(self) -> None:
+        saving, model_cls, calls = self.make_saving_module()
+        self.sidecar.harden_lightning_checkpoint_loading(saving)
+
+        result = saving._load_state(
+            model_cls,
+            {
+                "hyper_parameters": {
+                    "_instantiator": "lightning.pytorch.cli.instantiate_module"
+                }
+            },
+            strict=False,
+        )
+
+        self.assertEqual(result, "loaded")
+        self.assertEqual(len(calls), 1)
+
+    def test_checkpoint_guard_is_idempotent(self) -> None:
+        saving, _model_cls, _calls = self.make_saving_module()
+        self.sidecar.harden_lightning_checkpoint_loading(saving)
+        guarded = saving._load_state
+        self.sidecar.harden_lightning_checkpoint_loading(saving)
+
+        self.assertIs(saving._load_state, guarded)
+
+
 if __name__ == "__main__":
     unittest.main()

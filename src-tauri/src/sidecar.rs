@@ -59,7 +59,7 @@ const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
 const SPEECH_ANALYSIS_RUNTIME_MARKER: &str =
-    "speech-analysis-runtime-2026-07-18-py311-torch-213-torchaudio-211-torchvision-028-torchcodec-015-transformers-550-hub-150-onnx-122-no-nemo-whisperx342-funasr139-v2";
+    "speech-analysis-runtime-2026-09-07-py311-torch-213-torchaudio-211-torchvision-028-torchcodec-015-transformers-5102-hub-150-onnx-122-no-nemo-whisperx342-funasr139-lightning-guard-v1-v3";
 const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
 const GEMMA_AUDIO_VENV_DIR: &str = "gemma-audio-venv";
 const GEMMA_AUDIO_VERSION_MARKER: &str = "gemma-audio.version";
@@ -1716,7 +1716,7 @@ mod tests {
             "torchaudio==2.11.0",
             "torchvision==0.28.0",
             "torchcodec==0.15.0",
-            "transformers==5.5.0",
+            "transformers==5.10.2",
             "huggingface-hub==1.5.0",
             "onnx==1.22.0",
         ] {
@@ -1733,9 +1733,10 @@ mod tests {
             "torchaudio-211",
             "torchvision-028",
             "torchcodec-015",
-            "transformers-550",
+            "transformers-5102",
             "hub-150",
             "onnx-122",
+            "lightning-guard-v1",
         ] {
             assert!(
                 SPEECH_ANALYSIS_RUNTIME_MARKER.contains(marker_component),

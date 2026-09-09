@@ -915,6 +915,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const unlisten = listen<string>("rewrite-error", (event) => {
+      toast.error(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  useEffect(() => {
     const unlisten = listen<ModelStateEvent>("model-state-changed", (event) => {
       if (event.payload.event_type === "loading_failed") {
         toast.error(

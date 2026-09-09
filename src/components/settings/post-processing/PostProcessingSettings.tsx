@@ -4,7 +4,11 @@ import { ExternalLink, RefreshCcw } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import { isLocalBaseUrl } from "@/lib/providerPrivacy";
-import { commands, type PostProcessResult } from "@/bindings";
+import {
+  commands,
+  type PostProcessProvider,
+  type PostProcessResult,
+} from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
 import {
@@ -41,6 +45,27 @@ type SetupStatus = {
   message: React.ReactNode;
 };
 
+const providerAllowsEmptyApiKey = (
+  provider: PostProcessProvider | undefined,
+  baseUrl: string,
+): boolean => {
+  if (!provider) {
+    return false;
+  }
+
+  // Vox Jot Local resolves its managed model/runtime internally and never
+  // sends a request with a provider API key.
+  if (provider.id === "vox_jot_local") {
+    return true;
+  }
+
+  if (provider.id === "custom" || provider.id === "ollama") {
+    return isLocalBaseUrl(baseUrl);
+  }
+
+  return isLocalBaseUrl(provider.base_url);
+};
+
 const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
   disabled = false,
   providerState: state,
@@ -51,14 +76,12 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
     ? PROVIDER_API_KEY_URLS[state.selectedProvider.id]
     : undefined;
 
-  // Local providers (Ollama, local custom endpoints) work without a key —
-  // mirror the readiness logic so the badge never claims a key is "Missing"
-  // when none is required.
-  const apiKeyOptional =
-    state.selectedProvider?.id === "custom" ||
-    state.selectedProvider?.id === "ollama"
-      ? isLocalBaseUrl(state.baseUrl)
-      : isLocalBaseUrl(state.selectedProvider?.base_url ?? "");
+  // Local providers work without a key — mirror the readiness logic so the
+  // badge never claims a key is "Missing" when none is required.
+  const apiKeyOptional = providerAllowsEmptyApiKey(
+    state.selectedProvider,
+    state.baseUrl,
+  );
 
   return (
     <>
@@ -608,10 +631,10 @@ const PostProcessSetupStatus: React.FC<{
     if (!providerState.isAppleProvider) {
       const issues: string[] = [];
       const selectedProvider = providerState.selectedProvider;
-      const providerAllowsNoApiKey =
-        selectedProvider?.id === "custom" || selectedProvider?.id === "ollama"
-          ? isLocalBaseUrl(providerState.baseUrl)
-          : isLocalBaseUrl(selectedProvider?.base_url ?? "");
+      const providerAllowsNoApiKey = providerAllowsEmptyApiKey(
+        selectedProvider,
+        providerState.baseUrl,
+      );
 
       if (
         providerState.isCustomProvider &&

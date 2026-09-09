@@ -382,6 +382,12 @@ async fn rewrite_selected_text(
         .cloned()
         .unwrap_or_default();
     if model.trim().is_empty() {
+        let message = format!(
+            "Selection editing is unavailable because no model is configured for '{}'. Choose a rewrite model or turn off Edit selected text with the main shortcut.",
+            provider.label
+        );
+        warn!("{}", message);
+        let _ = app.emit("rewrite-error", &message);
         return None;
     }
 
@@ -395,11 +401,37 @@ async fn rewrite_selected_text(
         })
         .unwrap_or_default();
 
-    crate::llm_client::send_chat_completion(Some(app), &provider, api_key, &model, user_prompt)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|text| sanitize_plain_model_output(&text))
+    match crate::llm_client::send_chat_completion(
+        Some(app),
+        &provider,
+        api_key,
+        &model,
+        user_prompt,
+    )
+    .await
+    {
+        Ok(Some(text)) => match sanitize_plain_model_output(&text) {
+            Some(sanitized) => Some(sanitized),
+            None => {
+                let message = "Selection editing returned no usable text. Nothing was replaced.";
+                warn!("{}", message);
+                let _ = app.emit("rewrite-error", message);
+                None
+            }
+        },
+        Ok(None) => {
+            let message = "Selection editing returned no text. Nothing was replaced.";
+            warn!("{}", message);
+            let _ = app.emit("rewrite-error", message);
+            None
+        }
+        Err(error) => {
+            let message = format!("Selection editing failed: {error}");
+            error!("{}", message);
+            let _ = app.emit("rewrite-error", &message);
+            None
+        }
+    }
 }
 
 async fn run_translate_selection(app: AppHandle) {

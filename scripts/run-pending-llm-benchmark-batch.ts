@@ -180,6 +180,17 @@ const PENDING_MODELS: ModelSpec[] = (
       approxSizeMb: 2700,
       source: { kind: "ollama" },
     },
+    {
+      modelIds: ["openbmb/minicpm5-2b", "minicpm5-2b-q4km"],
+      label: "MiniCPM5 2B",
+      runtimeModelId: "minicpm5-2b-q4km",
+      approxSizeMb: 1560,
+      source: {
+        kind: "hf-gguf",
+        repoId: "openbmb/MiniCPM5-2B-GGUF",
+        fileName: "MiniCPM5-2B-Q4_K_M.gguf",
+      },
+    },
   ] satisfies ModelSpec[]
 ).sort((a, b) => a.approxSizeMb - b.approxSizeMb);
 

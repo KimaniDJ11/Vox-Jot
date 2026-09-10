@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import {

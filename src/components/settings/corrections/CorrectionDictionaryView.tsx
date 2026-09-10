@@ -22,7 +22,7 @@ import {
   SpellCheck,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { InstalledApp, StoredCorrection } from "@/bindings";

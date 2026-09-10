@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import i18n from "@/i18n";

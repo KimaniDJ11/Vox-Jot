@@ -32,6 +32,12 @@ pub fn handle_shortcut_event(
     hotkey_string: &str,
     is_pressed: bool,
 ) {
+    // A queued OS-level hotkey can arrive after teardown has started. Do not
+    // touch managed state or emit logs while the runtime is being dismantled.
+    if crate::app_shutdown_started() {
+        return;
+    }
+
     let settings = get_settings(app);
 
     // Transcribe bindings are handled by the coordinator.
@@ -54,9 +60,12 @@ pub fn handle_shortcut_event(
 
     // Cancel binding: only fires when recording and key is pressed
     if binding_id == "cancel" {
-        let audio_manager = app.state::<Arc<AudioRecordingManager>>();
-        if audio_manager.is_recording() && is_pressed {
-            action.start(app, binding_id, hotkey_string);
+        if let Some(audio_manager) = app.try_state::<Arc<AudioRecordingManager>>() {
+            if audio_manager.is_recording() && is_pressed {
+                action.start(app, binding_id, hotkey_string);
+            }
+        } else {
+            warn!("AudioRecordingManager is not initialized");
         }
         return;
     }

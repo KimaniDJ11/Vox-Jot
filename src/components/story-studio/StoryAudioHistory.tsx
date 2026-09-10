@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
   AlertCircle,

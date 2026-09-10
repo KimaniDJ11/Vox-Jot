@@ -648,18 +648,41 @@ function KyutaiMark({ size }: { size: number; color: string }) {
 }
 
 function OpenBmbMark({ size }: { size: number; color: string }) {
-  const s = size * 0.68;
+  const s = size * 0.72;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <circle cx={6.8} cy={12} r={3.4} fill="#FFFFFF" />
-      <circle cx={17.2} cy={8} r={3.4} fill="#BFDBFE" />
-      <circle cx={17.2} cy={16} r={3.4} fill="#FFFFFF" />
-      <path
-        d="M9.6 11 14.1 9.2M9.6 13 14.1 14.8"
-        stroke="#2563EB"
-        strokeWidth={1.7}
-        strokeLinecap="round"
+      {/* OpenBMB iconic stacked horizontal bricks */}
+      {/* Row 1 (y=3.5) */}
+      <rect x={4.5} y={3.5} width={6.5} height={2.5} rx={1.25} fill="#06B6D4" />
+      <rect x={13} y={3.5} width={6.5} height={2.5} rx={1.25} fill="#2563EB" />
+      {/* Row 2 (y=7.2) */}
+      <rect x={3} y={7.2} width={5} height={2.5} rx={1.25} fill="#06B6D4" />
+      <rect x={9.5} y={7.2} width={5} height={2.5} rx={1.25} fill="#06B6D4" />
+      <rect x={16} y={7.2} width={5} height={2.5} rx={1.25} fill="#2563EB" />
+      {/* Row 3 (y=10.9) */}
+      <rect
+        x={4.5}
+        y={10.9}
+        width={6.5}
+        height={2.5}
+        rx={1.25}
+        fill="#2563EB"
       />
+      <rect x={13} y={10.9} width={6.5} height={2.5} rx={1.25} fill="#06B6D4" />
+      {/* Row 4 (y=14.6) */}
+      <rect x={3} y={14.6} width={5} height={2.5} rx={1.25} fill="#06B6D4" />
+      <rect x={9.5} y={14.6} width={5} height={2.5} rx={1.25} fill="#2563EB" />
+      <rect x={16} y={14.6} width={5} height={2.5} rx={1.25} fill="#06B6D4" />
+      {/* Row 5 (y=18.3) */}
+      <rect
+        x={4.5}
+        y={18.3}
+        width={6.5}
+        height={2.5}
+        rx={1.25}
+        fill="#2563EB"
+      />
+      <rect x={13} y={18.3} width={6.5} height={2.5} rx={1.25} fill="#06B6D4" />
     </svg>
   );
 }
@@ -1982,7 +2005,7 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: KugelAudioMark,
   },
   kyutai: { bg: "#FF4F8B", fg: "#FFFFFF", letter: "K", mark: KyutaiMark },
-  openbmb: { bg: "#2563EB", fg: "#FFFFFF", letter: "B", mark: OpenBmbMark },
+  openbmb: { bg: "#FFFFFF", fg: "#2563EB", letter: "B", mark: OpenBmbMark },
   suno: { bg: "#7C3AED", fg: "#FFFFFF", letter: "S", mark: SunoMark },
   meituan: { bg: "#FFD100", fg: "#111827", letter: "M", mark: LongCatMark },
   soprano: { bg: "#A855F7", fg: "#FFFFFF", letter: "S", mark: SopranoMark },
@@ -2187,6 +2210,9 @@ const PROVIDER_BRAND: Record<string, string> = {
   lmstudio: "lmstudio",
   custom: "custom",
   huggingface: "huggingface",
+  vox_jot_local: "vox_jot",
+  openbmb: "openbmb",
+  minicpm: "openbmb",
   // Model family aliases (used by inferModelBrand below)
   meta: "meta",
   microsoft: "microsoft",
@@ -2272,6 +2298,7 @@ export function engineTypeToProviderId(engineType: EngineType): string {
 const RUNTIME_HOST_IDS = new Set([
   "ollama",
   "lmstudio",
+  "vox_jot_local",
   "huggingface",
   "openrouter",
   "groq",
@@ -2489,6 +2516,9 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "pocket tts", providerId: "mlx_pocket_tts" },
   { keyword: "pocket-tts", providerId: "mlx_pocket_tts" },
   { keyword: "voxcpm", providerId: "mlx_voxcpm" },
+  { keyword: "minicpm", providerId: "openbmb" },
+  { keyword: "mini-cpm", providerId: "openbmb" },
+  { keyword: "openbmb", providerId: "openbmb" },
   { keyword: "orpheus", providerId: "mlx_orpheus" },
   { keyword: "zonos", providerId: "mlx_zonos2" },
   { keyword: "zyphra", providerId: "mlx_zonos2" },
@@ -2638,6 +2668,9 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   supertonic: "Supertonic",
   ollama: "Ollama",
   modelscope: "ModelScope",
+  openbmb: "OpenBMB",
+  minicpm: "OpenBMB MiniCPM",
+  vox_jot_local: "Vox Jot Local",
 };
 
 export function providerDisplayName(providerId: string): string {

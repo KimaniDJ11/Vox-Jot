@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { produce } from "immer";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@/lib/tauriEvents";
 import i18n from "@/i18n";
 import { commands, type ModelInfo } from "@/bindings";
 

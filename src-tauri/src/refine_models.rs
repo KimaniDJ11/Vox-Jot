@@ -138,6 +138,14 @@ const HF_IMPORT_SPECS: &[HfImportSpec] = &[
         runtime_model_id: "qwen3.5-4b-q4km",
     },
     HfImportSpec {
+        id: "hf:minicpm5-2b",
+        title: "MiniCPM5 2B",
+        description: "Global SOTA sub-4B edge LLM (score 23 on AA Index) with 128K context for precise dictation cleanup.",
+        repo_id: "openbmb/MiniCPM5-2B-GGUF",
+        file_name: "MiniCPM5-2B-Q4_K_M.gguf",
+        runtime_model_id: "minicpm5-2b-q4km",
+    },
+    HfImportSpec {
         id: "hf:qwen-3.5-2b",
         title: "Qwen3.5 2B",
         description: "Balanced pick for dictation cleanup: 44/46 cases at 68 ms p50.",
@@ -637,6 +645,10 @@ mod tests {
         assert_eq!(
             runtime_model_id_for_hf_file_name("granite-4.0-micro-Q4_K_M.gguf"),
             Some("granite-4.0-micro-3b")
+        );
+        assert_eq!(
+            runtime_model_id_for_hf_file_name("MiniCPM5-2B-Q4_K_M.gguf"),
+            Some("minicpm5-2b-q4km")
         );
         assert_eq!(runtime_model_id_for_hf_file_name("custom.gguf"), None);
     }

@@ -445,6 +445,11 @@ describe("resolveModelProviderId", () => {
         runtimeProviderId: "openrouter",
         expected: "tencent",
       },
+      {
+        title: "MiniCPM5 2B minicpm5-2b-q4km",
+        runtimeProviderId: "vox_jot_local",
+        expected: "openbmb",
+      },
 
       // File ASR / Speech Analysis / Speaker Isolation
       {

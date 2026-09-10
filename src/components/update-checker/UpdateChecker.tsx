@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { Check, Download, RefreshCw } from "lucide-react";
 import { useSettings } from "../../hooks/useSettings";
 import { openUpdateDownloadUrl } from "@/lib/utils/customUpdateChecker";

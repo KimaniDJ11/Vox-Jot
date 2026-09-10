@@ -1072,7 +1072,20 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                 }
                                 Err(error) => {
-                                    let _ = app_clone.emit("rewrite-error", error);
+                                    // When passive selection observation is unavailable (e.g. apps without AX
+                                    // or non-macOS), allow normal dictation to proceed instead of blocking all
+                                    // speech-to-text in unsupported applications. Late-arriving probes that
+                                    // are still pending when recording stops remain failed closed above.
+                                    debug!(
+                                        "Adaptive selection probe did not detect a selection for binding '{}': {}",
+                                        b_id_clone, error
+                                    );
+                                    finish_selection_probe_with_guard(
+                                        &b_id_clone,
+                                        dictation_run_id,
+                                        None,
+                                        None,
+                                    );
                                 }
                             }
                         });
@@ -2529,6 +2542,34 @@ mod tests {
             super::DictationIntent::RewriteSelection {
                 selected_text: String::new(),
                 source: super::RewriteSelectionSource::AdaptiveShortcut,
+                target_guard: None,
+            },
+        );
+        assert!(!super::finish_selection_probe(
+            binding,
+            run,
+            Some("late text".into())
+        ));
+    }
+
+    #[test]
+    fn unfinished_explicit_rewrite_probe_fails_closed_without_waiting() {
+        let binding = "test-explicit-rewrite-pending";
+        let mode = super::DictationMode::RewriteSelection;
+        let run = super::begin_active_dictation_intent(
+            binding,
+            super::DictationIntent::RewriteSelection {
+                selected_text: String::new(),
+                source: super::RewriteSelectionSource::ExplicitShortcut,
+                target_guard: None,
+            },
+            true,
+        );
+        assert_eq!(
+            super::take_active_dictation_intent(binding, &mode),
+            super::DictationIntent::RewriteSelection {
+                selected_text: String::new(),
+                source: super::RewriteSelectionSource::ExplicitShortcut,
                 target_guard: None,
             },
         );

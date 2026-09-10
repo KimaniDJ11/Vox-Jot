@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {

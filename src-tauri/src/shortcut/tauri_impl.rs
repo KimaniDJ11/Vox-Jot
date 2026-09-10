@@ -4,6 +4,8 @@
 //! global-shortcut plugin.
 
 use log::{error, warn};
+use std::io::Write;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -12,6 +14,19 @@ use crate::settings::get_settings;
 use crate::settings::{self, ShortcutBinding};
 
 use super::handler::handle_shortcut_event;
+
+fn run_shortcut_callback(callback: impl FnOnce()) -> bool {
+    catch_unwind(AssertUnwindSafe(callback)).is_ok()
+}
+
+fn report_contained_shortcut_panic(binding_id: &str) {
+    // This is intentionally not routed through `log`: a closed runner pipe can
+    // itself be the panic source. A failed diagnostic write must remain inert.
+    let _ = writeln!(
+        std::io::stderr().lock(),
+        "Vox Jot contained a panic while handling shortcut '{binding_id}'"
+    );
+}
 
 /// Initialize shortcuts using Tauri's global-shortcut plugin
 pub fn init_shortcuts(app: &AppHandle) {
@@ -131,15 +146,21 @@ pub fn register_shortcut(app: &AppHandle, binding: ShortcutBinding) -> Result<()
 
     app.global_shortcut()
         .on_shortcut(shortcut, move |app_handle, scut, event| {
-            if scut == &shortcut {
-                let shortcut_string = scut.into_string();
-                let is_pressed = event.state == ShortcutState::Pressed;
+            let completed = run_shortcut_callback(|| {
+                if scut != &shortcut {
+                    return;
+                }
+
                 handle_shortcut_event(
                     app_handle,
                     &binding_id_for_closure,
-                    &shortcut_string,
-                    is_pressed,
+                    &scut.into_string(),
+                    event.state == ShortcutState::Pressed,
                 );
+            });
+
+            if !completed {
+                report_contained_shortcut_panic(&binding_id_for_closure);
             }
         })
         .map_err(|e| {
@@ -218,5 +239,26 @@ pub fn unregister_cancel_shortcut(app: &AppHandle) {
                 let _ = unregister_shortcut(&app_clone, cancel_binding);
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::run_shortcut_callback;
+
+    #[test]
+    fn callback_panics_are_contained_before_the_os_boundary() {
+        let escaped = std::panic::catch_unwind(|| {
+            assert!(!run_shortcut_callback(|| panic!(
+                "simulated callback panic"
+            )));
+        });
+
+        assert!(escaped.is_ok());
+    }
+
+    #[test]
+    fn successful_callbacks_report_completion() {
+        assert!(run_shortcut_callback(|| {}));
     }
 }

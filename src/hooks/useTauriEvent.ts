@@ -3,7 +3,7 @@ import {
   listen,
   type Event as TauriEvent,
   type UnlistenFn,
-} from "@tauri-apps/api/event";
+} from "@/lib/tauriEvents";
 
 /**
  * Subscribe once while always invoking the latest committed handler.

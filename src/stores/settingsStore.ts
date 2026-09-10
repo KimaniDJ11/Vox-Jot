@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import i18n from "@/i18n";
 import type {
   AppSettings as Settings,

@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   AlertTriangle,

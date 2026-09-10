@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
@@ -126,6 +126,8 @@ const REFINE_MODEL_SIZE_HINTS: Record<string, string> = {
   "qwen2.5-0.5b-instruct-q4_k_m": "~0.4 GB",
   "phi-4-mini-instruct-q4_k_m": "~2.5 GB",
   "lfm2-1.2b-tool-q4_k_m": "~0.8 GB",
+  "minicpm5-2b-q4km": "~1.6 GB",
+  "openbmb/minicpm5-2b": "~1.6 GB",
   "qwen2.5:0.5b": "~0.4 GB",
   "smollm2:135m": "~0.2 GB",
   "smollm2:360m": "~0.4 GB",

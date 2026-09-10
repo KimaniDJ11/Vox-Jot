@@ -29,7 +29,7 @@ import {
   FileOutput,
   RefreshCw,
 } from "lucide-react";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { commands, type HistoryEntry } from "@/bindings";
 import { TranscriptView } from "./TranscriptView";

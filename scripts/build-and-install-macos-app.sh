@@ -372,7 +372,8 @@ fix_generated_macos_info_plist() {
 notarize_built_app() {
   echo "Creating notarization archive..."
   /bin/rm -f "${NOTARY_ZIP_PATH}"
-  /usr/bin/ditto -c -k --keepParent "${BUILT_APP_PATH}" "${NOTARY_ZIP_PATH}"
+  /usr/bin/xattr -cr "${BUILT_APP_PATH}"
+  /usr/bin/ditto -c -k --keepParent --noextattr --norsrc --noqtn --noacl "${BUILT_APP_PATH}" "${NOTARY_ZIP_PATH}"
 
   echo "Submitting built app for notarization..."
   submit_for_notarization "${NOTARY_ZIP_PATH}"

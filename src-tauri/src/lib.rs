@@ -51,6 +51,7 @@ mod product_architecture;
 mod refine_models;
 #[cfg(not(feature = "ci-mock-transcription"))]
 mod regression;
+mod resilient_io;
 mod screen_context;
 #[cfg(target_os = "linux")]
 mod screen_context_linux;
@@ -1407,10 +1408,11 @@ pub fn run(cli_args: CliArgs) {
                 .clear_targets()
                 .targets([
                     // Console output respects RUST_LOG environment variable
-                    Target::new(TargetKind::Stdout).filter({
-                        let console_filter = console_filter.clone();
-                        move |metadata| console_filter.enabled(metadata)
-                    }),
+                    Target::new(TargetKind::Dispatch(resilient_io::lossy_stdout_dispatch()))
+                        .filter({
+                            let console_filter = console_filter.clone();
+                            move |metadata| console_filter.enabled(metadata)
+                        }),
                     // File logs respect the user's settings (stored in FILE_LOG_LEVEL atomic)
                     Target::new(if let Some(data_dir) = portable::data_dir() {
                         TargetKind::Folder {

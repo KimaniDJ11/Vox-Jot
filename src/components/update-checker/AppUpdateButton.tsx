@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import {
   ArrowRight,

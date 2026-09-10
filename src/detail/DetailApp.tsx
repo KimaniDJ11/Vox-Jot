@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";

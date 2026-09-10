@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { Settings } from "lucide-react";
 import { LayoutGroup } from "framer-motion";
 import { MeetingRecordingStatus } from "@/components/meetings/MeetingRecordingStatus";

@@ -223,6 +223,14 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
     weakestCategory: "code-ish formatting",
     notes: "Compact 1.7B model with good general cleanup.",
   },
+  {
+    modelIds: ["openbmb/minicpm5-2b", "minicpm5-2b-q4km"],
+    label: "MiniCPM5 2B (Q4_K_M)",
+    status: "pending",
+    promptProfile: "standard",
+    notes:
+      "Global SOTA sub-4B edge model (score 23 on AA Intelligence Index) with 128k context and 2.5B dense parameters.",
+  },
 ];
 
 export function getLlmEvaluationResult(

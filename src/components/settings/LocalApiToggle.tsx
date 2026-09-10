@@ -14,7 +14,7 @@
 // reflects the real bind state, not just the persisted toggle.
 
 import React, { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "@/lib/tauriEvents";
 import { useTranslation } from "react-i18next";
 import { Copy, RotateCcw } from "lucide-react";
 import { commands } from "@/bindings";

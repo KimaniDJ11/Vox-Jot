@@ -284,6 +284,23 @@ submit_for_notarization() {
   exit 1
 }
 
+codesign_with_retry() {
+  local attempt=1
+  local max_attempts=5
+  while true; do
+    if /usr/bin/codesign "$@"; then
+      return 0
+    fi
+    if [[ "${attempt}" -ge "${max_attempts}" ]]; then
+      echo "codesign failed after ${max_attempts} attempts: $*" >&2
+      return 1
+    fi
+    echo "codesign attempt ${attempt} failed (timestamp service retry in 2s)..." >&2
+    /bin/sleep 2
+    attempt=$((attempt + 1))
+  done
+}
+
 sign_nested_macho_files() {
   local app_bundle_path="$1"
   local resource_root="${app_bundle_path}/Contents/Resources"
@@ -296,7 +313,7 @@ sign_nested_macho_files() {
   echo "Signing nested Mach-O files..."
   while IFS= read -r -d '' file_path; do
     if /usr/bin/file "${file_path}" | /usr/bin/grep -q "Mach-O"; then
-      /usr/bin/codesign \
+      codesign_with_retry \
         --force \
         --options runtime \
         --timestamp \
@@ -332,7 +349,7 @@ sign_macho_files_in_tar_gz_archives() {
     archive_signed_count=0
     while IFS= read -r -d '' file_path; do
       if /usr/bin/file "${file_path}" | /usr/bin/grep -q "Mach-O"; then
-        /usr/bin/codesign \
+        codesign_with_retry \
           --force \
           --options runtime \
           --timestamp \
@@ -543,7 +560,7 @@ fix_generated_macos_info_plist "${BUILT_APP_PATH}"
 echo "Signing built bundle..."
 sign_nested_macho_files "${BUILT_APP_PATH}"
 sign_macho_files_in_tar_gz_archives "${BUILT_APP_PATH}"
-/usr/bin/codesign \
+codesign_with_retry \
   --force \
   --deep \
   --options runtime \

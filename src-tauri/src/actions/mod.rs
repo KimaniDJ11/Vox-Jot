@@ -1072,6 +1072,10 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                 }
                                 Err(error) => {
+                                    // When passive selection observation is unavailable (e.g. apps without AX
+                                    // or non-macOS), allow normal dictation to proceed instead of blocking all
+                                    // speech-to-text in unsupported applications. Late-arriving probes that
+                                    // are still pending when recording stops remain failed closed above.
                                     debug!(
                                         "Adaptive selection probe did not detect a selection for binding '{}': {}",
                                         b_id_clone, error

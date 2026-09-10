@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 
-EXTERNAL_ROOT="/Volumes/AI Storage/Apps/Models/VoxJot/provider-models/ollama/models"
+EXTERNAL_ROOT="${VOX_JOT_OLLAMA_STORAGE_ROOT:-/Volumes/AI Storage/Apps/Models/VoxJot/provider-models/ollama/models}"
 LOG_DIR="${VOX_JOT_DOWNLOAD_LOG_DIR:-$HOME/Apps/Vox Jot/output/model-downloads}"
 
 if [[ ! -d "$EXTERNAL_ROOT" ]]; then

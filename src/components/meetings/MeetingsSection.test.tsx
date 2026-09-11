@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
   remove: vi.fn(),
+  read: vi.fn(),
 }));
 vi.mock("@/bindings", () => ({
   commands: {
@@ -25,6 +26,7 @@ vi.mock("@/bindings", () => ({
     startMeeting: mocks.start,
     stopMeeting: mocks.stop,
     deleteMeeting: mocks.remove,
+    readMeeting: mocks.read,
     requestMeetingPermissions: vi.fn(),
     cancelMeetingAnalysis: vi.fn(),
   },
@@ -62,13 +64,20 @@ async function render(element: React.ReactNode) {
 }
 function button(label: string) {
   const value = Array.from(view.querySelectorAll("button")).find(
-    (b) => b.textContent?.trim() === label,
+    (b) =>
+      b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
   );
   expect(value, label).toBeDefined();
   return value!;
 }
 async function click(label: string) {
   await act(async () => button(label).click());
+}
+async function nextFrame() {
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
 }
 async function title(value: string) {
   const input = view.querySelector<HTMLInputElement>(
@@ -98,6 +107,10 @@ beforeEach(() => {
   mocks.start.mockResolvedValue({ status: "ok", data: saved });
   mocks.stop.mockResolvedValue({ status: "ok", data: null });
   mocks.remove.mockResolvedValue({ status: "ok", data: null });
+  mocks.read.mockResolvedValue({
+    status: "ok",
+    data: { session: saved, summary: null, segments: [] },
+  });
 });
 afterEach(async () => {
   if (root) await act(async () => root.unmount());
@@ -117,14 +130,25 @@ describe("Meetings", () => {
     });
     await render(<MeetingsSection />);
     expect(button("Start meeting recording").disabled).toBe(true);
-    expect(button("Allow recording permissions").disabled).toBe(false);
+    expect(button("Allow access").disabled).toBe(false);
+    expect(button("Check again").disabled).toBe(false);
+    expect(view.textContent).toContain("System Settings");
     expect(mocks.start).not.toHaveBeenCalled();
+  });
+  it("leads with Start Meeting and keeps options collapsed", async () => {
+    await render(<MeetingsSection />);
+    expect(button("Start meeting recording").textContent).toBe("Start Meeting");
+    const options = view.querySelector<HTMLDetailsElement>("details")!;
+    expect(options.open).toBe(false);
+    expect(options.textContent).toContain("Meeting title");
+    expect(options.textContent).toContain("System audio");
+    expect(options.textContent).toContain("Microphone");
   });
   it("uses explicit source and microphone choices", async () => {
     await render(<MeetingsSection />);
     await title("Planning");
     await act(async () =>
-      view.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
+      view.querySelector<HTMLButtonElement>('button[role="switch"]')!.click(),
     );
     await click("Start meeting recording");
     expect(mocks.start).toHaveBeenCalledWith("Planning", 0, "", false);
@@ -148,14 +172,96 @@ describe("Meetings", () => {
   it("requires inline confirmation before recoverable deletion", async () => {
     mocks.list.mockResolvedValue({ status: "ok", data: [saved] });
     await render(<MeetingsSection />);
+    await click("More actions for Planning");
     await click("Delete");
     expect(mocks.remove).not.toHaveBeenCalled();
     await click("Cancel");
     expect(mocks.remove).not.toHaveBeenCalled();
+    await click("More actions for Planning");
     await click("Delete");
     await click("Confirm delete");
     expect(mocks.remove).toHaveBeenCalledWith("session", true);
-    expect(view.textContent).toContain("No audio was permanently erased");
+    expect(view.textContent).toContain("Moved to Deleted Meetings.");
+  });
+  it("keeps keyboard focus inside delete confirmation", async () => {
+    mocks.list.mockResolvedValue({ status: "ok", data: [saved] });
+    await render(<MeetingsSection />);
+    await click("More actions for Planning");
+    await click("Delete");
+    await nextFrame();
+    expect(document.activeElement?.textContent).toBe("Cancel");
+    await click("Cancel");
+    await nextFrame();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "More actions for Planning",
+    );
+  });
+  it("supports arrow and Escape keys in the actions menu", async () => {
+    mocks.list.mockResolvedValue({ status: "ok", data: [saved] });
+    await render(<MeetingsSection />);
+    await click("More actions for Planning");
+    await nextFrame();
+    expect(document.activeElement?.textContent).toBe("Reveal files");
+    const menu = view.querySelector('[role="menu"]')!;
+    await act(async () => {
+      menu.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+    expect(document.activeElement?.textContent).toBe("Delete");
+    await act(async () => {
+      menu.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await nextFrame();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "More actions for Planning",
+    );
+  });
+  it("focuses inline meeting details and returns focus when closed", async () => {
+    const ready = { ...saved, state: "ready", transcript_ready: true };
+    mocks.list.mockResolvedValue({ status: "ok", data: [ready] });
+    mocks.read.mockResolvedValue({
+      status: "ok",
+      data: { session: ready, summary: null, segments: [] },
+    });
+    await render(<MeetingsSection />);
+    await click("Open");
+    await nextFrame();
+    expect(document.activeElement?.textContent).toBe("Planning");
+    await click("Close");
+    await nextFrame();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Open notes and transcript for Planning",
+    );
+  });
+  it("keeps the recording timer outside the live region", async () => {
+    mocks.list.mockResolvedValue({
+      status: "ok",
+      data: [{ ...saved, state: "recording" }],
+    });
+    await render(<MeetingsSection />);
+    const liveStatus = view.querySelector(
+      '[role="status"][aria-live="polite"]',
+    );
+    expect(liveStatus?.textContent).toBe("Recording");
+    expect(liveStatus?.textContent).not.toContain("00:00:01");
+  });
+  it("shows active analysis instead of a stale ready state", async () => {
+    mocks.list.mockResolvedValue({
+      status: "ok",
+      data: [
+        {
+          ...saved,
+          state: "summarizing",
+          transcript_ready: true,
+          summary_ready: false,
+        },
+      ],
+    });
+    await render(<MeetingsSection />);
+    expect(view.textContent).toContain("Creating local summary…");
   });
   it("keeps a stop action outside the Meetings page", async () => {
     mocks.list.mockResolvedValue({

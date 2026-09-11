@@ -1072,20 +1072,14 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                 }
                                 Err(error) => {
-                                    // When passive selection observation is unavailable (e.g. apps without AX
-                                    // or non-macOS), allow normal dictation to proceed instead of blocking all
-                                    // speech-to-text in unsupported applications. Late-arriving probes that
-                                    // are still pending when recording stops remain failed closed above.
-                                    debug!(
-                                        "Adaptive selection probe did not detect a selection for binding '{}': {}",
+                                    // Keep this run unresolved so stop fails closed. Resolving an
+                                    // unreadable selection as "no selection" can turn the spoken edit
+                                    // instruction into an ordinary paste over the selected text.
+                                    warn!(
+                                        "Adaptive selection probe failed for binding '{}': {}",
                                         b_id_clone, error
                                     );
-                                    finish_selection_probe_with_guard(
-                                        &b_id_clone,
-                                        dictation_run_id,
-                                        None,
-                                        None,
-                                    );
+                                    let _ = app_clone.emit("rewrite-error", error);
                                 }
                             }
                         });
@@ -2522,6 +2516,29 @@ mod tests {
             current_run,
             Some("late text".into())
         ));
+    }
+
+    #[test]
+    fn adaptive_selection_probe_without_selection_resolves_to_dictate() {
+        let binding = "test-adaptive-no-selection";
+        let mode = super::DictationMode::Adaptive {
+            post_process: false,
+        };
+        let run = super::begin_active_dictation_intent(
+            binding,
+            super::DictationIntent::Dictate {
+                post_process: false,
+            },
+            true,
+        );
+
+        assert!(super::finish_selection_probe(binding, run, None));
+        assert_eq!(
+            super::take_active_dictation_intent(binding, &mode),
+            super::DictationIntent::Dictate {
+                post_process: false,
+            },
+        );
     }
 
     #[test]

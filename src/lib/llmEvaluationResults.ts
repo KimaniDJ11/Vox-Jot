@@ -229,7 +229,7 @@ export const LLM_EVALUATION_RESULTS: LlmEvaluationResult[] = [
     status: "pending",
     promptProfile: "standard",
     notes:
-      "Global SOTA sub-4B edge model (score 23 on AA Intelligence Index) with 128k context and 2.5B dense parameters.",
+      "Dense 2.5B OpenBMB model with a 128K context window; full Vox Jot post-processing evaluation is still pending.",
   },
 ];
 

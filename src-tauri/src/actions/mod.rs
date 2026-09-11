@@ -1072,20 +1072,14 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                 }
                                 Err(error) => {
-                                    // When passive selection observation is unavailable (e.g. apps without AX
-                                    // or non-macOS), allow normal dictation to proceed instead of blocking all
-                                    // speech-to-text in unsupported applications. Late-arriving probes that
-                                    // are still pending when recording stops remain failed closed above.
-                                    debug!(
-                                        "Adaptive selection probe did not detect a selection for binding '{}': {}",
+                                    // Keep this run unresolved so stop fails closed. Resolving an
+                                    // unreadable selection as "no selection" can turn the spoken edit
+                                    // instruction into an ordinary paste over the selected text.
+                                    warn!(
+                                        "Adaptive selection probe failed for binding '{}': {}",
                                         b_id_clone, error
                                     );
-                                    finish_selection_probe_with_guard(
-                                        &b_id_clone,
-                                        dictation_run_id,
-                                        None,
-                                        None,
-                                    );
+                                    let _ = app_clone.emit("rewrite-error", error);
                                 }
                             }
                         });

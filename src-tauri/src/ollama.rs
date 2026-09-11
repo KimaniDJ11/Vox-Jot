@@ -62,7 +62,7 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
     (
         "openbmb/minicpm5-2b",
         "MiniCPM5 2B",
-        "~1.6 GB — #1 sub-4B edge model",
+        "~1.6 GB — compact on-device reasoning model",
     ),
     (
         "codegemma:2b",

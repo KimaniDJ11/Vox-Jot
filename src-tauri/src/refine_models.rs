@@ -140,7 +140,7 @@ const HF_IMPORT_SPECS: &[HfImportSpec] = &[
     HfImportSpec {
         id: "hf:minicpm5-2b",
         title: "MiniCPM5 2B",
-        description: "Global SOTA sub-4B edge LLM (score 23 on AA Index) with 128K context for precise dictation cleanup.",
+        description: "Dense OpenBMB on-device model with a 128K context window for local dictation cleanup.",
         repo_id: "openbmb/MiniCPM5-2B-GGUF",
         file_name: "MiniCPM5-2B-Q4_K_M.gguf",
         runtime_model_id: "minicpm5-2b-q4km",
@@ -474,6 +474,21 @@ fn ollama_model_ids_equivalent(left: &str, right: &str) -> bool {
         || ollama_model_matches(&[right.to_string()], left)
 }
 
+fn ollama_model_page_url(model_id: &str) -> String {
+    let trimmed = model_id.trim();
+    let untagged = trimmed
+        .rsplit_once(':')
+        .filter(|(name, tag)| !name.is_empty() && !tag.is_empty())
+        .map(|(name, _)| name)
+        .unwrap_or(trimmed);
+
+    if untagged.contains('/') {
+        format!("https://ollama.com/{untagged}")
+    } else {
+        format!("https://ollama.com/library/{untagged}")
+    }
+}
+
 fn replacement_ollama_model_id(
     installed_models: &[String],
     removed_model_id: &str,
@@ -514,7 +529,7 @@ fn remove_local_ollama_rows_shadowed_by_installed_hf_imports(
 #[cfg(test)]
 mod tests {
     use super::{
-        ollama_model_ids_equivalent, ollama_model_matches,
+        ollama_model_ids_equivalent, ollama_model_matches, ollama_model_page_url,
         remove_local_ollama_rows_shadowed_by_installed_hf_imports, replacement_ollama_model_id,
         runtime_model_id_for_hf_file_name, RefineModelDescriptor, RefineModelSourceKind,
         OLLAMA_PROVIDER_ID,
@@ -578,6 +593,18 @@ mod tests {
             "smollm2-1.7b-instruct-gguf-q4_k_m:latest",
         ));
         assert!(!ollama_model_ids_equivalent("smollm2:1.7b", "smollm2:360m",));
+    }
+
+    #[test]
+    fn ollama_model_page_url_handles_library_and_namespaced_models() {
+        assert_eq!(
+            ollama_model_page_url("smollm2:135m"),
+            "https://ollama.com/library/smollm2"
+        );
+        assert_eq!(
+            ollama_model_page_url("openbmb/minicpm5-2b:2b"),
+            "https://ollama.com/openbmb/minicpm5-2b"
+        );
     }
 
     #[test]
@@ -1246,7 +1273,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
             requires_api_key: false,
             source_repo_id: None,
             source_file_name: None,
-            source_url: Some(format!("https://ollama.com/library/{}", model.id)),
+            source_url: Some(ollama_model_page_url(&model.id)),
             note: if ollama_status.installed && ollama_status.running {
                 None
             } else if !ollama_status.installed {

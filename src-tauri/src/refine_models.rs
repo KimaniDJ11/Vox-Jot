@@ -602,7 +602,15 @@ mod tests {
             "https://ollama.com/library/smollm2"
         );
         assert_eq!(
+            ollama_model_page_url("llama3.2"),
+            "https://ollama.com/library/llama3.2"
+        );
+        assert_eq!(
             ollama_model_page_url("openbmb/minicpm5-2b:2b"),
+            "https://ollama.com/openbmb/minicpm5-2b"
+        );
+        assert_eq!(
+            ollama_model_page_url("openbmb/minicpm5-2b"),
             "https://ollama.com/openbmb/minicpm5-2b"
         );
     }

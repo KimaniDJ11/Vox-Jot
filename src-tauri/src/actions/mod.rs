@@ -2519,6 +2519,29 @@ mod tests {
     }
 
     #[test]
+    fn adaptive_selection_probe_without_selection_resolves_to_dictate() {
+        let binding = "test-adaptive-no-selection";
+        let mode = super::DictationMode::Adaptive {
+            post_process: false,
+        };
+        let run = super::begin_active_dictation_intent(
+            binding,
+            super::DictationIntent::Dictate {
+                post_process: false,
+            },
+            true,
+        );
+
+        assert!(super::finish_selection_probe(binding, run, None));
+        assert_eq!(
+            super::take_active_dictation_intent(binding, &mode),
+            super::DictationIntent::Dictate {
+                post_process: false,
+            },
+        );
+    }
+
+    #[test]
     fn unfinished_adaptive_probe_fails_closed_without_waiting() {
         let binding = "test-adaptive-selection-pending";
         let mode = super::DictationMode::Adaptive {

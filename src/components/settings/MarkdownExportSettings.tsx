@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Folder, FolderOpen } from "lucide-react";
+import {
+  CheckCircle2,
+  FileCheck,
+  Folder,
+  FolderOpen,
+  Loader2,
+} from "lucide-react";
 import { commands, type MarkdownExportContentSource } from "@/bindings";
 import { useSetting } from "@/hooks/useSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -20,6 +26,11 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
   const isUpdating = useSettingsStore((state) => state.isUpdatingKey);
   const [folderError, setFolderError] = useState<string | null>(null);
   const [isChoosingFolder, setIsChoosingFolder] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [isTestingWrite, setIsTestingWrite] = useState(false);
 
   const enabled =
     (useSetting("markdown_export_enabled") as boolean | undefined) ?? false;
@@ -41,6 +52,7 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
 
   const handlePickDirectory = async () => {
     setFolderError(null);
+    setTestResult(null);
     setIsChoosingFolder(true);
     try {
       const picked = await open({ directory: true, multiple: false });
@@ -64,6 +76,27 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
     }
   };
 
+  const handleTestWrite = async () => {
+    setFolderError(null);
+    setTestResult(null);
+    setIsTestingWrite(true);
+    try {
+      const result = await commands.testMarkdownExportWrite();
+      if (result.status === "ok") {
+        setTestResult({ success: true, message: result.data });
+      } else {
+        setTestResult({ success: false, message: result.error });
+      }
+    } catch (err) {
+      setTestResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Test write failed",
+      });
+    } finally {
+      setIsTestingWrite(false);
+    }
+  };
+
   return (
     <div className={`space-y-4 ${grouped ? "p-4" : ""}`}>
       <ToggleSwitch
@@ -80,10 +113,11 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
           exportDir
             ? t("settings.privacy.markdownExport.enableDescription", {
                 defaultValue:
-                  "Save eligible future dictations as Markdown files in the selected folder.",
+                  "Save eligible future dictations as Markdown files in your Obsidian vault or selected folder.",
               })
             : t("settings.privacy.markdownExport.chooseFirstDescription", {
-                defaultValue: "Choose an export folder before turning this on.",
+                defaultValue:
+                  "Choose an export folder (e.g. your Obsidian vault) before turning this on.",
               })
         }
         descriptionMode="inline"
@@ -94,13 +128,14 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
         <div className="min-w-0">
           <p className="text-sm font-medium text-[var(--text)]">
             {t("settings.privacy.markdownExport.folderLabel", {
-              defaultValue: "Export folder",
+              defaultValue: "Obsidian-friendly folder",
             })}
           </p>
           <p className="break-all text-xs text-[var(--muted)]">
             {exportDir ??
               t("settings.privacy.markdownExport.noFolderChosen", {
-                defaultValue: "No folder selected",
+                defaultValue:
+                  "No folder selected (e.g. ~/Documents/Obsidian/Inbox)",
               })}
           </p>
           {folderError && (
@@ -108,32 +143,72 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
               {folderError}
             </p>
           )}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void handlePickDirectory()}
-          disabled={isChoosingFolder}
-          className="shrink-0 gap-1.5"
-        >
-          {exportDir ? (
-            <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-          ) : (
-            <Folder className="h-3.5 w-3.5" aria-hidden />
+          {testResult && (
+            <p
+              className={`mt-1 flex items-center gap-1.5 text-xs ${
+                testResult.success
+                  ? "text-[var(--success,#4ade80)]"
+                  : "text-[var(--danger)]"
+              }`}
+              role="status"
+            >
+              {testResult.success && (
+                <CheckCircle2 className="h-3 w-3 shrink-0" />
+              )}
+              {testResult.message}
+            </p>
           )}
-          {isChoosingFolder
-            ? t("settings.privacy.markdownExport.choosingFolder", {
-                defaultValue: "Choosing…",
-              })
-            : exportDir
-              ? t("settings.privacy.markdownExport.changeFolder", {
-                  defaultValue: "Change folder",
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {exportDir && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleTestWrite()}
+              disabled={isTestingWrite}
+              className="gap-1.5"
+            >
+              {isTestingWrite ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <FileCheck className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {isTestingWrite
+                ? t("settings.privacy.markdownExport.testingWrite", {
+                    defaultValue: "Testing…",
+                  })
+                : t("settings.privacy.markdownExport.testWrite", {
+                    defaultValue: "Test write",
+                  })}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handlePickDirectory()}
+            disabled={isChoosingFolder}
+            className="gap-1.5"
+          >
+            {exportDir ? (
+              <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <Folder className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {isChoosingFolder
+              ? t("settings.privacy.markdownExport.choosingFolder", {
+                  defaultValue: "Choosing…",
                 })
-              : t("settings.privacy.markdownExport.chooseFolder", {
-                  defaultValue: "Choose folder",
-                })}
-        </Button>
+              : exportDir
+                ? t("settings.privacy.markdownExport.changeFolder", {
+                    defaultValue: "Change folder",
+                  })
+                : t("settings.privacy.markdownExport.chooseFolder", {
+                    defaultValue: "Choose folder",
+                  })}
+          </Button>
+        </div>
       </div>
 
       {exportDir && (

@@ -6,9 +6,9 @@ import {
 } from "./productArchitecture";
 
 describe("productArchitecture", () => {
-  it("keeps lab sections behind the experimental toggle", () => {
+  it("keeps lab sections behind the experimental toggle while ungating automation-agents", () => {
     expect(isProductSectionVisible("model-testing", false)).toBe(false);
-    expect(isProductSectionVisible("automation-agents", false)).toBe(false);
+    expect(isProductSectionVisible("automation-agents", false)).toBe(true);
     expect(isProductSectionVisible("model-testing", true)).toBe(true);
   });
 

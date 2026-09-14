@@ -251,6 +251,7 @@ const RecordingOverlay: React.FC = () => {
     null,
   );
   const [partialText, setPartialText] = useState("");
+  const [showLivePartials, setShowLivePartials] = useState(true);
   const [screenContextEnabled, setScreenContextEnabled] = useState(true);
   const [screenContextStatus, setScreenContextStatus] =
     useState<ContextCaptureStatus | null>(null);
@@ -330,6 +331,9 @@ const RecordingOverlay: React.FC = () => {
     setStyle(payload.style);
     setOverlayMode(payload.mode || "dictate");
     setCorrection(null);
+    if (payload.state !== "recording") {
+      setPartialText("");
+    }
     setIsVisible(true);
   });
 
@@ -371,11 +375,24 @@ const RecordingOverlay: React.FC = () => {
     setMatchedRule(null);
   });
 
-  useTauriEvent<SettingsChangedPayload>("settings-changed", (event) => {
-    if (event.payload.setting !== "screen_context_enabled") {
+  useTauriEvent<SettingsChangedPayload | null>("settings-changed", (event) => {
+    const payload = event.payload;
+    // Some settings writers send a generic synchronization event with no
+    // payload. Only structured setting events can update overlay state.
+    if (!payload || typeof payload !== "object") return;
+
+    if (payload.setting === "show_live_partials") {
+      const nextPartials = payload.value !== false;
+      setShowLivePartials(nextPartials);
+      if (!nextPartials) {
+        setPartialText("");
+      }
       return;
     }
-    const nextEnabled = event.payload.value !== false;
+    if (payload.setting !== "screen_context_enabled") {
+      return;
+    }
+    const nextEnabled = payload.value !== false;
     screenContextEnabledRef.current = nextEnabled;
     setScreenContextEnabled(nextEnabled);
     if (!nextEnabled) {
@@ -417,9 +434,11 @@ const RecordingOverlay: React.FC = () => {
             settingsResult.data.screen_context_enabled ?? true;
           screenContextEnabledRef.current = nextEnabled;
           setScreenContextEnabled(nextEnabled);
+          const nextPartials = settingsResult.data.show_live_partials ?? true;
+          setShowLivePartials(nextPartials);
         }
       } catch (error) {
-        console.error("Failed to read screen context setting:", error);
+        console.error("Failed to read settings in overlay:", error);
       }
 
       try {
@@ -542,9 +561,14 @@ const RecordingOverlay: React.FC = () => {
                             })}
                           </span>
                         )}
-                        {partialText.trim().length > 0 ? (
+                        {showLivePartials && partialText.trim().length > 0 ? (
                           <div className="partial-text" title={partialText}>
-                            {partialText}
+                            <span className="partial-text-provisional">
+                              {partialText}
+                            </span>
+                            <span className="partial-text-dots" aria-hidden>
+                              …
+                            </span>
                           </div>
                         ) : matchedRule ? (
                           <button

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -14,6 +15,7 @@ import {
   Info,
   Loader2,
   MoreHorizontal,
+  Pencil,
   RefreshCw,
   Sparkles,
   Trash2,
@@ -24,14 +26,28 @@ import {
   type MeetingCapabilities,
   type MeetingDetail,
   type MeetingSession,
+  type MeetingTemplate,
 } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SwitchControl } from "@/components/ui/SwitchControl";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 import { SectionIntro } from "@/components/app-sections/shared";
-import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 import { recordingStates } from "./MeetingRecordingStatus";
+
+const KNOWN_MEETING_APPS: Record<string, string> = {
+  "us.zoom.xos": "Zoom",
+  "com.microsoft.teams": "Microsoft Teams",
+  "com.microsoft.teams2": "Microsoft Teams",
+  "com.cisco.webexmeetingsapp": "Webex",
+  "Cisco-Systems.Spark": "Webex",
+  "com.tinyspeck.slackmacgap": "Slack",
+  "com.apple.FaceTime": "FaceTime",
+};
 
 const fieldClass = `min-h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass}`;
 const busyStates = new Set([...recordingStates, "transcribing", "summarizing"]);
@@ -219,10 +235,76 @@ export default function MeetingsSection({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [visible, setVisible] = useState(15);
+  const [suggestMeetingApps, setSuggestMeetingApps] = useState(false);
+  const [appCooldowns, setAppCooldowns] = useState<Record<string, number>>({});
+  const [enhanceBeforeTranscribe, setEnhanceBeforeTranscribe] = useState(false);
+  const [templates, setTemplates] = useState<MeetingTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("default");
+  const [editingSpeaker, setEditingSpeaker] = useState<{
+    original: string;
+    value: string;
+    triggerId: string;
+  } | null>(null);
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
   const detailReturnId = useRef<string | null>(null);
   const deleteFocusFrame = useRef<number | null>(null);
+  const speakerRenameTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
   const detailSessionId = detail?.session.id;
+
+  useEffect(() => {
+    void commands.getAppSettings().then((res) => {
+      if (res.status === "ok") {
+        setSuggestMeetingApps(res.data.suggest_meeting_apps ?? false);
+      }
+    });
+    void commands.getMeetingTemplates().then((templates) => {
+      setTemplates(templates);
+    });
+  }, []);
+
+  useTauriEvent<{ setting?: string; value?: unknown } | null>(
+    "settings-changed",
+    ({ payload }) => {
+      if (!payload || typeof payload !== "object") return;
+      if (payload.setting === "suggest_meeting_apps") {
+        setSuggestMeetingApps(Boolean(payload.value));
+      }
+    },
+  );
+
+  const detectedMeetingApp = useMemo(() => {
+    if (!suggestMeetingApps || !capabilities?.applications) return null;
+    const now = Date.now();
+    for (const app of capabilities.applications) {
+      const appName = KNOWN_MEETING_APPS[app.bundle_id];
+      if (appName) {
+        const cooldownUntil = appCooldowns[app.bundle_id] ?? 0;
+        if (now > cooldownUntil) {
+          return { source: app, appName };
+        }
+      }
+    }
+    return null;
+  }, [suggestMeetingApps, capabilities?.applications, appCooldowns]);
+
+  const dismissDetectedApp = (bundleId: string) => {
+    setAppCooldowns((prev) => ({
+      ...prev,
+      [bundleId]: Date.now() + 5 * 60 * 1000,
+    }));
+  };
+
+  const selectDetectedApp = (sourceId: number, appName: string) => {
+    setSource(sourceId);
+    if (!title.trim()) {
+      setTitle(
+        t("meetings.defaultAppMeetingTitle", {
+          app: appName,
+          defaultValue: `${appName} Meeting`,
+        }),
+      );
+    }
+  };
   const refresh = useCallback(async () => {
     const result = await commands.listMeetings();
     if (result.status === "error") throw new Error(result.error);
@@ -284,12 +366,20 @@ export default function MeetingsSection({
         { status?: string; error?: string } | undefined;
       if (result?.status === "error") throw new Error(result.error);
       await refresh();
+      return true;
     } catch (cause) {
       setError(String(cause));
+      return false;
     } finally {
       setPending(null);
     }
   };
+  const closeSpeakerEditor = useCallback((triggerId: string) => {
+    setEditingSpeaker(null);
+    requestAnimationFrame(() => {
+      speakerRenameTriggerRefs.current.get(triggerId)?.focus();
+    });
+  }, []);
   const active = sessions.find((s) => recordingStates.has(s.state));
   const permitted =
     capabilities?.screen_permission &&
@@ -342,269 +432,372 @@ export default function MeetingsSection({
             })}
           </p>
         ) : (
-          <section
-            aria-label="New meeting"
-            className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5"
-          >
-            {active ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--accent-soft)] p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="relative flex h-3 w-3" aria-hidden>
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--danger)] opacity-50" />
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-[var(--danger)]" />
-                    </span>
-                    <div>
-                      <p
-                        className="font-semibold"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        {labels[active.state]}
-                      </p>
-                      <p className="text-sm text-[var(--muted)]">
-                        {active.title}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-mono text-xl font-bold tabular-nums">
-                    {formatMeetingDuration(active.duration_ms)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--muted)]">
-                  <p className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${active.system.received_frames > 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]"}`}
-                      aria-hidden
-                    />
-                    {active.system.received_frames > 0
-                      ? "System audio"
-                      : "Waiting for system audio"}
-                  </p>
-                  {active.include_microphone && (
-                    <p className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 rounded-full ${active.microphone.received_frames > 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]"}`}
-                        aria-hidden
-                      />
-                      {active.microphone.received_frames > 0
-                        ? "Microphone"
-                        : "Waiting for microphone"}
+          <>
+            {detectedMeetingApp && !active && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Sparkles
+                    className="h-5 w-5 text-[var(--accent)] shrink-0"
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text)] truncate">
+                      {t("meetings.appDetectedTitle", {
+                        app: detectedMeetingApp.appName,
+                        defaultValue: `${detectedMeetingApp.appName} detected`,
+                      })}
                     </p>
-                  )}
-                </div>
-                <Button
-                  aria-label="Stop meeting"
-                  variant="danger"
-                  size="lg"
-                  className="w-full"
-                  disabled={!!pending || active.state === "stopping"}
-                  onClick={() =>
-                    void run(active.id, () => commands.stopMeeting(active.id))
-                  }
-                >
-                  {active.state === "stopping" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
-                  {active.state === "stopping" ? "Saving…" : "Stop Meeting"}
-                </Button>
-              </>
-            ) : (
-              <>
-                {!permitted && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--warning-soft)] p-4 text-sm">
-                    <div>
-                      <p className="font-semibold">
-                        {t("meetings.permissionNeeded", {
-                          defaultValue: "Permission needed",
-                        })}
-                      </p>
-                      <p className="text-[var(--muted)]">
-                        {t("meetings.allowThenStart", {
-                          defaultValue: "Allow access, then check again.",
-                        })}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        disabled={!!pending}
-                        onClick={() =>
-                          void run("permissions", async () => {
-                            await commands.requestMeetingPermissions();
-                          })
-                        }
-                      >
-                        {t("meetings.allowAccess", {
-                          defaultValue: "Allow access",
-                        })}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={!!pending}
-                        onClick={() =>
-                          void run("check-permissions", refreshCapabilities)
-                        }
-                      >
-                        {t("meetings.checkAgain", {
-                          defaultValue: "Check again",
-                        })}
-                      </Button>
-                    </div>
-                    <p className="w-full text-xs text-[var(--muted)]">
-                      {t("meetings.enableDeniedAccess", {
-                        defaultValue:
-                          "If access was denied, enable it in System Settings.",
+                    <p className="text-xs text-[var(--muted)]">
+                      {t("meetings.appDetectedSubtitle", {
+                        defaultValue: "Ready to capture meeting audio.",
                       })}
                     </p>
                   </div>
-                )}
-
-                <Button
-                  aria-label="Start meeting recording"
-                  size="lg"
-                  className="w-full"
-                  disabled={!!pending || !permitted}
-                  onClick={() =>
-                    void run("start", async () => {
-                      const result = await commands.startMeeting(
-                        title,
-                        source,
-                        mic,
-                        includeMic,
-                      );
-                      if (result.status === "ok") setTitle("");
-                      return result;
-                    })
-                  }
-                >
-                  {pending === "start" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
-                  {pending === "start" ? "Starting…" : "Start Meeting"}
-                </Button>
-
-                <details className="group border-t border-[var(--border)]">
-                  <summary
-                    className={`flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-1 text-sm font-semibold text-[var(--text)] marker:hidden [&::-webkit-details-marker]:hidden ${interactiveFocusRingClass}`}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      selectDetectedApp(
+                        detectedMeetingApp.source.id,
+                        detectedMeetingApp.appName,
+                      )
+                    }
                   >
-                    {t("meetings.options", { defaultValue: "Options" })}
-                    <span
-                      className="text-[var(--muted)] transition-transform group-open:rotate-180"
-                      aria-hidden
-                    >
-                      {t("meetings.expandSymbol", { defaultValue: "⌄" })}
-                    </span>
-                  </summary>
-                  <div className="space-y-4 pb-2 pt-3">
-                    <label className="block space-y-1 text-sm font-medium">
-                      {t("meetings.meetingTitle", {
-                        defaultValue: "Meeting title",
-                      })}
-                      <Input
-                        aria-label="Meeting title"
-                        className={fieldClass}
-                        value={title}
-                        maxLength={120}
-                        onChange={(event) => setTitle(event.target.value)}
-                        placeholder="Meeting"
-                      />
-                    </label>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <label className="block space-y-1 text-sm font-medium">
-                        {t("meetings.systemAudioSource", {
-                          defaultValue: "System audio",
-                        })}
-                        <select
-                          aria-label="System audio source"
-                          className={fieldClass}
-                          value={source}
-                          onChange={(event) =>
-                            setSource(Number(event.target.value))
-                          }
+                    {t("meetings.selectApp", {
+                      app: detectedMeetingApp.appName,
+                      defaultValue: `Select ${detectedMeetingApp.appName}`,
+                    })}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      dismissDetectedApp(detectedMeetingApp.source.bundle_id)
+                    }
+                  >
+                    {t("meetings.dismiss", { defaultValue: "Dismiss" })}
+                  </Button>
+                </div>
+              </div>
+            )}
+            <section
+              aria-label="New meeting"
+              className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5"
+            >
+              {active ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--accent-soft)] p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="relative flex h-3 w-3" aria-hidden>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--danger)] opacity-50" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-[var(--danger)]" />
+                      </span>
+                      <div>
+                        <p
+                          className="font-semibold"
+                          role="status"
+                          aria-live="polite"
                         >
-                          <option value={0}>
-                            {t("meetings.allSystemAudioExceptVoxJot", {
-                              defaultValue: "All system audio except Vox Jot",
-                            })}
-                          </option>
-                          {capabilities.applications.map((app) => (
-                            <option key={app.id} value={app.id}>
-                              {app.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <div className="space-y-1">
-                        <div className="flex min-h-6 items-center justify-between gap-3">
-                          <p className="text-sm font-medium">
-                            {t("meetings.microphone", {
-                              defaultValue: "Microphone",
-                            })}
-                          </p>
-                          <SwitchControl
-                            checked={includeMic}
-                            size="compact"
-                            frame="icon"
-                            ariaLabel={t(
-                              "meetings.includeMyMicrophoneAsASeparateTrack",
-                              {
-                                defaultValue: "Include microphone",
-                              },
-                            )}
-                            onChange={setIncludeMic}
-                          />
-                        </div>
-                        <select
-                          aria-label="Meeting microphone"
-                          className={fieldClass}
-                          value={mic}
-                          disabled={!includeMic}
-                          onChange={(event) => setMic(event.target.value)}
-                        >
-                          <option value="">
-                            {t("meetings.systemDefault", {
-                              defaultValue: "System default",
-                            })}
-                          </option>
-                          {capabilities.microphones.map((device) => (
-                            <option key={device.id} value={device.id}>
-                              {device.name}
-                            </option>
-                          ))}
-                        </select>
+                          {labels[active.state]}
+                        </p>
+                        <p className="text-sm text-[var(--muted)]">
+                          {active.title}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
-                      <p className="flex items-center gap-1.5">
-                        <HardDrive className="h-3.5 w-3.5" aria-hidden />
-                        {t("meetings.compactStorage", {
+                    <p className="font-mono text-xl font-bold tabular-nums">
+                      {formatMeetingDuration(active.duration_ms)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--muted)]">
+                    <p className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${active.system.received_frames > 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]"}`}
+                        aria-hidden
+                      />
+                      {active.system.received_frames > 0
+                        ? "System audio"
+                        : "Waiting for system audio"}
+                    </p>
+                    {active.include_microphone && (
+                      <p className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full ${active.microphone.received_frames > 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]"}`}
+                          aria-hidden
+                        />
+                        {active.microphone.received_frames > 0
+                          ? "Microphone"
+                          : "Waiting for microphone"}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    aria-label="Stop meeting"
+                    variant="danger"
+                    size="lg"
+                    className="w-full"
+                    disabled={!!pending || active.state === "stopping"}
+                    onClick={() =>
+                      void run(active.id, () => commands.stopMeeting(active.id))
+                    }
+                  >
+                    {active.state === "stopping" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : null}
+                    {active.state === "stopping" ? "Saving…" : "Stop Meeting"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {!permitted && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--warning-soft)] p-4 text-sm">
+                      <div>
+                        <p className="font-semibold">
+                          {t("meetings.permissionNeeded", {
+                            defaultValue: "Permission needed",
+                          })}
+                        </p>
+                        <p className="text-[var(--muted)]">
+                          {t("meetings.allowThenStart", {
+                            defaultValue: "Allow access, then check again.",
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="secondary"
+                          disabled={!!pending}
+                          onClick={() =>
+                            void run("permissions", async () => {
+                              await commands.requestMeetingPermissions();
+                            })
+                          }
+                        >
+                          {t("meetings.allowAccess", {
+                            defaultValue: "Allow access",
+                          })}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={!!pending}
+                          onClick={() =>
+                            void run("check-permissions", refreshCapabilities)
+                          }
+                        >
+                          {t("meetings.checkAgain", {
+                            defaultValue: "Check again",
+                          })}
+                        </Button>
+                      </div>
+                      <p className="w-full text-xs text-[var(--muted)]">
+                        {t("meetings.enableDeniedAccess", {
                           defaultValue:
-                            "Audio only · No screen/video · About {{megabytes}} MB/hour · 8-hour limit",
-                          megabytes: includeMic ? "346" : "230",
+                            "If access was denied, enable it in System Settings.",
                         })}
                       </p>
-                      <button
-                        type="button"
-                        disabled={!!pending}
-                        className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 ${interactiveFocusRingClass}`}
-                        onClick={() => void run("refresh", refreshCapabilities)}
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                        {t("meetings.refresh", { defaultValue: "Refresh" })}
-                      </button>
                     </div>
-                  </div>
-                </details>
+                  )}
 
-                <p className="text-center text-xs text-[var(--muted)]">
-                  {t("meetings.shortConsent", {
-                    defaultValue: "Tell everyone first · Saved locally",
-                  })}
-                </p>
-              </>
-            )}
-          </section>
+                  <Button
+                    aria-label="Start meeting recording"
+                    size="lg"
+                    className="w-full"
+                    disabled={!!pending || !permitted}
+                    onClick={() =>
+                      void run("start", async () => {
+                        const result = await commands.startMeeting(
+                          title,
+                          source,
+                          mic,
+                          includeMic,
+                        );
+                        if (result.status === "ok") setTitle("");
+                        return result;
+                      })
+                    }
+                  >
+                    {pending === "start" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : null}
+                    {pending === "start" ? "Starting…" : "Start Meeting"}
+                  </Button>
+
+                  <details className="group border-t border-[var(--border)]">
+                    <summary
+                      className={`flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-1 text-sm font-semibold text-[var(--text)] marker:hidden [&::-webkit-details-marker]:hidden ${interactiveFocusRingClass}`}
+                    >
+                      {t("meetings.options", { defaultValue: "Options" })}
+                      <span
+                        className="text-[var(--muted)] transition-transform group-open:rotate-180"
+                        aria-hidden
+                      >
+                        {t("meetings.expandSymbol", { defaultValue: "⌄" })}
+                      </span>
+                    </summary>
+                    <div className="space-y-4 pb-2 pt-3">
+                      <label className="block space-y-1 text-sm font-medium">
+                        {t("meetings.meetingTitle", {
+                          defaultValue: "Meeting title",
+                        })}
+                        <Input
+                          aria-label="Meeting title"
+                          className={fieldClass}
+                          value={title}
+                          maxLength={120}
+                          onChange={(event) => setTitle(event.target.value)}
+                          placeholder="Meeting"
+                        />
+                      </label>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="block space-y-1 text-sm font-medium">
+                          {t("meetings.systemAudioSource", {
+                            defaultValue: "System audio",
+                          })}
+                          <select
+                            aria-label="System audio source"
+                            className={fieldClass}
+                            value={source}
+                            onChange={(event) =>
+                              setSource(Number(event.target.value))
+                            }
+                          >
+                            <option value={0}>
+                              {t("meetings.allSystemAudioExceptVoxJot", {
+                                defaultValue: "All system audio except Vox Jot",
+                              })}
+                            </option>
+                            {capabilities.applications.map((app) => (
+                              <option key={app.id} value={app.id}>
+                                {app.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="space-y-1">
+                          <div className="flex min-h-6 items-center justify-between gap-3">
+                            <p className="text-sm font-medium">
+                              {t("meetings.microphone", {
+                                defaultValue: "Microphone",
+                              })}
+                            </p>
+                            <SwitchControl
+                              checked={includeMic}
+                              size="compact"
+                              frame="icon"
+                              ariaLabel={t(
+                                "meetings.includeMyMicrophoneAsASeparateTrack",
+                                {
+                                  defaultValue: "Include microphone",
+                                },
+                              )}
+                              onChange={setIncludeMic}
+                            />
+                          </div>
+                          <select
+                            aria-label="Meeting microphone"
+                            className={fieldClass}
+                            value={mic}
+                            disabled={!includeMic}
+                            onChange={(event) => setMic(event.target.value)}
+                          >
+                            <option value="">
+                              {t("meetings.systemDefault", {
+                                defaultValue: "System default",
+                              })}
+                            </option>
+                            {capabilities.microphones.map((device) => (
+                              <option key={device.id} value={device.id}>
+                                {device.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
+                        <p className="flex items-center gap-1.5">
+                          <HardDrive className="h-3.5 w-3.5" aria-hidden />
+                          {t("meetings.compactStorage", {
+                            defaultValue:
+                              "Audio only · No screen/video · About {{megabytes}} MB/hour · 8-hour limit",
+                            megabytes: includeMic ? "346" : "230",
+                          })}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={!!pending}
+                          className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 ${interactiveFocusRingClass}`}
+                          onClick={() =>
+                            void run("refresh", refreshCapabilities)
+                          }
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                          {t("meetings.refresh", { defaultValue: "Refresh" })}
+                        </button>
+                      </div>
+                      <div className="flex min-h-11 items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {t("meetings.enhanceAudio", {
+                              defaultValue: "Enhance audio before transcribing",
+                            })}
+                          </p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {t("meetings.enhanceAudioDescription", {
+                              defaultValue:
+                                "Cleans background noise using local denoise models without altering raw audio.",
+                            })}
+                          </p>
+                        </div>
+                        <SwitchControl
+                          checked={enhanceBeforeTranscribe}
+                          size="compact"
+                          frame="icon"
+                          ariaLabel={t("meetings.enhanceAudio", {
+                            defaultValue: "Enhance audio before transcribing",
+                          })}
+                          onChange={setEnhanceBeforeTranscribe}
+                        />
+                      </div>
+                      <div className="flex min-h-11 items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {t("meetings.suggestMeetingApps", {
+                              defaultValue: "Suggest meeting recording",
+                            })}
+                          </p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {t("meetings.suggestMeetingAppsDescription", {
+                              defaultValue:
+                                "Show a prompt when Zoom, Teams, Slack, or Webex is open.",
+                            })}
+                          </p>
+                        </div>
+                        <SwitchControl
+                          checked={suggestMeetingApps}
+                          size="compact"
+                          frame="icon"
+                          ariaLabel={t("meetings.suggestMeetingApps", {
+                            defaultValue: "Suggest meeting recording",
+                          })}
+                          onChange={(next) => {
+                            setSuggestMeetingApps(next);
+                            void commands.changeSuggestMeetingAppsSetting(next);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </details>
+
+                  <p className="text-center text-xs text-[var(--muted)]">
+                    {t("meetings.shortConsent", {
+                      defaultValue: "Tell everyone first · Saved locally",
+                    })}
+                  </p>
+                </>
+              )}
+            </section>
+          </>
         )}
         <section aria-label="Saved meetings" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -644,23 +837,45 @@ export default function MeetingsSection({
             const menuActions: MeetingAction[] = [];
             if (session.transcript_ready) {
               menuActions.push({
-                label: "Transcribe again",
+                label: t("meetings.transcribeAgain", {
+                  defaultValue: "Transcribe again",
+                }),
                 icon: RefreshCw,
                 disabled: !!pending || busyStates.has(session.state),
                 onSelect: () =>
                   void run(session.id, () =>
-                    commands.transcribeMeeting(session.id),
+                    commands.transcribeMeeting(
+                      session.id,
+                      enhanceBeforeTranscribe,
+                    ),
                   ),
               });
               menuActions.push({
                 label: session.summary_ready
-                  ? "Regenerate local summary"
-                  : "Create local summary",
+                  ? t("meetings.regenerateSummary", {
+                      defaultValue: "Regenerate local summary",
+                    })
+                  : t("meetings.createSummary", {
+                      defaultValue: "Create local summary",
+                    }),
                 icon: Sparkles,
                 disabled: !!pending || busyStates.has(session.state),
                 onSelect: () =>
                   void run(session.id, () =>
-                    commands.summarizeMeeting(session.id),
+                    commands.summarizeMeeting(session.id, selectedTemplate),
+                  ),
+              });
+            }
+            if (!session.enhanced && !busyStates.has(session.state)) {
+              menuActions.push({
+                label: t("meetings.enhanceAudio", {
+                  defaultValue: "Enhance audio",
+                }),
+                icon: Sparkles,
+                disabled: !!pending,
+                onSelect: () =>
+                  void run(session.id, () =>
+                    commands.enhanceMeeting(session.id),
                   ),
               });
             }
@@ -704,22 +919,40 @@ export default function MeetingsSection({
                       </span>
                     </p>
                   </div>
-                  {(busyStates.has(session.state) ||
-                    session.error ||
-                    session.analysis_error ||
-                    session.state === "interrupted") && (
-                    <span
-                      className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ${meetingStatusClass(session)}`}
-                    >
-                      {busyStates.has(session.state) ? (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin"
-                          aria-hidden
-                        />
-                      ) : null}
-                      {meetingStatus(session)}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {session.enhanced && (
+                      <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-xs font-semibold text-[var(--accent)]">
+                        <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                        {t("meetings.enhanced", { defaultValue: "Enhanced" })}
+                      </span>
+                    )}
+                    {session.audio_source === "fallback" && (
+                      <span
+                        className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--muted)]"
+                        title={session.fallback_reason ?? undefined}
+                      >
+                        {t("meetings.fallbackAudio", {
+                          defaultValue: "Original audio (fallback)",
+                        })}
+                      </span>
+                    )}
+                    {(busyStates.has(session.state) ||
+                      session.error ||
+                      session.analysis_error ||
+                      session.state === "interrupted") && (
+                      <span
+                        className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ${meetingStatusClass(session)}`}
+                      >
+                        {busyStates.has(session.state) ? (
+                          <Loader2
+                            className="h-3.5 w-3.5 animate-spin"
+                            aria-hidden
+                          />
+                        ) : null}
+                        {meetingStatus(session)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {(session.error || session.analysis_error) && (
                   <p
@@ -761,7 +994,10 @@ export default function MeetingsSection({
                           disabled={!!pending || busyStates.has(session.state)}
                           onClick={() =>
                             void run(session.id, () =>
-                              commands.transcribeMeeting(session.id),
+                              commands.transcribeMeeting(
+                                session.id,
+                                enhanceBeforeTranscribe,
+                              ),
                             )
                           }
                         >
@@ -871,20 +1107,89 @@ export default function MeetingsSection({
                         {t("meetings.close", { defaultValue: "Close" })}
                       </Button>
                     </div>
-                    {detail.summary && (
-                      <div className="rounded-xl bg-[var(--panel-bg)] p-4">
-                        <h3 className="mb-2 flex items-center gap-2 font-semibold">
+                    <div className="space-y-3 rounded-xl bg-[var(--panel-bg)] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="flex items-center gap-2 font-semibold">
                           <Sparkles
                             className="h-4 w-4 text-[var(--accent)]"
                             aria-hidden
                           />
                           {t("meetings.summary", { defaultValue: "Summary" })}
                         </h3>
+                        {templates.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <label
+                              htmlFor={`meeting-template-${detail.session.id}`}
+                              className="sr-only"
+                            >
+                              {t("meetings.template", {
+                                defaultValue: "Template",
+                              })}
+                            </label>
+                            <select
+                              id={`meeting-template-${detail.session.id}`}
+                              value={selectedTemplate}
+                              onChange={(e) =>
+                                setSelectedTemplate(e.target.value)
+                              }
+                              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--text)] transition-colors focus:border-[var(--accent)]"
+                            >
+                              {templates.map((tpl) => (
+                                <option key={tpl.id} value={tpl.id}>
+                                  {tpl.name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={
+                                !!pending ||
+                                busyStates.has(detail.session.state)
+                              }
+                              onClick={() =>
+                                void run(detail.session.id, async () => {
+                                  const result =
+                                    await commands.summarizeMeeting(
+                                      detail.session.id,
+                                      selectedTemplate,
+                                    );
+                                  if (result.status === "ok") {
+                                    const readRes = await commands.readMeeting(
+                                      detail.session.id,
+                                    );
+                                    if (readRes.status === "ok") {
+                                      setDetail(readRes.data);
+                                    }
+                                  }
+                                  return result;
+                                })
+                              }
+                            >
+                              {detail.summary
+                                ? t("meetings.regenerateSummary", {
+                                    defaultValue: "Regenerate summary",
+                                  })
+                                : t("meetings.createSummary", {
+                                    defaultValue: "Create summary",
+                                  })}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {detail.summary ? (
                         <p className="whitespace-pre-wrap text-sm leading-6">
                           {detail.summary}
                         </p>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-sm text-[var(--muted)]">
+                          {t("meetings.noSummaryYet", {
+                            defaultValue:
+                              "No summary generated yet. Select a template and click Create summary above.",
+                          })}
+                        </p>
+                      )}
+                    </div>
                     <p className="flex items-start gap-2 text-sm text-[var(--muted)]">
                       <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                       {t("meetings.verifyImportantDetails", {
@@ -895,22 +1200,152 @@ export default function MeetingsSection({
                     <div
                       className="max-h-[32rem] space-y-3 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3"
                       tabIndex={0}
-                      aria-label="Transcript segments"
+                      aria-label={t("meetings.transcriptSegments", {
+                        defaultValue: "Transcript segments",
+                      })}
                     >
-                      {detail.segments.map((segment, index) => (
-                        <div
-                          key={`${segment.start_ms}-${index}`}
-                          className="rounded-lg bg-[var(--card)] p-3"
-                        >
-                          <p className="text-xs font-semibold text-[var(--muted)]">
-                            {formatMeetingDuration(segment.start_ms)} ·{" "}
-                            {segment.speaker}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
-                            {segment.text}
-                          </p>
-                        </div>
-                      ))}
+                      {detail.segments.map((segment, index) => {
+                        const rawSpeaker = segment.speaker;
+                        const speakerTriggerId = `${segment.start_ms}-${index}`;
+                        const displayName =
+                          detail.session.speaker_names?.[rawSpeaker] ||
+                          rawSpeaker;
+                        const isEditingThis =
+                          editingSpeaker?.triggerId === speakerTriggerId;
+
+                        return (
+                          <div
+                            key={speakerTriggerId}
+                            className="rounded-lg bg-[var(--card)] p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[var(--muted)]">
+                              <span>
+                                {formatMeetingDuration(segment.start_ms)}
+                              </span>
+                              {isEditingThis ? (
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (!editingSpeaker) return;
+                                    const newName = editingSpeaker.value.trim();
+                                    const updatedMap = {
+                                      ...(detail.session.speaker_names ?? {}),
+                                      [rawSpeaker]: newName || rawSpeaker,
+                                    };
+                                    void run(detail.session.id, async () => {
+                                      const res =
+                                        await commands.updateMeetingSpeakers(
+                                          detail.session.id,
+                                          updatedMap,
+                                        );
+                                      if (res.status === "ok") {
+                                        const readRes =
+                                          await commands.readMeeting(
+                                            detail.session.id,
+                                          );
+                                        if (readRes.status === "ok") {
+                                          setDetail(readRes.data);
+                                        }
+                                      }
+                                      return res;
+                                    }).then((saved) => {
+                                      if (saved) {
+                                        closeSpeakerEditor(speakerTriggerId);
+                                      }
+                                    });
+                                  }}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <input
+                                    type="text"
+                                    value={editingSpeaker.value}
+                                    onChange={(e) =>
+                                      setEditingSpeaker({
+                                        original: rawSpeaker,
+                                        value: e.target.value,
+                                        triggerId: speakerTriggerId,
+                                      })
+                                    }
+                                    autoFocus
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Escape") {
+                                        event.preventDefault();
+                                        closeSpeakerEditor(speakerTriggerId);
+                                      }
+                                    }}
+                                    className={`min-w-11 rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-xs text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] ${minTapTargetHeightClass}`}
+                                    aria-label={t("meetings.renameSpeaker", {
+                                      speaker: rawSpeaker,
+                                      defaultValue: `Rename ${rawSpeaker}`,
+                                    })}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    type="submit"
+                                    variant="ghost"
+                                    className={`min-w-11 px-2 text-xs ${minTapTargetHeightClass} ${interactiveFocusRingClass}`}
+                                    disabled={pending === detail.session.id}
+                                  >
+                                    {t("meetings.save", {
+                                      defaultValue: "Save",
+                                    })}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    variant="ghost"
+                                    className={`min-w-11 px-2 text-xs ${minTapTargetHeightClass} ${interactiveFocusRingClass}`}
+                                    disabled={pending === detail.session.id}
+                                    onClick={() =>
+                                      closeSpeakerEditor(speakerTriggerId)
+                                    }
+                                  >
+                                    {t("meetings.cancel", {
+                                      defaultValue: "Cancel",
+                                    })}
+                                  </Button>
+                                </form>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingSpeaker({
+                                      original: rawSpeaker,
+                                      value: displayName,
+                                      triggerId: speakerTriggerId,
+                                    })
+                                  }
+                                  ref={(element) => {
+                                    if (element) {
+                                      speakerRenameTriggerRefs.current.set(
+                                        speakerTriggerId,
+                                        element,
+                                      );
+                                    } else {
+                                      speakerRenameTriggerRefs.current.delete(
+                                        speakerTriggerId,
+                                      );
+                                    }
+                                  }}
+                                  className={`group flex min-w-11 items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text)] ${minTapTargetHeightClass} ${interactiveFocusRingClass}`}
+                                  title={t("meetings.clickToRenameSpeaker", {
+                                    defaultValue: "Click to rename speaker",
+                                  })}
+                                >
+                                  <span>{displayName}</span>
+                                  <Pencil
+                                    className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60 group-focus-visible:opacity-60"
+                                    aria-hidden
+                                  />
+                                </button>
+                              )}
+                            </div>
+                            <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
+                              {segment.text}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </section>
                 )}

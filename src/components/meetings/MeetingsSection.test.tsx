@@ -18,6 +18,12 @@ const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   remove: vi.fn(),
   read: vi.fn(),
+  getAppSettings: vi.fn(),
+  getMeetingTemplates: vi.fn(),
+  updateMeetingSpeakers: vi.fn(),
+  summarizeMeeting: vi.fn(),
+  enhanceMeeting: vi.fn(),
+  changeSuggestMeetingAppsSetting: vi.fn(),
 }));
 vi.mock("@/bindings", () => ({
   commands: {
@@ -27,6 +33,12 @@ vi.mock("@/bindings", () => ({
     stopMeeting: mocks.stop,
     deleteMeeting: mocks.remove,
     readMeeting: mocks.read,
+    getAppSettings: mocks.getAppSettings,
+    getMeetingTemplates: mocks.getMeetingTemplates,
+    updateMeetingSpeakers: mocks.updateMeetingSpeakers,
+    summarizeMeeting: mocks.summarizeMeeting,
+    enhanceMeeting: mocks.enhanceMeeting,
+    changeSuggestMeetingAppsSetting: mocks.changeSuggestMeetingAppsSetting,
     requestMeetingPermissions: vi.fn(),
     cancelMeetingAnalysis: vi.fn(),
   },
@@ -53,6 +65,8 @@ const saved = {
   microphone: track,
   transcript_ready: false,
   summary_ready: false,
+  enhanced: false,
+  speaker_names: {},
 };
 let root: Root;
 let view: HTMLDivElement;
@@ -110,6 +124,29 @@ beforeEach(() => {
   mocks.read.mockResolvedValue({
     status: "ok",
     data: { session: saved, summary: null, segments: [] },
+  });
+  mocks.getAppSettings.mockResolvedValue({
+    status: "ok",
+    data: { suggest_meeting_apps: false },
+  });
+  mocks.getMeetingTemplates.mockResolvedValue([
+    {
+      id: "default",
+      name: "Default Summary",
+      description: "Standard summary",
+    },
+    {
+      id: "standup",
+      name: "Standup",
+      description: "Standup summary",
+    },
+  ]);
+  mocks.updateMeetingSpeakers.mockResolvedValue({ status: "ok", data: null });
+  mocks.summarizeMeeting.mockResolvedValue({ status: "ok", data: null });
+  mocks.enhanceMeeting.mockResolvedValue({ status: "ok", data: null });
+  mocks.changeSuggestMeetingAppsSetting.mockResolvedValue({
+    status: "ok",
+    data: null,
   });
 });
 afterEach(async () => {
@@ -201,8 +238,14 @@ describe("Meetings", () => {
     await render(<MeetingsSection />);
     await click("More actions for Planning");
     await nextFrame();
-    expect(document.activeElement?.textContent).toBe("Reveal files");
+    expect(document.activeElement?.textContent).toBe("Enhance audio");
     const menu = view.querySelector('[role="menu"]')!;
+    await act(async () => {
+      menu.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+    expect(document.activeElement?.textContent).toBe("Reveal files");
     await act(async () => {
       menu.dispatchEvent(
         new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
@@ -275,5 +318,172 @@ describe("Meetings", () => {
   });
   it("formats long sessions", () => {
     expect(formatMeetingDuration(3661000)).toBe("01:01:01");
+  });
+  it("shows detected meeting app banner when suggest_meeting_apps is enabled", async () => {
+    mocks.getAppSettings.mockResolvedValue({
+      status: "ok",
+      data: { suggest_meeting_apps: true },
+    });
+    mocks.capabilities.mockResolvedValue({
+      status: "ok",
+      data: {
+        supported: true,
+        screen_permission: true,
+        microphone_permission: true,
+        applications: [
+          {
+            id: 42,
+            name: "Zoom Meeting",
+            bundle_id: "us.zoom.xos",
+            process_id: 1234,
+          },
+        ],
+        microphones: [],
+      },
+    });
+    await render(<MeetingsSection />);
+    expect(view.textContent).toContain("Zoom detected");
+  });
+  it("allows renaming speakers and selecting summary templates in meeting details", async () => {
+    const readySession = {
+      ...saved,
+      state: "ready",
+      transcript_ready: true,
+      summary_ready: true,
+      enhanced: true,
+      speaker_names: { "Speaker 1": "Alice" },
+    };
+    mocks.list.mockResolvedValue({
+      status: "ok",
+      data: [readySession],
+    });
+    mocks.read.mockResolvedValue({
+      status: "ok",
+      data: {
+        session: readySession,
+        summary: "Previous summary",
+        segments: [
+          {
+            start_ms: 0,
+            end_ms: 1000,
+            speaker: "Speaker 1",
+            text: "Hello everyone",
+          },
+        ],
+      },
+    });
+    await render(<MeetingsSection />);
+    expect(view.textContent).toContain("Enhanced");
+    await click("Open");
+    expect(view.textContent).toContain("Alice");
+    expect(view.textContent).toContain("Previous summary");
+
+    // Template selector is present
+    const select = view.querySelector("select")!;
+    expect(select).toBeDefined();
+
+    // Click speaker to edit
+    const speakerBtn = view.querySelector(
+      'button[title="Click to rename speaker"]',
+    )!;
+    expect(speakerBtn).toBeDefined();
+    await act(async () =>
+      speakerBtn.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+
+    // Form is now shown
+    const renameInput = view.querySelector(
+      'input[aria-label="Rename Speaker 1"]',
+    ) as HTMLInputElement;
+    expect(renameInput).toBeDefined();
+    expect(renameInput.value).toBe("Alice");
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(renameInput, "Bob");
+      renameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await click("Save");
+    expect(mocks.updateMeetingSpeakers).toHaveBeenCalledWith("session", {
+      "Speaker 1": "Bob",
+    });
+  });
+  it("keeps speaker rename controls keyboard-complete", async () => {
+    const readySession = {
+      ...saved,
+      state: "ready",
+      transcript_ready: true,
+      speaker_names: { "Speaker 1": "Alice" },
+    };
+    mocks.list.mockResolvedValue({ status: "ok", data: [readySession] });
+    mocks.read.mockResolvedValue({
+      status: "ok",
+      data: {
+        session: readySession,
+        summary: null,
+        segments: [
+          {
+            start_ms: 0,
+            end_ms: 1000,
+            speaker: "Speaker 1",
+            text: "Hello everyone",
+          },
+        ],
+      },
+    });
+    await render(<MeetingsSection />);
+    await click("Open");
+
+    const trigger = view.querySelector<HTMLButtonElement>(
+      'button[title="Click to rename speaker"]',
+    )!;
+    trigger.focus();
+    await act(async () => trigger.click());
+    const renameInput = view.querySelector<HTMLInputElement>(
+      'input[aria-label="Rename Speaker 1"]',
+    )!;
+    expect(renameInput).toBeDefined();
+
+    await act(async () => {
+      renameInput.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await nextFrame();
+    const restoredTrigger = view.querySelector<HTMLButtonElement>(
+      'button[title="Click to rename speaker"]',
+    )!;
+    expect(document.activeElement).toBe(restoredTrigger);
+
+    await act(async () => restoredTrigger.click());
+    expect(button("Save").className).toContain("min-h-[44px]");
+    expect(button("Cancel").className).toContain("min-h-[44px]");
+    await click("Cancel");
+    await nextFrame();
+    expect(document.activeElement).toBe(
+      view.querySelector('button[title="Click to rename speaker"]'),
+    );
+  });
+  it("does not show enhanced badge when enhancement failed and fell back to raw audio", async () => {
+    const fallbackSession = {
+      ...saved,
+      state: "ready",
+      transcript_ready: true,
+      summary_ready: false,
+      enhanced: false,
+      audio_source: "fallback",
+      fallback_reason: "Enhancement pipeline failed to produce valid audio",
+      speaker_names: {},
+    };
+    mocks.list.mockResolvedValue({
+      status: "ok",
+      data: [fallbackSession],
+    });
+    await render(<MeetingsSection />);
+    expect(view.textContent).not.toContain("Enhanced");
+    expect(view.textContent).toContain("Original audio (fallback)");
   });
 });

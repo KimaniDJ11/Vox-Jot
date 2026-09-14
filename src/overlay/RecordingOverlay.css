@@ -337,6 +337,30 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+.partial-text-provisional {
+  font-style: italic;
+}
+
+.partial-text-dots {
+  display: inline-block;
+  margin-inline-start: 2px;
+  letter-spacing: 1px;
+  font-style: normal;
+  opacity: 0.7;
+  animation: partial-dots-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes partial-dots-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.95;
+  }
 }
 
 .overlay-meta-row {

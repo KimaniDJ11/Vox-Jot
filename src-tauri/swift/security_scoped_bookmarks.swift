@@ -156,6 +156,42 @@ public func writeSecurityScopedFileApple(
     }
 }
 
+@_cdecl("test_security_scoped_file_write_apple")
+public func testSecurityScopedFileWriteApple(
+    _ bookmarkBase64: UnsafePointer<CChar>?,
+    _ filename: UnsafePointer<CChar>?,
+    _ content: UnsafePointer<CChar>?
+) -> AuthorizedResponsePointer {
+    guard let content else {
+        return authorizedFailure("The Markdown test content is missing.")
+    }
+    do {
+        let directory = try resolveAuthorizedDirectory(bookmarkBase64)
+        let target = try safeTarget(directory: directory, filenamePointer: filename)
+        let accessed = directory.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { directory.stopAccessingSecurityScopedResource() }
+        }
+
+        var createdTestFile = false
+        defer {
+            if createdTestFile {
+                try? FileManager.default.removeItem(at: target)
+            }
+        }
+        try Data(String(cString: content).utf8).write(
+            to: target,
+            options: .withoutOverwriting
+        )
+        createdTestFile = true
+        try FileManager.default.removeItem(at: target)
+        createdTestFile = false
+        return authorizedSuccess(directory.path)
+    } catch {
+        return authorizedFailure("Could not write to the Markdown export folder: \(error.localizedDescription)")
+    }
+}
+
 @_cdecl("reveal_security_scoped_file_apple")
 public func revealSecurityScopedFileApple(
     _ bookmarkBase64: UnsafePointer<CChar>?,

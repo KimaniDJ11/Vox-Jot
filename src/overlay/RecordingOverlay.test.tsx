@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 type EventCallback = (event: { payload: unknown }) => void;
 type AppSettingsResult = {
   status: string;
-  data: { screen_context_enabled?: boolean };
+  data: { screen_context_enabled?: boolean; show_live_partials?: boolean };
 };
 type DiagnosticsResult = { status: string; data: { status: string } };
 
@@ -140,5 +140,35 @@ describe("RecordingOverlay", () => {
       });
     });
     expect(container.querySelector(".recording-overlay")).not.toBeNull();
+  });
+
+  it("reacts to structured live-partials events and ignores generic settings sync events", async () => {
+    await act(async () => {
+      root.render(<RecordingOverlay />);
+    });
+
+    await act(async () => {
+      callbacks.get("show-overlay")?.({
+        payload: { state: "recording", style: "detailed" },
+      });
+      callbacks.get("partial-transcription")?.({ payload: "Draft text" });
+    });
+    expect(container.querySelector(".partial-text")?.textContent).toContain(
+      "Draft text",
+    );
+
+    await act(async () => {
+      callbacks.get("settings-changed")?.({ payload: null });
+    });
+    expect(container.querySelector(".partial-text")?.textContent).toContain(
+      "Draft text",
+    );
+
+    await act(async () => {
+      callbacks.get("settings-changed")?.({
+        payload: { setting: "show_live_partials", value: false },
+      });
+    });
+    expect(container.querySelector(".partial-text")).toBeNull();
   });
 });

@@ -127,7 +127,6 @@ pub(crate) const MACOS_FORCE_POSTMESSAGE_IPC_SCRIPT: &str = r#"
 "#;
 
 pub use cli::CliArgs;
-#[cfg(debug_assertions)]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, Builder};
 
@@ -956,37 +955,7 @@ fn show_main_window_command(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run(cli_args: CliArgs) {
-    // Detect portable mode before anything else
-    portable::init();
-
-    // Init Sentry as early as possible so any panic on the rest of `run()` is
-    // captured. Events stay buffered until the loaded settings flip the
-    // `enable_crash_reporting` gate inside `before_send`.
-    telemetry::init();
-
-    if cli_args.regression_manifest.is_some() {
-        #[cfg(feature = "ci-mock-transcription")]
-        {
-            eprintln!("Regression runs are unavailable with the CI mock transcription feature.");
-            std::process::exit(2);
-        }
-
-        #[cfg(not(feature = "ci-mock-transcription"))]
-        {
-            if let Err(err) = regression::run_cli(&cli_args) {
-                eprintln!("Regression run failed: {err}");
-                std::process::exit(1);
-            }
-            return;
-        }
-    }
-
-    // Parse console logging directives from RUST_LOG, falling back to info-level logging
-    // when the variable is unset
-    let console_filter = build_console_filter();
-
+pub fn create_specta_builder() -> Builder<tauri::Wry> {
     let specta_builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         shortcut::change_binding,
         shortcut::reset_binding,
@@ -1046,6 +1015,9 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_markdown_export_frontmatter_setting,
         shortcut::change_markdown_export_include_rewrite_selection_setting,
         shortcut::change_markdown_export_include_failed_paste_setting,
+        shortcut::test_markdown_export_write,
+        shortcut::change_suggest_meeting_apps_setting,
+        shortcut::change_show_live_partials_setting,
         shortcut::change_local_privacy_mode_setting,
         settings::set_onboarding_completed,
         shortcut::change_screen_context_enabled_setting,
@@ -1218,6 +1190,9 @@ pub fn run(cli_args: CliArgs) {
         meeting_capture::stop_meeting,
         meeting_capture::read_meeting,
         meeting_capture::transcribe_meeting,
+        meeting_capture::enhance_meeting,
+        meeting_capture::update_meeting_speakers,
+        meeting_capture::get_meeting_templates,
         meeting_capture::summarize_meeting,
         meeting_capture::reveal_meeting,
         meeting_capture::delete_meeting,
@@ -1261,6 +1236,7 @@ pub fn run(cli_args: CliArgs) {
         commands::http_api::get_http_api_status,
         commands::http_api::reveal_http_api_token,
         commands::http_api::rotate_http_api_token,
+        commands::http_api::check_local_api_health,
         commands::history::get_history_entries,
         commands::history::get_history_entries_page,
         commands::history::get_latest_history_entry,
@@ -1363,7 +1339,75 @@ pub fn run(cli_args: CliArgs) {
         commands::convo::convo_ensure_helper_running,
         commands::convo::convo_is_audio_capturing,
     ]);
-    let specta_builder = specta_builder.dangerously_cast_bigints_to_number();
+    specta_builder.dangerously_cast_bigints_to_number()
+}
+
+pub fn generate_typescript_bindings() -> Result<String, String> {
+    let specta_builder = create_specta_builder();
+    let temp_file = tempfile::NamedTempFile::new()
+        .map_err(|e| format!("Failed to create temporary file for bindings: {e}"))?;
+    let temp_path = temp_file.path();
+    specta_builder
+        .export(Typescript::default(), temp_path)
+        .map_err(|e| format!("Failed to generate typescript bindings: {e}"))?;
+    let generated_raw = std::fs::read_to_string(temp_path)
+        .map_err(|e| format!("Failed to read generated typescript bindings: {e}"))?;
+    let mut generated = generated_raw
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim_end()
+        .to_string();
+    generated.push('\n');
+    Ok(generated)
+}
+
+pub fn export_typescript_bindings(bindings_path: &std::path::Path) -> Result<String, String> {
+    let generated = generate_typescript_bindings()?;
+    let needs_write = match std::fs::read_to_string(bindings_path) {
+        Ok(existing) => existing != generated,
+        Err(_) => true,
+    };
+    if needs_write {
+        std::fs::write(bindings_path, &generated)
+            .map_err(|e| format!("Failed to write typescript bindings: {e}"))?;
+    }
+    Ok(generated)
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run(cli_args: CliArgs) {
+    // Detect portable mode before anything else
+    portable::init();
+
+    // Init Sentry as early as possible so any panic on the rest of `run()` is
+    // captured. Events stay buffered until the loaded settings flip the
+    // `enable_crash_reporting` gate inside `before_send`.
+    telemetry::init();
+
+    if cli_args.regression_manifest.is_some() {
+        #[cfg(feature = "ci-mock-transcription")]
+        {
+            eprintln!("Regression runs are unavailable with the CI mock transcription feature.");
+            std::process::exit(2);
+        }
+
+        #[cfg(not(feature = "ci-mock-transcription"))]
+        {
+            if let Err(err) = regression::run_cli(&cli_args) {
+                eprintln!("Regression run failed: {err}");
+                std::process::exit(1);
+            }
+            return;
+        }
+    }
+
+    // Parse console logging directives from RUST_LOG, falling back to info-level logging
+    // when the variable is unset
+    let console_filter = build_console_filter();
+
+    let specta_builder = create_specta_builder();
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite
     // does not full-reload on every native app start.
@@ -1371,29 +1415,8 @@ pub fn run(cli_args: CliArgs) {
     {
         let bindings_path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
-        let generated_path =
-            std::env::temp_dir().join(format!("vox-jot-bindings-{}.ts", std::process::id()));
-        specta_builder
-            .export(Typescript::default(), &generated_path)
-            .expect("Failed to generate typescript bindings");
-        let generated_raw = std::fs::read_to_string(&generated_path)
-            .expect("Failed to read generated typescript bindings");
-        let _ = std::fs::remove_file(&generated_path);
-        let mut generated = generated_raw
-            .lines()
-            .map(str::trim_end)
-            .collect::<Vec<_>>()
-            .join("\n");
-        if generated_raw.ends_with('\n') {
-            generated.push('\n');
-        }
-        let needs_write = match std::fs::read_to_string(&bindings_path) {
-            Ok(existing) => existing != generated,
-            Err(_) => true,
-        };
-        if needs_write {
-            std::fs::write(&bindings_path, generated)
-                .expect("Failed to export typescript bindings");
+        if let Err(err) = export_typescript_bindings(&bindings_path) {
+            log::warn!("Failed to export typescript bindings on launch: {err}");
         }
     }
 
@@ -1818,4 +1841,34 @@ pub fn run(cli_args: CliArgs) {
             }
             let _ = (app, event); // suppress unused warnings on non-macOS
         });
+}
+
+#[cfg(test)]
+mod specta_tests {
+    use super::*;
+
+    #[test]
+    fn test_typescript_bindings_are_current() {
+        let bindings_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
+        let generated = generate_typescript_bindings()
+            .expect("Failed to generate typescript bindings in memory");
+        let existing = std::fs::read_to_string(&bindings_path)
+            .expect("Failed to read existing src/bindings.ts");
+        assert_eq!(
+            existing, generated,
+            "src/bindings.ts is out of date with Rust specta definitions. Run 'bun run bindings:generate' to update it."
+        );
+    }
+
+    #[test]
+    fn test_stale_bindings_comparison_detects_mismatch_without_auto_repair() {
+        let generated = generate_typescript_bindings()
+            .expect("Failed to generate typescript bindings in memory");
+        let stale = format!("{generated}\n// Controlled stale fixture comment\n");
+        assert_ne!(
+            stale, generated,
+            "Freshness comparison must detect simulated stale bindings mismatch"
+        );
+    }
 }

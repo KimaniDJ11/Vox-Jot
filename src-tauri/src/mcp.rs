@@ -224,6 +224,39 @@ fn mcp_tools() -> Vec<Value> {
                 "required": ["audio_base64"]
             }
         }),
+        json!({
+            "name": "vox_jot.list_meetings",
+            "description": "List saved meeting recordings with metadata (id, title, duration, status).",
+            "inputSchema": { "type": "object", "properties": {} }
+        }),
+        json!({
+            "name": "vox_jot.get_meeting",
+            "description": "Get full details of a saved meeting recording including transcript segments and summary.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The unique ID of the meeting session."
+                    }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "vox_jot.reveal_meeting",
+            "description": "Reveal the meeting directory and files in Finder on this Mac.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The unique ID of the meeting session."
+                    }
+                },
+                "required": ["id"]
+            }
+        }),
     ]
 }
 
@@ -233,6 +266,9 @@ async fn call_tool(state: &ApiState, params: ToolCallParams) -> Result<Value, St
         "vox_jot.list_voices" => call_list_voices(state).await,
         "vox_jot.list_voice_profiles" => call_list_voice_profiles(state),
         "vox_jot.transcribe_wav" => call_transcribe_wav(state, params.arguments).await,
+        "vox_jot.list_meetings" => call_list_meetings(state).await,
+        "vox_jot.get_meeting" => call_get_meeting(state, params.arguments).await,
+        "vox_jot.reveal_meeting" => call_reveal_meeting(state, params.arguments).await,
         other => Err(format!("Unknown Vox Jot MCP tool '{other}'.")),
     }
 }
@@ -340,6 +376,38 @@ async fn call_transcribe_wav(state: &ApiState, arguments: Value) -> Result<Value
     json_text_result(&TranscribeResult { text, segments })
 }
 
+#[derive(Debug, Deserialize)]
+struct MeetingIdToolArgs {
+    id: String,
+}
+
+async fn call_list_meetings(state: &ApiState) -> Result<Value, String> {
+    let meetings = crate::meeting_capture::list_meetings(state.app.clone()).await?;
+    json_text_result(&meetings)
+}
+
+async fn call_get_meeting(state: &ApiState, arguments: Value) -> Result<Value, String> {
+    let args = serde_json::from_value::<MeetingIdToolArgs>(arguments)
+        .map_err(|err| format!("Invalid vox_jot.get_meeting arguments: {err}"))?;
+    let id = args.id.trim();
+    if id.is_empty() {
+        return Err("id is required.".to_string());
+    }
+    let detail = crate::meeting_capture::read_meeting(state.app.clone(), id.to_string()).await?;
+    json_text_result(&detail)
+}
+
+async fn call_reveal_meeting(state: &ApiState, arguments: Value) -> Result<Value, String> {
+    let args = serde_json::from_value::<MeetingIdToolArgs>(arguments)
+        .map_err(|err| format!("Invalid vox_jot.reveal_meeting arguments: {err}"))?;
+    let id = args.id.trim();
+    if id.is_empty() {
+        return Err("id is required.".to_string());
+    }
+    crate::meeting_capture::reveal_meeting(state.app.clone(), id.to_string()).await?;
+    Ok(json!({ "content": [{ "type": "text", "text": "Meeting revealed in Finder." }] }))
+}
+
 fn default_mcp_tuning() -> TtsVoiceTuningSettings {
     TtsVoiceTuningSettings {
         tempo_rate: 1.0,
@@ -396,6 +464,9 @@ mod tests {
         assert!(names.contains(&"vox_jot.transcribe_wav".to_string()));
         assert!(names.contains(&"vox_jot.list_voices".to_string()));
         assert!(names.contains(&"vox_jot.list_voice_profiles".to_string()));
+        assert!(names.contains(&"vox_jot.list_meetings".to_string()));
+        assert!(names.contains(&"vox_jot.get_meeting".to_string()));
+        assert!(names.contains(&"vox_jot.reveal_meeting".to_string()));
     }
 
     #[test]

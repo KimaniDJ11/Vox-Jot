@@ -108,6 +108,11 @@ AuthorizedFileResponse* write_security_scoped_file_apple(
     const char* filename,
     const char* content
 );
+AuthorizedFileResponse* test_security_scoped_file_write_apple(
+    const char* bookmark_base64,
+    const char* filename,
+    const char* content
+);
 AuthorizedFileResponse* reveal_security_scoped_file_apple(
     const char* bookmark_base64,
     const char* filename

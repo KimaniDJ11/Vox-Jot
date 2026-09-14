@@ -1532,6 +1532,12 @@ pub fn change_markdown_export_include_failed_paste_setting(
 
 #[tauri::command]
 #[specta::specta]
+pub fn test_markdown_export_write(app: AppHandle) -> Result<String, String> {
+    crate::markdown_export::test_export_directory_write(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_local_privacy_mode_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.local_privacy_mode = enabled;
@@ -2332,6 +2338,38 @@ pub fn export_snippets(app: AppHandle) -> Result<String, String> {
     let settings = settings::get_settings(&app);
     serde_json::to_string_pretty(&settings.snippets)
         .map_err(|e| format!("Failed to serialize snippets: {}", e))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_suggest_meeting_apps_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.suggest_meeting_apps = enabled;
+    settings::write_settings(&app, settings);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "suggest_meeting_apps",
+            "value": enabled,
+        }),
+    );
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_show_live_partials_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.show_live_partials = enabled;
+    settings::write_settings(&app, settings);
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "show_live_partials",
+            "value": enabled,
+        }),
+    );
+    Ok(())
 }
 
 #[cfg(test)]

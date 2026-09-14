@@ -9,6 +9,8 @@ use std::sync::Arc;
 use tauri::AppHandle;
 
 const BOOKMARK_FILE_NAME: &str = "markdown-export-bookmark";
+const EXPORT_DIRECTORY_TEST_CONTENT: &[u8] =
+    b"# Vox Jot Test Write\nFolder write permissions verified.\n";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct MarkdownExportSnapshot {
@@ -261,6 +263,65 @@ pub fn configure_export_directory(
     store_bookmark(app, None)?;
 
     Ok(Some(directory))
+}
+
+pub fn test_export_directory_write(app: &AppHandle) -> Result<String, String> {
+    let settings = get_settings(app);
+    let Some(export_dir) = settings.markdown_export_dir.as_ref() else {
+        return Err("No export folder configured. Choose a folder first.".to_string());
+    };
+
+    // In the App Store build, the persisted path may not be inspectable until
+    // its security-scoped bookmark has been activated below.
+    #[cfg(not(vox_jot_app_store))]
+    if !export_dir.is_dir() {
+        return Err(
+            "The configured export folder does not exist or is not a directory.".to_string(),
+        );
+    }
+
+    #[cfg(all(vox_jot_app_store, target_os = "macos", target_arch = "aarch64"))]
+    {
+        let bookmark = load_bookmark(app)?.ok_or_else(|| {
+            "Folder authorization is missing. Choose the export folder again.".to_string()
+        })?;
+        let filename = format!(".vox-jot-test-write-{}.md", uuid::Uuid::new_v4().simple());
+        macos_security_scope::test_write_file(&bookmark, &filename, EXPORT_DIRECTORY_TEST_CONTENT)?;
+    }
+
+    #[cfg(all(vox_jot_app_store, target_os = "macos", not(target_arch = "aarch64")))]
+    {
+        return Err(
+            "Persistent Markdown folder authorization is unavailable in this build.".to_string(),
+        );
+    }
+
+    #[cfg(not(vox_jot_app_store))]
+    verify_export_directory_write(export_dir)?;
+
+    Ok(format!(
+        "Folder verified writable: {}",
+        export_dir.display()
+    ))
+}
+
+#[cfg(not(vox_jot_app_store))]
+fn verify_export_directory_write(export_dir: &Path) -> Result<(), String> {
+    let mut test_file = tempfile::Builder::new()
+        .prefix(".vox-jot-test-write-")
+        .suffix(".tmp")
+        .tempfile_in(export_dir)
+        .map_err(|error| format!("Cannot create a test file in the export folder: {error}"))?;
+    test_file
+        .write_all(EXPORT_DIRECTORY_TEST_CONTENT)
+        .map_err(|error| format!("Cannot write to export folder: {error}"))?;
+    test_file
+        .as_file()
+        .sync_all()
+        .map_err(|error| format!("Cannot verify the export folder write: {error}"))?;
+    test_file
+        .close()
+        .map_err(|error| format!("Cannot remove the export folder test file: {error}"))
 }
 
 fn snapshot_from_settings(
@@ -632,6 +693,11 @@ mod macos_security_scope {
             filename: *const c_char,
             content: *const c_char,
         ) -> *mut AuthorizedFileResponse;
+        fn test_security_scoped_file_write_apple(
+            bookmark_base64: *const c_char,
+            filename: *const c_char,
+            content: *const c_char,
+        ) -> *mut AuthorizedFileResponse;
         fn reveal_security_scoped_file_apple(
             bookmark_base64: *const c_char,
             filename: *const c_char,
@@ -690,6 +756,22 @@ mod macos_security_scope {
         .map(PathBuf::from)
     }
 
+    pub fn test_write_file(bookmark: &str, filename: &str, content: &[u8]) -> Result<(), String> {
+        let bookmark = c_string(bookmark, "Folder authorization")?;
+        let filename = c_string(filename, "The export filename")?;
+        let content = std::str::from_utf8(content)
+            .map_err(|_| "The Markdown test content is invalid UTF-8.".to_string())?;
+        let content = c_string(content, "The Markdown test content")?;
+        response_value(unsafe {
+            test_security_scoped_file_write_apple(
+                bookmark.as_ptr(),
+                filename.as_ptr(),
+                content.as_ptr(),
+            )
+        })
+        .map(|_| ())
+    }
+
     pub fn reveal_file(bookmark: &str, filename: &str) -> Result<(), String> {
         let bookmark = c_string(bookmark, "Folder authorization")?;
         let filename = c_string(filename, "The export filename")?;
@@ -727,6 +809,19 @@ mod tests {
             filename,
             generate_markdown_filename(1_700_000_000, "Weekly Standup", 42)
         );
+    }
+
+    #[cfg(not(vox_jot_app_store))]
+    #[test]
+    fn export_directory_write_probe_is_unique_and_cleans_up() {
+        let directory = tempfile::tempdir().unwrap();
+        let legacy_name = directory.path().join(".vox-jot-test-write.tmp");
+        std::fs::write(&legacy_name, b"do not overwrite").unwrap();
+
+        verify_export_directory_write(directory.path()).unwrap();
+
+        assert_eq!(std::fs::read(&legacy_name).unwrap(), b"do not overwrite");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
     }
 
     #[test]

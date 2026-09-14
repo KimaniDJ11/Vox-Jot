@@ -62,6 +62,9 @@ export const commands = {
 	changeMarkdownExportFrontmatterSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_frontmatter_setting", { enabled })),
 	changeMarkdownExportIncludeRewriteSelectionSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_rewrite_selection_setting", { enabled })),
 	changeMarkdownExportIncludeFailedPasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_failed_paste_setting", { enabled })),
+	testMarkdownExportWrite: () => typedError<string, string>(__TAURI_INVOKE("test_markdown_export_write")),
+	changeSuggestMeetingAppsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_suggest_meeting_apps_setting", { enabled })),
+	changeShowLivePartialsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_live_partials_setting", { enabled })),
 	changeLocalPrivacyModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_local_privacy_mode_setting", { enabled })),
 	/**
 	 *  Persist whether the first-run onboarding wizard has been completed. The
@@ -325,12 +328,15 @@ export const commands = {
 	transcribeFile: (path: string) => typedError<TranscriptionFileResult, string>(__TAURI_INVOKE("transcribe_file", { path })),
 	getMeetingCapabilities: () => typedError<MeetingCapabilities, string>(__TAURI_INVOKE("get_meeting_capabilities")),
 	requestMeetingPermissions: () => __TAURI_INVOKE<void>("request_meeting_permissions"),
-	listMeetings: () => typedError<MeetingSession[], string>(__TAURI_INVOKE("list_meetings")),
-	startMeeting: (title: string, processId: number, microphoneId: string, includeMicrophone: boolean) => typedError<MeetingSession, string>(__TAURI_INVOKE("start_meeting", { title, processId, microphoneId, includeMicrophone })),
+	listMeetings: () => typedError<MeetingSession_Serialize[], string>(__TAURI_INVOKE("list_meetings")),
+	startMeeting: (title: string, processId: number, microphoneId: string, includeMicrophone: boolean) => typedError<MeetingSession_Serialize, string>(__TAURI_INVOKE("start_meeting", { title, processId, microphoneId, includeMicrophone })),
 	stopMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("stop_meeting", { id })),
-	readMeeting: (id: string) => typedError<MeetingDetail, string>(__TAURI_INVOKE("read_meeting", { id })),
-	transcribeMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("transcribe_meeting", { id })),
-	summarizeMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("summarize_meeting", { id })),
+	readMeeting: (id: string) => typedError<MeetingDetail_Serialize, string>(__TAURI_INVOKE("read_meeting", { id })),
+	transcribeMeeting: (id: string, enhance: boolean | null) => typedError<null, string>(__TAURI_INVOKE("transcribe_meeting", { id, enhance })),
+	enhanceMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("enhance_meeting", { id })),
+	updateMeetingSpeakers: (id: string, speakerNames: { [key in string]: string }) => typedError<null, string>(__TAURI_INVOKE("update_meeting_speakers", { id, speakerNames })),
+	getMeetingTemplates: () => __TAURI_INVOKE<MeetingTemplate[]>("get_meeting_templates"),
+	summarizeMeeting: (id: string, templateId: string | null) => typedError<null, string>(__TAURI_INVOKE("summarize_meeting", { id, templateId })),
 	revealMeeting: (id: string) => typedError<null, string>(__TAURI_INVOKE("reveal_meeting", { id })),
 	deleteMeeting: (id: string, confirmed: boolean) => typedError<null, string>(__TAURI_INVOKE("delete_meeting", { id, confirmed })),
 	cancelMeetingAnalysis: (id: string) => typedError<null, string>(__TAURI_INVOKE("cancel_meeting_analysis", { id })),
@@ -434,6 +440,7 @@ export const commands = {
 	getHttpApiStatus: () => typedError<HttpApiStatus, string>(__TAURI_INVOKE("get_http_api_status")),
 	revealHttpApiToken: () => typedError<string, string>(__TAURI_INVOKE("reveal_http_api_token")),
 	rotateHttpApiToken: () => typedError<HttpApiStatus, string>(__TAURI_INVOKE("rotate_http_api_token")),
+	checkLocalApiHealth: () => typedError<LocalApiHealthResult, string>(__TAURI_INVOKE("check_local_api_health")),
 	getHistoryEntries: () => typedError<HistoryEntry[], string>(__TAURI_INVOKE("get_history_entries")),
 	getHistoryEntriesPage: (offset: number, limit: number) => typedError<HistoryEntriesPage, string>(__TAURI_INVOKE("get_history_entries_page", { offset, limit })),
 	getLatestHistoryEntry: () => typedError<{
@@ -842,6 +849,13 @@ export type AppSettings_Deserialize = {
 	 *  when the built-in Apple Speech engine reports as available.
 	 */
 	onboarding_completed?: boolean,
+	/**
+	 *  When true, Vox Jot suggests starting a meeting recording when known
+	 *  meeting applications (Zoom, Teams, Slack, etc.) are detected.
+	 */
+	suggest_meeting_apps?: boolean,
+	/**  When true, live speech partials are displayed in the recording overlay. */
+	show_live_partials?: boolean,
 };
 
 export type AppSettings_Serialize = {
@@ -1026,6 +1040,13 @@ export type AppSettings_Serialize = {
 	 *  when the built-in Apple Speech engine reports as available.
 	 */
 	onboarding_completed: boolean,
+	/**
+	 *  When true, Vox Jot suggests starting a meeting recording when known
+	 *  meeting applications (Zoom, Teams, Slack, etc.) are detected.
+	 */
+	suggest_meeting_apps: boolean,
+	/**  When true, live speech partials are displayed in the recording overlay. */
+	show_live_partials: boolean,
 };
 
 export type AudioDevice = {
@@ -1416,6 +1437,14 @@ export type LLMPrompt = {
 	prompt: string,
 };
 
+export type LocalApiHealthResult = {
+	ok: boolean,
+	status: string,
+	version: string,
+	port: number,
+	latency_ms: number,
+};
+
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
 export type MarkdownExportContentSource = "final" | "raw";
@@ -1430,8 +1459,16 @@ export type MeetingCapabilities = {
 	microphones: MeetingMicrophone[],
 };
 
-export type MeetingDetail = {
-	session: MeetingSession,
+export type MeetingDetail = MeetingDetail_Serialize | MeetingDetail_Deserialize;
+
+export type MeetingDetail_Deserialize = {
+	session: MeetingSession_Deserialize,
+	segments: MeetingSegment[],
+	summary: string | null,
+};
+
+export type MeetingDetail_Serialize = {
+	session: MeetingSession_Serialize,
 	segments: MeetingSegment[],
 	summary: string | null,
 };
@@ -1448,7 +1485,9 @@ export type MeetingSegment = {
 	text: string,
 };
 
-export type MeetingSession = {
+export type MeetingSession = MeetingSession_Serialize | MeetingSession_Deserialize;
+
+export type MeetingSession_Deserialize = {
 	id: string,
 	title: string,
 	created_at: number,
@@ -1467,12 +1506,47 @@ export type MeetingSession = {
 	summary_ready: boolean,
 	analysis_error: string | null,
 	backend: string,
+	enhanced?: boolean,
+	audio_source?: string | null,
+	fallback_reason?: string | null,
+	speaker_names?: { [key in string]: string },
+};
+
+export type MeetingSession_Serialize = {
+	id: string,
+	title: string,
+	created_at: number,
+	state: string,
+	error: string | null,
+	system_source: string,
+	system_process_id: number,
+	microphone_id: string,
+	include_microphone: boolean,
+	sample_rate: number,
+	duration_ms: number,
+	dropped_buffers: number,
+	system: TrackStats,
+	microphone: TrackStats,
+	transcript_ready: boolean,
+	summary_ready: boolean,
+	analysis_error: string | null,
+	backend: string,
+	enhanced: boolean,
+	audio_source?: string | null,
+	fallback_reason?: string | null,
+	speaker_names: { [key in string]: string },
 };
 
 export type MeetingSource = {
 	id: number,
 	name: string,
 	bundle_id: string,
+};
+
+export type MeetingTemplate = {
+	id: string,
+	name: string,
+	description: string,
 };
 
 export type ModelDomain = "stt" | "tts" | "llm";

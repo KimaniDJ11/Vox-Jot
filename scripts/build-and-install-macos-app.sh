@@ -14,6 +14,10 @@ APPLE_NOTARY_PASSWORD="${APPLE_PASSWORD:-${APPLE_ID_PASSWORD:-}}"
 NOTARY_CREDENTIAL_MODE=""
 TAURI_CONFIG_OVERRIDE='{"build":{"beforeBuildCommand":"echo frontend-build-ready"},"bundle":{"createUpdaterArtifacts":false}}'
 
+if [[ -z "${SDKROOT:-}" ]]; then
+  export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+fi
+
 notary_preflight_failed() {
   local credential_description="$1"
   local detail="${2:-}"

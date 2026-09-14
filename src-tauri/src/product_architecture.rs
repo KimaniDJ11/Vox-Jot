@@ -139,9 +139,9 @@ pub fn builtin_product_modules() -> &'static [ProductModuleDescriptor] {
         ProductModuleDescriptor {
             id: "automation_agents",
             domain: ProductModuleDomain::Automation,
-            tier: ProductModuleTier::Lab,
+            tier: ProductModuleTier::Advanced,
             hot_path: false,
-            enabled_by_default: false,
+            enabled_by_default: true,
         },
         ProductModuleDescriptor {
             id: "model_testing",

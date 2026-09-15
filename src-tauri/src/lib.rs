@@ -1855,10 +1855,27 @@ mod specta_tests {
             .expect("Failed to generate typescript bindings in memory");
         let existing = std::fs::read_to_string(&bindings_path)
             .expect("Failed to read existing src/bindings.ts");
-        assert_eq!(
-            existing, generated,
-            "src/bindings.ts is out of date with Rust specta definitions. Run 'bun run bindings:generate' to update it."
-        );
+        if existing != generated {
+            let mismatch = existing
+                .lines()
+                .zip(generated.lines())
+                .enumerate()
+                .find_map(|(index, (existing, generated))| {
+                    (existing != generated).then_some((index + 1, existing, generated))
+                })
+                .or_else(|| {
+                    (existing.lines().count() != generated.lines().count()).then_some((
+                        existing.lines().count().min(generated.lines().count()) + 1,
+                        "<end of file>",
+                        "<end of file>",
+                    ))
+                });
+
+            panic!(
+                "src/bindings.ts is out of date with Rust specta definitions. Run \
+                 'bun run bindings:generate' to update it. First mismatch: {mismatch:?}"
+            );
+        }
     }
 
     #[test]

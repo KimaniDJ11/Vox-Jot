@@ -3,6 +3,23 @@ import { spawnSync } from "node:child_process";
 process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= "true";
 process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= "true";
 
+if (!process.env.SDKROOT && process.platform === "darwin") {
+  try {
+    const sdk = spawnSync(
+      "/usr/bin/xcrun",
+      ["--sdk", "macosx", "--show-sdk-path"],
+      {
+        encoding: "utf8",
+      },
+    );
+    if (sdk.status === 0 && sdk.stdout?.trim()) {
+      process.env.SDKROOT = sdk.stdout.trim();
+    }
+  } catch {
+    // Ignore fallback
+  }
+}
+
 const args = process.argv.slice(2);
 const isBuildLikeCommand = args.some(
   (arg) => arg === "build" || arg === "bundle",

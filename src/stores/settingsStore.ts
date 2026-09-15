@@ -244,6 +244,10 @@ const settingUpdaters: {
     commands.changeOverlayPositionSetting(value as string),
   recording_overlay_style: (value) =>
     commands.changeRecordingOverlayStyleSetting(value as string),
+  show_live_partials: (value) =>
+    commands.changeShowLivePartialsSetting(value as boolean),
+  suggest_meeting_apps: (value) =>
+    commands.changeSuggestMeetingAppsSetting(value as boolean),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),
   show_technical_features: (value) =>
     commands.changeShowTechnicalFeaturesSetting(value as boolean),

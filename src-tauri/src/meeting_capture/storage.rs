@@ -5,6 +5,10 @@ use specta::Type;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+use crate::audio_toolkit::audio::{AudioEnhancementConfig, AudioEnhancer};
 
 pub const SAMPLE_RATE: u64 = 16_000;
 pub const MAX_FRAMES: u64 = SAMPLE_RATE * 60 * 60 * 8;
@@ -353,6 +357,114 @@ pub fn analysis_chunks(path: &Path, core_start_frame: u64) -> Result<Vec<AudioCh
         .collect()
 }
 
+fn validate_analysis_track_reader(
+    path: &Path,
+) -> Result<hound::WavReader<std::io::BufReader<File>>, String> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    if !metadata.is_file() || metadata.len() > MAX_FRAMES * 2 + HEADER_BYTES {
+        return Err("Invalid meeting track.".into());
+    }
+    let reader = hound::WavReader::open(path).map_err(|error| error.to_string())?;
+    let spec = reader.spec();
+    if spec.channels != 1
+        || spec.sample_rate != SAMPLE_RATE as u32
+        || spec.bits_per_sample != 16
+        || spec.sample_format != hound::SampleFormat::Int
+    {
+        return Err("Meeting track must be 16 kHz mono PCM.".into());
+    }
+    Ok(reader)
+}
+
+pub fn is_valid_analysis_track(path: &Path) -> bool {
+    validate_analysis_track_reader(path).is_ok()
+}
+
+/// Apply the same streaming RNNoise path used by live capture while keeping
+/// memory bounded to roughly one second of audio. The target remains 16 kHz
+/// mono PCM so it can feed the meeting chunker without another whole-file
+/// decode or resample. A temporary file is atomically persisted only after the
+/// complete output is finalized and synced.
+pub fn enhance_analysis_track(
+    source: &Path,
+    target: &Path,
+    cancel: &AtomicBool,
+    mut should_pause: impl FnMut() -> bool,
+) -> Result<(), String> {
+    if source == target {
+        return Err("Enhanced meeting audio must use a separate output file.".into());
+    }
+    let mut reader = validate_analysis_track_reader(source)?;
+    let spec = reader.spec();
+    let parent = target.parent().ok_or("Missing meeting track directory.")?;
+    let mut temporary = tempfile::Builder::new()
+        .prefix(".vox-jot-meeting-enhanced-")
+        .suffix(".wav")
+        .tempfile_in(parent)
+        .map_err(|error| error.to_string())?;
+    let mut writer =
+        hound::WavWriter::new(temporary.as_file_mut(), spec).map_err(|error| error.to_string())?;
+    let mut enhancer = AudioEnhancer::new(
+        SAMPLE_RATE as u32,
+        SAMPLE_RATE as u32,
+        AudioEnhancementConfig::rnnoise(),
+    )?;
+    let mut samples = reader.samples::<i16>();
+    let mut finished_input = false;
+
+    while !finished_input {
+        if cancel.load(Ordering::Acquire) {
+            return Err("Enhancement cancelled; original audio is preserved.".into());
+        }
+        while should_pause() {
+            if cancel.load(Ordering::Acquire) {
+                return Err("Enhancement cancelled; original audio is preserved.".into());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        let mut input = Vec::with_capacity(SAMPLE_RATE as usize);
+        for _ in 0..SAMPLE_RATE {
+            match samples.next() {
+                Some(Ok(sample)) => input.push(sample as f32 / i16::MAX as f32),
+                Some(Err(error)) => return Err(error.to_string()),
+                None => {
+                    finished_input = true;
+                    break;
+                }
+            }
+        }
+        if input.is_empty() {
+            break;
+        }
+
+        let mut enhanced = Vec::with_capacity(input.len());
+        enhancer.push(&input, |frame| enhanced.extend_from_slice(frame));
+        for sample in enhanced {
+            writer
+                .write_sample((sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16)
+                .map_err(|error| error.to_string())?;
+        }
+    }
+
+    let mut tail = Vec::new();
+    enhancer.finish(|frame| tail.extend_from_slice(frame));
+    for sample in tail {
+        writer
+            .write_sample((sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16)
+            .map_err(|error| error.to_string())?;
+    }
+    writer.finalize().map_err(|error| error.to_string())?;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|error| error.to_string())?;
+    temporary
+        .persist(target)
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -452,5 +564,47 @@ mod tests {
         assert_eq!(chunks[0].duration_ms, 3_000);
         assert_eq!(chunks[1].start_ms, 21_000);
         assert_eq!(chunks[1].duration_ms, 2_000);
+    }
+
+    #[test]
+    fn meeting_enhancement_stays_compatible_with_analysis_chunking() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("system.wav");
+        let target = dir.path().join("system.enhanced.wav");
+        let mut writer = TrackWriter::create(&source).unwrap();
+        let samples = (0..SAMPLE_RATE as usize)
+            .map(|index| {
+                let theta = index as f32 * 2.0 * std::f32::consts::PI * 220.0 / SAMPLE_RATE as f32;
+                theta.sin() * 0.2
+            })
+            .collect::<Vec<_>>();
+        writer.append(&samples, 0, SAMPLE_RATE as i32, 1).unwrap();
+        writer.finish(samples.len() as u64).unwrap();
+
+        enhance_analysis_track(&source, &target, &AtomicBool::new(false), || false).unwrap();
+
+        assert!(is_valid_analysis_track(&target));
+        assert!(!analysis_chunks(&target, 0).unwrap().is_empty());
+        assert_eq!(
+            hound::WavReader::open(target).unwrap().spec().sample_rate,
+            16_000
+        );
+    }
+
+    #[test]
+    fn cancelled_meeting_enhancement_keeps_existing_target_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("system.wav");
+        let target = dir.path().join("system.enhanced.wav");
+        let mut writer = TrackWriter::create(&source).unwrap();
+        writer.append(&[0.1; 160], 0, 16_000, 1).unwrap();
+        writer.finish(160).unwrap();
+        fs::write(&target, b"existing derived output").unwrap();
+        let before = fs::read(&target).unwrap();
+
+        assert!(
+            enhance_analysis_track(&source, &target, &AtomicBool::new(true), || false).is_err()
+        );
+        assert_eq!(fs::read(&target).unwrap(), before);
     }
 }

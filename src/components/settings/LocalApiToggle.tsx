@@ -13,10 +13,18 @@
 // also subscribe to the `http-api-status` event so the indicator
 // reflects the real bind state, not just the persisted toggle.
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@/lib/tauriEvents";
 import { useTranslation } from "react-i18next";
-import { Copy, RotateCcw } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  Copy,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react";
 import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -41,6 +49,9 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const activeCheckIdRef = useRef(0);
 
   // Initial state from disk so refreshing the page shows the saved
   // toggle position immediately.
@@ -96,8 +107,10 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
         }
       }
 
+      activeCheckIdRef.current += 1;
       setBusy(true);
       setError(null);
+      setTestStatus(null);
       setEnabled(next);
       try {
         const r = await commands.setHttpApiEnabled(next);
@@ -145,6 +158,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
     null,
     2,
   );
+
   const copyUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -152,6 +166,55 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
   }, [url]);
+
+  const testConnection = useCallback(async () => {
+    const checkId = ++activeCheckIdRef.current;
+    setIsTestingConnection(true);
+    setTestStatus(null);
+    try {
+      const res = await commands.checkLocalApiHealth();
+      if (activeCheckIdRef.current !== checkId) return;
+
+      if (res.status === "ok") {
+        if (res.data.ok) {
+          setTestStatus(
+            t("settings.diagnostics.localApi.connectedStatus", {
+              defaultValue: "Connected ({{latency}}ms) — v{{version}}",
+              latency: res.data.latency_ms,
+              version: res.data.version,
+            }),
+          );
+        } else {
+          setTestStatus(
+            t("settings.diagnostics.localApi.failedStatus", {
+              defaultValue: "Failed: {{error}}",
+              error: res.data.status,
+            }),
+          );
+        }
+      } else {
+        setTestStatus(
+          t("settings.diagnostics.localApi.failedStatus", {
+            defaultValue: "Failed: {{error}}",
+            error: res.error,
+          }),
+        );
+      }
+    } catch (err) {
+      if (activeCheckIdRef.current !== checkId) return;
+      setTestStatus(
+        t("settings.diagnostics.localApi.failedStatus", {
+          defaultValue: "Failed: {{error}}",
+          error: err instanceof Error ? err.message : "Unreachable",
+        }),
+      );
+    } finally {
+      if (activeCheckIdRef.current === checkId) {
+        setIsTestingConnection(false);
+      }
+    }
+  }, [t]);
+
   const copyToken = useCallback(async () => {
     const tokenResult = await commands.revealHttpApiToken();
     if (tokenResult.status === "error") {
@@ -164,6 +227,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
   }, []);
+
   const copyMcpConfig = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(mcpConfig);
@@ -171,6 +235,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
   }, [mcpConfig]);
+
   const rotateToken = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -197,18 +262,18 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
         })}
         description={t("settings.diagnostics.localApi.description", {
           defaultValue:
-            "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — never reachable from the network.",
+            "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — on this Mac only.",
         })}
         descriptionMode="inline"
         grouped={grouped}
       />
 
       {enabled && (
-        <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--input)] p-3 text-xs">
-          <div className="flex items-center gap-2">
+        <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--input)] p-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={
-                "inline-block size-2 rounded-full " +
+                "inline-block size-2 shrink-0 rounded-full " +
                 (running
                   ? "bg-[var(--accent)]"
                   : error
@@ -218,47 +283,114 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
               aria-hidden="true"
             />
             <span className="font-mono-token text-[var(--text)]">{url}</span>
-            <Button
-              variant="secondary"
-              onClick={() => void copyUrl()}
-              className="ml-auto"
-            >
-              <Copy size={12} className="mr-1" />
-              {t("settings.diagnostics.localApi.copyUrl", {
-                defaultValue: "Copy URL",
-              })}
-            </Button>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void testConnection()}
+                disabled={isTestingConnection || !running}
+                className="gap-1"
+              >
+                {isTestingConnection ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Activity size={12} />
+                )}
+                {t("settings.diagnostics.localApi.test", {
+                  defaultValue: "Test",
+                })}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void copyUrl()}
+              >
+                <Copy size={12} className="mr-1" />
+                {t("settings.diagnostics.localApi.copyUrl", {
+                  defaultValue: "Copy URL",
+                })}
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {testStatus && (
+            <div
+              className={`flex items-center gap-1.5 font-mono-token text-[11px] ${
+                testStatus.startsWith("Failed")
+                  ? "text-[var(--danger)]"
+                  : "text-[var(--accent)]"
+              }`}
+            >
+              {testStatus.startsWith("Failed") ? (
+                <AlertCircle size={12} className="shrink-0" />
+              ) : (
+                <CheckCircle2 size={12} className="shrink-0" />
+              )}
+              <span>{testStatus}</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-2">
             <span className="text-[var(--muted)]">
               {t("settings.diagnostics.localApi.token", {
                 defaultValue: "Token",
               })}
             </span>
-            <span className="max-w-[18rem] truncate font-mono-token text-[var(--text)]">
+            <span className="max-w-[16rem] truncate font-mono-token text-[var(--text)]">
               {token}
             </span>
-            <Button
-              variant="secondary"
-              onClick={() => void copyToken()}
-              className="ml-auto"
-            >
-              <Copy size={12} className="mr-1" />
-              {t("settings.diagnostics.localApi.copyToken")}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => void rotateToken()}
-              disabled={busy}
-            >
-              <RotateCcw size={12} className="mr-1" />
-              {t("settings.diagnostics.localApi.rotateToken")}
-            </Button>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void copyToken()}
+              >
+                <Copy size={12} className="mr-1" />
+                {t("settings.diagnostics.localApi.copyToken")}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void rotateToken()}
+                disabled={busy}
+              >
+                <RotateCcw size={12} className="mr-1" />
+                {t("settings.diagnostics.localApi.rotateToken")}
+              </Button>
+            </div>
           </div>
 
-          <div className="font-mono-token text-[var(--muted)]">
+          <div className="font-mono-token text-[11px] text-[var(--muted)]">
             {displayedAuthHeader}
+          </div>
+
+          {/* Short route cheat-sheet */}
+          <div className="space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text)]">
+              <ShieldCheck size={12} className="text-[var(--accent)]" />
+              <span>
+                {t("settings.diagnostics.localApi.macOnlyNotice", {
+                  defaultValue: "On this Mac only: 127.0.0.1 Loopback API",
+                })}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-1 font-mono-token text-[11px] text-[var(--muted)] sm:grid-cols-2">
+              {[
+                { method: "GET", path: "/v1/health" },
+                { method: "POST", path: "/v1/transcribe" },
+                { method: "GET", path: "/v1/history" },
+                { method: "POST", path: "/v1/dictation/start|stop" },
+                { method: "POST", path: "/mcp" },
+                { method: "POST", path: "/v1/audio/enhance" },
+              ].map((route) => (
+                <div key={route.path}>
+                  <span className="font-semibold text-[var(--accent)]">
+                    {route.method}
+                  </span>{" "}
+                  <span>{route.path}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
@@ -273,6 +405,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
               </span>
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={() => void copyMcpConfig()}
                 className="ml-auto"
               >

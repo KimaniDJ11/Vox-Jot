@@ -63,9 +63,16 @@ export const PRODUCT_MODULES: ProductModuleDescriptor[] = [
     enabledByDefault: true,
   },
   {
+    id: "automation-agents",
+    tier: "advanced",
+    sectionIds: ["automation-agents"],
+    hotPath: false,
+    enabledByDefault: true,
+  },
+  {
     id: "lab",
     tier: "lab",
-    sectionIds: ["model-testing", "automation-agents"],
+    sectionIds: ["model-testing"],
     hotPath: false,
     enabledByDefault: false,
   },

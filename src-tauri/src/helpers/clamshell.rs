@@ -25,39 +25,38 @@ pub fn is_clamshell() -> Result<bool, String> {
     Ok(stdout.contains("\"AppleClamshellState\" = Yes"))
 }
 
-/// Checks if the Mac is a laptop by detecting battery presence
+/// Returns whether the current machine is a laptop.
 ///
-/// This uses pmset to check for battery information.
-/// Returns true if a battery is detected (laptop), false otherwise (desktop)
-#[cfg(target_os = "macos")]
+/// macOS detects an internal battery with `pmset`; unsupported platforms return
+/// `false`. Keeping this command and its documentation platform-neutral makes
+/// the generated frontend contract identical on every build target.
 #[tauri::command]
 #[specta::specta]
 pub fn is_laptop() -> Result<bool, String> {
-    let output = Command::new("pmset")
-        .arg("-g")
-        .arg("batt")
-        .output()
-        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("pmset")
+            .arg("-g")
+            .arg("batt")
+            .output()
+            .map_err(|e| e.to_string())?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Check if InternalBattery is present (laptops have batteries, desktops typically don't)
-    Ok(stdout.contains("InternalBattery"))
+        // Check if InternalBattery is present (laptops have batteries, desktops typically don't)
+        Ok(stdout.contains("InternalBattery"))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(false)
+    }
 }
 
 /// No-op implementation for non-macOS platforms
 /// Always returns false since clamshell mode is macOS-specific
 #[cfg(not(target_os = "macos"))]
 pub fn is_clamshell() -> Result<bool, String> {
-    Ok(false)
-}
-
-/// No-op implementation for non-macOS platforms
-/// Always returns false since laptop detection is macOS-specific
-#[cfg(not(target_os = "macos"))]
-#[tauri::command]
-#[specta::specta]
-pub fn is_laptop() -> Result<bool, String> {
     Ok(false)
 }
 
@@ -82,5 +81,11 @@ mod tests {
         if let Ok(is_laptop) = result {
             println!("Is laptop: {}", is_laptop);
         }
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn non_macos_is_laptop_reports_false() {
+        assert!(!is_laptop().expect("non-macOS laptop detection should not fail"));
     }
 }

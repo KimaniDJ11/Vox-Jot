@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { SettingContainer } from "../ui/SettingContainer";
+import { SwitchControl } from "@/components/ui/SwitchControl";
 import { useSettings } from "../../hooks/useSettings";
 import type { OverlayPosition, RecordingOverlayStyle } from "@/bindings";
 import {
@@ -136,6 +137,40 @@ export const ShowOverlay: React.FC<ShowOverlayProps> = React.memo(
                   }
                 />
               ))}
+            </div>
+          </SettingContainer>
+        )}
+        {!isHidden && (
+          <SettingContainer
+            title={t("settings.advanced.overlay.livePartials.title", {
+              defaultValue: "Show live partial transcription",
+            })}
+            description={t(
+              "settings.advanced.overlay.livePartials.description",
+              {
+                defaultValue:
+                  "Display provisional speech-to-text text while dictating.",
+              },
+            )}
+            descriptionMode={descriptionMode}
+            grouped={grouped}
+          >
+            <div className="flex min-h-[44px] items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[var(--text)]">
+                {(getSetting("show_live_partials") ?? true)
+                  ? t("common.enabled", { defaultValue: "Enabled" })
+                  : t("common.disabled", { defaultValue: "Disabled" })}
+              </p>
+              <SwitchControl
+                checked={getSetting("show_live_partials") ?? true}
+                onChange={(value) =>
+                  void updateSetting("show_live_partials", value)
+                }
+                disabled={isUpdating("show_live_partials")}
+                ariaLabel={t("settings.advanced.overlay.livePartials.title", {
+                  defaultValue: "Show live partial transcription",
+                })}
+              />
             </div>
           </SettingContainer>
         )}

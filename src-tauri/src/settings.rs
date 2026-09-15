@@ -933,6 +933,13 @@ pub struct AppSettings {
     /// when the built-in Apple Speech engine reports as available.
     #[serde(default)]
     pub onboarding_completed: bool,
+    /// When true, Vox Jot suggests starting a meeting recording when known
+    /// meeting applications (Zoom, Teams, Slack, etc.) are detected.
+    #[serde(default)]
+    pub suggest_meeting_apps: bool,
+    /// When true, live speech partials are displayed in the recording overlay.
+    #[serde(default = "default_true")]
+    pub show_live_partials: bool,
 }
 
 fn default_http_api_port() -> u16 {
@@ -2276,6 +2283,8 @@ pub fn get_default_settings() -> AppSettings {
         http_api_port: default_http_api_port(),
         http_api_token: String::new(),
         onboarding_completed: false,
+        suggest_meeting_apps: false,
+        show_live_partials: true,
     }
 }
 

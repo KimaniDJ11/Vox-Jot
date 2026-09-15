@@ -520,10 +520,11 @@ export const commands = {
 	 */
 	analyzeHistoryEntrySpeakers: (id: number) => typedError<HistoryEntry, string>(__TAURI_INVOKE("analyze_history_entry_speakers", { id })),
 	/**
-	 *  Checks if the Mac is a laptop by detecting battery presence
+	 *  Returns whether the current machine is a laptop.
 	 *
-	 *  This uses pmset to check for battery information.
-	 *  Returns true if a battery is detected (laptop), false otherwise (desktop)
+	 *  macOS detects an internal battery with `pmset`; unsupported platforms return
+	 *  `false`. Keeping this command and its documentation platform-neutral makes
+	 *  the generated frontend contract identical on every build target.
 	 */
 	isLaptop: () => typedError<boolean, string>(__TAURI_INVOKE("is_laptop")),
 	checkOllamaStatus: () => __TAURI_INVOKE<OllamaStatus>("check_ollama_status"),

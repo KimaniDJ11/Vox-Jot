@@ -1,6 +1,0 @@
-[toolchain]
-# TypeScript bindings are generated from Rust types, so keep their generator
-# and freshness check on one reproducible compiler version.
-channel = "1.94.0"
-components = ["clippy", "rustfmt"]
-profile = "minimal"

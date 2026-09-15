@@ -24,10 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install the bindings toolchain
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # pinned action revision
         with:
-          toolchain: 1.94.0
+          toolchain: stable
 
       - name: Install system dependencies
         run: |

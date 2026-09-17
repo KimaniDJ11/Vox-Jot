@@ -656,3 +656,170 @@ fn mlx_voice_helpers_resolve_locales_across_providers() {
         Some("en/zh-TW".to_string())
     );
 }
+
+#[test]
+fn stale_tts_request_cannot_play() {
+    let mut tracker = super::TtsPlaybackTracker::default();
+    let ticket_a = tracker.begin();
+    assert_eq!(ticket_a.request_id, 1);
+    assert!(!ticket_a
+        .stop_flag
+        .load(std::sync::atomic::Ordering::Relaxed));
+    assert!(tracker.is_active(&ticket_a));
+
+    // Request B arrives while Request A is in-flight
+    let ticket_b = tracker.begin();
+    assert_eq!(ticket_b.request_id, 2);
+    assert!(!ticket_b
+        .stop_flag
+        .load(std::sync::atomic::Ordering::Relaxed));
+
+    // Request A was invalidated: stop_flag was set to true and tracker.is_active(&ticket_a) is false
+    assert!(ticket_a
+        .stop_flag
+        .load(std::sync::atomic::Ordering::Relaxed));
+    assert!(!tracker.is_active(&ticket_a));
+    assert!(tracker.is_active(&ticket_b));
+
+    // Stale ticket A attempting to finish does not clear active ticket B
+    assert!(!tracker.finish_if_active(&ticket_a));
+    assert!(tracker.is_active(&ticket_b));
+
+    // Active ticket B finishes normally
+    assert!(tracker.finish_if_active(&ticket_b));
+    assert!(!tracker.is_active(&ticket_b));
+}
+
+#[test]
+fn stop_speaking_prevents_late_playback() {
+    let mut tracker = super::TtsPlaybackTracker::default();
+    let ticket = tracker.begin();
+    assert!(tracker.is_active(&ticket));
+    assert!(!ticket.stop_flag.load(std::sync::atomic::Ordering::Relaxed));
+
+    // User triggers "Stop Speaking"
+    let stopped = tracker.stop();
+    assert!(stopped.is_some());
+    let stopped_ticket = stopped.unwrap();
+    assert_eq!(stopped_ticket.request_id, ticket.request_id);
+
+    // Stop flag is immediately set
+    assert!(ticket.stop_flag.load(std::sync::atomic::Ordering::Relaxed));
+    // Tracker no longer considers ticket active
+    assert!(!tracker.is_active(&ticket));
+
+    // Late completion from background thread cannot finish active state
+    assert!(!tracker.finish_if_active(&ticket));
+}
+
+#[test]
+fn tts_settings_are_snapshotted_at_invocation() {
+    let mut settings = crate::settings::get_default_settings();
+    settings.selected_tts_provider_id = "system".to_string();
+    settings.tts_rate = 1.0;
+
+    let preset = crate::settings::TtsVoicePreset {
+        id: "preset-voice-1".to_string(),
+        label: "Preset 1".to_string(),
+        provider_id: "qwen3_native".to_string(),
+        model_id: "qwen3-0.6b-base".to_string(),
+        voice_profile_id: Some("profile-1".to_string()),
+        voice_id: Some("voice-a".to_string()),
+        voice_label_snapshot: Some("Voice A".to_string()),
+        locale_snapshot: Some("en".to_string()),
+        tuning: TtsVoiceTuningSettings {
+            tempo_rate: 1.5,
+            expressiveness: 0.8,
+            exaggeration: 0.5,
+            randomness: 0.7,
+            guidance: 0.5,
+            stability: 0.5,
+            repetition_penalty: 1.2,
+            style_instructions: None,
+            advanced_overrides: std::collections::HashMap::new(),
+        },
+    };
+
+    // Snapshot effective settings at invocation
+    let snapshotted = super::effective_tts_settings_for_preset(&settings, Some(&preset));
+    assert_eq!(snapshotted.selected_tts_provider_id, "qwen3_native");
+    assert_eq!(
+        snapshotted.selected_tts_model_id.as_deref(),
+        Some("qwen3-0.6b-base")
+    );
+    assert_eq!(
+        snapshotted.selected_tts_profile_id.as_deref(),
+        Some("profile-1")
+    );
+    assert_eq!(
+        snapshotted.selected_tts_voice_id.as_deref(),
+        Some("voice-a")
+    );
+    assert_eq!(snapshotted.tts_rate, 1.5);
+
+    // Mutating app settings or switching afterwards does not alter the snapshotted settings
+    settings.selected_tts_provider_id = "sidecar".to_string();
+    settings.tts_rate = 0.8;
+    assert_eq!(snapshotted.selected_tts_provider_id, "qwen3_native");
+    assert_eq!(snapshotted.tts_rate, 1.5);
+}
+
+#[test]
+fn subtle_race_stale_ticket_refuses_playback_after_acquiring_gate() {
+    let mut tracker = super::TtsPlaybackTracker::default();
+    let playback_gate = std::sync::Mutex::new(());
+
+    // Request A begins
+    let ticket_a = tracker.begin();
+    assert_eq!(ticket_a.request_id, 1);
+
+    // Request B arrives while Request A is synthesizing
+    let ticket_b = tracker.begin();
+    assert_eq!(ticket_b.request_id, 2);
+
+    // Request B acquires playback gate and plays
+    {
+        let _guard = playback_gate.lock().unwrap();
+        let b_cancelled = ticket_b
+            .stop_flag
+            .load(std::sync::atomic::Ordering::Relaxed)
+            || !tracker.is_active(&ticket_b);
+        assert!(!b_cancelled, "Active request B must be allowed to play");
+    }
+
+    // Now Request A completes synthesis late and acquires the playback gate
+    {
+        let _guard = playback_gate.lock().unwrap();
+        // Crucial check: re-verifying ownership AFTER acquiring the gate
+        let a_cancelled = ticket_a
+            .stop_flag
+            .load(std::sync::atomic::Ordering::Relaxed)
+            || !tracker.is_active(&ticket_a);
+        assert!(
+            a_cancelled,
+            "Superseded request A MUST refuse playback after acquiring gate"
+        );
+    }
+
+    // Equivalent Stop race:
+    // Request C begins
+    let ticket_c = tracker.begin();
+    assert_eq!(ticket_c.request_id, 3);
+
+    // User presses Stop while C is waiting for the playback gate
+    let stopped = tracker.stop().expect("Request C should be stopped");
+    assert_eq!(stopped.request_id, ticket_c.request_id);
+
+    // C acquires playback gate
+    {
+        let _guard = playback_gate.lock().unwrap();
+        let c_cancelled = ticket_c
+            .stop_flag
+            .load(std::sync::atomic::Ordering::Relaxed)
+            || !tracker.is_active(&ticket_c);
+        assert!(
+            c_cancelled,
+            "Stopped request C MUST refuse playback after acquiring gate"
+        );
+    }
+}

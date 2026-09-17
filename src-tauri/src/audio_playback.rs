@@ -58,11 +58,20 @@ pub fn play_audio_file_with_stop(
     volume: f32,
     stop_flag: &AtomicBool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
     let stream_handle = build_output_stream(selected_device)?;
     let mixer = stream_handle.mixer();
 
     let file = File::open(path)?;
     let buf_reader = BufReader::new(file);
+
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
     let sink = rodio::play(mixer, buf_reader)?;
     sink.set_volume(volume);
 
@@ -71,7 +80,7 @@ pub fn play_audio_file_with_stop(
             sink.stop();
             break;
         }
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(25));
     }
 
     Ok(())

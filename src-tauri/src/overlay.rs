@@ -35,8 +35,17 @@ const OVERLAY_WIDTH_NOTCH: f64 = 190.0;
 const OVERLAY_HEIGHT_NOTCH: f64 = 30.0;
 const OVERLAY_WIDTH_CORRECTION: f64 = 300.0;
 const OVERLAY_HEIGHT_CORRECTION: f64 = 72.0;
+const OVERLAY_WIDTH_SPEECH: f64 = 280.0;
+const OVERLAY_HEIGHT_SPEECH: f64 = 44.0;
 const CORRECTION_OVERLAY_VISIBLE_MS: u64 = 4_200;
 static OVERLAY_DISPLAY_GENERATION: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+const OVERLAY_OWNER_NONE: u8 = 0;
+const OVERLAY_OWNER_RECORDING: u8 = 1;
+const OVERLAY_OWNER_SPEECH: u8 = 2;
+static OVERLAY_OWNER: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(OVERLAY_OWNER_NONE);
+static ACTIVE_SPEECH_OVERLAY_REQUEST: std::sync::atomic::AtomicU64 =
     std::sync::atomic::AtomicU64::new(0);
 
 fn overlay_dimensions(style: RecordingOverlayStyle) -> (f64, f64) {
@@ -331,6 +340,10 @@ pub fn show_overlay_state_with_mode(
         apply_recording_overlay_metrics_inner(app_handle);
 
         if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+            OVERLAY_OWNER.store(
+                OVERLAY_OWNER_RECORDING,
+                std::sync::atomic::Ordering::Relaxed,
+            );
             OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let _ = overlay_window.show();
 
@@ -356,6 +369,105 @@ pub fn show_overlay_state_with_mode(
 
 pub fn show_recording_overlay_with_mode(app_handle: &AppHandle, mode: &'static str) {
     show_overlay_state_with_mode(app_handle, "recording", Some(mode));
+}
+
+/// Shows the same non-activating panel used for recording while local speech
+/// synthesis is queued or loading. This keeps a global shortcut observable
+/// without bringing Vox Jot to the foreground or taking focus from the text
+/// the user selected.
+pub fn show_speech_overlay(app_handle: &AppHandle, request_id: u64, phase: &'static str) {
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        let app_handle = &app_handle_clone;
+        let settings = settings::get_settings(app_handle);
+        if settings.overlay_position == OverlayPosition::None {
+            return;
+        }
+        if !ensure_recording_overlay(app_handle) {
+            return;
+        }
+
+        let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") else {
+            return;
+        };
+
+        let current_owner = OVERLAY_OWNER.load(std::sync::atomic::Ordering::Relaxed);
+        let current_request =
+            ACTIVE_SPEECH_OVERLAY_REQUEST.load(std::sync::atomic::Ordering::Relaxed);
+        if current_owner == OVERLAY_OWNER_SPEECH && current_request > request_id {
+            return;
+        }
+
+        ACTIVE_SPEECH_OVERLAY_REQUEST.store(request_id, std::sync::atomic::Ordering::Relaxed);
+        OVERLAY_OWNER.store(OVERLAY_OWNER_SPEECH, std::sync::atomic::Ordering::Relaxed);
+        OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: OVERLAY_WIDTH_SPEECH,
+            height: OVERLAY_HEIGHT_SPEECH,
+        }));
+        if let Some((x, y)) = calculate_overlay_position_for_size(
+            app_handle,
+            (OVERLAY_WIDTH_SPEECH, OVERLAY_HEIGHT_SPEECH),
+            RecordingOverlayStyle::Detailed,
+        ) {
+            let _ = overlay_window
+                .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+        }
+
+        let _ = overlay_window.show();
+
+        #[cfg(target_os = "windows")]
+        force_overlay_topmost(&overlay_window);
+
+        let _ = overlay_window.emit(
+            "show-speech-overlay",
+            serde_json::json!({
+                "requestId": request_id,
+                "phase": phase,
+            }),
+        );
+    });
+}
+
+/// Hides a completed speech-status overlay only if it still belongs to this
+/// request. A recording overlay that began afterward must remain visible.
+pub fn hide_speech_overlay(app_handle: &AppHandle, request_id: u64) {
+    let app_handle_clone = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        if OVERLAY_OWNER.load(std::sync::atomic::Ordering::Relaxed) != OVERLAY_OWNER_SPEECH
+            || ACTIVE_SPEECH_OVERLAY_REQUEST.load(std::sync::atomic::Ordering::Relaxed)
+                != request_id
+        {
+            return;
+        }
+
+        OVERLAY_OWNER.store(OVERLAY_OWNER_NONE, std::sync::atomic::Ordering::Relaxed);
+        let generation =
+            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+
+        if let Some(overlay_window) = app_handle_clone.get_webview_window("recording_overlay") {
+            let _ = overlay_window.emit(
+                "hide-speech-overlay",
+                serde_json::json!({ "requestId": request_id }),
+            );
+            let window_clone = overlay_window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+                    != generation
+                    || OVERLAY_OWNER.load(std::sync::atomic::Ordering::Relaxed)
+                        != OVERLAY_OWNER_NONE
+                {
+                    return;
+                }
+                let window_clone_2 = window_clone.clone();
+                let _ = window_clone.run_on_main_thread(move || {
+                    let _ = window_clone_2.hide();
+                });
+            });
+        }
+    });
 }
 
 /// Dynamically updates the mode (e.g. "dictate" -> "rewrite_selection") on a live overlay
@@ -390,6 +502,10 @@ pub fn show_correction_overlay(
         }
 
         if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+            OVERLAY_OWNER.store(
+                OVERLAY_OWNER_RECORDING,
+                std::sync::atomic::Ordering::Relaxed,
+            );
             let generation =
                 OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
             let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
@@ -480,16 +596,28 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
     let app_handle_clone = app_handle.clone();
     let _ = app_handle.run_on_main_thread(move || {
         let app_handle = &app_handle_clone;
-        // Always hide the overlay regardless of settings - if setting was changed while recording,
-        // we still want to hide it properly
+        // A recording cleanup must not hide a newer speech-status overlay.
+        if OVERLAY_OWNER.load(std::sync::atomic::Ordering::Relaxed) != OVERLAY_OWNER_RECORDING {
+            return;
+        }
+
+        OVERLAY_OWNER.store(OVERLAY_OWNER_NONE, std::sync::atomic::Ordering::Relaxed);
+        let generation =
+            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
         if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             // Emit event to trigger fade-out animation
             let _ = overlay_window.emit("hide-overlay", ());
             // Hide the window after a short delay to allow animation to complete
             let window_clone = overlay_window.clone();
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_millis(300));
+                if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+                    != generation
+                    || OVERLAY_OWNER.load(std::sync::atomic::Ordering::Relaxed)
+                        != OVERLAY_OWNER_NONE
+                {
+                    return;
+                }
                 let window_clone_2 = window_clone.clone();
                 let _ = window_clone.run_on_main_thread(move || {
                     let _ = window_clone_2.hide();

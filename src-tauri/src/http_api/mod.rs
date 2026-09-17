@@ -3930,7 +3930,7 @@ async fn handle_speak(
     )
     .await
     {
-        Ok(()) => Json(SpeakApiResponse { status: "ok" }).into_response(),
+        Ok(_) => Json(SpeakApiResponse { status: "ok" }).into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse { error }),

@@ -339,16 +339,30 @@ impl SidecarManager {
     }
 
     /// Check whether the **speech-runtime** (legacy Python runtime) is the
-    /// server currently listening on the sidecar port.  The speech-runtime
-    /// exposes `/listen/prepare` which `mlx_audio.server` does not.
+    /// server currently listening on the sidecar port. `/listen/prepare` is a
+    /// provider-specific setup endpoint, so probing it with an empty payload
+    /// always returns 400 on a healthy runtime. `/health` is the inexpensive,
+    /// unauthenticated readiness endpoint designed for this purpose.
     pub fn is_speech_runtime_running(&self) -> bool {
         health_agent()
-            .post(&format!(
-                "http://127.0.0.1:{SPEECH_RUNTIME_PORT}/listen/prepare"
-            ))
-            .header("content-type", "application/json")
-            .send("{}")
-            .map(|resp| resp.status().is_success())
+            .get(&format!("http://127.0.0.1:{SPEECH_RUNTIME_PORT}/health"))
+            .call()
+            .map(|mut response| {
+                if !response.status().is_success() {
+                    return false;
+                }
+                let Ok(body) = response.body_mut().read_to_string() else {
+                    return false;
+                };
+                serde_json::from_str::<serde_json::Value>(&body)
+                    .ok()
+                    .and_then(|json| {
+                        json.get("status")
+                            .and_then(serde_json::Value::as_str)
+                            .map(|s| s.trim() == "ok")
+                    })
+                    .unwrap_or(false)
+            })
             .unwrap_or(false)
     }
 

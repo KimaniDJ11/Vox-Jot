@@ -36,7 +36,7 @@ use crate::translation::{
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::tts::{
     build_auto_speak_plan, choose_readback_locale, normalize_locale, speak_on_dedicated_thread,
-    SpeakRequest, TtsHistoryContext, TtsManager,
+    SpeakRequest, TtsHistoryContext, TtsManager, TtsPlaybackOutcome,
 };
 use crate::utils::{self, show_recording_overlay_with_mode};
 use crate::write_rules::apply_resolved_rule_to_settings;
@@ -856,7 +856,11 @@ fn spawn_tts_playback(app: &AppHandle, request: SpeakRequest, history_entry_id: 
 
         if let Some(history_entry_id) = history_entry_id {
             if let Some(history_manager) = app_handle.try_state::<Arc<HistoryManager>>() {
-                let status = if result.is_ok() { "played" } else { "failed" };
+                let status = match result.as_ref() {
+                    Ok(TtsPlaybackOutcome::Played) => "played",
+                    Ok(TtsPlaybackOutcome::Cancelled) => "cancelled",
+                    Err(_) => "failed",
+                };
                 if let Err(err) = history_manager.update_tts_status(history_entry_id, status) {
                     error!("Failed to update TTS history status: {}", err);
                 }

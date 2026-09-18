@@ -4,9 +4,9 @@
 //! model in memory and answers OCR requests over line-delimited JSON. The
 //! Rust callers include the screen-context worker and background probe
 //! threads started from OCR model selection. Concurrent callers are
-//! serialised at request start via [`OcrRuntimeManager`]'s start gate so a
-//! single child handles one frame at a time, while supersession remains
-//! possible once a waiter is blocked on recv.
+//! serialised via [`OcrRuntimeManager`]'s transition gate for every
+//! ownership change (start, cancel, park, shutdown). The gate is never
+//! held across recv/inference, so supersession remains possible mid-wait.
 //!
 //! Lifecycle:
 //!
@@ -42,7 +42,7 @@ use crate::screen_context::NativeScreenContextSnippet;
 use crate::screen_context_ocr_backup::{OcrFrame, PixelFormat};
 
 /// Shared singleton. Callers include the screen-context worker and
-/// background model-selection probe threads; `request_start_gate` serialises
+/// background model-selection probe threads; `transition_gate` serialises
 /// the start/supersession transition so two idle callers cannot both claim
 /// ownership.
 static MANAGER: Lazy<OcrRuntimeManager> = Lazy::new(OcrRuntimeManager::new);
@@ -1148,6 +1148,277 @@ mod tests {
         reap(&child_b);
     }
 
+    fn make_test_running_child() -> super::RunningChild {
+        let mut child = spawn_lingering_test_child();
+        let stdin = child
+            .stdin
+            .take()
+            .expect("lingering test child must have piped stdin");
+        let (_tx, rx) = std::sync::mpsc::channel();
+        super::RunningChild {
+            child: Arc::new(Mutex::new(child)),
+            stdin,
+            rx,
+        }
+    }
+
+    fn process_alive(child: &Arc<Mutex<Child>>) -> bool {
+        match child.lock().unwrap().try_wait() {
+            Ok(None) => true,
+            Ok(Some(_)) => false,
+            Err(_) => false,
+        }
+    }
+
+    fn success_line(request_id: u64) -> String {
+        format!(
+            r#"{{"request_id":{request_id},"ok":true,"snippets":[{{"text":"hi","confidence":1.0,"x":0,"y":0,"width":1,"height":1}}]}}"#
+        )
+    }
+
+    /// HIGH-1: A is ready to park, but B supersedes before A's finalize gate.
+    /// A must kill locally and must NEVER park into state.child.
+    #[test]
+    fn successful_completion_racing_with_successor_start_never_parks_stale_child() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+
+        let mut running_a = make_test_running_child();
+        let child_a_proc = Arc::clone(&running_a.child);
+        let id_a = manager.start_test_wait(&child_a_proc);
+        let epoch_a = manager.epoch.load(Ordering::SeqCst);
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("model-a".into());
+        }
+
+        let mgr_a = Arc::clone(&manager);
+        let line_a = success_line(id_a);
+        let t_a = std::thread::spawn(move || {
+            mgr_a.finalize_test_wait(id_a, epoch_a, running_a, Some(line_a))
+        });
+
+        // Pause A after recv-classify equivalent, before finalize transition.
+        finalize_barrier.wait();
+
+        // B starts and supersedes while A is paused before park.
+        let running_b = make_test_running_child();
+        let child_b_proc = Arc::clone(&running_b.child);
+        let id_b = manager.start_test_wait(&child_b_proc);
+        assert_ne!(id_a, id_b);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), id_b);
+        assert!(
+            manager
+                .kill_target
+                .lock()
+                .unwrap()
+                .as_ref()
+                .is_some_and(|c| Arc::ptr_eq(c, &child_b_proc)),
+            "B must own kill_target"
+        );
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("model-b".into());
+        }
+
+        // Resume A finalize — must observe stale and refuse to park.
+        finalize_barrier.wait();
+        let result_a = t_a.join().expect("A thread");
+        assert!(result_a.is_err(), "stale A must not succeed: {result_a:?}");
+        assert!(
+            !process_alive(&child_a_proc),
+            "stale A child must be killed/reaped"
+        );
+
+        // state.child must not be A's process. It may be None (B still waiting)
+        // or later B — never A.
+        {
+            let state = manager.inner.lock().unwrap();
+            if let Some(parked) = state.child.as_ref() {
+                assert!(
+                    !Arc::ptr_eq(&parked.child, &child_a_proc),
+                    "stale A must never be parked in state.child"
+                );
+            }
+            assert_eq!(state.current_catalog_id.as_deref(), Some("model-b"));
+        }
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), id_b);
+        assert!(manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, &child_b_proc)));
+
+        // B completes successfully and parks atomically.
+        manager.set_block_before_finalize(None);
+        let epoch_b = manager.epoch.load(Ordering::SeqCst);
+        let line_b = success_line(id_b);
+        manager
+            .finalize_test_wait(id_b, epoch_b, running_b, Some(line_b))
+            .expect("B finalize");
+        {
+            let state = manager.inner.lock().unwrap();
+            let parked = state.child.as_ref().expect("B must park warm child");
+            assert!(Arc::ptr_eq(&parked.child, &child_b_proc));
+            assert_eq!(state.current_catalog_id.as_deref(), Some("model-b"));
+        }
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        assert!(process_alive(&child_b_proc), "parked B must remain alive");
+
+        // Cleanup parked B via shutdown.
+        manager.shutdown();
+        assert!(!process_alive(&child_b_proc));
+        reap(&child_a_proc);
+        reap(&child_b_proc);
+    }
+
+    /// HIGH-2: Escape begins while A holds the transition gate before publish.
+    /// After A publishes and drops the gate, cancel must kill the child.
+    #[test]
+    fn cancel_active_racing_with_start_publication_kills_child_immediately() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let publish_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_publish(Some(Arc::clone(&publish_barrier)));
+
+        let child = wrap_child(spawn_lingering_test_child());
+        let mgr_a = Arc::clone(&manager);
+        let child_a = Arc::clone(&child);
+        let t_a = std::thread::spawn(move || mgr_a.start_test_wait(&child_a));
+
+        // A holds transition_gate, paused before publish.
+        publish_barrier.wait();
+
+        let mgr_c = Arc::clone(&manager);
+        let t_cancel = std::thread::spawn(move || mgr_c.cancel_active());
+
+        // Give cancel a moment to block on the gate, then release A to publish.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        publish_barrier.wait();
+
+        let id_a = t_a.join().expect("start thread");
+        let cancelled = t_cancel.join().expect("cancel thread");
+        assert!(cancelled, "cancel must observe the published request");
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        assert!(manager.inner.lock().unwrap().child.is_none());
+        assert!(!process_alive(&child), "Escape must kill+reap child A");
+        assert!(id_a >= 1);
+        reap(&child);
+        manager.set_block_before_publish(None);
+    }
+
+    #[test]
+    fn shutdown_racing_with_start_publication_leaves_no_child() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let publish_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_publish(Some(Arc::clone(&publish_barrier)));
+
+        let child = wrap_child(spawn_lingering_test_child());
+        let mgr_a = Arc::clone(&manager);
+        let child_a = Arc::clone(&child);
+        let t_a = std::thread::spawn(move || mgr_a.start_test_wait(&child_a));
+
+        publish_barrier.wait();
+        let mgr_s = Arc::clone(&manager);
+        let t_shutdown = std::thread::spawn(move || mgr_s.shutdown());
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        publish_barrier.wait();
+
+        let _id = t_a.join().expect("start");
+        t_shutdown.join().expect("shutdown");
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        assert!(manager.inner.lock().unwrap().child.is_none());
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+        assert!(!process_alive(&child));
+        reap(&child);
+        manager.set_block_before_publish(None);
+    }
+
+    /// Completion wins the gate before B: warm child parks atomically with
+    /// ownership release (never exposes active=0 + child=None).
+    #[test]
+    fn completion_before_successor_parks_warm_child_atomically() {
+        let manager = OcrRuntimeManager::new();
+        let running = make_test_running_child();
+        let proc = Arc::clone(&running.child);
+        let id = manager.start_test_wait(&proc);
+        let epoch = manager.epoch.load(Ordering::SeqCst);
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("model-a".into());
+        }
+        manager
+            .finalize_test_wait(id, epoch, running, Some(success_line(id)))
+            .expect("finalize");
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        {
+            let state = manager.inner.lock().unwrap();
+            let parked = state.child.as_ref().expect("parked");
+            assert!(Arc::ptr_eq(&parked.child, &proc));
+            assert_eq!(state.current_catalog_id.as_deref(), Some("model-a"));
+        }
+        assert!(process_alive(&proc));
+        manager.shutdown();
+        reap(&proc);
+    }
+
+    #[test]
+    fn malformed_stale_predecessor_response_cannot_kill_successor() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+
+        let running_a = make_test_running_child();
+        let proc_a = Arc::clone(&running_a.child);
+        let id_a = manager.start_test_wait(&proc_a);
+        let epoch_a = manager.epoch.load(Ordering::SeqCst);
+
+        let mgr_a = Arc::clone(&manager);
+        let t_a = std::thread::spawn(move || {
+            mgr_a.finalize_test_wait(id_a, epoch_a, running_a, Some("not-json".into()))
+        });
+        finalize_barrier.wait();
+
+        let running_b = make_test_running_child();
+        let proc_b = Arc::clone(&running_b.child);
+        let id_b = manager.start_test_wait(&proc_b);
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("model-b".into());
+        }
+        finalize_barrier.wait();
+        assert!(t_a.join().unwrap().is_err());
+
+        // Successor ownership intact despite A's malformed payload.
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), id_b);
+        assert!(manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, &proc_b)));
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("model-b")
+        );
+        assert!(process_alive(&proc_b));
+        assert!(!process_alive(&proc_a));
+
+        manager.set_block_before_finalize(None);
+        let epoch_b = manager.epoch.load(Ordering::SeqCst);
+        manager
+            .finalize_test_wait(id_b, epoch_b, running_b, Some(success_line(id_b)))
+            .unwrap();
+        manager.shutdown();
+        reap(&proc_a);
+        reap(&proc_b);
+    }
+
     use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
     use std::borrow::Cow;
     use std::path::{Path, PathBuf};
@@ -1224,13 +1495,31 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+struct TestHooks {
+    /// Wait here just before kill_target / active / latest are published.
+    block_before_publish: Mutex<Option<std::sync::Arc<std::sync::Barrier>>>,
+    /// Wait here after recv returns, before the finalize ownership transition.
+    block_before_finalize: Mutex<Option<std::sync::Arc<std::sync::Barrier>>>,
+}
+
+#[cfg(test)]
+impl TestHooks {
+    fn new() -> Self {
+        Self {
+            block_before_publish: Mutex::new(None),
+            block_before_finalize: Mutex::new(None),
+        }
+    }
+}
+
 pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
-    /// Serialises the request-start / supersession transition so two idle
-    /// callers (e.g. screen OCR + model-selection probe) cannot both observe
-    /// `active_request_id == 0` and spawn concurrent children. Released before
-    /// `recv_timeout` so a successor can still cancel an in-flight waiter.
-    request_start_gate: Mutex<()>,
+    /// Serialises ALL ownership transitions (start, supersession, Escape/
+    /// cancel, successful park, failed/stale completion, shutdown). Never
+    /// held across `recv_timeout` / model inference. Two idle callers cannot
+    /// both observe `active_request_id == 0` and spawn concurrent children;
+    transition_gate: Mutex<()>,
     /// In-flight request id (0 = idle).
     active_request_id: AtomicU64,
     /// Highest request id that has started a wait. Monotonic ownership token:
@@ -1240,6 +1529,9 @@ pub struct OcrRuntimeManager {
     epoch: AtomicU64,
     /// Child eligible for kill from `cancel_active` while a waiter is blocked.
     kill_target: Mutex<Option<Arc<Mutex<Child>>>>,
+    /// Test-only barriers that pause production transitions for race tests.
+    #[cfg(test)]
+    test_hooks: TestHooks,
 }
 
 struct ManagerState {
@@ -1255,6 +1547,24 @@ struct RunningChild {
     child: Arc<Mutex<Child>>,
     stdin: ChildStdin,
     rx: mpsc::Receiver<String>,
+}
+
+impl Drop for RunningChild {
+    fn drop(&mut self) {
+        // Defense-in-depth: dropping a Child does not kill it. Explicit
+        // kill/wait paths remain the primary teardown; this guard reaps any
+        // process that still escapes those paths (e.g. a stale predecessor
+        // that must not park after supersession).
+        if let Ok(mut guard) = self.child.lock() {
+            match guard.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) | Err(_) => {
+                    let _ = guard.kill();
+                    let _ = guard.wait();
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -1298,11 +1608,13 @@ impl OcrRuntimeManager {
                 current_catalog_id: None,
                 next_request_id: 1,
             }),
-            request_start_gate: Mutex::new(()),
+            transition_gate: Mutex::new(()),
             active_request_id: AtomicU64::new(0),
             latest_started_request_id: AtomicU64::new(0),
             epoch: AtomicU64::new(1),
             kill_target: Mutex::new(None),
+            #[cfg(test)]
+            test_hooks: TestHooks::new(),
         }
     }
 
@@ -1391,156 +1703,204 @@ impl OcrRuntimeManager {
         body: serde_json::Value,
         timeout: Duration,
     ) -> Result<ResponseEnvelope, String> {
-        // Serialise start/supersession. Hold only until ownership is published;
-        // release before recv so Escape / a successor can cancel mid-wait.
-        let (request_id, epoch_at_start, mut running) = {
-            let _start_guard = self
-                .request_start_gate
+        // Serialise start/supersession under the transition gate. Hold only
+        // until ownership is published; release before recv so Escape / a
+        // successor can cancel mid-wait.
+        let (request_id, epoch_at_start, running) = {
+            let _gate = self
+                .transition_gate
                 .lock()
                 .unwrap_or_else(|poison| poison.into_inner());
 
             if self.active_request_id.load(Ordering::SeqCst) != 0 {
-                let _ = self.cancel_active();
+                let _ = self.cancel_active_locked();
             }
 
-            let (request_id, epoch_at_start, running) = {
-                let mut state = self
-                    .inner
-                    .lock()
-                    .unwrap_or_else(|poison| poison.into_inner());
-
-                if state.current_catalog_id.as_deref() != Some(catalog_id) {
-                    kill_child_in_place(&mut state);
-                    state.current_catalog_id = Some(catalog_id.to_string());
-                }
-
-                if state.child.is_none() {
-                    let spawned = spawn_child(catalog_id, backend, model_root)?;
-                    state.child = Some(spawned);
-                }
-
-                let request_id = state.next_request_id;
-                state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
-
-                let envelope = RequestEnvelope {
-                    request_id,
-                    op,
-                    body,
-                };
-                let line = serde_json::to_string(&envelope)
-                    .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
-
-                let send_result = {
-                    let running = state
-                        .child
-                        .as_mut()
-                        .expect("spawn_child returned without setting child");
-                    running
-                        .stdin
-                        .write_all(line.as_bytes())
-                        .and_then(|()| running.stdin.write_all(b"\n"))
-                        .and_then(|()| running.stdin.flush())
-                };
-                if let Err(err) = send_result {
-                    debug!("ocr-runtime stdin write failed: {err}; tearing child down");
-                    kill_child_in_place(&mut state);
-                    return Err(err.to_string());
-                }
-
-                let running = state.child.take().expect("child must exist after send");
-                if let Ok(mut slot) = self.kill_target.lock() {
-                    *slot = Some(Arc::clone(&running.child));
-                }
-                let epoch_at_start = self.epoch.load(Ordering::SeqCst);
-                self.active_request_id.store(request_id, Ordering::SeqCst);
-                self.latest_started_request_id
-                    .store(request_id, Ordering::SeqCst);
-                (request_id, epoch_at_start, running)
-            };
-            // `_start_guard` drops here — ownership is published; wait is unlocked.
-            (request_id, epoch_at_start, running)
-        };
-
-        // Wait WITHOUT holding the manager mutex / start gate so `cancel_active`
-        // (Escape) or a successor start can still supersede mid-recv.
-        let recv_result = running.rx.recv_timeout(timeout);
-
-        let cancelled = self.epoch.load(Ordering::SeqCst) != epoch_at_start;
-
-        // Request-owned cleanup: a superseded waiter must never clear the
-        // newer request's kill_target / active_request_id / catalog state.
-        self.release_wait_ownership(request_id, &running.child);
-
-        let response_line = match recv_result {
-            Ok(line) if !cancelled => line,
-            Ok(_stale) => {
-                kill_running_child(&mut running);
-                // Escape clears catalog; a superseded waiter must not.
-                self.clear_catalog_if_no_successor(request_id);
-                return Err("ocr-runtime request cancelled".to_string());
-            }
-            Err(err) => {
-                let message = if cancelled {
-                    "ocr-runtime request cancelled".to_string()
-                } else {
-                    match err {
-                        mpsc::RecvTimeoutError::Timeout => "ocr-runtime timed out".to_string(),
-                        mpsc::RecvTimeoutError::Disconnected => {
-                            "ocr-runtime stdout closed unexpectedly".to_string()
-                        }
-                    }
-                };
-                kill_running_child(&mut running);
-                // Timeout/disconnect on our request, or Escape with no successor.
-                self.clear_catalog_if_no_successor(request_id);
-                return Err(message);
-            }
-        };
-
-        // Warm-path restore only if we were not superseded mid-flight.
-        if cancelled {
-            kill_running_child(&mut running);
-            self.clear_catalog_if_no_successor(request_id);
-            return Err("ocr-runtime request cancelled".to_string());
-        }
-
-        {
             let mut state = self
                 .inner
                 .lock()
                 .unwrap_or_else(|poison| poison.into_inner());
-            state.child = Some(running);
+
+            if state.current_catalog_id.as_deref() != Some(catalog_id) {
+                kill_child_in_place(&mut state);
+                state.current_catalog_id = Some(catalog_id.to_string());
+            }
+
+            if state.child.is_none() {
+                let spawned = spawn_child(catalog_id, backend, model_root)?;
+                state.child = Some(spawned);
+            }
+
+            let request_id = state.next_request_id;
+            state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+
+            let envelope = RequestEnvelope {
+                request_id,
+                op,
+                body,
+            };
+            let line = serde_json::to_string(&envelope)
+                .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
+
+            let send_result = {
+                let running = state
+                    .child
+                    .as_mut()
+                    .expect("spawn_child returned without setting child");
+                running
+                    .stdin
+                    .write_all(line.as_bytes())
+                    .and_then(|()| running.stdin.write_all(b"\n"))
+                    .and_then(|()| running.stdin.flush())
+            };
+            if let Err(err) = send_result {
+                debug!("ocr-runtime stdin write failed: {err}; tearing child down");
+                kill_child_in_place(&mut state);
+                return Err(err.to_string());
+            }
+
+            let running = state.child.take().expect("child must exist after send");
+            drop(state);
+
+            #[cfg(test)]
+            self.wait_test_hook_before_publish();
+
+            self.publish_wait_ownership(request_id, &running.child);
+            let epoch_at_start = self.epoch.load(Ordering::SeqCst);
+            (request_id, epoch_at_start, running)
+        };
+
+        // Wait WITHOUT any transition lock so cancel/successor can proceed.
+        let recv_result = running.rx.recv_timeout(timeout);
+
+        #[cfg(test)]
+        self.wait_test_hook_before_finalize();
+
+        // Classify the recv outcome. Ownership is still held until finalize.
+        let classified = match recv_result {
+            Ok(line) => ClassifiedRecv::Line(line),
+            Err(mpsc::RecvTimeoutError::Timeout) => ClassifiedRecv::Timeout,
+            Err(mpsc::RecvTimeoutError::Disconnected) => ClassifiedRecv::Disconnected,
+        };
+
+        self.finalize_after_wait(request_id, epoch_at_start, running, classified)
+    }
+
+    /// Publish kill_target / active / latest for a newly started wait.
+    /// Precondition: `transition_gate` held.
+    fn publish_wait_ownership(&self, request_id: u64, child: &Arc<Mutex<Child>>) {
+        if let Ok(mut slot) = self.kill_target.lock() {
+            *slot = Some(Arc::clone(child));
+        }
+        self.active_request_id.store(request_id, Ordering::SeqCst);
+        self.latest_started_request_id
+            .store(request_id, Ordering::SeqCst);
+    }
+
+    /// True when this request still owns the wait slots and has not been
+    /// superseded or Escape-cancelled. Precondition: `transition_gate` held.
+    fn is_current_wait_owner(
+        &self,
+        request_id: u64,
+        epoch_at_start: u64,
+        our_child: &Arc<Mutex<Child>>,
+    ) -> bool {
+        if self.epoch.load(Ordering::SeqCst) != epoch_at_start {
+            return false;
+        }
+        if self.latest_started_request_id.load(Ordering::SeqCst) != request_id {
+            return false;
+        }
+        if self.active_request_id.load(Ordering::SeqCst) != request_id {
+            return false;
+        }
+        match self.kill_target.lock() {
+            Ok(slot) => slot
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(current, our_child)),
+            Err(_) => false,
+        }
+    }
+
+    /// Serialized completion: park on success if still current, otherwise
+    /// kill the local child without touching successor ownership.
+    fn finalize_after_wait(
+        &self,
+        request_id: u64,
+        epoch_at_start: u64,
+        mut running: RunningChild,
+        classified: ClassifiedRecv,
+    ) -> Result<ResponseEnvelope, String> {
+        let _gate = self
+            .transition_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+
+        let child_arc = Arc::clone(&running.child);
+        let still_current = self.is_current_wait_owner(request_id, epoch_at_start, &child_arc);
+
+        if !still_current {
+            // Superseded or Escape already moved ownership. Never park, and
+            // never touch the successor's slots/catalog.
+            kill_running_child(&mut running);
+            return Err("ocr-runtime request cancelled".to_string());
         }
 
-        match serde_json::from_str::<ResponseEnvelope>(&response_line) {
-            Ok(resp) if resp.request_id == request_id => Ok(resp),
-            Ok(resp) => {
-                let mut state = self
-                    .inner
-                    .lock()
-                    .unwrap_or_else(|poison| poison.into_inner());
-                kill_child_in_place(&mut state);
-                Err(format!(
-                    "ocr-runtime response id mismatch: expected {}, got {}",
-                    request_id, resp.request_id
-                ))
+        match classified {
+            ClassifiedRecv::Line(response_line) => {
+                match serde_json::from_str::<ResponseEnvelope>(&response_line) {
+                    Ok(resp) if resp.request_id == request_id => {
+                        // Atomic park + ownership release — never expose
+                        // active=0 with state.child=None while we still hold
+                        // the warm child locally.
+                        {
+                            let mut state = self
+                                .inner
+                                .lock()
+                                .unwrap_or_else(|poison| poison.into_inner());
+                            state.child = Some(running);
+                        }
+                        self.clear_wait_slots_if_owner(request_id, &child_arc);
+                        Ok(resp)
+                    }
+                    Ok(resp) => {
+                        kill_running_child(&mut running);
+                        self.clear_wait_slots_if_owner(request_id, &child_arc);
+                        self.clear_catalog_locked();
+                        Err(format!(
+                            "ocr-runtime response id mismatch: expected {}, got {}",
+                            request_id, resp.request_id
+                        ))
+                    }
+                    Err(err) => {
+                        kill_running_child(&mut running);
+                        self.clear_wait_slots_if_owner(request_id, &child_arc);
+                        self.clear_catalog_locked();
+                        Err(format!(
+                            "ocr-runtime returned malformed JSON: {err} ({})",
+                            response_line.trim()
+                        ))
+                    }
+                }
             }
-            Err(err) => {
-                let mut state = self
-                    .inner
-                    .lock()
-                    .unwrap_or_else(|poison| poison.into_inner());
-                kill_child_in_place(&mut state);
-                Err(format!(
-                    "ocr-runtime returned malformed JSON: {err} ({})",
-                    response_line.trim()
-                ))
+            ClassifiedRecv::Timeout => {
+                kill_running_child(&mut running);
+                self.clear_wait_slots_if_owner(request_id, &child_arc);
+                self.clear_catalog_locked();
+                Err("ocr-runtime timed out".to_string())
+            }
+            ClassifiedRecv::Disconnected => {
+                kill_running_child(&mut running);
+                self.clear_wait_slots_if_owner(request_id, &child_arc);
+                self.clear_catalog_locked();
+                Err("ocr-runtime stdout closed unexpectedly".to_string())
             }
         }
     }
 
-    /// Drop wait-side ownership only if this request still owns the slots.
-    pub(crate) fn release_wait_ownership(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
+    /// Clear kill_target / active_request_id only when we still own them.
+    /// Precondition: `transition_gate` held.
+    fn clear_wait_slots_if_owner(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
         if let Ok(mut slot) = self.kill_target.lock() {
             let still_ours = slot
                 .as_ref()
@@ -1557,11 +1917,35 @@ impl OcrRuntimeManager {
         );
     }
 
-    /// Clear `current_catalog_id` only when this request is still the
-    /// latest-started owner. Idle `active_request_id` / empty `kill_target`
-    /// are not proof that no successor ever started — B may have already
-    /// finished and released its wait slots before parking its warm child.
+    /// Precondition: `transition_gate` held.
+    fn clear_catalog_locked(&self) {
+        let mut state = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        state.current_catalog_id = None;
+    }
+
+    /// Drop wait-side ownership only if this request still owns the slots.
+    /// Prefer `finalize_after_wait` for production completion paths.
+    #[cfg(test)]
+    pub(crate) fn release_wait_ownership(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
+        let _gate = self
+            .transition_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        self.clear_wait_slots_if_owner(request_id, our_child);
+    }
+
+    /// Clear catalog only when this request is still the latest-started owner
+    /// and no wait slots are held. Retained for Escape-without-successor paths
+    /// exercised by unit tests; production finalize uses `clear_catalog_locked`.
+    #[cfg(test)]
     fn clear_catalog_if_no_successor(&self, request_id: u64) {
+        let _gate = self
+            .transition_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         if self.latest_started_request_id.load(Ordering::SeqCst) != request_id {
             return;
         }
@@ -1574,24 +1958,19 @@ impl OcrRuntimeManager {
                 return;
             }
         }
-        let mut state = self
-            .inner
-            .lock()
-            .unwrap_or_else(|poison| poison.into_inner());
-        state.current_catalog_id = None;
+        self.clear_catalog_locked();
     }
 
-    /// Test/production helper: publish wait ownership under the start gate,
-    /// cancelling any prior active request first. Mirrors the ownership
-    /// establishment half of `request_inner` without spawning the Python sidecar.
+    /// Test helper: publish wait ownership under the transition gate using the
+    /// same cancel_locked + publish path as production start.
     #[cfg(test)]
     pub(crate) fn start_test_wait(&self, child: &Arc<Mutex<Child>>) -> u64 {
-        let _start_guard = self
-            .request_start_gate
+        let _gate = self
+            .transition_gate
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
         if self.active_request_id.load(Ordering::SeqCst) != 0 {
-            let _ = self.cancel_active();
+            let _ = self.cancel_active_locked();
         }
         let request_id = {
             let mut state = self
@@ -1603,21 +1982,106 @@ impl OcrRuntimeManager {
             if state.current_catalog_id.is_none() {
                 state.current_catalog_id = Some("test-catalog".into());
             }
+            // Ensure no parked child from a prior owner leaks across the start.
+            // (Production takes the child out before publish; tests only publish
+            // the kill_target Arc.)
             request_id
         };
-        if let Ok(mut slot) = self.kill_target.lock() {
-            *slot = Some(Arc::clone(child));
-        }
-        self.active_request_id.store(request_id, Ordering::SeqCst);
-        self.latest_started_request_id
-            .store(request_id, Ordering::SeqCst);
+        #[cfg(test)]
+        self.wait_test_hook_before_publish();
+        self.publish_wait_ownership(request_id, child);
         request_id
     }
 
-    /// Cancel the in-flight OCR request by killing the child and bumping
-    /// `epoch` so the waiter returns cancelled without holding the manager
-    /// mutex across the wait.
+    /// Test helper: run the production finalize transition for a successful
+    /// response line (or failure) against a locally held `RunningChild`.
+    #[cfg(test)]
+    pub(crate) fn finalize_test_wait(
+        &self,
+        request_id: u64,
+        epoch_at_start: u64,
+        running: RunningChild,
+        success_line: Option<String>,
+    ) -> Result<ResponseEnvelope, String> {
+        #[cfg(test)]
+        self.wait_test_hook_before_finalize();
+        let classified = match success_line {
+            Some(line) => ClassifiedRecv::Line(line),
+            None => ClassifiedRecv::Timeout,
+        };
+        self.finalize_after_wait(request_id, epoch_at_start, running, classified)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_block_before_publish(
+        &self,
+        barrier: Option<std::sync::Arc<std::sync::Barrier>>,
+    ) {
+        *self
+            .test_hooks
+            .block_before_publish
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = barrier;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_block_before_finalize(
+        &self,
+        barrier: Option<std::sync::Arc<std::sync::Barrier>>,
+    ) {
+        *self
+            .test_hooks
+            .block_before_finalize
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = barrier;
+    }
+
+    #[cfg(test)]
+    fn wait_test_hook_before_publish(&self) {
+        // Double-wait: (1) tell the controller we hold `transition_gate` and
+        // are paused before publish; (2) wait until the controller has started
+        // Escape/cancel (blocked on the gate) before we proceed.
+        let barrier = self
+            .test_hooks
+            .block_before_publish
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        if let Some(b) = barrier {
+            b.wait();
+            b.wait();
+        }
+    }
+
+    #[cfg(test)]
+    fn wait_test_hook_before_finalize(&self) {
+        // Double-wait: (1) paused after recv, before finalize gate; (2) resume
+        // after the controller has let a successor start/supersede.
+        let barrier = self
+            .test_hooks
+            .block_before_finalize
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        if let Some(b) = barrier {
+            b.wait();
+            b.wait();
+        }
+    }
+
+    /// Cancel the in-flight OCR request. Takes the transition gate so Escape
+    /// cannot race an in-progress ownership publication.
     pub fn cancel_active(&self) -> bool {
+        let _gate = self
+            .transition_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        self.cancel_active_locked()
+    }
+
+    /// Precondition: `transition_gate` held. Used by start/supersession and
+    /// public Escape/cancel so we never recursively lock the gate.
+    fn cancel_active_locked(&self) -> bool {
         let active = self.active_request_id.swap(0, Ordering::SeqCst);
         let mut had_kill_target = false;
         if let Ok(mut slot) = self.kill_target.lock() {
@@ -1640,6 +2104,7 @@ impl OcrRuntimeManager {
                 kill_child_in_place(&mut state);
                 // Catalog cleared only when we tore down an idle/parked child
                 // still held in ManagerState — not while a waiter owns it.
+                // Waiters hold the child locally; epoch bump makes them stale.
                 state.current_catalog_id = None;
             }
         }
@@ -1648,7 +2113,11 @@ impl OcrRuntimeManager {
     }
 
     pub fn shutdown(&self) {
-        let _ = self.cancel_active();
+        let _gate = self
+            .transition_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        let _ = self.cancel_active_locked();
         let mut state = self
             .inner
             .lock()
@@ -1660,6 +2129,12 @@ impl OcrRuntimeManager {
             *slot = None;
         }
     }
+}
+
+enum ClassifiedRecv {
+    Line(String),
+    Timeout,
+    Disconnected,
 }
 
 fn kill_running_child(running: &mut RunningChild) {

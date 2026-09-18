@@ -1673,33 +1673,7 @@ export type OcrModelDescriptor = {
 	hf_repo_url: string,
 };
 
-/**  Descriptor surfaced to UI and API clients for available OCR providers. */
-export type OcrProviderDescriptor = {
-	id: string,
-	label: string,
-	vendor: string,
-	description: string,
-	license: string,
-	is_experimental: boolean,
-	is_installed: boolean,
-	is_available: boolean,
-	storage_location: string | null,
-	backend: string,
-	status_detail: string | null,
-};
-
 export type OcrQualityMode = "fast" | "balanced" | "accurate";
-
-/**  Output payload from a completed OCR recognition run. */
-export type OcrResult = {
-	text: string,
-	engine: string,
-	elapsed_ms: number,
-	device: string,
-	peak_rss_mb: number | null,
-	mps_allocated_mb: number | null,
-	mps_driver_allocated_mb: number | null,
-};
 
 export type OllamaModelInfo = {
 	id: string,

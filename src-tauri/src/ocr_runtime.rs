@@ -751,6 +751,7 @@ mod tests {
         ));
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child));
         manager.active_request_id.store(3, Ordering::SeqCst);
+        manager.latest_started_request_id.store(3, Ordering::SeqCst);
         assert!(manager.cancel_active());
         manager.release_wait_ownership(3, &child);
         manager.clear_catalog_if_no_successor(3);
@@ -774,9 +775,11 @@ mod tests {
         ));
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
         manager.active_request_id.store(1, Ordering::SeqCst);
+        manager.latest_started_request_id.store(1, Ordering::SeqCst);
         assert!(manager.cancel_active());
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
         manager.active_request_id.store(2, Ordering::SeqCst);
+        manager.latest_started_request_id.store(2, Ordering::SeqCst);
         {
             let mut state = manager.inner.lock().unwrap();
             state.current_catalog_id = Some("jina-ocr-v1".into());
@@ -791,6 +794,121 @@ mod tests {
         let _ = child_a.lock().unwrap().wait();
         let _ = child_b.lock().unwrap().kill();
         let _ = child_b.lock().unwrap().wait();
+    }
+
+    /// B finishes and releases wait slots before stale A cleans up.
+    /// Idle active/kill slots must NOT let A wipe B's catalog while B is
+    /// about to park its healthy warm child.
+    #[test]
+    fn successor_finishes_before_stale_waiter_cleanup_preserves_catalog_and_warm_child() {
+        let manager = OcrRuntimeManager::new();
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+
+        let child_a = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn a"),
+        ));
+        let child_b = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn b"),
+        ));
+
+        // A starts.
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
+        manager.active_request_id.store(1, Ordering::SeqCst);
+        manager.latest_started_request_id.store(1, Ordering::SeqCst);
+
+        // B supersedes A.
+        assert!(manager.cancel_active());
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
+        manager.active_request_id.store(2, Ordering::SeqCst);
+        manager.latest_started_request_id.store(2, Ordering::SeqCst);
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+
+        // B successfully finishes: releases wait slots BEFORE parking child.
+        manager.release_wait_ownership(2, &child_b);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+
+        // Stale A wakes during the window and attempts catalog clear.
+        manager.release_wait_ownership(1, &child_a);
+        manager.clear_catalog_if_no_successor(1);
+
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("jina-ocr-v1"),
+            "stale A must not clear catalog after B has started, even if B already released wait slots"
+        );
+
+        // B parks its healthy warm child afterward.
+        {
+            let mut state = manager.inner.lock().unwrap();
+            // Simulate warm restore: catalog must still match so next request reuses child.
+            assert_eq!(state.current_catalog_id.as_deref(), Some("jina-ocr-v1"));
+            state.child = None; // child handle type differs in unit test; catalog is the contract
+        }
+
+        // Escape with genuinely no successor still clears.
+        manager.latest_started_request_id.store(2, Ordering::SeqCst);
+        manager.active_request_id.store(0, Ordering::SeqCst);
+        manager.clear_catalog_if_no_successor(2);
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+
+        let _ = child_a.lock().unwrap().kill();
+        let _ = child_a.lock().unwrap().wait();
+        let _ = child_b.lock().unwrap().kill();
+        let _ = child_b.lock().unwrap().wait();
+    }
+
+    #[test]
+    fn timeout_without_successor_clears_catalog_id() {
+        let manager = OcrRuntimeManager::new();
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+        manager.active_request_id.store(0, Ordering::SeqCst);
+        manager.latest_started_request_id.store(5, Ordering::SeqCst);
+        manager.clear_catalog_if_no_successor(5);
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+    }
+
+    #[test]
+    fn model_switch_still_replaces_catalog_id_on_next_start() {
+        let manager = OcrRuntimeManager::new();
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+            state.next_request_id = 10;
+        }
+        manager.latest_started_request_id.store(9, Ordering::SeqCst);
+        // Simulate the catalog swap that request_inner performs on mismatch
+        // before starting the successor request.
+        {
+            let mut state = manager.inner.lock().unwrap();
+            let new_catalog = "apple-vision";
+            if state.current_catalog_id.as_deref() != Some(new_catalog) {
+                state.child = None;
+                state.current_catalog_id = Some(new_catalog.into());
+            }
+            let request_id = state.next_request_id;
+            state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+            manager
+                .active_request_id
+                .store(request_id, Ordering::SeqCst);
+            manager
+                .latest_started_request_id
+                .store(request_id, Ordering::SeqCst);
+        }
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("apple-vision")
+        );
+        assert_eq!(manager.latest_started_request_id.load(Ordering::SeqCst), 10);
     }
 
     use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
@@ -873,6 +991,9 @@ pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
     /// In-flight request id (0 = idle).
     active_request_id: AtomicU64,
+    /// Highest request id that has started a wait. Monotonic ownership token:
+    /// "no request active right now" is not the same as "no successor ever started."
+    latest_started_request_id: AtomicU64,
     /// Bumped by `cancel_active` so waiters observe supersession.
     epoch: AtomicU64,
     /// Child eligible for kill from `cancel_active` while a waiter is blocked.
@@ -936,6 +1057,7 @@ impl OcrRuntimeManager {
                 next_request_id: 1,
             }),
             active_request_id: AtomicU64::new(0),
+            latest_started_request_id: AtomicU64::new(0),
             epoch: AtomicU64::new(1),
             kill_target: Mutex::new(None),
         }
@@ -1081,6 +1203,8 @@ impl OcrRuntimeManager {
             }
             let epoch_at_start = self.epoch.load(Ordering::SeqCst);
             self.active_request_id.store(request_id, Ordering::SeqCst);
+            self.latest_started_request_id
+                .store(request_id, Ordering::SeqCst);
             (request_id, epoch_at_start, running)
         };
 
@@ -1122,6 +1246,7 @@ impl OcrRuntimeManager {
         // Warm-path restore only if we were not superseded mid-flight.
         if cancelled {
             kill_running_child(&mut running);
+            self.clear_catalog_if_no_successor(request_id);
             return Err("ocr-runtime request cancelled".to_string());
         }
 
@@ -1178,9 +1303,14 @@ impl OcrRuntimeManager {
         );
     }
 
-    /// Clear `current_catalog_id` only when no newer request owns the runtime.
-    /// Escape (cancel with no successor) must clear; A→B supersession must not.
+    /// Clear `current_catalog_id` only when this request is still the
+    /// latest-started owner. Idle `active_request_id` / empty `kill_target`
+    /// are not proof that no successor ever started — B may have already
+    /// finished and released its wait slots before parking its warm child.
     fn clear_catalog_if_no_successor(&self, request_id: u64) {
+        if self.latest_started_request_id.load(Ordering::SeqCst) != request_id {
+            return;
+        }
         let active = self.active_request_id.load(Ordering::SeqCst);
         if active != 0 && active != request_id {
             return;

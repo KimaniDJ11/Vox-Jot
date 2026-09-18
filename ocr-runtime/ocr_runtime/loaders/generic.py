@@ -26,12 +26,16 @@ from .base import LoaderInfo, OcrLoader, Snippet
 
 
 def _set_offline_hf_env(model_root: Path) -> None:
-    """Force local-only Hugging Face access for managed OCR loads."""
-    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    """Force local-only Hugging Face access for managed OCR loads.
+
+    Managed external-model policy: model-root-derived cache paths must win
+    over any pre-existing host ``HF_HOME`` / ``HF_HUB_CACHE``.
+    """
     parent = model_root.parent
-    os.environ.setdefault("HF_HOME", str(parent / ".hf_home"))
-    os.environ.setdefault("HF_HUB_CACHE", str(parent / ".hf_cache"))
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["HF_HOME"] = str(parent / ".hf_home")
+    os.environ["HF_HUB_CACHE"] = str(parent / ".hf_cache")
 
 
 def _jina_custom_modeling_present(model_root: Path) -> bool:

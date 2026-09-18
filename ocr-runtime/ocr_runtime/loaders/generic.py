@@ -30,8 +30,14 @@ def _set_offline_hf_env(model_root: Path) -> None:
 
     Managed external-model policy: model-root-derived cache paths must win
     over any pre-existing host ``HF_HOME`` / ``HF_HUB_CACHE``.
+
+    Imported models are often a managed App Support symlink pointing at an
+    external volume. Resolve that symlink first so cache dirs land beside the
+    real weights (e.g. ``/Volumes/…/AI Models/.hf_cache``) rather than under
+    the internal symlink parent.
     """
-    parent = model_root.parent
+    resolved_model_root = model_root.resolve()
+    parent = resolved_model_root.parent
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["HF_HOME"] = str(parent / ".hf_home")

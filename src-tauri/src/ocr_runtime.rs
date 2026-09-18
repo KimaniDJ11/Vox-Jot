@@ -2,9 +2,11 @@
 //!
 //! Owns the long-lived Python sidecar process that holds a vision-language
 //! model in memory and answers OCR requests over line-delimited JSON. The
-//! Rust router calls into [`OcrRuntimeManager::request`] from the screen
-//! context worker thread; we serialise calls so a single child handles one
-//! frame at a time.
+//! Rust callers include the screen-context worker and background probe
+//! threads started from OCR model selection. Concurrent callers are
+//! serialised at request start via [`OcrRuntimeManager`]'s start gate so a
+//! single child handles one frame at a time, while supersession remains
+//! possible once a waiter is blocked on recv.
 //!
 //! Lifecycle:
 //!
@@ -39,8 +41,10 @@ use crate::ocr_models::OcrBackendKind;
 use crate::screen_context::NativeScreenContextSnippet;
 use crate::screen_context_ocr_backup::{OcrFrame, PixelFormat};
 
-/// Shared singleton — the screen-context worker is the only caller and it
-/// runs on a dedicated thread, so a single global handle is fine.
+/// Shared singleton. Callers include the screen-context worker and
+/// background model-selection probe threads; `request_start_gate` serialises
+/// the start/supersession transition so two idle callers cannot both claim
+/// ownership.
 static MANAGER: Lazy<OcrRuntimeManager> = Lazy::new(OcrRuntimeManager::new);
 static PREREQUISITE_CACHE: Lazy<Mutex<HashMap<OcrBackendKind, bool>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
@@ -581,9 +585,55 @@ fn is_macos_metadata_path(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::OcrRuntimeManager;
-    use std::process::Command;
+    use std::process::{Child, Command, Stdio};
     use std::sync::atomic::Ordering;
-    use std::sync::{Arc, Mutex};
+    use std::sync::{Arc, Barrier, Mutex};
+    use std::thread;
+    use std::time::Duration;
+
+    /// Cross-platform lingering child: blocks on stdin until killed.
+    /// Avoids Unix-only `sleep` so native Windows test runs stay green.
+    fn spawn_lingering_test_child() -> Child {
+        let candidates: &[&[&str]] = if cfg!(windows) {
+            &[
+                &["python", "-c", "import sys; sys.stdin.read()"],
+                &["py", "-3", "-c", "import sys; sys.stdin.read()"],
+                &["cmd", "/C", "pause"],
+            ]
+        } else {
+            &[
+                &["python3", "-c", "import sys; sys.stdin.read()"],
+                &["python", "-c", "import sys; sys.stdin.read()"],
+                &["cat"],
+            ]
+        };
+        let mut last_err = None;
+        for argv in candidates {
+            let (prog, args) = argv.split_first().expect("non-empty");
+            match Command::new(prog)
+                .args(args)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+            {
+                Ok(child) => return child,
+                Err(err) => last_err = Some(err),
+            }
+        }
+        panic!("failed to spawn lingering test child: {last_err:?}");
+    }
+
+    fn wrap_child(child: Child) -> Arc<Mutex<Child>> {
+        Arc::new(Mutex::new(child))
+    }
+
+    fn reap(child: &Arc<Mutex<Child>>) {
+        if let Ok(mut guard) = child.lock() {
+            let _ = guard.kill();
+            let _ = guard.wait();
+        }
+    }
 
     #[test]
     fn cancel_active_bumps_epoch_and_clears_active_request() {
@@ -609,12 +659,8 @@ mod tests {
     fn superseded_waiter_does_not_clear_newer_request_ownership() {
         let manager = OcrRuntimeManager::new();
 
-        let child_a = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn a"),
-        ));
-        let child_b = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn b"),
-        ));
+        let child_a = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn a */;
+        let child_b = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn b */;
 
         // A owns the wait slots.
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
@@ -662,12 +708,8 @@ mod tests {
     #[test]
     fn cancel_b_after_a_release_still_kills_b() {
         let manager = OcrRuntimeManager::new();
-        let child_a = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn a"),
-        ));
-        let child_b = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn b"),
-        ));
+        let child_a = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn a */;
+        let child_b = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn b */;
 
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
         manager.active_request_id.store(1, Ordering::SeqCst);
@@ -690,9 +732,7 @@ mod tests {
     #[test]
     fn release_ownership_is_idempotent_for_owner() {
         let manager = OcrRuntimeManager::new();
-        let child = Arc::new(Mutex::new(
-            Command::new("sleep").arg("5").spawn().expect("spawn"),
-        ));
+        let child = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn */;
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child));
         manager.active_request_id.store(7, Ordering::SeqCst);
         manager.release_wait_ownership(7, &child);
@@ -716,12 +756,8 @@ mod tests {
     #[test]
     fn release_does_not_clear_foreign_kill_target() {
         let manager = OcrRuntimeManager::new();
-        let child_a = Arc::new(Mutex::new(
-            Command::new("sleep").arg("5").spawn().expect("spawn a"),
-        ));
-        let child_b = Arc::new(Mutex::new(
-            Command::new("sleep").arg("5").spawn().expect("spawn b"),
-        ));
+        let child_a = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn a */;
+        let child_b = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn b */;
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
         manager.active_request_id.store(2, Ordering::SeqCst);
         // Stale A tries to release with its old child pointer / id.
@@ -746,9 +782,7 @@ mod tests {
             let mut state = manager.inner.lock().unwrap();
             state.current_catalog_id = Some("jina-ocr-v1".into());
         }
-        let child = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn"),
-        ));
+        let child = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn */;
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child));
         manager.active_request_id.store(3, Ordering::SeqCst);
         manager.latest_started_request_id.store(3, Ordering::SeqCst);
@@ -767,12 +801,8 @@ mod tests {
             let mut state = manager.inner.lock().unwrap();
             state.current_catalog_id = Some("jina-ocr-v1".into());
         }
-        let child_a = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn a"),
-        ));
-        let child_b = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn b"),
-        ));
+        let child_a = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn a */;
+        let child_b = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn b */;
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
         manager.active_request_id.store(1, Ordering::SeqCst);
         manager.latest_started_request_id.store(1, Ordering::SeqCst);
@@ -807,12 +837,8 @@ mod tests {
             state.current_catalog_id = Some("jina-ocr-v1".into());
         }
 
-        let child_a = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn a"),
-        ));
-        let child_b = Arc::new(Mutex::new(
-            Command::new("sleep").arg("30").spawn().expect("spawn b"),
-        ));
+        let child_a = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn a */;
+        let child_b = wrap_child(spawn_lingering_test_child()) /* was sleep: spawn b */;
 
         // A starts.
         *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
@@ -911,6 +937,217 @@ mod tests {
         assert_eq!(manager.latest_started_request_id.load(Ordering::SeqCst), 10);
     }
 
+    #[test]
+    fn concurrent_idle_starts_serialize_and_later_request_owns_runtime() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let barrier = Arc::new(Barrier::new(3));
+        let mut handles = Vec::new();
+        let results = Arc::new(Mutex::new(Vec::new()));
+
+        for idx in 0..2 {
+            let manager = Arc::clone(&manager);
+            let barrier = Arc::clone(&barrier);
+            let results = Arc::clone(&results);
+            handles.push(thread::spawn(move || {
+                let child = wrap_child(spawn_lingering_test_child());
+                barrier.wait();
+                let request_id = manager.start_test_wait(&child);
+                results
+                    .lock()
+                    .unwrap()
+                    .push((idx, request_id, Arc::clone(&child)));
+                // Hold briefly so the peer contends on the start gate.
+                thread::sleep(Duration::from_millis(30));
+                (request_id, child)
+            }));
+        }
+
+        barrier.wait();
+        let finished: Vec<(u64, Arc<Mutex<Child>>)> = handles
+            .into_iter()
+            .map(|h| h.join().expect("join"))
+            .collect();
+
+        let active = manager.active_request_id.load(Ordering::SeqCst);
+        let latest = manager.latest_started_request_id.load(Ordering::SeqCst);
+        assert!(active != 0, "one request must own active_request_id");
+        assert_eq!(active, latest, "active owner must be the latest started");
+        assert_eq!(
+            finished.iter().map(|(id, _)| *id).max(),
+            Some(latest),
+            "later start must win latest_started_request_id"
+        );
+
+        let kill = manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(Arc::clone)
+            .expect("kill_target must belong to the winning request");
+        let winner = finished
+            .iter()
+            .find(|(id, _)| *id == latest)
+            .expect("winner child");
+        assert!(
+            Arc::ptr_eq(&kill, &winner.1),
+            "kill_target must point at the later request's child"
+        );
+
+        // Earlier child must have been killed by supersession.
+        let loser = finished
+            .iter()
+            .find(|(id, _)| *id != latest)
+            .expect("loser child");
+        {
+            let mut guard = loser.1.lock().unwrap();
+            let status = guard.try_wait().expect("try_wait loser");
+            assert!(
+                status.is_some(),
+                "superseded idle-start child must be reaped, not left orphaned"
+            );
+        }
+
+        assert!(manager.cancel_active());
+        for (_, child) in &finished {
+            reap(child);
+        }
+    }
+
+    #[test]
+    fn rapid_a_b_c_supersession_leaves_only_latest_owner() {
+        let manager = OcrRuntimeManager::new();
+        let child_a = wrap_child(spawn_lingering_test_child());
+        let child_b = wrap_child(spawn_lingering_test_child());
+        let child_c = wrap_child(spawn_lingering_test_child());
+
+        let id_a = manager.start_test_wait(&child_a);
+        let id_b = manager.start_test_wait(&child_b);
+        let id_c = manager.start_test_wait(&child_c);
+
+        assert_ne!(id_a, id_b);
+        assert_ne!(id_b, id_c);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), id_c);
+        assert_eq!(
+            manager.latest_started_request_id.load(Ordering::SeqCst),
+            id_c
+        );
+        assert!(manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, &child_c)));
+        assert!(child_a.lock().unwrap().try_wait().unwrap().is_some());
+        assert!(child_b.lock().unwrap().try_wait().unwrap().is_some());
+        assert!(child_c.lock().unwrap().try_wait().unwrap().is_none());
+
+        assert!(manager.cancel_active());
+        reap(&child_a);
+        reap(&child_b);
+        reap(&child_c);
+    }
+
+    #[test]
+    fn probe_and_ocr_overlap_via_start_gate_keeps_single_owner() {
+        // Models selection probe and screen OCR both call through the same
+        // start-gate helper; overlapping idle starts must not orphan a child.
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let barrier = Arc::new(Barrier::new(3));
+        let probe_mgr = Arc::clone(&manager);
+        let ocr_mgr = Arc::clone(&manager);
+        let probe_barrier = Arc::clone(&barrier);
+        let ocr_barrier = Arc::clone(&barrier);
+
+        let probe = thread::spawn(move || {
+            let child = wrap_child(spawn_lingering_test_child());
+            probe_barrier.wait();
+            let id = probe_mgr.start_test_wait(&child);
+            thread::sleep(Duration::from_millis(20));
+            (id, child)
+        });
+        let ocr = thread::spawn(move || {
+            let child = wrap_child(spawn_lingering_test_child());
+            ocr_barrier.wait();
+            let id = ocr_mgr.start_test_wait(&child);
+            thread::sleep(Duration::from_millis(20));
+            (id, child)
+        });
+
+        barrier.wait();
+        let (probe_id, probe_child) = probe.join().unwrap();
+        let (ocr_id, ocr_child) = ocr.join().unwrap();
+        let latest = manager.latest_started_request_id.load(Ordering::SeqCst);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), latest);
+        assert!(latest == probe_id || latest == ocr_id);
+        let winner = if latest == probe_id {
+            &probe_child
+        } else {
+            &ocr_child
+        };
+        let loser = if latest == probe_id {
+            &ocr_child
+        } else {
+            &probe_child
+        };
+        assert!(manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, winner)));
+        assert!(loser.lock().unwrap().try_wait().unwrap().is_some());
+        assert!(manager.cancel_active());
+        reap(&probe_child);
+        reap(&ocr_child);
+    }
+
+    #[test]
+    fn escape_during_overlap_clears_owner() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let child = wrap_child(spawn_lingering_test_child());
+        let id = manager.start_test_wait(&child);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), id);
+        assert!(manager.cancel_active());
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        reap(&child);
+    }
+
+    #[test]
+    fn shutdown_during_overlap_clears_runtime() {
+        let manager = OcrRuntimeManager::new();
+        let child = wrap_child(spawn_lingering_test_child());
+        let _id = manager.start_test_wait(&child);
+        manager.shutdown();
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+        reap(&child);
+    }
+
+    #[test]
+    fn successor_finishes_before_stale_predecessor_cleanup_keeps_latest_owner_slots_clearable_only_by_latest(
+    ) {
+        let manager = OcrRuntimeManager::new();
+        let child_a = wrap_child(spawn_lingering_test_child());
+        let child_b = wrap_child(spawn_lingering_test_child());
+        let id_a = manager.start_test_wait(&child_a);
+        let id_b = manager.start_test_wait(&child_b);
+        // B finishes successfully: release wait slots before parking.
+        manager.release_wait_ownership(id_b, &child_b);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        // Stale A cleans up — must not claim it can clear successor catalog ownership.
+        manager.release_wait_ownership(id_a, &child_a);
+        manager.clear_catalog_if_no_successor(id_a);
+        assert_eq!(
+            manager.latest_started_request_id.load(Ordering::SeqCst),
+            id_b
+        );
+        reap(&child_a);
+        reap(&child_b);
+    }
+
     use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
     use std::borrow::Cow;
     use std::path::{Path, PathBuf};
@@ -989,6 +1226,11 @@ mod tests {
 
 pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
+    /// Serialises the request-start / supersession transition so two idle
+    /// callers (e.g. screen OCR + model-selection probe) cannot both observe
+    /// `active_request_id == 0` and spawn concurrent children. Released before
+    /// `recv_timeout` so a successor can still cancel an in-flight waiter.
+    request_start_gate: Mutex<()>,
     /// In-flight request id (0 = idle).
     active_request_id: AtomicU64,
     /// Highest request id that has started a wait. Monotonic ownership token:
@@ -1056,6 +1298,7 @@ impl OcrRuntimeManager {
                 current_catalog_id: None,
                 next_request_id: 1,
             }),
+            request_start_gate: Mutex::new(()),
             active_request_id: AtomicU64::new(0),
             latest_started_request_id: AtomicU64::new(0),
             epoch: AtomicU64::new(1),
@@ -1148,67 +1391,78 @@ impl OcrRuntimeManager {
         body: serde_json::Value,
         timeout: Duration,
     ) -> Result<ResponseEnvelope, String> {
-        // Supersede any in-flight OCR before starting a new one.
-        if self.active_request_id.load(Ordering::SeqCst) != 0 {
-            let _ = self.cancel_active();
-        }
-
+        // Serialise start/supersession. Hold only until ownership is published;
+        // release before recv so Escape / a successor can cancel mid-wait.
         let (request_id, epoch_at_start, mut running) = {
-            let mut state = self
-                .inner
+            let _start_guard = self
+                .request_start_gate
                 .lock()
                 .unwrap_or_else(|poison| poison.into_inner());
 
-            if state.current_catalog_id.as_deref() != Some(catalog_id) {
-                kill_child_in_place(&mut state);
-                state.current_catalog_id = Some(catalog_id.to_string());
+            if self.active_request_id.load(Ordering::SeqCst) != 0 {
+                let _ = self.cancel_active();
             }
 
-            if state.child.is_none() {
-                let spawned = spawn_child(catalog_id, backend, model_root)?;
-                state.child = Some(spawned);
-            }
+            let (request_id, epoch_at_start, running) = {
+                let mut state = self
+                    .inner
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner());
 
-            let request_id = state.next_request_id;
-            state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+                if state.current_catalog_id.as_deref() != Some(catalog_id) {
+                    kill_child_in_place(&mut state);
+                    state.current_catalog_id = Some(catalog_id.to_string());
+                }
 
-            let envelope = RequestEnvelope {
-                request_id,
-                op,
-                body,
+                if state.child.is_none() {
+                    let spawned = spawn_child(catalog_id, backend, model_root)?;
+                    state.child = Some(spawned);
+                }
+
+                let request_id = state.next_request_id;
+                state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+
+                let envelope = RequestEnvelope {
+                    request_id,
+                    op,
+                    body,
+                };
+                let line = serde_json::to_string(&envelope)
+                    .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
+
+                let send_result = {
+                    let running = state
+                        .child
+                        .as_mut()
+                        .expect("spawn_child returned without setting child");
+                    running
+                        .stdin
+                        .write_all(line.as_bytes())
+                        .and_then(|()| running.stdin.write_all(b"\n"))
+                        .and_then(|()| running.stdin.flush())
+                };
+                if let Err(err) = send_result {
+                    debug!("ocr-runtime stdin write failed: {err}; tearing child down");
+                    kill_child_in_place(&mut state);
+                    return Err(err.to_string());
+                }
+
+                let running = state.child.take().expect("child must exist after send");
+                if let Ok(mut slot) = self.kill_target.lock() {
+                    *slot = Some(Arc::clone(&running.child));
+                }
+                let epoch_at_start = self.epoch.load(Ordering::SeqCst);
+                self.active_request_id.store(request_id, Ordering::SeqCst);
+                self.latest_started_request_id
+                    .store(request_id, Ordering::SeqCst);
+                (request_id, epoch_at_start, running)
             };
-            let line = serde_json::to_string(&envelope)
-                .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
-
-            let send_result = {
-                let running = state
-                    .child
-                    .as_mut()
-                    .expect("spawn_child returned without setting child");
-                running
-                    .stdin
-                    .write_all(line.as_bytes())
-                    .and_then(|()| running.stdin.write_all(b"\n"))
-                    .and_then(|()| running.stdin.flush())
-            };
-            if let Err(err) = send_result {
-                debug!("ocr-runtime stdin write failed: {err}; tearing child down");
-                kill_child_in_place(&mut state);
-                return Err(err.to_string());
-            }
-
-            let running = state.child.take().expect("child must exist after send");
-            if let Ok(mut slot) = self.kill_target.lock() {
-                *slot = Some(Arc::clone(&running.child));
-            }
-            let epoch_at_start = self.epoch.load(Ordering::SeqCst);
-            self.active_request_id.store(request_id, Ordering::SeqCst);
-            self.latest_started_request_id
-                .store(request_id, Ordering::SeqCst);
+            // `_start_guard` drops here — ownership is published; wait is unlocked.
             (request_id, epoch_at_start, running)
         };
 
-        // Wait WITHOUT holding the manager mutex so `cancel_active` can kill.
+        // Wait WITHOUT holding the manager mutex / start gate so `cancel_active`
+        // (Escape) or a successor start can still supersede mid-recv.
         let recv_result = running.rx.recv_timeout(timeout);
 
         let cancelled = self.epoch.load(Ordering::SeqCst) != epoch_at_start;
@@ -1327,6 +1581,39 @@ impl OcrRuntimeManager {
         state.current_catalog_id = None;
     }
 
+    /// Test/production helper: publish wait ownership under the start gate,
+    /// cancelling any prior active request first. Mirrors the ownership
+    /// establishment half of `request_inner` without spawning the Python sidecar.
+    #[cfg(test)]
+    pub(crate) fn start_test_wait(&self, child: &Arc<Mutex<Child>>) -> u64 {
+        let _start_guard = self
+            .request_start_gate
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if self.active_request_id.load(Ordering::SeqCst) != 0 {
+            let _ = self.cancel_active();
+        }
+        let request_id = {
+            let mut state = self
+                .inner
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            let request_id = state.next_request_id;
+            state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+            if state.current_catalog_id.is_none() {
+                state.current_catalog_id = Some("test-catalog".into());
+            }
+            request_id
+        };
+        if let Ok(mut slot) = self.kill_target.lock() {
+            *slot = Some(Arc::clone(child));
+        }
+        self.active_request_id.store(request_id, Ordering::SeqCst);
+        self.latest_started_request_id
+            .store(request_id, Ordering::SeqCst);
+        request_id
+    }
+
     /// Cancel the in-flight OCR request by killing the child and bumping
     /// `epoch` so the waiter returns cancelled without holding the manager
     /// mutex across the wait.
@@ -1338,6 +1625,7 @@ impl OcrRuntimeManager {
                 had_kill_target = true;
                 if let Ok(mut guard) = child.lock() {
                     let _ = guard.kill();
+                    let _ = guard.wait();
                 }
             }
         }

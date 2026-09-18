@@ -41,7 +41,8 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     engineId: "jina-ocr-v1",
     label: "Jina OCR v1",
     status: "pending",
-    notes: "Official Screen OCR Benchmark v2 not yet run on the consolidated runtime path.",
+    notes:
+      "Diagnostic six-fixture harness exercised via consolidated ocr-runtime (2026-09-18 report under output/screen-ocr-eval/). Official ranked Benchmark v2 remains blocked: rankingEligible=false and required rotated/scaled + multilingual domains / installed-app ranked-v2 protocol are not satisfied by that harness.",
   },
 
   {

@@ -581,7 +581,9 @@ fn is_macos_metadata_path(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::OcrRuntimeManager;
+    use std::process::Command;
     use std::sync::atomic::Ordering;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn cancel_active_bumps_epoch_and_clears_active_request() {
@@ -599,6 +601,196 @@ mod tests {
         let epoch_at_start = manager.epoch.load(Ordering::SeqCst);
         manager.epoch.fetch_add(1, Ordering::SeqCst);
         assert_ne!(epoch_at_start, manager.epoch.load(Ordering::SeqCst));
+    }
+
+    /// A→B supersession: when A wakes after B has taken ownership, A's cleanup
+    /// must not wipe B's kill_target / active_request_id.
+    #[test]
+    fn superseded_waiter_does_not_clear_newer_request_ownership() {
+        let manager = OcrRuntimeManager::new();
+
+        let child_a = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn a"),
+        ));
+        let child_b = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn b"),
+        ));
+
+        // A owns the wait slots.
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
+        manager.active_request_id.store(1, Ordering::SeqCst);
+        let epoch_a = manager.epoch.load(Ordering::SeqCst);
+
+        // B supersedes A.
+        assert!(manager.cancel_active());
+        assert!(manager.epoch.load(Ordering::SeqCst) > epoch_a);
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
+        manager.active_request_id.store(2, Ordering::SeqCst);
+
+        // A wakes and runs request-owned release (must not clobber B).
+        manager.release_wait_ownership(1, &child_a);
+
+        assert!(
+            manager
+                .kill_target
+                .lock()
+                .unwrap()
+                .as_ref()
+                .is_some_and(|c| Arc::ptr_eq(c, &child_b)),
+            "A must not clear B's kill_target"
+        );
+        assert_eq!(
+            manager.active_request_id.load(Ordering::SeqCst),
+            2,
+            "A must not clear B's active_request_id"
+        );
+
+        // Escape / cancel of B must still work.
+        assert!(
+            manager.cancel_active(),
+            "B must remain cancellable after A's late cleanup"
+        );
+
+        let _ = child_a.lock().unwrap().kill();
+        let _ = child_a.lock().unwrap().wait();
+        let _ = child_b.lock().unwrap().kill();
+        let _ = child_b.lock().unwrap().wait();
+    }
+
+    /// Cancelling B after A has already awakened/released must still succeed
+    /// when B owns the slots.
+    #[test]
+    fn cancel_b_after_a_release_still_kills_b() {
+        let manager = OcrRuntimeManager::new();
+        let child_a = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn a"),
+        ));
+        let child_b = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn b"),
+        ));
+
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
+        manager.active_request_id.store(1, Ordering::SeqCst);
+        assert!(manager.cancel_active());
+
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
+        manager.active_request_id.store(2, Ordering::SeqCst);
+        manager.release_wait_ownership(1, &child_a);
+
+        assert!(manager.cancel_active());
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+
+        let _ = child_a.lock().unwrap().kill();
+        let _ = child_a.lock().unwrap().wait();
+        let _ = child_b.lock().unwrap().kill();
+        let _ = child_b.lock().unwrap().wait();
+    }
+
+    #[test]
+    fn release_ownership_is_idempotent_for_owner() {
+        let manager = OcrRuntimeManager::new();
+        let child = Arc::new(Mutex::new(
+            Command::new("sleep").arg("5").spawn().expect("spawn"),
+        ));
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child));
+        manager.active_request_id.store(7, Ordering::SeqCst);
+        manager.release_wait_ownership(7, &child);
+        manager.release_wait_ownership(7, &child);
+        assert!(manager.kill_target.lock().unwrap().is_none());
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        let _ = child.lock().unwrap().kill();
+        let _ = child.lock().unwrap().wait();
+    }
+
+    #[test]
+    fn repeated_cancel_active_is_safe() {
+        let manager = OcrRuntimeManager::new();
+        assert!(!manager.cancel_active());
+        assert!(!manager.cancel_active());
+        manager.active_request_id.store(9, Ordering::SeqCst);
+        assert!(manager.cancel_active());
+        assert!(!manager.cancel_active());
+    }
+
+    #[test]
+    fn release_does_not_clear_foreign_kill_target() {
+        let manager = OcrRuntimeManager::new();
+        let child_a = Arc::new(Mutex::new(
+            Command::new("sleep").arg("5").spawn().expect("spawn a"),
+        ));
+        let child_b = Arc::new(Mutex::new(
+            Command::new("sleep").arg("5").spawn().expect("spawn b"),
+        ));
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
+        manager.active_request_id.store(2, Ordering::SeqCst);
+        // Stale A tries to release with its old child pointer / id.
+        manager.release_wait_ownership(1, &child_a);
+        assert!(manager
+            .kill_target
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|c| Arc::ptr_eq(c, &child_b)));
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 2);
+        let _ = child_a.lock().unwrap().kill();
+        let _ = child_a.lock().unwrap().wait();
+        let _ = child_b.lock().unwrap().kill();
+        let _ = child_b.lock().unwrap().wait();
+    }
+
+    #[test]
+    fn escape_without_successor_clears_catalog_id() {
+        let manager = OcrRuntimeManager::new();
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+        let child = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn"),
+        ));
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child));
+        manager.active_request_id.store(3, Ordering::SeqCst);
+        assert!(manager.cancel_active());
+        manager.release_wait_ownership(3, &child);
+        manager.clear_catalog_if_no_successor(3);
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+        let _ = child.lock().unwrap().kill();
+        let _ = child.lock().unwrap().wait();
+    }
+
+    #[test]
+    fn superseded_waiter_does_not_clear_successor_catalog() {
+        let manager = OcrRuntimeManager::new();
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+        let child_a = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn a"),
+        ));
+        let child_b = Arc::new(Mutex::new(
+            Command::new("sleep").arg("30").spawn().expect("spawn b"),
+        ));
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_a));
+        manager.active_request_id.store(1, Ordering::SeqCst);
+        assert!(manager.cancel_active());
+        *manager.kill_target.lock().unwrap() = Some(Arc::clone(&child_b));
+        manager.active_request_id.store(2, Ordering::SeqCst);
+        {
+            let mut state = manager.inner.lock().unwrap();
+            state.current_catalog_id = Some("jina-ocr-v1".into());
+        }
+        manager.release_wait_ownership(1, &child_a);
+        manager.clear_catalog_if_no_successor(1);
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("jina-ocr-v1")
+        );
+        let _ = child_a.lock().unwrap().kill();
+        let _ = child_a.lock().unwrap().wait();
+        let _ = child_b.lock().unwrap().kill();
+        let _ = child_b.lock().unwrap().wait();
     }
 
     use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
@@ -895,22 +1087,18 @@ impl OcrRuntimeManager {
         // Wait WITHOUT holding the manager mutex so `cancel_active` can kill.
         let recv_result = running.rx.recv_timeout(timeout);
 
-        if let Ok(mut slot) = self.kill_target.lock() {
-            *slot = None;
-        }
-        self.active_request_id.store(0, Ordering::SeqCst);
-
         let cancelled = self.epoch.load(Ordering::SeqCst) != epoch_at_start;
+
+        // Request-owned cleanup: a superseded waiter must never clear the
+        // newer request's kill_target / active_request_id / catalog state.
+        self.release_wait_ownership(request_id, &running.child);
 
         let response_line = match recv_result {
             Ok(line) if !cancelled => line,
             Ok(_stale) => {
                 kill_running_child(&mut running);
-                let mut state = self
-                    .inner
-                    .lock()
-                    .unwrap_or_else(|poison| poison.into_inner());
-                state.current_catalog_id = None;
+                // Escape clears catalog; a superseded waiter must not.
+                self.clear_catalog_if_no_successor(request_id);
                 return Err("ocr-runtime request cancelled".to_string());
             }
             Err(err) => {
@@ -925,14 +1113,17 @@ impl OcrRuntimeManager {
                     }
                 };
                 kill_running_child(&mut running);
-                let mut state = self
-                    .inner
-                    .lock()
-                    .unwrap_or_else(|poison| poison.into_inner());
-                state.current_catalog_id = None;
+                // Timeout/disconnect on our request, or Escape with no successor.
+                self.clear_catalog_if_no_successor(request_id);
                 return Err(message);
             }
         };
+
+        // Warm-path restore only if we were not superseded mid-flight.
+        if cancelled {
+            kill_running_child(&mut running);
+            return Err("ocr-runtime request cancelled".to_string());
+        }
 
         {
             let mut state = self
@@ -969,6 +1160,43 @@ impl OcrRuntimeManager {
         }
     }
 
+    /// Drop wait-side ownership only if this request still owns the slots.
+    pub(crate) fn release_wait_ownership(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
+        if let Ok(mut slot) = self.kill_target.lock() {
+            let still_ours = slot
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(current, our_child));
+            if still_ours {
+                *slot = None;
+            }
+        }
+        let _ = self.active_request_id.compare_exchange(
+            request_id,
+            0,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        );
+    }
+
+    /// Clear `current_catalog_id` only when no newer request owns the runtime.
+    /// Escape (cancel with no successor) must clear; A→B supersession must not.
+    fn clear_catalog_if_no_successor(&self, request_id: u64) {
+        let active = self.active_request_id.load(Ordering::SeqCst);
+        if active != 0 && active != request_id {
+            return;
+        }
+        if let Ok(slot) = self.kill_target.lock() {
+            if slot.is_some() {
+                return;
+            }
+        }
+        let mut state = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        state.current_catalog_id = None;
+    }
+
     /// Cancel the in-flight OCR request by killing the child and bumping
     /// `epoch` so the waiter returns cancelled without holding the manager
     /// mutex across the wait.
@@ -992,6 +1220,8 @@ impl OcrRuntimeManager {
             if state.child.is_some() {
                 had_state_child = true;
                 kill_child_in_place(&mut state);
+                // Catalog cleared only when we tore down an idle/parked child
+                // still held in ManagerState — not while a waiter owns it.
                 state.current_catalog_id = None;
             }
         }
@@ -1008,6 +1238,9 @@ impl OcrRuntimeManager {
         kill_child_in_place(&mut state);
         state.current_catalog_id = None;
         self.active_request_id.store(0, Ordering::SeqCst);
+        if let Ok(mut slot) = self.kill_target.lock() {
+            *slot = None;
+        }
     }
 }
 

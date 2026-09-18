@@ -100,7 +100,16 @@ let catalog: [CatalogEntry] = [
     CatalogEntry(id: "dots-ocr-mlx", label: "dots.ocr (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/dots.ocr-4bit"),
     CatalogEntry(id: "dots-mocr-mlx", label: "dots.mocr (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/dots.mocr-4bit"),
     CatalogEntry(id: "nanonets-ocr2-3b-mlx", label: "Nanonets-OCR2 3B (MLX)", backend: "mlx_vl", relativeInstallPath: "mlx-community/Nanonets-OCR2-3B-4bit"),
+    CatalogEntry(id: "jina-ocr-v1", label: "Jina OCR v1", backend: "transformers_vl", relativeInstallPath: nil),
 ]
+
+// Optional allowlist: OCR_EVAL_ENGINE_IDS=jina-ocr-v1,apple-vision
+let catalogEngineAllowlist: Set<String>? = {
+    guard let raw = ProcessInfo.processInfo.environment["OCR_EVAL_ENGINE_IDS"], !raw.isEmpty else {
+        return nil
+    }
+    return Set(raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+}()
 
 func font(_ name: String, _ size: CGFloat) -> NSFont {
     NSFont(name: name, size: size) ?? NSFont.systemFont(ofSize: size)
@@ -967,8 +976,22 @@ func markdownEscape(_ value: String) -> String {
 
 let assets = try cases.map(makeAsset)
 let totalPhrases = assets.map { $0.testCase.requiredPhrases.count }.reduce(0, +)
-var engineResults: [EngineResult] = [evaluateAppleVision(assets: assets), evaluateTesseract(assets: assets)]
-engineResults.append(contentsOf: catalog.map { evaluateRuntimeModel(entry: $0, assets: assets) })
+func includeBuiltin(_ id: String) -> Bool {
+    guard let allow = catalogEngineAllowlist else { return true }
+    return allow.contains(id)
+}
+var engineResults: [EngineResult] = []
+if includeBuiltin("apple-vision") {
+    engineResults.append(evaluateAppleVision(assets: assets))
+}
+if includeBuiltin("tessdata-best") {
+    engineResults.append(evaluateTesseract(assets: assets))
+}
+let catalogToRun = catalog.filter { entry in
+    guard let allow = catalogEngineAllowlist else { return true }
+    return allow.contains(entry.id)
+}
+engineResults.append(contentsOf: catalogToRun.map { evaluateRuntimeModel(entry: $0, assets: assets) })
 
 let rankingEligible = false
 let rankingBlocker = "The current six-fixture corpus lacks the required rotated/scaled and multilingual v2 domains."

@@ -1033,6 +1033,26 @@
         "copyright_notice",
         "modification_notice"
       ]
+    },
+    {
+      "id": "jina-ocr-v1",
+      "domains": [
+        "ocr"
+      ],
+      "name": "Jina OCR v1",
+      "upstream": "https://huggingface.co/jinaai/jina-ocr-v1",
+      "distribution_source": "https://huggingface.co/jinaai/jina-ocr-v1",
+      "license": "CC BY-NC 4.0",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": [
+        "jina-ocr-v1"
+      ],
+      "ui_acknowledgement_required": true
     }
   ]
 }

@@ -24,6 +24,22 @@ from typing import Iterable, Optional
 
 from .base import LoaderInfo, OcrLoader, Snippet
 
+
+def _set_offline_hf_env(model_root: Path) -> None:
+    """Force local-only Hugging Face access for managed OCR loads."""
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    parent = model_root.parent
+    os.environ.setdefault("HF_HOME", str(parent / ".hf_home"))
+    os.environ.setdefault("HF_HUB_CACHE", str(parent / ".hf_cache"))
+
+
+def _jina_custom_modeling_present(model_root: Path) -> bool:
+    return (model_root / "modeling_deepseekocr.py").is_file() or (
+        model_root / "modeling_deepseek_ocr.py"
+    ).is_file()
+
+
 OCR_PROMPT = (
     "Read all visible text in this screenshot. Return only the text, preserving "
     "line breaks where useful. Do not describe the image."
@@ -89,6 +105,15 @@ class TransformersVlLoader(OcrLoader):
             import torch
             from transformers import AutoProcessor, AutoTokenizer
 
+            _set_offline_hf_env(self._model_root)
+            if self.catalog_id == "jina-ocr-v1" and not _jina_custom_modeling_present(
+                self._model_root
+            ):
+                raise RuntimeError(
+                    "jina-ocr-v1 is missing modeling_deepseekocr.py; "
+                    "install/link the full local model tree before running."
+                )
+
             model_classes = []
             try:
                 from transformers import AutoModelForImageTextToText
@@ -113,11 +138,12 @@ class TransformersVlLoader(OcrLoader):
             if self.catalog_id == "lighton-ocr-2-1b":
                 from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
 
-                self._processor = LightOnOcrProcessor.from_pretrained(root)
+                self._processor = LightOnOcrProcessor.from_pretrained(root, local_files_only=True)
                 dtype = torch.float32 if self._device == "mps" else torch.float32
                 self._model = LightOnOcrForConditionalGeneration.from_pretrained(
                     root,
                     torch_dtype=dtype,
+                local_files_only=True,
                 )
                 self._model.eval()
                 if self._device != "cpu":
@@ -125,9 +151,9 @@ class TransformersVlLoader(OcrLoader):
                 self._torch = torch
                 return True
 
-            self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True)
+            self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True, local_files_only=True)
             try:
-                self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True)
+                self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True, local_files_only=True)
             except Exception:
                 self._tokenizer = None
 
@@ -144,13 +170,14 @@ class TransformersVlLoader(OcrLoader):
                     self._model = model_cls.from_pretrained(
                         root,
                         trust_remote_code=True,
+                        local_files_only=True,
                         torch_dtype="auto",
                         low_cpu_mem_usage=True,
                     )
                     break
                 except TypeError:
                     try:
-                        self._model = model_cls.from_pretrained(root, trust_remote_code=True)
+                        self._model = model_cls.from_pretrained(root, trust_remote_code=True, local_files_only=True)
                         break
                     except Exception as exc:  # noqa: BLE001
                         last_error = exc
@@ -191,6 +218,40 @@ class TransformersVlLoader(OcrLoader):
         processor = self._processor
         assert processor is not None
         try:
+            if self.catalog_id == "jina-ocr-v1":
+                # Official jinaai/jina-ocr-v1 flow (DeepSeek-OCR lineage):
+                # prepare_ocr_inputs → generate → decode_ocr.
+                if not hasattr(processor, "prepare_ocr_inputs") or not hasattr(
+                    processor, "decode_ocr"
+                ):
+                    raise RuntimeError(
+                        "jina-ocr-v1 processor is missing prepare_ocr_inputs/"
+                        "decode_ocr (custom processing_deepseek_ocr.py required)."
+                    )
+                torch = self._torch
+                assert torch is not None
+                inputs = processor.prepare_ocr_inputs(image, device=self._device)
+                with torch.no_grad():
+                    output = self._model.generate(
+                        **inputs,
+                        max_new_tokens=768,
+                        do_sample=False,
+                    )
+                text = processor.decode_ocr(output, inputs["input_ids"])
+                text = _word_clip(str(text or ""), max_words)
+                if not text:
+                    return ()
+                return (
+                    Snippet(
+                        text=text,
+                        confidence=0.0,
+                        x=0.0,
+                        y=0.0,
+                        width=1.0,
+                        height=1.0,
+                    ),
+                )
+
             if self.catalog_id == "lighton-ocr-2-1b":
                 messages = [
                     {

@@ -38,6 +38,13 @@ export const SCREEN_OCR_EVALUATION_RUN = {
 
 export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
   {
+    engineId: "jina-ocr-v1",
+    label: "Jina OCR v1",
+    status: "pending",
+    notes: "Official Screen OCR Benchmark v2 not yet run on the consolidated runtime path.",
+  },
+
+  {
     engineId: "got-ocr2",
     label: "GOT-OCR 2.0 (General OCR Theory)",
     status: "tested",

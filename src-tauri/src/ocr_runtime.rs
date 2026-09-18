@@ -22,8 +22,9 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -579,6 +580,27 @@ fn is_macos_metadata_path(path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use super::OcrRuntimeManager;
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn cancel_active_bumps_epoch_and_clears_active_request() {
+        let manager = OcrRuntimeManager::new();
+        manager.active_request_id.store(42, Ordering::SeqCst);
+        let epoch_before = manager.epoch.load(Ordering::SeqCst);
+        assert!(manager.cancel_active());
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.epoch.load(Ordering::SeqCst) > epoch_before);
+    }
+
+    #[test]
+    fn stale_epoch_is_treated_as_cancellation() {
+        let manager = OcrRuntimeManager::new();
+        let epoch_at_start = manager.epoch.load(Ordering::SeqCst);
+        manager.epoch.fetch_add(1, Ordering::SeqCst);
+        assert_ne!(epoch_at_start, manager.epoch.load(Ordering::SeqCst));
+    }
+
     use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
     use std::borrow::Cow;
     use std::path::{Path, PathBuf};
@@ -657,6 +679,12 @@ mod tests {
 
 pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
+    /// In-flight request id (0 = idle).
+    active_request_id: AtomicU64,
+    /// Bumped by `cancel_active` so waiters observe supersession.
+    epoch: AtomicU64,
+    /// Child eligible for kill from `cancel_active` while a waiter is blocked.
+    kill_target: Mutex<Option<Arc<Mutex<Child>>>>,
 }
 
 struct ManagerState {
@@ -668,7 +696,8 @@ struct ManagerState {
 }
 
 struct RunningChild {
-    child: Child,
+    /// Shared so `cancel_active` can kill while `request_inner` waits off-mutex.
+    child: Arc<Mutex<Child>>,
     stdin: ChildStdin,
     rx: mpsc::Receiver<String>,
 }
@@ -714,6 +743,9 @@ impl OcrRuntimeManager {
                 current_catalog_id: None,
                 next_request_id: 1,
             }),
+            active_request_id: AtomicU64::new(0),
+            epoch: AtomicU64::new(1),
+            kill_target: Mutex::new(None),
         }
     }
 
@@ -802,77 +834,121 @@ impl OcrRuntimeManager {
         body: serde_json::Value,
         timeout: Duration,
     ) -> Result<ResponseEnvelope, String> {
-        let mut state = self
-            .inner
-            .lock()
-            .unwrap_or_else(|poison| poison.into_inner());
-
-        // Respawn when the user picked a different model.
-        if state.current_catalog_id.as_deref() != Some(catalog_id) {
-            kill_child_in_place(&mut state);
-            state.current_catalog_id = Some(catalog_id.to_string());
+        // Supersede any in-flight OCR before starting a new one.
+        if self.active_request_id.load(Ordering::SeqCst) != 0 {
+            let _ = self.cancel_active();
         }
 
-        if state.child.is_none() {
-            let running = spawn_child(catalog_id, backend, model_root)?;
-            state.child = Some(running);
-        }
+        let (request_id, epoch_at_start, mut running) = {
+            let mut state = self
+                .inner
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
 
-        let request_id = state.next_request_id;
-        state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+            if state.current_catalog_id.as_deref() != Some(catalog_id) {
+                kill_child_in_place(&mut state);
+                state.current_catalog_id = Some(catalog_id.to_string());
+            }
 
-        let envelope = RequestEnvelope {
-            request_id,
-            op,
-            body,
+            if state.child.is_none() {
+                let spawned = spawn_child(catalog_id, backend, model_root)?;
+                state.child = Some(spawned);
+            }
+
+            let request_id = state.next_request_id;
+            state.next_request_id = state.next_request_id.wrapping_add(1).max(1);
+
+            let envelope = RequestEnvelope {
+                request_id,
+                op,
+                body,
+            };
+            let line = serde_json::to_string(&envelope)
+                .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
+
+            let send_result = {
+                let running = state
+                    .child
+                    .as_mut()
+                    .expect("spawn_child returned without setting child");
+                running
+                    .stdin
+                    .write_all(line.as_bytes())
+                    .and_then(|()| running.stdin.write_all(b"\n"))
+                    .and_then(|()| running.stdin.flush())
+            };
+            if let Err(err) = send_result {
+                debug!("ocr-runtime stdin write failed: {err}; tearing child down");
+                kill_child_in_place(&mut state);
+                return Err(err.to_string());
+            }
+
+            let running = state.child.take().expect("child must exist after send");
+            if let Ok(mut slot) = self.kill_target.lock() {
+                *slot = Some(Arc::clone(&running.child));
+            }
+            let epoch_at_start = self.epoch.load(Ordering::SeqCst);
+            self.active_request_id.store(request_id, Ordering::SeqCst);
+            (request_id, epoch_at_start, running)
         };
-        let line = serde_json::to_string(&envelope)
-            .map_err(|err| format!("Failed to encode OCR request: {err}"))?;
 
-        // Send.
-        let send_result = {
-            let running = state
-                .child
-                .as_mut()
-                .expect("spawn_child returned without setting child");
-            running
-                .stdin
-                .write_all(line.as_bytes())
-                .and_then(|()| running.stdin.write_all(b"\n"))
-                .and_then(|()| running.stdin.flush())
-        };
-        if let Err(err) = send_result {
-            debug!("ocr-runtime stdin write failed: {err}; tearing child down");
-            kill_child_in_place(&mut state);
-            return Err(err.to_string());
+        // Wait WITHOUT holding the manager mutex so `cancel_active` can kill.
+        let recv_result = running.rx.recv_timeout(timeout);
+
+        if let Ok(mut slot) = self.kill_target.lock() {
+            *slot = None;
         }
+        self.active_request_id.store(0, Ordering::SeqCst);
 
-        // Receive with deadline.
-        let response_line = {
-            let running = state
-                .child
-                .as_mut()
-                .expect("send branch above guarantees child");
-            match running.rx.recv_timeout(timeout) {
-                Ok(line) => line,
-                Err(err) => {
-                    let message = match err {
+        let cancelled = self.epoch.load(Ordering::SeqCst) != epoch_at_start;
+
+        let response_line = match recv_result {
+            Ok(line) if !cancelled => line,
+            Ok(_stale) => {
+                kill_running_child(&mut running);
+                let mut state = self
+                    .inner
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner());
+                state.current_catalog_id = None;
+                return Err("ocr-runtime request cancelled".to_string());
+            }
+            Err(err) => {
+                let message = if cancelled {
+                    "ocr-runtime request cancelled".to_string()
+                } else {
+                    match err {
                         mpsc::RecvTimeoutError::Timeout => "ocr-runtime timed out".to_string(),
                         mpsc::RecvTimeoutError::Disconnected => {
                             "ocr-runtime stdout closed unexpectedly".to_string()
                         }
-                    };
-                    kill_child_in_place(&mut state);
-                    return Err(message);
-                }
+                    }
+                };
+                kill_running_child(&mut running);
+                let mut state = self
+                    .inner
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner());
+                state.current_catalog_id = None;
+                return Err(message);
             }
         };
 
-        // On any decode failure or mismatched id we tear down so the next
-        // request gets a fresh process.
+        {
+            let mut state = self
+                .inner
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            state.child = Some(running);
+        }
+
         match serde_json::from_str::<ResponseEnvelope>(&response_line) {
             Ok(resp) if resp.request_id == request_id => Ok(resp),
             Ok(resp) => {
+                let mut state = self
+                    .inner
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner());
                 kill_child_in_place(&mut state);
                 Err(format!(
                     "ocr-runtime response id mismatch: expected {}, got {}",
@@ -880,6 +956,10 @@ impl OcrRuntimeManager {
                 ))
             }
             Err(err) => {
+                let mut state = self
+                    .inner
+                    .lock()
+                    .unwrap_or_else(|poison| poison.into_inner());
                 kill_child_in_place(&mut state);
                 Err(format!(
                     "ocr-runtime returned malformed JSON: {err} ({})",
@@ -889,21 +969,58 @@ impl OcrRuntimeManager {
         }
     }
 
-    /// Kill the currently-running child. Idempotent.
+    /// Cancel the in-flight OCR request by killing the child and bumping
+    /// `epoch` so the waiter returns cancelled without holding the manager
+    /// mutex across the wait.
+    pub fn cancel_active(&self) -> bool {
+        let active = self.active_request_id.swap(0, Ordering::SeqCst);
+        let mut had_kill_target = false;
+        if let Ok(mut slot) = self.kill_target.lock() {
+            if let Some(child) = slot.take() {
+                had_kill_target = true;
+                if let Ok(mut guard) = child.lock() {
+                    let _ = guard.kill();
+                }
+            }
+        }
+        let mut had_state_child = false;
+        {
+            let mut state = self
+                .inner
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            if state.child.is_some() {
+                had_state_child = true;
+                kill_child_in_place(&mut state);
+                state.current_catalog_id = None;
+            }
+        }
+        self.epoch.fetch_add(1, Ordering::SeqCst);
+        active != 0 || had_kill_target || had_state_child
+    }
+
     pub fn shutdown(&self) {
+        let _ = self.cancel_active();
         let mut state = self
             .inner
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
         kill_child_in_place(&mut state);
         state.current_catalog_id = None;
+        self.active_request_id.store(0, Ordering::SeqCst);
+    }
+}
+
+fn kill_running_child(running: &mut RunningChild) {
+    if let Ok(mut guard) = running.child.lock() {
+        let _ = guard.kill();
+        let _ = guard.wait();
     }
 }
 
 fn kill_child_in_place(state: &mut ManagerState) {
     if let Some(mut running) = state.child.take() {
-        let _ = running.child.kill();
-        let _ = running.child.wait();
+        kill_running_child(&mut running);
     }
 }
 
@@ -996,7 +1113,11 @@ fn spawn_child(
         }
     });
 
-    Ok(RunningChild { child, stdin, rx })
+    Ok(RunningChild {
+        child: Arc::new(Mutex::new(child)),
+        stdin,
+        rx,
+    })
 }
 
 fn locate_python() -> Option<PathBuf> {

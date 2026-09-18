@@ -546,9 +546,6 @@ export const commands = {
 	setOcrModelSelection: (neuralModelId: string | null) => typedError<null, string>(__TAURI_INVOKE("set_ocr_model_selection", { neuralModelId })),
 	downloadOcrModel: (catalogId: string) => typedError<OcrModelDescriptor, string>(__TAURI_INVOKE("download_ocr_model", { catalogId })),
 	getActiveOcrDownloads: () => __TAURI_INVOKE<string[]>("get_active_ocr_downloads"),
-	ocrGetProviders: () => typedError<OcrProviderDescriptor[], string>(__TAURI_INVOKE("ocr_get_providers")),
-	ocrRecognizeImage: (imagePath: string, engine: string | null, deleteAfter: boolean | null) => typedError<OcrResult, string>(__TAURI_INVOKE("ocr_recognize_image", { imagePath, engine, deleteAfter })),
-	ocrCancel: () => typedError<null, string>(__TAURI_INVOKE("ocr_cancel")),
 	/**  Get all stored corrections. */
 	getCorrections: () => typedError<StoredCorrection[], string>(__TAURI_INVOKE("get_corrections")),
 	/**  Delete a correction by ID. */

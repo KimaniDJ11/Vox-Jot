@@ -91,13 +91,14 @@ pub fn cancel_current_operation(app: &AppHandle) {
         tts_manager.stop();
     }
 
-    if let Some(ocr_manager) = app.try_state::<Arc<crate::ocr::OcrManager>>() {
-        ocr_manager.cancel_active_ocr_session();
-    }
+    // Consolidated warm OCR sidecar — Escape must abort in-flight neural OCR.
+    let _ = crate::ocr_runtime::shared().cancel_active();
 
     // Update tray icon and hide overlay
     change_tray_icon(app, crate::tray::TrayIconState::Idle);
     hide_recording_overlay(app);
+    // Clear OCR overlay ownership if Escape interrupted recognition.
+    crate::overlay::hide_ocr_overlay(app, crate::overlay::current_active_ocr_overlay_request());
 
     // Unload model if immediate unload is enabled
     if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {

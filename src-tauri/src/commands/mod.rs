@@ -5,6 +5,7 @@ pub mod denoise;
 pub mod history;
 pub mod http_api;
 pub mod models;
+pub mod ocr;
 pub mod reader;
 pub mod speech_analysis;
 pub mod stats;

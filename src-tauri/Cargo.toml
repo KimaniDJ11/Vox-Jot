@@ -158,6 +158,7 @@ transcribe-rs = { version = "0.3.11", default-features = false, features = ["onn
 
 [dev-dependencies]
 tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
+tauri = { version = "2.11.1", features = ["test"] }
 
 # crates.io 0.31.10 still pins vulnerable quick-xml 0.39.4. This public fork
 # starts from the exact 0.31.10 release and applies only upstream's official

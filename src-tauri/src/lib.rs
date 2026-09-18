@@ -20,7 +20,7 @@ mod browser_url;
 pub mod cli;
 pub mod cli_client;
 mod clipboard;
-mod commands;
+pub mod commands;
 pub mod context_hints;
 mod convo;
 mod correction_tracker;
@@ -40,11 +40,12 @@ pub mod markdown_export;
 mod mcp;
 mod meeting_capture;
 mod model_platform;
+pub mod ocr;
 mod ocr_backend;
 mod ocr_models;
 mod ocr_runtime;
 mod ollama;
-mod overlay;
+pub mod overlay;
 pub mod portable;
 mod post_processing;
 mod product_architecture;
@@ -75,7 +76,7 @@ mod tray;
 mod tray_i18n;
 mod tts;
 mod tts_profiles;
-mod utils;
+pub mod utils;
 mod vibevoice;
 mod write_rules;
 
@@ -1276,6 +1277,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         ocr_models::set_ocr_model_selection,
         ocr_models::download_ocr_model,
         ocr_models::get_active_ocr_downloads,
+        commands::ocr::ocr_get_providers,
+        commands::ocr::ocr_recognize_image,
+        commands::ocr::ocr_cancel,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
         commands::corrections::update_correction,
@@ -1709,6 +1713,7 @@ pub fn run(cli_args: CliArgs) {
             app.manage(correction_store);
             app.manage(recent_input_tracker);
             app.manage(InsertedSpanTracker::new());
+            app.manage(Arc::new(crate::ocr::OcrManager::new(app_handle.clone())));
 
             initialize_core_logic(&app_handle).map_err(|error| {
                 log::error!("Core initialization failed: {error:#}");

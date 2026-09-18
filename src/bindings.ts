@@ -546,6 +546,9 @@ export const commands = {
 	setOcrModelSelection: (neuralModelId: string | null) => typedError<null, string>(__TAURI_INVOKE("set_ocr_model_selection", { neuralModelId })),
 	downloadOcrModel: (catalogId: string) => typedError<OcrModelDescriptor, string>(__TAURI_INVOKE("download_ocr_model", { catalogId })),
 	getActiveOcrDownloads: () => __TAURI_INVOKE<string[]>("get_active_ocr_downloads"),
+	ocrGetProviders: () => typedError<OcrProviderDescriptor[], string>(__TAURI_INVOKE("ocr_get_providers")),
+	ocrRecognizeImage: (imagePath: string, engine: string | null, deleteAfter: boolean | null) => typedError<OcrResult, string>(__TAURI_INVOKE("ocr_recognize_image", { imagePath, engine, deleteAfter })),
+	ocrCancel: () => typedError<null, string>(__TAURI_INVOKE("ocr_cancel")),
 	/**  Get all stored corrections. */
 	getCorrections: () => typedError<StoredCorrection[], string>(__TAURI_INVOKE("get_corrections")),
 	/**  Delete a correction by ID. */
@@ -1673,7 +1676,33 @@ export type OcrModelDescriptor = {
 	hf_repo_url: string,
 };
 
+/**  Descriptor surfaced to UI and API clients for available OCR providers. */
+export type OcrProviderDescriptor = {
+	id: string,
+	label: string,
+	vendor: string,
+	description: string,
+	license: string,
+	is_experimental: boolean,
+	is_installed: boolean,
+	is_available: boolean,
+	storage_location: string | null,
+	backend: string,
+	status_detail: string | null,
+};
+
 export type OcrQualityMode = "fast" | "balanced" | "accurate";
+
+/**  Output payload from a completed OCR recognition run. */
+export type OcrResult = {
+	text: string,
+	engine: string,
+	elapsed_ms: number,
+	device: string,
+	peak_rss_mb: number | null,
+	mps_allocated_mb: number | null,
+	mps_driver_allocated_mb: number | null,
+};
 
 export type OllamaModelInfo = {
 	id: string,

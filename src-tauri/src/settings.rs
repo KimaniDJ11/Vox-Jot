@@ -1227,7 +1227,10 @@ fn default_screen_context_ocr_engine() -> ScreenContextOcrEngine {
 }
 
 fn default_screen_context_ocr_timeout_ms() -> u32 {
-    700
+    // Native/Vision budget. Neural routes apply a higher floor at capture time
+    // (see `effective_screen_context_ocr_timeout_ms`) so cold Jina is not killed
+    // by this default.
+    2_000
 }
 
 fn default_screen_context_token_budget() -> u32 {

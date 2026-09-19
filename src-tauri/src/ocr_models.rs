@@ -1103,11 +1103,19 @@ pub fn set_ocr_model_selection_impl(
     if let Some(route) = route {
         if !matches!(route.backend, OcrBackendKind::TessdataPack) {
             std::thread::spawn(move || {
+                // Cold neural loaders (e.g. jina-ocr-v1 ~6.3GB) cannot finish in
+                // 1.5s; a short probe timeout kills the still-loading child and
+                // leaves selection looking broken. Tessdata stays on a short
+                // budget; VL/MLX/Paddle get a cold-load window.
+                let probe_timeout = match route.backend {
+                    OcrBackendKind::TessdataPack => Duration::from_millis(1_500),
+                    _ => Duration::from_secs(180),
+                };
                 let _ = crate::ocr_runtime::shared().probe(
                     &route.catalog_id,
                     route.backend,
                     &route.install_dir,
-                    Duration::from_millis(1500),
+                    probe_timeout,
                 );
             });
         } else {

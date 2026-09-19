@@ -186,6 +186,27 @@ pub struct ContextCaptureManager {
     state: Arc<Mutex<ManagerState>>,
 }
 
+
+/// Vision/native can stay on a short budget; neural VL/MLX/Paddle need a cold-load
+/// floor so a persisted 700ms setting cannot kill Jina mid-load.
+fn effective_screen_context_ocr_timeout_ms(
+    configured_ms: u32,
+    neural_route: Option<&crate::ocr_backend::NeuralRoute>,
+) -> u32 {
+    const NEURAL_OCR_TIMEOUT_FLOOR_MS: u32 = 120_000;
+    match neural_route {
+        Some(route)
+            if !matches!(
+                route.backend,
+                crate::ocr_models::OcrBackendKind::TessdataPack
+            ) =>
+        {
+            configured_ms.max(NEURAL_OCR_TIMEOUT_FLOOR_MS)
+        }
+        _ => configured_ms,
+    }
+}
+
 impl ContextCaptureManager {
     pub fn new(app_handle: &AppHandle) -> Self {
         let manager = Self {
@@ -550,12 +571,16 @@ impl ContextCaptureManager {
         // neural backend first and fall through to the existing native /
         // backup pipeline on `NotImplemented` or any backend failure.
         let neural_route = crate::ocr_models::resolve_neural_route(&self.app_handle, settings);
+        let ocr_timeout_ms = effective_screen_context_ocr_timeout_ms(
+            settings.screen_context_ocr_timeout_ms,
+            neural_route.as_ref(),
+        );
 
         match native_capture_screen_context(
             settings.screen_context_ocr_engine,
             settings.screen_context_ocr_quality,
             settings.screen_context_token_budget as usize,
-            settings.screen_context_ocr_timeout_ms,
+            ocr_timeout_ms,
             neural_route,
         ) {
             Ok(native_payload) => {
@@ -1405,6 +1430,25 @@ fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn effective_timeout_applies_neural_floor_for_vl() {
+        let route = crate::ocr_backend::NeuralRoute {
+            backend: crate::ocr_models::OcrBackendKind::TransformersVl,
+            install_dir: std::path::PathBuf::from("/tmp"),
+            catalog_id: "jina-ocr-v1".into(),
+        };
+        assert_eq!(
+            super::effective_screen_context_ocr_timeout_ms(700, Some(&route)),
+            120_000
+        );
+        assert_eq!(
+            super::effective_screen_context_ocr_timeout_ms(180_000, Some(&route)),
+            180_000
+        );
+        assert_eq!(super::effective_screen_context_ocr_timeout_ms(700, None), 700);
+    }
+
+
     use super::*;
 
     fn snippet(text: &str, score: f32) -> RankedContextSnippet {

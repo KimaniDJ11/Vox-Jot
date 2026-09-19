@@ -156,7 +156,7 @@ const ScreenContextSettingsSection: React.FC = () => {
   const captureMode = captureModeValue ?? "always_frequent";
   const ocrQuality = ocrQualityValue ?? "balanced";
   const ocrEngine = ocrEngineValue ?? "native_then_backup";
-  const ocrTimeout = ocrTimeoutValue ?? 700;
+  const ocrTimeout = ocrTimeoutValue ?? 2000;
   const tokenBudget = tokenBudgetValue ?? 400;
   const staleThreshold = staleThresholdValue ?? 2500;
 
@@ -494,15 +494,19 @@ const ScreenContextSettingsSection: React.FC = () => {
                 )
               }
               min={200}
-              max={2000}
-              step={50}
+              max={180000}
+              step={100}
               label={t("appSections.groups.recognitionTimeout")}
               description={t(
                 "appSections.groups.recognitionTimeoutDescription",
               )}
               descriptionMode="inline"
               grouped={true}
-              formatValue={(value) => `${Math.round(value)} ms`}
+              formatValue={(value) =>
+                value >= 1000
+                  ? `${(Math.round(value) / 1000).toFixed(value % 1000 === 0 ? 0 : 1)} s`
+                  : `${Math.round(value)} ms`
+              }
               disabled={controlsDisabled}
             />
             <Slider

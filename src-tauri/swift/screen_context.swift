@@ -2,13 +2,36 @@ import AppKit
 import CoreGraphics
 import Dispatch
 import Foundation
+import os
 import Vision
 #if canImport(ScreenCaptureKit)
 import ScreenCaptureKit
 #endif
 
 private let screenContextMaxCaptureDimension = 2200
-private let screenContextCaptureLock = NSLock()
+private final class ScreenContextCaptureGate: @unchecked Sendable {
+    private let lock = OSAllocatedUnfairLock(initialState: false)
+
+    /// Begin a capture. Returns false if another capture already owns the gate.
+    func tryBegin() -> Bool {
+        return lock.withLock { inFlight in
+            if inFlight {
+                return false
+            }
+            inFlight = true
+            return true
+        }
+    }
+
+    /// Release ownership. Safe to call more than once (waiter timeout + task defer).
+    func end() {
+        lock.withLock { inFlight in
+            inFlight = false
+        }
+    }
+}
+
+private let screenContextCaptureGate = ScreenContextCaptureGate()
 
 private typealias ScreenContextPointer = UnsafeMutablePointer<ScreenContextCaptureResponse>
 
@@ -243,7 +266,7 @@ public func captureScreenContextApple(
         return responsePtr
     }
 
-    guard screenContextCaptureLock.try() else {
+    guard screenContextCaptureGate.tryBegin() else {
         responsePtr.pointee.error_message = duplicateScreenCString(
             "A screen context capture is already in progress."
         )
@@ -260,9 +283,9 @@ public func captureScreenContextApple(
     }
     let box = ResultBox()
 
-    Task.detached(priority: .userInitiated) {
+    let task = Task.detached(priority: .userInitiated) {
         defer {
-            screenContextCaptureLock.unlock()
+            screenContextCaptureGate.end()
             semaphore.signal()
         }
 
@@ -290,6 +313,10 @@ public func captureScreenContextApple(
 
     let timeout = DispatchTime.now() + .milliseconds(max(100, Int(timeoutMs)))
     if semaphore.wait(timeout: timeout) == .timedOut {
+        // Abandon this attempt so a hung ScreenCaptureKit call cannot pin the
+        // capture gate forever. The detached task still calls end() in defer.
+        task.cancel()
+        screenContextCaptureGate.end()
         responsePtr.pointee.error_message = duplicateScreenCString(
             "Timed out while capturing screen context."
         )
@@ -398,7 +425,7 @@ public func captureScreenContextBitmapApple(
         return responsePtr
     }
 
-    guard screenContextCaptureLock.try() else {
+    guard screenContextCaptureGate.tryBegin() else {
         responsePtr.pointee.error_message = duplicateScreenCString(
             "A screen context capture is already in progress."
         )
@@ -413,9 +440,9 @@ public func captureScreenContextBitmapApple(
     }
     let box = ResultBox()
 
-    Task.detached(priority: .userInitiated) {
+    let task = Task.detached(priority: .userInitiated) {
         defer {
-            screenContextCaptureLock.unlock()
+            screenContextCaptureGate.end()
             semaphore.signal()
         }
         do {
@@ -429,8 +456,10 @@ public func captureScreenContextBitmapApple(
         }
     }
 
-    let timeout = DispatchTime.now() + .milliseconds(max(100, Int(timeoutMs)))
+    let timeout = DispatchTime.now() + .milliseconds(max(2000, Int(timeoutMs)))
     if semaphore.wait(timeout: timeout) == .timedOut {
+        task.cancel()
+        screenContextCaptureGate.end()
         responsePtr.pointee.error_message = duplicateScreenCString(
             "Timed out while capturing the display bitmap."
         )

@@ -1686,7 +1686,7 @@ pub fn change_screen_context_ocr_timeout_ms_setting(
     timeout_ms: u32,
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.screen_context_ocr_timeout_ms = timeout_ms.clamp(200, 5_000);
+    settings.screen_context_ocr_timeout_ms = timeout_ms.clamp(200, 300_000);
     settings::write_settings(&app, settings);
     Ok(())
 }

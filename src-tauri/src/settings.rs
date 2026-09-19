@@ -1226,10 +1226,23 @@ fn default_screen_context_ocr_engine() -> ScreenContextOcrEngine {
     ScreenContextOcrEngine::NativeThenBackup
 }
 
+/// Inclusive bounds for persisted `screen_context_ocr_timeout_ms`.
+pub const SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS: u32 = 200;
+pub const SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS: u32 = 180_000;
+
+/// Upper bound for ScreenCaptureKit / Vision capture waits (never the neural floor).
+pub const SCREEN_CONTEXT_BITMAP_CAPTURE_TIMEOUT_MAX_MS: u32 = 5_000;
+
+pub fn normalize_screen_context_ocr_timeout_ms(timeout_ms: u32) -> u32 {
+    timeout_ms.clamp(
+        SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS,
+        SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS,
+    )
+}
+
 fn default_screen_context_ocr_timeout_ms() -> u32 {
-    // Native/Vision budget. Neural routes apply a higher floor at capture time
-    // (see `effective_screen_context_ocr_timeout_ms`) so cold Jina is not killed
-    // by this default.
+    // Native/Vision budget. Neural inference applies a separate cold-load floor
+    // via `effective_neural_ocr_timeout_ms` and must not inflate bitmap capture.
     2_000
 }
 

@@ -133,6 +133,7 @@ fn build_apple_intelligence_bridge() {
     const ACTIVE_BROWSER_URL_SWIFT_FILE: &str = "swift/active_browser_url.swift";
     const ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE: &str =
         "swift/active_browser_url_unavailable.swift";
+    const SCREEN_CONTEXT_CAPTURE_GATE_SWIFT_FILE: &str = "swift/screen_context_capture_gate.swift";
     const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
     const SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE: &str = "swift/security_scoped_bookmarks.swift";
     const MEETING_CAPTURE_SWIFT_FILE: &str = "swift/meeting_capture.swift";
@@ -144,6 +145,7 @@ fn build_apple_intelligence_bridge() {
     println!("cargo:rerun-if-changed={APPLE_SPEECH_UNAVAILABLE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_UNAVAILABLE_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={SCREEN_CONTEXT_CAPTURE_GATE_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={MEETING_CAPTURE_SWIFT_FILE}");
@@ -237,6 +239,7 @@ fn build_apple_intelligence_bridge() {
 
     for source in [
         source_file,
+        SCREEN_CONTEXT_CAPTURE_GATE_SWIFT_FILE,
         SCREEN_CONTEXT_SWIFT_FILE,
         speech_source_file,
         browser_url_source_file,
@@ -269,33 +272,48 @@ fn build_apple_intelligence_bridge() {
     // Use macOS 11.0 as deployment target for compatibility
     // The @available(macOS 26.0, *) checks in Swift handle runtime availability
     // Weak linking for FoundationModels is handled via cargo:rustc-link-arg below
-    let compile_swift_source = |source: &str, object_path: &Path| {
+    let compile_swift_sources = |sources: &[&str], object_path: &Path| {
+        let mut args = vec![
+            "swiftc".to_string(),
+            "-target".to_string(),
+            "arm64-apple-macosx11.0".to_string(),
+            "-sdk".to_string(),
+            sdk_path.clone(),
+            "-O".to_string(),
+            "-module-cache-path".to_string(),
+            swift_module_cache_dir_str.to_string(),
+            "-sdk-module-cache-path".to_string(),
+            swift_module_cache_dir_str.to_string(),
+            "-Xcc".to_string(),
+            clang_module_cache_arg.clone(),
+            "-import-objc-header".to_string(),
+            BRIDGE_HEADER.to_string(),
+        ];
+        if sources.len() == 1 {
+            args.push("-c".to_string());
+        } else {
+            // Multiple Swift inputs need WMO to emit a single object file.
+            args.push("-whole-module-optimization".to_string());
+            args.push("-emit-object".to_string());
+            args.push("-module-name".to_string());
+            args.push("VoxJotScreenContext".to_string());
+        }
+        args.extend(sources.iter().map(|source| (*source).to_string()));
+        args.push("-o".to_string());
+        args.push(
+            object_path
+                .to_str()
+                .expect("Failed to convert object path to string")
+                .to_string(),
+        );
+        let argv: Vec<&str> = args.iter().map(String::as_str).collect();
         Command::new("xcrun")
-            .args([
-                "swiftc",
-                "-target",
-                "arm64-apple-macosx11.0",
-                "-sdk",
-                &sdk_path,
-                "-O",
-                "-module-cache-path",
-                swift_module_cache_dir_str,
-                "-sdk-module-cache-path",
-                swift_module_cache_dir_str,
-                "-Xcc",
-                &clang_module_cache_arg,
-                "-import-objc-header",
-                BRIDGE_HEADER,
-                "-c",
-                source,
-                "-o",
-                object_path
-                    .to_str()
-                    .expect("Failed to convert object path to string"),
-            ])
+            .args(argv)
             .output()
             .expect("Failed to invoke swiftc for Apple Intelligence bridge")
     };
+    let compile_swift_source =
+        |source: &str, object_path: &Path| compile_swift_sources(&[source], object_path);
 
     // Apple Intelligence source can use Swift macros. Production builds must
     // compile the real implementation; local debug builds may opt into the
@@ -322,8 +340,24 @@ fn build_apple_intelligence_bridge() {
         }
     }
 
+    // Gate + screen_context must share one swiftc unit so the gate type is in scope.
+    {
+        let output = compile_swift_sources(
+            &[
+                SCREEN_CONTEXT_CAPTURE_GATE_SWIFT_FILE,
+                SCREEN_CONTEXT_SWIFT_FILE,
+            ],
+            &object_paths[1],
+        );
+        if !output.status.success() {
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+            panic!(
+                "swiftc failed to compile {SCREEN_CONTEXT_CAPTURE_GATE_SWIFT_FILE}+{SCREEN_CONTEXT_SWIFT_FILE}"
+            );
+        }
+    }
+
     for (source, object_path) in [
-        (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
         (speech_source_file, &object_paths[2]),
         (browser_url_source_file, &object_paths[3]),
         (SECURITY_SCOPED_BOOKMARKS_SWIFT_FILE, &object_paths[4]),

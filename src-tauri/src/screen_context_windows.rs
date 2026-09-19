@@ -54,13 +54,16 @@ pub(crate) fn native_capture_screen_context(
     engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
-    timeout_ms: u32,
+    capture_timeout_ms: u32,
+    neural_ocr_timeout_ms: u32,
     neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     let frame = capture_screen()?;
     let captured_at_ms = current_time_millis();
 
-    let backup_timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+    let capture_budget = Duration::from_millis(capture_timeout_ms.max(150) as u64);
+    let neural_budget = Duration::from_millis(neural_ocr_timeout_ms.max(150) as u64);
+    let native_timeout_ms = capture_timeout_ms;
 
     // Phase 0: try the selected neural backend first when one is wired.
     // On `NotImplemented` (Phase 1+ backends) or empty / hard error we
@@ -73,7 +76,7 @@ pub(crate) fn native_capture_screen_context(
             route,
             frame: &ocr_frame,
             quality,
-            timeout: backup_timeout,
+            timeout: neural_budget,
         };
         match crate::ocr_backend::run(req) {
             Ok(snippets) if !snippets.is_empty() => {
@@ -100,24 +103,24 @@ pub(crate) fn native_capture_screen_context(
     }
 
     let snippets = match engine {
-        ScreenContextOcrEngine::BackupOnly => run_backup(&frame, quality, backup_timeout)?,
-        ScreenContextOcrEngine::NativeOnly => match run_native_ocr(&frame, timeout_ms) {
+        ScreenContextOcrEngine::BackupOnly => run_backup(&frame, quality, capture_budget)?,
+        ScreenContextOcrEngine::NativeOnly => match run_native_ocr(&frame, native_timeout_ms) {
             Ok(snippets) => snippets,
             Err(err) => return Err(err),
         },
         ScreenContextOcrEngine::Auto | ScreenContextOcrEngine::NativeThenBackup => {
-            match run_native_ocr(&frame, timeout_ms) {
+            match run_native_ocr(&frame, native_timeout_ms) {
                 Ok(snippets) if !snippets.is_empty() => snippets,
                 Ok(_) => {
                     debug!("Windows native OCR returned no snippets — falling back to backup");
-                    run_backup(&frame, quality, backup_timeout)?
+                    run_backup(&frame, quality, capture_budget)?
                 }
                 Err(err) => {
                     warn!(
                         "Windows native OCR failed ({}); falling back to backup engine",
                         err
                     );
-                    run_backup(&frame, quality, backup_timeout)?
+                    run_backup(&frame, quality, capture_budget)?
                 }
             }
         }

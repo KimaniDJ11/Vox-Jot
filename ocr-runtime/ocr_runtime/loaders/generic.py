@@ -337,16 +337,21 @@ class TransformersVlLoader(OcrLoader):
                 ),
             )
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = (
+                f"{self.catalog_id} inference failed on device={self._device}: {exc}"
+            )
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
 
     def info(self) -> dict:
         loaded = self._ensure_loaded()
+        detail = self._load_error or "transformers loader ready"
         return LoaderInfo(
             catalog_id=self.catalog_id,
             backend=self._backend,
             loaded=loaded,
-            detail=self._load_error or "transformers loader ready",
+            detail=detail,
             model_root=str(self._model_root),
         ).to_json()
 

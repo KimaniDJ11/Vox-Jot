@@ -203,10 +203,16 @@ find "$BUILD_DIR/.python" \
 
 rm -rf "$BUILD_DIR/build" "$BUILD_DIR/ocr_runtime.egg-info"
 
+OCR_RUNTIME_VERSION="$(tr -d '[:space:]' < "$RUNTIME_SRC/VERSION")"
+if [[ -z "$OCR_RUNTIME_VERSION" ]]; then
+  echo "ocr-runtime/VERSION is missing or empty" >&2
+  exit 1
+fi
+
 cat > "$BUILD_DIR/voxjot-ocr-runtime.json" <<EOF
 {
   "name": "vox-jot-ocr-runtime",
-  "version": "2026-06-15",
+  "version": "$OCR_RUNTIME_VERSION",
   "platform": "$PLATFORM",
   "arch": "$ARCH_ID",
   "profile": "$PROFILE",

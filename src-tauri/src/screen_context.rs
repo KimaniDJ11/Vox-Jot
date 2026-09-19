@@ -201,7 +201,7 @@ fn effective_neural_ocr_timeout_ms(
     configured_ms: u32,
     neural_route: Option<&crate::ocr_backend::NeuralRoute>,
 ) -> u32 {
-    const NEURAL_OCR_TIMEOUT_FLOOR_MS: u32 = 120_000;
+    const NEURAL_OCR_TIMEOUT_FLOOR_MS: u32 = 180_000;
     match neural_route {
         Some(route)
             if !matches!(
@@ -1458,16 +1458,20 @@ mod tests {
         let configured = 2_000;
         assert_eq!(
             super::effective_neural_ocr_timeout_ms(configured, Some(&route)),
-            120_000
+            180_000
         );
         assert_eq!(super::screen_capture_timeout_ms(configured), 2_000);
         assert!(super::screen_capture_timeout_ms(configured) <= 5_000);
         // Vision/native fallback uses the same short capture budget.
         assert!(super::screen_capture_timeout_ms(configured) <= 5_000);
-        // Values above the floor are respected for neural OCR only.
+        // Values below the floor clamp up; above-max clamps to shared max (= floor).
         assert_eq!(
             super::effective_neural_ocr_timeout_ms(150_000, Some(&route)),
-            150_000
+            180_000
+        );
+        assert_eq!(
+            super::effective_neural_ocr_timeout_ms(190_000, Some(&route)),
+            180_000
         );
         assert_eq!(super::screen_capture_timeout_ms(150_000), 5_000);
         assert_eq!(super::effective_neural_ocr_timeout_ms(700, None), 700);

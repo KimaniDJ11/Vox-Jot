@@ -758,6 +758,13 @@ export type AppSettings_Deserialize = {
 	 */
 	screen_context_ocr_neural_model_id?: string | null,
 	screen_context_ocr_timeout_ms?: number,
+	/**
+	 *  Policy version for one-time screen-context OCR timeout migrations.
+	 *  Plain `#[serde(default)]` so old persisted settings missing this field
+	 *  deserialize as `0` and still run the upgrade path. Fresh defaults pin
+	 *  the current version explicitly in `get_default_settings()`.
+	 */
+	screen_context_ocr_timeout_policy_version?: number,
 	screen_context_token_budget?: number,
 	screen_context_stale_threshold_ms?: number,
 	post_process_mode?: PostProcessMode,
@@ -949,6 +956,13 @@ export type AppSettings_Serialize = {
 	 */
 	screen_context_ocr_neural_model_id: string | null,
 	screen_context_ocr_timeout_ms: number,
+	/**
+	 *  Policy version for one-time screen-context OCR timeout migrations.
+	 *  Plain `#[serde(default)]` so old persisted settings missing this field
+	 *  deserialize as `0` and still run the upgrade path. Fresh defaults pin
+	 *  the current version explicitly in `get_default_settings()`.
+	 */
+	screen_context_ocr_timeout_policy_version: number,
 	screen_context_token_budget: number,
 	screen_context_stale_threshold_ms: number,
 	post_process_mode: PostProcessMode,

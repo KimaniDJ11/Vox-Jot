@@ -21,9 +21,17 @@ fn build_output_stream(
 
             let mut found_device = None;
             for device in devices {
-                if device.name()? == device_name {
-                    found_device = Some(device);
-                    break;
+                match device.name() {
+                    Ok(name) if name == device_name => {
+                        found_device = Some(device);
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        // A single stale/broken OS device entry must not prevent
+                        // playback through a later matching device or the default.
+                        warn!("Could not read output device name; skipping device: {error}");
+                    }
                 }
             }
 

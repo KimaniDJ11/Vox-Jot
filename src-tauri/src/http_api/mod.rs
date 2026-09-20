@@ -72,7 +72,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
@@ -614,9 +614,11 @@ pub struct HttpApiManager {
     /// `Some(handle)` while the server is running. We `abort()` it on
     /// stop and replace with `None`.
     task: Mutex<Option<RunningServer>>,
+    next_server_id: AtomicU64,
 }
 
 struct RunningServer {
+    id: u64,
     port: u16,
     handle: JoinHandle<()>,
 }
@@ -626,6 +628,7 @@ impl HttpApiManager {
         Arc::new(Self {
             app: app.clone(),
             task: Mutex::new(None),
+            next_server_id: AtomicU64::new(1),
         })
     }
 
@@ -634,6 +637,14 @@ impl HttpApiManager {
     /// requested port.
     pub async fn start(self: &Arc<Self>, port: u16) {
         let mut guard = self.task.lock().await;
+        if guard
+            .as_ref()
+            .is_some_and(|running| running.handle.is_finished())
+        {
+            // A panicked task cannot run its normal self-cleanup. Dropping the
+            // completed handle here lets a same-port start bind again.
+            *guard = None;
+        }
         if let Some(running) = guard.as_ref() {
             if running.port == port {
                 return;
@@ -839,6 +850,8 @@ impl HttpApiManager {
             .emit("http-api-status", ApiStatusEvent::running(port));
 
         let app_for_event = self.app.clone();
+        let manager = Arc::downgrade(self);
+        let server_id = self.next_server_id.fetch_add(1, Ordering::Relaxed);
         let handle = tokio::spawn(async move {
             if let Err(err) = axum::serve(listener, router).await {
                 warn!("http_api: server task exited: {}", err);
@@ -847,9 +860,26 @@ impl HttpApiManager {
                     ApiStatusEvent::failed(port, err.to_string()),
                 );
             }
+            if let Some(manager) = manager.upgrade() {
+                manager.clear_finished_server(server_id).await;
+            }
         });
 
-        *guard = Some(RunningServer { port, handle });
+        *guard = Some(RunningServer {
+            id: server_id,
+            port,
+            handle,
+        });
+    }
+
+    async fn clear_finished_server(&self, server_id: u64) {
+        let mut guard = self.task.lock().await;
+        if guard
+            .as_ref()
+            .is_some_and(|running| running.id == server_id)
+        {
+            *guard = None;
+        }
     }
 
     pub async fn stop(self: &Arc<Self>) {

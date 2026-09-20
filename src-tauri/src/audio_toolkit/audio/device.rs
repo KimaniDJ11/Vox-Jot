@@ -1,4 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait};
+use log::warn;
 
 pub struct CpalDeviceInfo {
     pub index: String,
@@ -14,7 +15,13 @@ pub fn list_input_devices() -> Result<Vec<CpalDeviceInfo>, Box<dyn std::error::E
     let mut out = Vec::<CpalDeviceInfo>::new();
 
     for (index, device) in host.input_devices()?.enumerate() {
-        let name = device.name().unwrap_or_else(|_| "Unknown".into());
+        let name = match device.name() {
+            Ok(name) => name,
+            Err(error) => {
+                warn!("Could not read input device name; skipping device: {error}");
+                continue;
+            }
+        };
 
         let is_default = Some(name.clone()) == default_name;
 
@@ -36,7 +43,13 @@ pub fn list_output_devices() -> Result<Vec<CpalDeviceInfo>, Box<dyn std::error::
     let mut out = Vec::<CpalDeviceInfo>::new();
 
     for (index, device) in host.output_devices()?.enumerate() {
-        let name = device.name().unwrap_or_else(|_| "Unknown".into());
+        let name = match device.name() {
+            Ok(name) => name,
+            Err(error) => {
+                warn!("Could not read output device name; skipping device: {error}");
+                continue;
+            }
+        };
 
         let is_default = Some(name.clone()) == default_name;
 

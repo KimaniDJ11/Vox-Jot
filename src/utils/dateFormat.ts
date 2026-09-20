@@ -10,6 +10,13 @@ const parseUnixTimestamp = (timestamp: string): Date | null => {
     return null;
   }
 
+  // History timestamps originate as signed integer Unix seconds. Reject
+  // alternate JavaScript numeric syntax (for example 1e3, 0x10, or 1.5),
+  // which is not part of that persisted/API contract.
+  if (!/^-?\d+$/.test(trimmed)) {
+    return null;
+  }
+
   const seconds = Number(trimmed);
   if (!Number.isFinite(seconds)) {
     return null;

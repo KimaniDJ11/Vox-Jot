@@ -48,6 +48,8 @@ use crate::screen_context_ocr_backup::{OcrFrame, PixelFormat};
 static MANAGER: Lazy<OcrRuntimeManager> = Lazy::new(OcrRuntimeManager::new);
 static PREREQUISITE_CACHE: Lazy<Mutex<HashMap<OcrBackendKind, bool>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+static MANAGED_RUNTIME_INSTALL_LOCK: Lazy<tokio::sync::Mutex<()>> =
+    Lazy::new(|| tokio::sync::Mutex::new(()));
 
 pub fn shared() -> &'static OcrRuntimeManager {
     &MANAGER
@@ -56,6 +58,9 @@ pub fn shared() -> &'static OcrRuntimeManager {
 #[derive(Debug, Clone)]
 pub struct ManagedOcrRuntimeDefinition {
     pub platform_id: &'static str,
+    pub manifest_platform: &'static str,
+    pub manifest_arch: &'static str,
+    pub manifest_profile: &'static str,
     pub archive_name: &'static str,
     pub checksum_name: &'static str,
     pub hf_repo_id: &'static str,
@@ -73,6 +78,13 @@ const OCR_RUNTIME_MANIFEST_NAME: &str = "voxjot-ocr-runtime.json";
 struct OcrRuntimeManifest {
     name: String,
     version: String,
+    platform: String,
+    arch: String,
+    profile: String,
+    entrypoint: String,
+    python_root: String,
+    python_unix: String,
+    python_windows: String,
 }
 
 fn read_ocr_runtime_manifest(runtime_root: &Path) -> Result<OcrRuntimeManifest, String> {
@@ -87,19 +99,12 @@ fn read_ocr_runtime_manifest(runtime_root: &Path) -> Result<OcrRuntimeManifest, 
     })
 }
 
-/// Managed installs must advertise the expected revision. Dev overrides
-/// (`OCR_RUNTIME_ROOT`, repo checkout) skip this gate.
-fn managed_runtime_matches_expected_version(runtime_root: &Path) -> bool {
-    match read_ocr_runtime_manifest(runtime_root) {
-        Ok(manifest) => {
-            manifest.name == "vox-jot-ocr-runtime"
-                && manifest.version == EXPECTED_OCR_RUNTIME_VERSION
-        }
-        Err(_) => false,
-    }
-}
-
-fn require_managed_runtime_expected_version(runtime_root: &Path) -> Result<(), String> {
+/// Managed installs must match the archive definition for this target. Dev
+/// overrides (`OCR_RUNTIME_ROOT`, repo checkout) intentionally skip this gate.
+fn require_managed_runtime_compatible(
+    runtime_root: &Path,
+    definition: &ManagedOcrRuntimeDefinition,
+) -> Result<(), String> {
     let manifest = read_ocr_runtime_manifest(runtime_root)?;
     if manifest.name != "vox-jot-ocr-runtime" {
         return Err(format!(
@@ -113,7 +118,75 @@ fn require_managed_runtime_expected_version(runtime_root: &Path) -> Result<(), S
             manifest.version, EXPECTED_OCR_RUNTIME_VERSION
         ));
     }
+    if manifest.platform != definition.manifest_platform {
+        return Err(format!(
+            "OCR runtime platform is {}, expected {}.",
+            manifest.platform, definition.manifest_platform
+        ));
+    }
+    if manifest.arch != definition.manifest_arch {
+        return Err(format!(
+            "OCR runtime architecture is {}, expected {}.",
+            manifest.arch, definition.manifest_arch
+        ));
+    }
+    if manifest.profile != definition.manifest_profile {
+        return Err(format!(
+            "OCR runtime profile is {}, expected {}.",
+            manifest.profile, definition.manifest_profile
+        ));
+    }
+    if manifest.entrypoint != "ocr_runtime/__main__.py" {
+        return Err(format!(
+            "OCR runtime entrypoint is {:?}, expected \"ocr_runtime/__main__.py\".",
+            manifest.entrypoint
+        ));
+    }
+    if manifest.python_root != ".python" {
+        return Err(format!(
+            "OCR runtime Python root is {:?}, expected \".python\".",
+            manifest.python_root
+        ));
+    }
+    if manifest.python_unix != ".python/bin/python3" {
+        return Err(format!(
+            "OCR runtime Unix Python path is {:?}, expected \".python/bin/python3\".",
+            manifest.python_unix
+        ));
+    }
+    if manifest.python_windows != ".python/python.exe" {
+        return Err(format!(
+            "OCR runtime Windows Python path is {:?}, expected \".python/python.exe\".",
+            manifest.python_windows
+        ));
+    }
+
+    let entrypoint = runtime_root.join(&manifest.entrypoint);
+    if !entrypoint.is_file() {
+        return Err(format!(
+            "OCR runtime manifest entrypoint is missing at {}.",
+            entrypoint.display()
+        ));
+    }
+    let python = if definition.manifest_platform == "windows" {
+        runtime_root.join(&manifest.python_windows)
+    } else {
+        runtime_root.join(&manifest.python_unix)
+    };
+    if !python.is_file() {
+        return Err(format!(
+            "OCR runtime manifest Python interpreter is missing at {}.",
+            python.display()
+        ));
+    }
     Ok(())
+}
+
+fn managed_runtime_matches_definition(
+    runtime_root: &Path,
+    definition: &ManagedOcrRuntimeDefinition,
+) -> bool {
+    require_managed_runtime_compatible(runtime_root, definition).is_ok()
 }
 
 pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
@@ -123,6 +196,9 @@ pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
     {
         return Some(ManagedOcrRuntimeDefinition {
             platform_id: "macos-aarch64",
+            manifest_platform: "macos",
+            manifest_arch: "aarch64",
+            manifest_profile: "all",
             archive_name: "ocr-runtime-macos-aarch64-all.tar.gz",
             checksum_name: "ocr-runtime-macos-aarch64-all.tar.gz.sha256",
             hf_repo_id: HF_REPO_ID,
@@ -135,6 +211,9 @@ pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
     {
         return Some(ManagedOcrRuntimeDefinition {
             platform_id: "linux-x64",
+            manifest_platform: "linux",
+            manifest_arch: "x64",
+            manifest_profile: "all",
             archive_name: "ocr-runtime-linux-x64-all.tar.gz",
             checksum_name: "ocr-runtime-linux-x64-all.tar.gz.sha256",
             hf_repo_id: HF_REPO_ID,
@@ -144,6 +223,9 @@ pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
     {
         return Some(ManagedOcrRuntimeDefinition {
             platform_id: "windows-x64",
+            manifest_platform: "windows",
+            manifest_arch: "x64",
+            manifest_profile: "all",
             archive_name: "ocr-runtime-windows-x64-all.tar.gz",
             checksum_name: "ocr-runtime-windows-x64-all.tar.gz.sha256",
             hf_repo_id: HF_REPO_ID,
@@ -174,31 +256,35 @@ pub async fn ensure_managed_ocr_runtime_installed(
     app: &AppHandle,
     progress_catalog_id: Option<&str>,
 ) -> Result<PathBuf, String> {
+    // Different OCR model jobs share one managed runtime archive/install path.
+    // Serialise the complete check/download/extract/validate transaction so two
+    // concurrent model downloads cannot truncate each other's partial archive
+    // or remove an install while the peer is validating it.
+    let _install_guard = MANAGED_RUNTIME_INSTALL_LOCK.lock().await;
     let definition = managed_ocr_runtime_definition().ok_or_else(|| {
         "The managed OCR runtime is not available on this platform yet.".to_string()
     })?;
     let install_dir = managed_ocr_runtime_install_dir(app, definition.platform_id)?;
 
     if let Some(root) = resolve_extracted_root(&install_dir) {
-        if managed_ocr_runtime_entrypoint(&root).is_some()
-            && managed_ocr_runtime_python(&root).is_some()
-            && managed_runtime_matches_expected_version(&root)
-        {
+        if managed_runtime_matches_definition(&root, &definition) {
             clear_prerequisite_cache();
             return Ok(root);
         }
-        // Stale or incomplete managed install: remove so we re-download once.
-        if managed_ocr_runtime_entrypoint(&root).is_some()
-            && managed_ocr_runtime_python(&root).is_some()
-            && !managed_runtime_matches_expected_version(&root)
-        {
-            warn!(
-                "rejecting stale managed OCR runtime at {} (expected {})",
-                root.display(),
-                EXPECTED_OCR_RUNTIME_VERSION
-            );
-            let _ = fs::remove_dir_all(&install_dir);
-        }
+        // Stale, incomplete, or mislabelled managed install: remove it before
+        // the one allowed repair download. Validation after download fails
+        // closed instead of recursively re-entering this function.
+        warn!(
+            "rejecting incompatible managed OCR runtime at {} for {}",
+            root.display(),
+            definition.platform_id
+        );
+        fs::remove_dir_all(&install_dir).map_err(|err| {
+            format!(
+                "Failed to remove incompatible OCR runtime at {}: {err}",
+                install_dir.display()
+            )
+        })?;
     }
 
     let archive_url = format!(
@@ -219,23 +305,16 @@ pub async fn ensure_managed_ocr_runtime_installed(
     )
     .await?;
 
-    let root = resolve_extracted_root(&install_dir)
-        .ok_or_else(|| "OCR runtime extraction did not produce any files.".to_string())?;
-    if managed_ocr_runtime_entrypoint(&root).is_none() {
-        return Err(
-            "OCR runtime download completed, but the runtime entrypoint is missing.".into(),
-        );
-    }
-    if managed_ocr_runtime_python(&root).is_none() {
-        return Err(
-            "OCR runtime download completed, but its Python environment is missing.".into(),
-        );
-    }
-    // Fail closed after a single download attempt — never loop re-fetching a
-    // still-stale or mis-labelled archive.
-    require_managed_runtime_expected_version(&root).map_err(|err| {
+    let root_result = resolve_extracted_root(&install_dir)
+        .ok_or_else(|| "OCR runtime extraction did not produce any files.".to_string())
+        .and_then(|root| {
+            // Fail closed after a single download attempt — never loop
+            // re-fetching a still-incompatible or mislabelled archive.
+            require_managed_runtime_compatible(&root, &definition).map(|()| root)
+        });
+    let root = root_result.map_err(|err| {
         let _ = fs::remove_dir_all(&install_dir);
-        format!("Downloaded OCR runtime failed revision check: {err}")
+        format!("Downloaded OCR runtime failed compatibility checks: {err}")
     })?;
 
     clear_prerequisite_cache();
@@ -312,18 +391,6 @@ fn managed_ocr_runtime_python(runtime_root: &Path) -> Option<PathBuf> {
             .join(".venv")
             .join("Scripts")
             .join("python.exe"),
-    ]
-    .into_iter()
-    .find(|candidate| candidate.is_file())
-}
-
-fn managed_ocr_runtime_entrypoint(runtime_root: &Path) -> Option<PathBuf> {
-    [
-        runtime_root.join("ocr_runtime").join("__main__.py"),
-        runtime_root
-            .join("ocr-runtime")
-            .join("ocr_runtime")
-            .join("__main__.py"),
     ]
     .into_iter()
     .find(|candidate| candidate.is_file())
@@ -448,7 +515,7 @@ async fn download_and_extract_runtime_archive(
         );
     }
 
-    let extract_result = extract_archive(&archive_path, install_dir);
+    let extract_result = extract_archive_cleanly(&archive_path, install_dir);
     let _ = fs::remove_file(&archive_path);
     extract_result
 }
@@ -539,6 +606,17 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
             archive_path.display()
         ))
     }
+}
+
+fn extract_archive_cleanly(archive_path: &Path, install_dir: &Path) -> Result<(), String> {
+    let result = extract_archive(archive_path, install_dir);
+    if result.is_err() {
+        // Never leave a partially unpacked directory looking like an install.
+        // The resumable download partial is separate; extraction is retried
+        // from a newly verified archive on the next repair attempt.
+        let _ = fs::remove_dir_all(install_dir);
+    }
+    result
 }
 
 fn extract_safe_symlink<R: std::io::Read>(
@@ -660,12 +738,14 @@ fn is_macos_metadata_path(path: &Path) -> bool {
 mod tests {
     use super::OcrRuntimeManager;
     use super::{
-        managed_runtime_matches_expected_version, read_ocr_runtime_manifest,
-        require_managed_runtime_expected_version, ActiveOp, EXPECTED_OCR_RUNTIME_VERSION,
+        managed_runtime_matches_definition, read_ocr_runtime_manifest,
+        require_managed_runtime_compatible, ActiveOp, ManagedOcrRuntimeDefinition,
+        EXPECTED_OCR_RUNTIME_VERSION,
     };
+    use std::io::{BufRead, BufReader};
     use std::process::{Child, Command, Stdio};
-    use std::sync::atomic::Ordering;
-    use std::sync::{Arc, Barrier, Mutex};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{mpsc, Arc, Barrier, Mutex};
     use std::thread;
     use std::time::Duration;
 
@@ -702,6 +782,131 @@ mod tests {
         panic!("failed to spawn lingering test child: {last_err:?}");
     }
 
+    const SCRIPTED_RUNTIME: &str = r#"
+import json
+import sys
+
+for line in sys.stdin:
+    request = json.loads(line)
+    request_id = request.get("request_id", 0)
+    if request.get("op") == "probe":
+        response = {
+            "request_id": request_id,
+            "ok": True,
+            "info": {"loaded": True},
+        }
+    elif request.get("op") == "ocr":
+        response = {"request_id": request_id, "snippets": []}
+    else:
+        response = {"request_id": request_id, "error": "unexpected test op"}
+    print(json.dumps(response, separators=(",", ":")), flush=True)
+"#;
+
+    #[derive(Default)]
+    struct ScriptedRuntimeHarness {
+        spawn_count: AtomicUsize,
+        catalogs: Mutex<Vec<String>>,
+        children: Mutex<Vec<Arc<Mutex<Child>>>>,
+    }
+
+    impl ScriptedRuntimeHarness {
+        fn spawn(&self, catalog_id: &str) -> Result<super::RunningChild, String> {
+            let candidates: &[&[&str]] = if cfg!(windows) {
+                &[&["python", "-u", "-c"], &["py", "-3", "-u", "-c"]]
+            } else {
+                &[&["python3", "-u", "-c"], &["python", "-u", "-c"]]
+            };
+            let mut spawned = None;
+            let mut last_error = None;
+            for argv in candidates {
+                let (program, args) = argv.split_first().expect("python command");
+                match Command::new(program)
+                    .args(args)
+                    .arg(SCRIPTED_RUNTIME)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .spawn()
+                {
+                    Ok(child) => {
+                        spawned = Some(child);
+                        break;
+                    }
+                    Err(err) => last_error = Some(err),
+                }
+            }
+            let mut child = spawned
+                .ok_or_else(|| format!("failed to spawn scripted OCR runtime: {last_error:?}"))?;
+            let stdin = child
+                .stdin
+                .take()
+                .ok_or_else(|| "scripted runtime stdin missing".to_string())?;
+            let stdout = child
+                .stdout
+                .take()
+                .ok_or_else(|| "scripted runtime stdout missing".to_string())?;
+            let child = Arc::new(Mutex::new(child));
+            let (tx, rx) = mpsc::channel();
+            thread::spawn(move || {
+                let reader = BufReader::new(stdout);
+                for line in reader.lines() {
+                    let Ok(line) = line else {
+                        break;
+                    };
+                    if tx.send(line).is_err() {
+                        break;
+                    }
+                }
+            });
+
+            self.spawn_count.fetch_add(1, Ordering::SeqCst);
+            self.catalogs.lock().unwrap().push(catalog_id.to_string());
+            self.children.lock().unwrap().push(Arc::clone(&child));
+            Ok(super::RunningChild { child, stdin, rx })
+        }
+
+        fn install(self: &Arc<Self>, manager: &OcrRuntimeManager) {
+            let harness = Arc::clone(self);
+            manager.set_test_spawner(Some(Arc::new(move |catalog_id, _, _| {
+                harness.spawn(catalog_id)
+            })));
+        }
+
+        fn assert_all_children_reaped(&self) {
+            for child in self.children.lock().unwrap().iter() {
+                assert!(
+                    child.lock().unwrap().try_wait().unwrap().is_some(),
+                    "scripted OCR child was left running"
+                );
+            }
+        }
+    }
+
+    fn run_test_probe(manager: &OcrRuntimeManager, catalog_id: &str) -> Result<bool, String> {
+        manager.probe(
+            catalog_id,
+            super::OcrBackendKind::TransformersVl,
+            Path::new("/unused-test-model"),
+            Duration::from_secs(2),
+        )
+    }
+
+    fn run_test_ocr(
+        manager: &OcrRuntimeManager,
+        catalog_id: &str,
+    ) -> Result<Vec<super::NativeScreenContextSnippet>, String> {
+        let pixels = [0_u8, 0, 0, 255];
+        let frame = super::OcrFrame::new_packed(1, 1, &pixels, super::PixelFormat::Bgra8);
+        manager.run_ocr(
+            catalog_id,
+            super::OcrBackendKind::TransformersVl,
+            Path::new("/unused-test-model"),
+            &frame,
+            32,
+            Duration::from_secs(2),
+        )
+    }
+
     #[test]
     fn expected_ocr_runtime_version_matches_version_file() {
         let version_path =
@@ -713,38 +918,163 @@ mod tests {
         assert_eq!(file_version, EXPECTED_OCR_RUNTIME_VERSION);
     }
 
-    #[test]
-    fn managed_runtime_accepts_current_manifest_and_rejects_stale() {
+    const TEST_RUNTIME_DEFINITION: ManagedOcrRuntimeDefinition = ManagedOcrRuntimeDefinition {
+        platform_id: "macos-aarch64",
+        manifest_platform: "macos",
+        manifest_arch: "aarch64",
+        manifest_profile: "all",
+        archive_name: "ocr-runtime-macos-aarch64-all.tar.gz",
+        checksum_name: "ocr-runtime-macos-aarch64-all.tar.gz.sha256",
+        hf_repo_id: "test/runtime",
+    };
+
+    fn setup_manifest_runtime() -> tempfile::TempDir {
         let dir = tempfile::tempdir().expect("tempdir");
         let root = dir.path();
         std::fs::create_dir_all(root.join("ocr_runtime")).unwrap();
         std::fs::write(root.join("ocr_runtime").join("__main__.py"), b"#").unwrap();
-        // missing manifest => reject
-        assert!(!managed_runtime_matches_expected_version(root));
+        std::fs::create_dir_all(root.join(".python").join("bin")).unwrap();
+        std::fs::write(root.join(".python").join("bin").join("python3"), b"#").unwrap();
+        dir
+    }
 
+    fn write_runtime_manifest(root: &Path, overrides: &[(&str, &str)]) {
+        let mut manifest = serde_json::json!({
+            "name": "vox-jot-ocr-runtime",
+            "version": EXPECTED_OCR_RUNTIME_VERSION,
+            "platform": "macos",
+            "arch": "aarch64",
+            "profile": "all",
+            "entrypoint": "ocr_runtime/__main__.py",
+            "python_root": ".python",
+            "python_unix": ".python/bin/python3",
+            "python_windows": ".python/python.exe",
+        });
+        for (key, value) in overrides {
+            manifest[*key] = serde_json::Value::String((*value).to_string());
+        }
         std::fs::write(
             root.join("voxjot-ocr-runtime.json"),
-            format!(
-                r#"{{"name":"vox-jot-ocr-runtime","version":"2026-06-15","platform":"macos","arch":"aarch64","profile":"all","entrypoint":"ocr_runtime/__main__.py","python_root":".python"}}"#
-            ),
+            serde_json::to_vec(&manifest).unwrap(),
         )
         .unwrap();
-        assert!(!managed_runtime_matches_expected_version(root));
-        let err = require_managed_runtime_expected_version(root).unwrap_err();
+    }
+
+    #[test]
+    fn managed_runtime_accepts_current_manifest() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[]);
+
+        assert!(managed_runtime_matches_definition(
+            dir.path(),
+            &TEST_RUNTIME_DEFINITION
+        ));
+        require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap();
+        let manifest = read_ocr_runtime_manifest(dir.path()).unwrap();
+        assert_eq!(manifest.version, EXPECTED_OCR_RUNTIME_VERSION);
+    }
+
+    #[test]
+    fn managed_runtime_rejects_stale_version() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("version", "2026-06-15")]);
+
+        assert!(!managed_runtime_matches_definition(
+            dir.path(),
+            &TEST_RUNTIME_DEFINITION
+        ));
+        let err =
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap_err();
         assert!(err.contains("2026-06-15"), "{err}");
         assert!(err.contains(EXPECTED_OCR_RUNTIME_VERSION), "{err}");
+    }
+
+    #[test]
+    fn managed_runtime_rejects_wrong_name() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("name", "untrusted-runtime")]);
+
+        let err =
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap_err();
+        assert!(err.contains("manifest name"), "{err}");
+        assert!(err.contains("vox-jot-ocr-runtime"), "{err}");
+    }
+
+    #[test]
+    fn managed_runtime_rejects_wrong_platform() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("platform", "linux")]);
+        let err =
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap_err();
+        assert!(err.contains("platform"), "{err}");
+        assert!(err.contains("macos"), "{err}");
+    }
+
+    #[test]
+    fn managed_runtime_rejects_wrong_architecture() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("arch", "x64")]);
+        let err =
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap_err();
+        assert!(err.contains("architecture"), "{err}");
+        assert!(err.contains("aarch64"), "{err}");
+    }
+
+    #[test]
+    fn managed_runtime_rejects_wrong_profile() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("profile", "transformers-vl")]);
+        let err =
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION).unwrap_err();
+        assert!(err.contains("profile"), "{err}");
+        assert!(err.contains("all"), "{err}");
+    }
+
+    #[test]
+    fn managed_runtime_rejects_missing_or_malformed_manifest() {
+        let dir = setup_manifest_runtime();
+        assert!(!managed_runtime_matches_definition(
+            dir.path(),
+            &TEST_RUNTIME_DEFINITION
+        ));
 
         std::fs::write(
-            root.join("voxjot-ocr-runtime.json"),
-            format!(
-                r#"{{"name":"vox-jot-ocr-runtime","version":"{EXPECTED_OCR_RUNTIME_VERSION}","platform":"macos","arch":"aarch64","profile":"all","entrypoint":"ocr_runtime/__main__.py","python_root":".python"}}"#
-            ),
+            dir.path().join("voxjot-ocr-runtime.json"),
+            b"{not valid JSON",
         )
         .unwrap();
-        assert!(managed_runtime_matches_expected_version(root));
-        require_managed_runtime_expected_version(root).unwrap();
-        let manifest = read_ocr_runtime_manifest(root).unwrap();
-        assert_eq!(manifest.version, EXPECTED_OCR_RUNTIME_VERSION);
+        assert!(!managed_runtime_matches_definition(
+            dir.path(),
+            &TEST_RUNTIME_DEFINITION
+        ));
+
+        std::fs::write(
+            dir.path().join("voxjot-ocr-runtime.json"),
+            br#"{"name":"vox-jot-ocr-runtime"}"#,
+        )
+        .unwrap();
+        assert!(!managed_runtime_matches_definition(
+            dir.path(),
+            &TEST_RUNTIME_DEFINITION
+        ));
+    }
+
+    #[test]
+    fn managed_runtime_rejects_wrong_entrypoint_or_python_metadata() {
+        let dir = setup_manifest_runtime();
+        write_runtime_manifest(dir.path(), &[("entrypoint", "other.py")]);
+        assert!(
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION)
+                .unwrap_err()
+                .contains("entrypoint")
+        );
+
+        write_runtime_manifest(dir.path(), &[("python_root", ".venv")]);
+        assert!(
+            require_managed_runtime_compatible(dir.path(), &TEST_RUNTIME_DEFINITION)
+                .unwrap_err()
+                .contains("Python root")
+        );
     }
 
     #[test]
@@ -782,6 +1112,369 @@ mod tests {
         assert!(manager.should_coalesce_locked("jina-ocr-v1", ActiveOp::Probe));
         // OCR A→B latest-wins
         assert!(!manager.should_coalesce_locked("jina-ocr-v1", ActiveOp::Ocr));
+    }
+
+    #[test]
+    fn production_probe_then_waiting_ocr_reuses_warm_child() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "jina-ocr-v1"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let ocr_manager = Arc::clone(&manager);
+        let (ocr_tx, ocr_rx) = mpsc::channel();
+        let ocr = thread::spawn(move || {
+            let _ = ocr_tx.send(run_test_ocr(&ocr_manager, "jina-ocr-v1"));
+        });
+        wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("OCR must enter the production coalescing wait");
+
+        finalize_barrier.wait();
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe result")
+            .unwrap());
+        assert!(ocr_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("OCR result")
+            .unwrap()
+            .is_empty());
+        probe.join().unwrap();
+        ocr.join().unwrap();
+
+        assert_eq!(harness.spawn_count.load(Ordering::SeqCst), 1);
+        assert_eq!(harness.catalogs.lock().unwrap().as_slice(), ["jina-ocr-v1"]);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.inner.lock().unwrap().child.is_some());
+        manager.shutdown();
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_escape_invalidates_probe_and_queued_ocr() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "jina-ocr-v1"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let ocr_manager = Arc::clone(&manager);
+        let (ocr_tx, ocr_rx) = mpsc::channel();
+        let ocr = thread::spawn(move || {
+            let _ = ocr_tx.send(run_test_ocr(&ocr_manager, "jina-ocr-v1"));
+        });
+        wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("OCR must be queued behind probe");
+
+        assert!(manager.cancel_active());
+        assert!(ocr_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("queued OCR cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        finalize_barrier.wait();
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        probe.join().unwrap();
+        ocr.join().unwrap();
+
+        assert_eq!(harness.spawn_count.load(Ordering::SeqCst), 1);
+        assert_eq!(manager.active_request_id.load(Ordering::SeqCst), 0);
+        assert!(manager.inner.lock().unwrap().child.is_none());
+        manager.shutdown();
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_shutdown_invalidates_queued_ocr_without_restart() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "jina-ocr-v1"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let ocr_manager = Arc::clone(&manager);
+        let (ocr_tx, ocr_rx) = mpsc::channel();
+        let ocr = thread::spawn(move || {
+            let _ = ocr_tx.send(run_test_ocr(&ocr_manager, "jina-ocr-v1"));
+        });
+        wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("OCR must be queued behind probe");
+
+        manager.shutdown();
+        assert!(ocr_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("queued OCR shutdown cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        finalize_barrier.wait();
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe shutdown cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        probe.join().unwrap();
+        ocr.join().unwrap();
+
+        assert_eq!(harness.spawn_count.load(Ordering::SeqCst), 1);
+        assert!(manager.inner.lock().unwrap().current_catalog_id.is_none());
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_newer_model_invalidates_older_queued_waiter() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "model-a"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let old_manager = Arc::clone(&manager);
+        let (old_tx, old_rx) = mpsc::channel();
+        let old_ocr = thread::spawn(move || {
+            let _ = old_tx.send(run_test_ocr(&old_manager, "model-a"));
+        });
+        wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("old OCR must queue behind probe");
+
+        let new_manager = Arc::clone(&manager);
+        let (new_tx, new_rx) = mpsc::channel();
+        let new_ocr = thread::spawn(move || {
+            let _ = new_tx.send(run_test_ocr(&new_manager, "model-b"));
+        });
+        assert!(new_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("newer model OCR result")
+            .unwrap()
+            .is_empty());
+        assert!(old_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("old queued OCR cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        finalize_barrier.wait();
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("superseded probe result")
+            .unwrap_err()
+            .contains("cancelled"));
+        probe.join().unwrap();
+        old_ocr.join().unwrap();
+        new_ocr.join().unwrap();
+
+        assert_eq!(
+            harness.catalogs.lock().unwrap().as_slice(),
+            ["model-a", "model-b"]
+        );
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("model-b")
+        );
+        manager.shutdown();
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_ocr_then_probe_waits_without_killing_ocr() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let ocr_manager = Arc::clone(&manager);
+        let (ocr_tx, ocr_rx) = mpsc::channel();
+        let ocr = thread::spawn(move || {
+            let _ = ocr_tx.send(run_test_ocr(&ocr_manager, "jina-ocr-v1"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "jina-ocr-v1"));
+        });
+        wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe must wait for active OCR");
+
+        finalize_barrier.wait();
+        assert!(ocr_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("OCR result")
+            .unwrap()
+            .is_empty());
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe result")
+            .unwrap());
+        ocr.join().unwrap();
+        probe.join().unwrap();
+
+        assert_eq!(harness.spawn_count.load(Ordering::SeqCst), 1);
+        manager.shutdown();
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_ocr_to_newer_ocr_remains_latest_wins() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let old_manager = Arc::clone(&manager);
+        let (old_tx, old_rx) = mpsc::channel();
+        let old_ocr = thread::spawn(move || {
+            let _ = old_tx.send(run_test_ocr(&old_manager, "model-a"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let new_manager = Arc::clone(&manager);
+        let (new_tx, new_rx) = mpsc::channel();
+        let new_ocr = thread::spawn(move || {
+            let _ = new_tx.send(run_test_ocr(&new_manager, "model-b"));
+        });
+        assert!(new_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("new OCR result")
+            .unwrap()
+            .is_empty());
+        finalize_barrier.wait();
+        assert!(old_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("old OCR cancellation")
+            .unwrap_err()
+            .contains("cancelled"));
+        old_ocr.join().unwrap();
+        new_ocr.join().unwrap();
+
+        assert_eq!(
+            harness.catalogs.lock().unwrap().as_slice(),
+            ["model-a", "model-b"]
+        );
+        assert_eq!(
+            manager.inner.lock().unwrap().current_catalog_id.as_deref(),
+            Some("model-b")
+        );
+        manager.shutdown();
+        harness.assert_all_children_reaped();
+    }
+
+    #[test]
+    fn production_multiple_waiters_keep_latest_without_lost_wakeup() {
+        let manager = Arc::new(OcrRuntimeManager::new());
+        let harness = Arc::new(ScriptedRuntimeHarness::default());
+        harness.install(&manager);
+
+        let finalize_barrier = Arc::new(Barrier::new(2));
+        manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
+        let probe_manager = Arc::clone(&manager);
+        let (probe_tx, probe_rx) = mpsc::channel();
+        let probe = thread::spawn(move || {
+            let _ = probe_tx.send(run_test_probe(&probe_manager, "jina-ocr-v1"));
+        });
+        finalize_barrier.wait();
+        manager.set_block_before_finalize(None);
+
+        let (wait_tx, wait_rx) = mpsc::channel();
+        manager.set_coalesce_wait_observer(Some(wait_tx));
+        let older_manager = Arc::clone(&manager);
+        let (older_tx, older_rx) = mpsc::channel();
+        let older = thread::spawn(move || {
+            let _ = older_tx.send(run_test_ocr(&older_manager, "jina-ocr-v1"));
+        });
+        let older_intent = wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("older waiter must sleep");
+
+        let newer_manager = Arc::clone(&manager);
+        let (newer_tx, newer_rx) = mpsc::channel();
+        let newer = thread::spawn(move || {
+            let _ = newer_tx.send(run_test_ocr(&newer_manager, "jina-ocr-v1"));
+        });
+        let newer_intent = wait_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("newer waiter must sleep");
+        assert!(newer_intent > older_intent);
+
+        // Completion may notify immediately after the observer signal. The
+        // transition-gate predicate must prevent a lost wakeup.
+        finalize_barrier.wait();
+        assert!(probe_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe result")
+            .unwrap());
+        assert!(older_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("older waiter result")
+            .unwrap_err()
+            .contains("cancelled"));
+        assert!(newer_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("newer waiter result")
+            .unwrap()
+            .is_empty());
+        probe.join().unwrap();
+        older.join().unwrap();
+        newer.join().unwrap();
+
+        assert_eq!(harness.spawn_count.load(Ordering::SeqCst), 1);
+        manager.shutdown();
+        harness.assert_all_children_reaped();
     }
 
     fn wrap_child(child: Child) -> Arc<Mutex<Child>> {
@@ -1344,7 +2037,7 @@ mod tests {
         let finalize_barrier = Arc::new(Barrier::new(2));
         manager.set_block_before_finalize(Some(Arc::clone(&finalize_barrier)));
 
-        let mut running_a = make_test_running_child();
+        let running_a = make_test_running_child();
         let child_a_proc = Arc::clone(&running_a.child);
         let id_a = manager.start_test_wait(&child_a_proc);
         let epoch_a = manager.epoch.load(Ordering::SeqCst);
@@ -1579,7 +2272,10 @@ mod tests {
         reap(&proc_b);
     }
 
-    use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
+    use super::{
+        extract_archive_cleanly, is_macos_metadata_path, sanitize_archive_path,
+        validate_archive_link_target,
+    };
     use std::borrow::Cow;
     use std::path::{Path, PathBuf};
 
@@ -1597,6 +2293,20 @@ mod tests {
             .expect_err("parent traversal should be rejected");
 
         assert!(error.contains("unsafe path"));
+    }
+
+    #[test]
+    fn failed_runtime_extraction_removes_partial_install() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = dir.path().join("runtime.tar.gz");
+        let install = dir.path().join("installed-runtime");
+        std::fs::write(&archive, b"not a gzip archive").unwrap();
+
+        assert!(extract_archive_cleanly(&archive, &install).is_err());
+        assert!(
+            !install.exists(),
+            "failed extraction must not leave a partial managed runtime"
+        );
     }
 
     #[test]
@@ -1661,7 +2371,15 @@ struct TestHooks {
     block_before_publish: Mutex<Option<std::sync::Arc<std::sync::Barrier>>>,
     /// Wait here after recv returns, before the finalize ownership transition.
     block_before_finalize: Mutex<Option<std::sync::Arc<std::sync::Barrier>>>,
+    /// Reports that a production request is about to sleep in `idle_cv`.
+    coalesce_wait_observer: Mutex<Option<mpsc::Sender<u64>>>,
+    /// Deterministic IPC child factory used by production-path lifecycle tests.
+    spawner: Mutex<Option<Arc<TestSpawner>>>,
 }
+
+#[cfg(test)]
+type TestSpawner =
+    dyn Fn(&str, OcrBackendKind, &Path) -> Result<RunningChild, String> + Send + Sync;
 
 #[cfg(test)]
 impl TestHooks {
@@ -1669,6 +2387,8 @@ impl TestHooks {
         Self {
             block_before_publish: Mutex::new(None),
             block_before_finalize: Mutex::new(None),
+            coalesce_wait_observer: Mutex::new(None),
+            spawner: Mutex::new(None),
         }
     }
 }
@@ -1696,6 +2416,11 @@ struct ActiveRequestMeta {
     op: ActiveOp,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RequestIntent {
+    sequence: u64,
+}
+
 pub struct OcrRuntimeManager {
     inner: Mutex<ManagerState>,
     /// Serialises ALL ownership transitions (start, supersession, Escape/
@@ -1710,6 +2435,15 @@ pub struct OcrRuntimeManager {
     latest_started_request_id: AtomicU64,
     /// Bumped by `cancel_active` so waiters observe supersession.
     epoch: AtomicU64,
+    /// Monotonic request-arrival sequence. A request captures its token at the
+    /// public API boundary (before frame encoding) and may start only while it
+    /// remains the newest queued intent.
+    intent_sequence: AtomicU64,
+    /// Highest arrival sequence invalidated by Escape/shutdown/supersession.
+    /// Kept separate from `intent_sequence` so a request that arrives after a
+    /// cancellation linearises is not accidentally cancelled by that older
+    /// transition.
+    cancelled_through_intent: AtomicU64,
     /// Child eligible for kill from `cancel_active` while a waiter is blocked.
     kill_target: Mutex<Option<Arc<Mutex<Child>>>>,
     /// Catalog/op metadata for the in-flight request. Used so same-model
@@ -1801,6 +2535,8 @@ impl OcrRuntimeManager {
             active_request_id: AtomicU64::new(0),
             latest_started_request_id: AtomicU64::new(0),
             epoch: AtomicU64::new(1),
+            intent_sequence: AtomicU64::new(0),
+            cancelled_through_intent: AtomicU64::new(0),
             kill_target: Mutex::new(None),
             active_meta: Mutex::new(None),
             idle_cv: Condvar::new(),
@@ -1820,7 +2556,9 @@ impl OcrRuntimeManager {
         model_root: &Path,
         timeout: Duration,
     ) -> Result<bool, String> {
+        let intent = self.issue_intent();
         let response = self.request_inner(
+            intent,
             catalog_id,
             backend,
             model_root,
@@ -1852,6 +2590,10 @@ impl OcrRuntimeManager {
         max_words: usize,
         timeout: Duration,
     ) -> Result<Vec<NativeScreenContextSnippet>, String> {
+        // Capture arrival order before base64 encoding. A large frame must not
+        // become a logically newer request merely because a later caller
+        // finished its request-body preparation first.
+        let intent = self.issue_intent();
         let frame_b64 = BASE64.encode(frame.pixels);
         let pixel_format = match frame.format {
             #[cfg(any(target_os = "macos", target_os = "windows", test))]
@@ -1867,7 +2609,9 @@ impl OcrRuntimeManager {
             "pixel_format": pixel_format,
             "max_words": max_words,
         });
-        let response = self.request_inner(catalog_id, backend, model_root, "ocr", body, timeout)?;
+        let response = self.request_inner(
+            intent, catalog_id, backend, model_root, "ocr", body, timeout,
+        )?;
         if let Some(err) = response.error {
             return Err(err);
         }
@@ -1887,6 +2631,7 @@ impl OcrRuntimeManager {
 
     fn request_inner(
         &self,
+        intent: RequestIntent,
         catalog_id: &str,
         backend: OcrBackendKind,
         model_root: &Path,
@@ -1903,6 +2648,10 @@ impl OcrRuntimeManager {
                 .lock()
                 .unwrap_or_else(|poison| poison.into_inner());
 
+            if !self.intent_is_current(intent) {
+                return Err("ocr-runtime request cancelled".to_string());
+            }
+
             let incoming_op = ActiveOp::from_op(op);
             loop {
                 if !self.should_coalesce_locked(catalog_id, incoming_op) {
@@ -1911,14 +2660,20 @@ impl OcrRuntimeManager {
                 // Same-model probe↔OCR (or OCR→probe): wait for the active
                 // request to finish and park the warm child. Do NOT cancel.
                 // Escape/shutdown notify `idle_cv` after clearing ownership.
+                #[cfg(test)]
+                self.notify_test_coalesce_wait(intent.sequence);
                 gate = self
                     .idle_cv
                     .wait(gate)
                     .unwrap_or_else(|poison| poison.into_inner());
+                if !self.intent_is_current(intent) {
+                    return Err("ocr-runtime request cancelled".to_string());
+                }
             }
 
             if self.active_request_id.load(Ordering::SeqCst) != 0 {
-                let _ = self.cancel_active_locked();
+                let invalidate_before_successor = intent.sequence.saturating_sub(1);
+                let _ = self.cancel_active_locked(invalidate_before_successor);
             }
 
             let mut state = self
@@ -1932,7 +2687,7 @@ impl OcrRuntimeManager {
             }
 
             if state.child.is_none() {
-                let spawned = spawn_child(catalog_id, backend, model_root)?;
+                let spawned = self.spawn_for_request(catalog_id, backend, model_root)?;
                 state.child = Some(spawned);
             }
 
@@ -1999,6 +2754,41 @@ impl OcrRuntimeManager {
         };
 
         self.finalize_after_wait(request_id, epoch_at_start, running, classified)
+    }
+
+    fn issue_intent(&self) -> RequestIntent {
+        RequestIntent {
+            sequence: self
+                .intent_sequence
+                .fetch_add(1, Ordering::SeqCst)
+                .wrapping_add(1),
+        }
+    }
+
+    fn intent_is_current(&self, intent: RequestIntent) -> bool {
+        self.intent_sequence.load(Ordering::SeqCst) == intent.sequence
+            && self.cancelled_through_intent.load(Ordering::SeqCst) < intent.sequence
+    }
+
+    fn spawn_for_request(
+        &self,
+        catalog_id: &str,
+        backend: OcrBackendKind,
+        model_root: &Path,
+    ) -> Result<RunningChild, String> {
+        #[cfg(test)]
+        {
+            let spawner = self
+                .test_hooks
+                .spawner
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner())
+                .clone();
+            if let Some(spawner) = spawner {
+                return spawner(catalog_id, backend, model_root);
+            }
+        }
+        spawn_child(catalog_id, backend, model_root)
     }
 
     /// True when the incoming request should wait for the active one instead
@@ -2175,7 +2965,7 @@ impl OcrRuntimeManager {
     /// Drop wait-side ownership only if this request still owns the slots.
     /// Prefer `finalize_after_wait` for production completion paths.
     #[cfg(test)]
-    pub(crate) fn release_wait_ownership(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
+    fn release_wait_ownership(&self, request_id: u64, our_child: &Arc<Mutex<Child>>) {
         let _gate = self
             .transition_gate
             .lock()
@@ -2210,13 +3000,14 @@ impl OcrRuntimeManager {
     /// Test helper: publish wait ownership under the transition gate using the
     /// same cancel_locked + publish path as production start.
     #[cfg(test)]
-    pub(crate) fn start_test_wait(&self, child: &Arc<Mutex<Child>>) -> u64 {
+    fn start_test_wait(&self, child: &Arc<Mutex<Child>>) -> u64 {
         let _gate = self
             .transition_gate
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
         if self.active_request_id.load(Ordering::SeqCst) != 0 {
-            let _ = self.cancel_active_locked();
+            let invalidate_through = self.intent_sequence.load(Ordering::SeqCst);
+            let _ = self.cancel_active_locked(invalidate_through);
         }
         let request_id = {
             let mut state = self
@@ -2242,7 +3033,7 @@ impl OcrRuntimeManager {
     /// Test helper: run the production finalize transition for a successful
     /// response line (or failure) against a locally held `RunningChild`.
     #[cfg(test)]
-    pub(crate) fn finalize_test_wait(
+    fn finalize_test_wait(
         &self,
         request_id: u64,
         epoch_at_start: u64,
@@ -2259,10 +3050,7 @@ impl OcrRuntimeManager {
     }
 
     #[cfg(test)]
-    pub(crate) fn set_block_before_publish(
-        &self,
-        barrier: Option<std::sync::Arc<std::sync::Barrier>>,
-    ) {
+    fn set_block_before_publish(&self, barrier: Option<std::sync::Arc<std::sync::Barrier>>) {
         *self
             .test_hooks
             .block_before_publish
@@ -2271,15 +3059,43 @@ impl OcrRuntimeManager {
     }
 
     #[cfg(test)]
-    pub(crate) fn set_block_before_finalize(
-        &self,
-        barrier: Option<std::sync::Arc<std::sync::Barrier>>,
-    ) {
+    fn set_block_before_finalize(&self, barrier: Option<std::sync::Arc<std::sync::Barrier>>) {
         *self
             .test_hooks
             .block_before_finalize
             .lock()
             .unwrap_or_else(|p| p.into_inner()) = barrier;
+    }
+
+    #[cfg(test)]
+    fn set_coalesce_wait_observer(&self, observer: Option<mpsc::Sender<u64>>) {
+        *self
+            .test_hooks
+            .coalesce_wait_observer
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = observer;
+    }
+
+    #[cfg(test)]
+    fn notify_test_coalesce_wait(&self, intent_sequence: u64) {
+        let observer = self
+            .test_hooks
+            .coalesce_wait_observer
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        if let Some(observer) = observer {
+            let _ = observer.send(intent_sequence);
+        }
+    }
+
+    #[cfg(test)]
+    fn set_test_spawner(&self, spawner: Option<Arc<TestSpawner>>) {
+        *self
+            .test_hooks
+            .spawner
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = spawner;
     }
 
     #[cfg(test)]
@@ -2322,12 +3138,24 @@ impl OcrRuntimeManager {
             .transition_gate
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        self.cancel_active_locked()
+        let invalidate_through = self.intent_sequence.load(Ordering::SeqCst);
+        let cancelled = self.cancel_active_locked(invalidate_through);
+        // Treat completion of Escape cancellation as the linearization point:
+        // requests that arrived while kill/reap was in progress are queued
+        // behind this gate and must not start when it opens.
+        self.invalidate_intents_through_current();
+        cancelled
     }
 
     /// Precondition: `transition_gate` held. Used by start/supersession and
     /// public Escape/cancel so we never recursively lock the gate.
-    fn cancel_active_locked(&self) -> bool {
+    fn cancel_active_locked(&self, invalidate_through: u64) -> bool {
+        // This transition is also the cancellation boundary for callers that
+        // arrived before it and are sleeping in the coalescing condition
+        // variable. Do not advance the arrival counter here: a genuinely newer
+        // request may already have arrived while this caller held the gate.
+        self.cancelled_through_intent
+            .fetch_max(invalidate_through, Ordering::SeqCst);
         let active = self.active_request_id.swap(0, Ordering::SeqCst);
         let mut had_kill_target = false;
         if let Ok(mut slot) = self.kill_target.lock() {
@@ -2362,12 +3190,21 @@ impl OcrRuntimeManager {
         active != 0 || had_kill_target || had_state_child
     }
 
+    /// Precondition: `transition_gate` held.
+    fn invalidate_intents_through_current(&self) {
+        let invalidate_through = self.intent_sequence.load(Ordering::SeqCst);
+        self.cancelled_through_intent
+            .fetch_max(invalidate_through, Ordering::SeqCst);
+        self.idle_cv.notify_all();
+    }
+
     pub fn shutdown(&self) {
         let _gate = self
             .transition_gate
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        let _ = self.cancel_active_locked();
+        let invalidate_through = self.intent_sequence.load(Ordering::SeqCst);
+        let _ = self.cancel_active_locked(invalidate_through);
         let mut state = self
             .inner
             .lock()
@@ -2378,6 +3215,10 @@ impl OcrRuntimeManager {
         if let Ok(mut slot) = self.kill_target.lock() {
             *slot = None;
         }
+        // Shutdown completes only after all state is cleared. Any request that
+        // arrived during teardown was queued behind this gate and belongs to
+        // the shutdown generation rather than a future explicit request.
+        self.invalidate_intents_through_current();
     }
 }
 
@@ -2554,19 +3395,15 @@ fn locate_runtime_root() -> Option<PathBuf> {
         }
     }
 
-    for candidate in managed_runtime_candidate_roots() {
-        if is_runtime_root(&candidate)
-            && managed_ocr_runtime_python(&candidate).is_some()
-            && managed_runtime_matches_expected_version(&candidate)
-        {
-            return Some(candidate);
-        }
-        if let Some(root) = resolve_extracted_root(&candidate) {
-            if is_runtime_root(&root)
-                && managed_ocr_runtime_python(&root).is_some()
-                && managed_runtime_matches_expected_version(&root)
-            {
-                return Some(root);
+    if let Some(definition) = managed_ocr_runtime_definition() {
+        for candidate in managed_runtime_candidate_roots() {
+            if managed_runtime_matches_definition(&candidate, &definition) {
+                return Some(candidate);
+            }
+            if let Some(root) = resolve_extracted_root(&candidate) {
+                if managed_runtime_matches_definition(&root, &definition) {
+                    return Some(root);
+                }
             }
         }
     }

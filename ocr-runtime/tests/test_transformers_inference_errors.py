@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ocr_runtime.loaders.generic import TransformersVlLoader
+from ocr_runtime.loaders.generic import (
+    MlxVlLoader,
+    PaddleOcrLoader,
+    TransformersVlLoader,
+)
 
 
 def _loader() -> TransformersVlLoader:
@@ -72,3 +76,81 @@ def test_empty_ocr_text_still_returns_empty_tuple():
             )
         )
     assert result == []
+
+
+def test_transformers_load_failure_is_not_reported_as_empty_ocr():
+    loader = _loader()
+    loader._load_error = "weights are incompatible"
+
+    with patch.object(loader, "_ensure_loaded", return_value=False), patch(
+        "ocr_runtime.loaders.generic._image_from_pixels",
+        return_value=object(),
+    ):
+        with pytest.raises(RuntimeError, match="failed to load.*weights are incompatible"):
+            list(
+                loader.run(
+                    bgra=b"\x00" * 16,
+                    width=2,
+                    height=2,
+                    stride=8,
+                    max_words=32,
+                    pixel_format="bgra8",
+                )
+            )
+
+
+def test_mlx_inference_exception_is_not_reported_as_empty_ocr():
+    loader = MlxVlLoader.__new__(MlxVlLoader)
+    loader.catalog_id = "dots-ocr"
+    loader._backend = "mlx-vl"
+    loader._model_root = "/tmp/fake-mlx"
+    loader._model = object()
+    loader._processor = object()
+    loader._config = object()
+    loader._apply_chat_template = MagicMock(return_value="prompt")
+    loader._generate = MagicMock(side_effect=RuntimeError("mlx exploded"))
+    loader._load_error = None
+    image = MagicMock()
+
+    with patch.object(loader, "_ensure_loaded", return_value=True), patch(
+        "ocr_runtime.loaders.generic._image_from_pixels",
+        return_value=image,
+    ):
+        with pytest.raises(RuntimeError, match="dots-ocr inference failed"):
+            list(
+                loader.run(
+                    bgra=b"\x00" * 16,
+                    width=2,
+                    height=2,
+                    stride=8,
+                    max_words=32,
+                    pixel_format="bgra8",
+                )
+            )
+
+
+def test_paddle_inference_exception_is_not_reported_as_empty_ocr():
+    loader = PaddleOcrLoader.__new__(PaddleOcrLoader)
+    loader.catalog_id = "paddleocr-vl"
+    loader._backend = "paddle-vl"
+    loader._model_root = "/tmp/fake-paddle"
+    loader._ocr = MagicMock()
+    loader._ocr.ocr.side_effect = RuntimeError("paddle exploded")
+    loader._load_error = None
+    image = MagicMock()
+
+    with patch.object(loader, "_ensure_loaded", return_value=True), patch(
+        "ocr_runtime.loaders.generic._image_from_pixels",
+        return_value=image,
+    ):
+        with pytest.raises(RuntimeError, match="paddleocr-vl inference failed"):
+            list(
+                loader.run(
+                    bgra=b"\x00" * 16,
+                    width=2,
+                    height=2,
+                    stride=8,
+                    max_words=32,
+                    pixel_format="bgra8",
+                )
+            )

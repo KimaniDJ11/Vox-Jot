@@ -9,10 +9,9 @@ available local dependency:
 * Paddle detector/recognizer packs use ``paddleocr`` when installed and return
   line snippets with normalised boxes.
 
-If an optional dependency is missing or a model-specific loader fails, the
-loader returns no snippets. The Rust router treats that as a backend miss and
-falls through to the existing system/Tesseract OCR policy within the capture
-timeout.
+Missing dependencies and model/inference failures raise so the IPC response is
+an error. A successful recognition that genuinely contains no text returns no
+snippets, allowing the Rust router to distinguish failure from empty content.
 """
 
 from __future__ import annotations
@@ -222,8 +221,12 @@ class TransformersVlLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         processor = self._processor
         assert processor is not None
@@ -413,8 +416,12 @@ class MlxVlLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         tmp_path: Optional[str] = None
         try:
@@ -461,8 +468,10 @@ class MlxVlLoader(OcrLoader):
                 ),
             )
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = f"{self.catalog_id} inference failed: {exc}"
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
         finally:
             if tmp_path is not None:
                 try:
@@ -542,8 +551,12 @@ class PaddleOcrLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         try:
             with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
@@ -573,8 +586,10 @@ class PaddleOcrLoader(OcrLoader):
                 return tuple(clipped)
             return tuple(snippets)
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = f"{self.catalog_id} inference failed: {exc}"
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
 
     def info(self) -> dict:
         loaded = self._ensure_loaded()

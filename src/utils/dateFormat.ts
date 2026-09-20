@@ -4,15 +4,26 @@
  * @param locale - BCP 47 language tag (e.g., 'en', 'es', 'fr')
  * @returns Formatted date string
  */
+const parseUnixTimestamp = (timestamp: string): Date | null => {
+  const trimmed = timestamp.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  const seconds = Number(trimmed);
+  if (!Number.isFinite(seconds)) {
+    return null;
+  }
+
+  const date = new Date(seconds * 1000);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export const formatDate = (timestamp: string, locale: string): string => {
   try {
-    // Convert Unix timestamp (seconds) to milliseconds
-    const timestampMs = parseInt(timestamp, 10) * 1000;
-    const date = new Date(timestampMs);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return timestamp; // Return original if invalid
+    const date = parseUnixTimestamp(timestamp);
+    if (!date) {
+      return timestamp;
     }
 
     return new Intl.DateTimeFormat(locale, {
@@ -55,10 +66,8 @@ export const formatTime = (
   locale?: string | string[],
 ): string => {
   try {
-    const timestampMs = parseInt(timestamp, 10) * 1000;
-    const date = new Date(timestampMs);
-
-    if (isNaN(date.getTime())) {
+    const date = parseUnixTimestamp(timestamp);
+    if (!date) {
       return timestamp;
     }
 

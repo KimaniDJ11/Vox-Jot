@@ -21,6 +21,7 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::future::Future;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -64,6 +65,36 @@ pub struct ManagedOcrRuntimeDefinition {
     pub archive_name: &'static str,
     pub checksum_name: &'static str,
     pub hf_repo_id: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OcrRuntimeProvenance {
+    ExplicitDeveloperOverride,
+    CurrentManagedRuntime,
+    DevelopmentCheckout,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResolvedOcrRuntime {
+    root: PathBuf,
+    python: PathBuf,
+    provenance: OcrRuntimeProvenance,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OcrRuntimeResolutionMode {
+    ProductionInstalled,
+    DevelopmentCheckout,
+}
+
+#[derive(Debug, Clone)]
+struct OcrRuntimeResolutionInputs {
+    mode: OcrRuntimeResolutionMode,
+    explicit_root: Option<PathBuf>,
+    explicit_python: Option<PathBuf>,
+    managed_candidates: Vec<PathBuf>,
+    development_roots: Vec<PathBuf>,
+    development_pythons: Vec<PathBuf>,
 }
 
 /// Expected managed OCR runtime revision. Must match `ocr-runtime/VERSION`
@@ -256,11 +287,27 @@ pub async fn ensure_managed_ocr_runtime_installed(
     app: &AppHandle,
     progress_catalog_id: Option<&str>,
 ) -> Result<PathBuf, String> {
+    serialized_managed_runtime_install(async {
+        ensure_managed_ocr_runtime_installed_locked(app, progress_catalog_id).await
+    })
+    .await
+}
+
+async fn serialized_managed_runtime_install<T>(
+    transaction: impl Future<Output = Result<T, String>>,
+) -> Result<T, String> {
     // Different OCR model jobs share one managed runtime archive/install path.
     // Serialise the complete check/download/extract/validate transaction so two
     // concurrent model downloads cannot truncate each other's partial archive
     // or remove an install while the peer is validating it.
     let _install_guard = MANAGED_RUNTIME_INSTALL_LOCK.lock().await;
+    transaction.await
+}
+
+async fn ensure_managed_ocr_runtime_installed_locked(
+    app: &AppHandle,
+    progress_catalog_id: Option<&str>,
+) -> Result<PathBuf, String> {
     let definition = managed_ocr_runtime_definition().ok_or_else(|| {
         "The managed OCR runtime is not available on this platform yet.".to_string()
     })?;
@@ -329,12 +376,7 @@ fn clear_prerequisite_cache() {
 }
 
 fn check_runtime_prerequisites(_app: &AppHandle, backend: OcrBackendKind) -> Result<(), String> {
-    let python = locate_python().ok_or_else(|| {
-        "Could not locate a Python 3 interpreter for the OCR runtime. Set OCR_RUNTIME_PYTHON or install python3.".to_string()
-    })?;
-    let runtime_root = locate_runtime_root().ok_or_else(|| {
-        "Could not locate the ocr-runtime package. Install the packaged app resources or set OCR_RUNTIME_ROOT.".to_string()
-    })?;
+    let runtime = resolve_ocr_runtime()?;
 
     let modules = match backend {
         OcrBackendKind::TransformersVl | OcrBackendKind::PaddleVl => "PIL,torch,transformers",
@@ -356,8 +398,8 @@ missing = [
 sys.exit(1 if missing else 0)
 "#;
 
-    let status = Command::new(&python)
-        .current_dir(runtime_root)
+    let status = Command::new(&runtime.python)
+        .current_dir(&runtime.root)
         .env("VOX_JOT_OCR_REQUIRED_MODULES", modules)
         .arg("-c")
         .arg(script)
@@ -380,7 +422,7 @@ fn managed_ocr_runtime_install_dir(app: &AppHandle, platform_id: &str) -> Result
         .join(platform_id))
 }
 
-fn managed_ocr_runtime_python(runtime_root: &Path) -> Option<PathBuf> {
+fn runtime_local_python(runtime_root: &Path) -> Option<PathBuf> {
     [
         runtime_root.join(".python").join("bin").join("python3"),
         runtime_root.join(".python").join("bin").join("python3.11"),
@@ -739,8 +781,10 @@ mod tests {
     use super::OcrRuntimeManager;
     use super::{
         managed_runtime_matches_definition, read_ocr_runtime_manifest,
-        require_managed_runtime_compatible, ActiveOp, ManagedOcrRuntimeDefinition,
-        EXPECTED_OCR_RUNTIME_VERSION,
+        require_managed_runtime_compatible, resolve_ocr_runtime_from_candidates,
+        runtime_resolution_mode_for_executable, serialized_managed_runtime_install, ActiveOp,
+        ManagedOcrRuntimeDefinition, OcrRuntimeProvenance, OcrRuntimeResolutionInputs,
+        OcrRuntimeResolutionMode, EXPECTED_OCR_RUNTIME_VERSION,
     };
     use std::io::{BufRead, BufReader};
     use std::process::{Child, Command, Stdio};
@@ -1075,6 +1119,186 @@ for line in sys.stdin:
                 .unwrap_err()
                 .contains("Python root")
         );
+    }
+
+    fn setup_source_runtime() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("source runtime tempdir");
+        std::fs::create_dir_all(dir.path().join("ocr_runtime")).unwrap();
+        std::fs::write(dir.path().join("ocr_runtime").join("__main__.py"), b"#").unwrap();
+        dir
+    }
+
+    fn setup_python_file() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::tempdir().expect("python tempdir");
+        let python = dir.path().join(if cfg!(windows) {
+            "python.exe"
+        } else {
+            "python3"
+        });
+        std::fs::write(&python, b"#").unwrap();
+        (dir, python)
+    }
+
+    #[test]
+    fn production_stale_managed_runtime_cannot_fall_through_to_source_and_path_python() {
+        let stale = setup_manifest_runtime();
+        write_runtime_manifest(stale.path(), &[("version", "2026-06-15")]);
+        let bundled_source = setup_source_runtime();
+        let (_python_dir, path_python) = setup_python_file();
+        let inputs = OcrRuntimeResolutionInputs {
+            mode: OcrRuntimeResolutionMode::ProductionInstalled,
+            explicit_root: None,
+            explicit_python: None,
+            managed_candidates: vec![stale.path().to_path_buf()],
+            development_roots: vec![bundled_source.path().to_path_buf()],
+            development_pythons: vec![path_python],
+        };
+
+        let error = resolve_ocr_runtime_from_candidates(&inputs, Some(&TEST_RUNTIME_DEFINITION))
+            .unwrap_err();
+        assert!(error.contains("current compatible managed OCR runtime"));
+    }
+
+    #[test]
+    fn production_missing_managed_runtime_cannot_use_path_python() {
+        let bundled_source = setup_source_runtime();
+        let (_python_dir, path_python) = setup_python_file();
+        let inputs = OcrRuntimeResolutionInputs {
+            mode: OcrRuntimeResolutionMode::ProductionInstalled,
+            explicit_root: None,
+            explicit_python: None,
+            managed_candidates: Vec::new(),
+            development_roots: vec![bundled_source.path().to_path_buf()],
+            development_pythons: vec![path_python],
+        };
+
+        let error = resolve_ocr_runtime_from_candidates(&inputs, Some(&TEST_RUNTIME_DEFINITION))
+            .unwrap_err();
+        assert!(error.contains("current compatible managed OCR runtime"));
+    }
+
+    #[test]
+    fn production_current_managed_runtime_returns_its_own_root_and_python() {
+        let managed = setup_manifest_runtime();
+        write_runtime_manifest(managed.path(), &[]);
+        let decoy_source = setup_source_runtime();
+        let (_python_dir, decoy_python) = setup_python_file();
+        let inputs = OcrRuntimeResolutionInputs {
+            mode: OcrRuntimeResolutionMode::ProductionInstalled,
+            explicit_root: None,
+            explicit_python: None,
+            managed_candidates: vec![managed.path().to_path_buf()],
+            development_roots: vec![decoy_source.path().to_path_buf()],
+            development_pythons: vec![decoy_python],
+        };
+
+        let runtime =
+            resolve_ocr_runtime_from_candidates(&inputs, Some(&TEST_RUNTIME_DEFINITION)).unwrap();
+        assert_eq!(runtime.root, managed.path());
+        assert_eq!(
+            runtime.python,
+            managed.path().join(".python").join("bin").join("python3")
+        );
+        assert_eq!(
+            runtime.provenance,
+            OcrRuntimeProvenance::CurrentManagedRuntime
+        );
+    }
+
+    #[test]
+    fn explicit_developer_override_pairs_exact_root_and_python_in_production_mode() {
+        let source = setup_source_runtime();
+        let (_python_dir, python) = setup_python_file();
+        let inputs = OcrRuntimeResolutionInputs {
+            mode: OcrRuntimeResolutionMode::ProductionInstalled,
+            explicit_root: Some(source.path().to_path_buf()),
+            explicit_python: Some(python.clone()),
+            managed_candidates: Vec::new(),
+            development_roots: Vec::new(),
+            development_pythons: Vec::new(),
+        };
+
+        let runtime =
+            resolve_ocr_runtime_from_candidates(&inputs, Some(&TEST_RUNTIME_DEFINITION)).unwrap();
+        assert_eq!(runtime.root, source.path());
+        assert_eq!(runtime.python, python);
+        assert_eq!(
+            runtime.provenance,
+            OcrRuntimeProvenance::ExplicitDeveloperOverride
+        );
+    }
+
+    #[test]
+    fn checkout_runtime_and_path_python_are_available_only_in_development_mode() {
+        let source = setup_source_runtime();
+        let (_python_dir, python) = setup_python_file();
+        let inputs = OcrRuntimeResolutionInputs {
+            mode: OcrRuntimeResolutionMode::DevelopmentCheckout,
+            explicit_root: None,
+            explicit_python: None,
+            managed_candidates: Vec::new(),
+            development_roots: vec![source.path().to_path_buf()],
+            development_pythons: vec![python.clone()],
+        };
+
+        let runtime =
+            resolve_ocr_runtime_from_candidates(&inputs, Some(&TEST_RUNTIME_DEFINITION)).unwrap();
+        assert_eq!(runtime.root, source.path());
+        assert_eq!(runtime.python, python);
+        assert_eq!(
+            runtime.provenance,
+            OcrRuntimeProvenance::DevelopmentCheckout
+        );
+    }
+
+    #[test]
+    fn executable_location_not_debug_assertions_controls_development_resolution() {
+        let manifest_dir = Path::new("checkout/src-tauri");
+        assert_eq!(
+            runtime_resolution_mode_for_executable(
+                Path::new("checkout/src-tauri/target/debug/vox-jot"),
+                manifest_dir,
+            ),
+            OcrRuntimeResolutionMode::DevelopmentCheckout
+        );
+        assert_eq!(
+            runtime_resolution_mode_for_executable(
+                Path::new("Applications/Vox Jot.app/Contents/MacOS/Vox Jot"),
+                manifest_dir,
+            ),
+            OcrRuntimeResolutionMode::ProductionInstalled
+        );
+    }
+
+    #[tokio::test]
+    async fn concurrent_managed_runtime_transactions_recheck_after_install_lock() {
+        async fn ensure_test_runtime(
+            marker: PathBuf,
+            transactions: Arc<AtomicUsize>,
+        ) -> Result<PathBuf, String> {
+            serialized_managed_runtime_install(async move {
+                if marker.is_file() {
+                    return Ok(marker);
+                }
+                transactions.fetch_add(1, Ordering::SeqCst);
+                tokio::task::yield_now().await;
+                std::fs::write(&marker, b"current")
+                    .map_err(|error| format!("test install failed: {error}"))?;
+                Ok(marker)
+            })
+            .await
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("valid-runtime.marker");
+        let transactions = Arc::new(AtomicUsize::new(0));
+        let first = ensure_test_runtime(marker.clone(), Arc::clone(&transactions));
+        let second = ensure_test_runtime(marker.clone(), Arc::clone(&transactions));
+        let (first, second) = tokio::join!(first, second);
+
+        assert_eq!(first.unwrap(), marker);
+        assert_eq!(second.unwrap(), marker);
+        assert_eq!(transactions.load(Ordering::SeqCst), 1);
     }
 
     #[test]
@@ -3246,12 +3470,7 @@ fn spawn_child(
     backend: OcrBackendKind,
     model_root: &Path,
 ) -> Result<RunningChild, String> {
-    let python = locate_python().ok_or_else(|| {
-        "Could not locate a Python 3 interpreter for the OCR runtime. Set OCR_RUNTIME_PYTHON or install python3.".to_string()
-    })?;
-    let runtime_root = locate_runtime_root().ok_or_else(|| {
-        "Could not locate the ocr-runtime package. Run `bun run mac:update-installed-app:notarized` from a checkout that includes ocr-runtime/.".to_string()
-    })?;
+    let runtime = resolve_ocr_runtime()?;
 
     let backend_str = match backend {
         OcrBackendKind::TransformersVl => "transformers_vl",
@@ -3262,9 +3481,10 @@ fn spawn_child(
     };
 
     info!(
-        "spawning ocr-runtime: python={} root={} catalog={} backend={}",
-        python.display(),
-        runtime_root.display(),
+        "spawning ocr-runtime: python={} root={} provenance={:?} catalog={} backend={}",
+        runtime.python.display(),
+        runtime.root.display(),
+        runtime.provenance,
         catalog_id,
         backend_str
     );
@@ -3275,8 +3495,8 @@ fn spawn_child(
     envs.insert("OCR_RUNTIME_BACKEND".into(), backend_str.into());
     envs.insert("PYTHONUNBUFFERED".into(), "1".into());
 
-    let mut child = Command::new(&python)
-        .current_dir(&runtime_root)
+    let mut child = Command::new(&runtime.python)
+        .current_dir(&runtime.root)
         .arg("-m")
         .arg("ocr_runtime")
         .envs(envs)
@@ -3337,111 +3557,210 @@ fn spawn_child(
     })
 }
 
-fn locate_python() -> Option<PathBuf> {
-    if let Ok(custom) = std::env::var("OCR_RUNTIME_PYTHON") {
-        let p = PathBuf::from(custom);
-        if p.is_file() {
-            return Some(p);
-        }
-    }
-
-    // Managed or repo-local ocr-runtime venv.
-    if let Some(root) = locate_runtime_root() {
-        if let Some(venv_python) = managed_ocr_runtime_python(&root) {
-            return Some(venv_python);
-        }
-    }
-
-    // Reuse the speech-runtime venv if the user has bootstrapped it. This is
-    // a development fallback only; managed OCR runtimes win above.
-    if let Some(home) = dirs::home_dir() {
-        let candidates = [
-            home.join("Apps/speech-runtime/.venv/bin/python"),
-            home.join(".voxjot/speech-runtime/.venv/bin/python"),
-        ];
-        for c in candidates {
-            if c.is_file() {
-                return Some(c);
-            }
-        }
-    }
-
-    // Last-resort development fallback. Production model rows still need the
-    // dependency probe above to pass before they are marked runnable.
-    let bin = if cfg!(target_os = "windows") {
-        "python.exe"
-    } else {
-        "python3"
+/// Resolve source and interpreter as one provenance-bound pair. Normal installed
+/// execution accepts only the current managed bundle; source-tree and arbitrary
+/// Python fallbacks require either an explicit override or an executable that
+/// is actually running from this checkout's build target.
+fn resolve_ocr_runtime() -> Result<ResolvedOcrRuntime, String> {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mode = std::env::current_exe()
+        .ok()
+        .map(|executable| runtime_resolution_mode_for_executable(&executable, &manifest_dir))
+        .unwrap_or(OcrRuntimeResolutionMode::ProductionInstalled);
+    let inputs = OcrRuntimeResolutionInputs {
+        mode,
+        explicit_root: std::env::var_os("OCR_RUNTIME_ROOT").map(PathBuf::from),
+        explicit_python: std::env::var_os("OCR_RUNTIME_PYTHON").map(PathBuf::from),
+        managed_candidates: managed_runtime_candidate_roots(),
+        development_roots: development_runtime_root_candidates(&manifest_dir),
+        development_pythons: development_python_candidates(),
     };
-    if let Ok(path) = std::env::var("PATH") {
-        for dir in std::env::split_paths(&path) {
-            let candidate = dir.join(bin);
-            if candidate.is_file() {
-                return Some(candidate);
+    resolve_ocr_runtime_from_candidates(&inputs, managed_ocr_runtime_definition().as_ref())
+}
+
+fn resolve_ocr_runtime_from_candidates(
+    inputs: &OcrRuntimeResolutionInputs,
+    definition: Option<&ManagedOcrRuntimeDefinition>,
+) -> Result<ResolvedOcrRuntime, String> {
+    let explicit_override = inputs.explicit_root.is_some() || inputs.explicit_python.is_some();
+    if explicit_override {
+        if let Some(root) = inputs.explicit_root.as_ref() {
+            if !is_runtime_root(root) {
+                return Err(format!(
+                    "OCR_RUNTIME_ROOT does not contain ocr_runtime/__main__.py: {}",
+                    root.display()
+                ));
             }
+        }
+        if let Some(python) = inputs.explicit_python.as_ref() {
+            if !python.is_file() {
+                return Err(format!(
+                    "OCR_RUNTIME_PYTHON is not a file: {}",
+                    python.display()
+                ));
+            }
+        }
+
+        let managed =
+            definition.and_then(|definition| resolve_current_managed_runtime(inputs, definition));
+        let root = inputs
+            .explicit_root
+            .clone()
+            .or_else(|| first_development_runtime_root(&inputs.development_roots))
+            .or_else(|| managed.as_ref().map(|runtime| runtime.root.clone()))
+            .ok_or_else(|| {
+                "An OCR runtime override was requested, but no OCR source root is available. Set OCR_RUNTIME_ROOT."
+                    .to_string()
+            })?;
+        let python = inputs
+            .explicit_python
+            .clone()
+            .or_else(|| runtime_local_python(&root))
+            .or_else(|| first_existing_file(&inputs.development_pythons))
+            .ok_or_else(|| {
+                "An OCR runtime override was requested, but no Python interpreter is available. Set OCR_RUNTIME_PYTHON."
+                    .to_string()
+            })?;
+        return Ok(ResolvedOcrRuntime {
+            root,
+            python,
+            provenance: OcrRuntimeProvenance::ExplicitDeveloperOverride,
+        });
+    }
+
+    if let Some(definition) = definition {
+        if let Some(runtime) = resolve_current_managed_runtime(inputs, definition) {
+            return Ok(runtime);
+        }
+    }
+
+    if inputs.mode == OcrRuntimeResolutionMode::ProductionInstalled {
+        return Err(
+            "No current compatible managed OCR runtime is installed. Repair the OCR runtime from Model Hub before using neural OCR."
+                .to_string(),
+        );
+    }
+
+    let root = first_development_runtime_root(&inputs.development_roots).ok_or_else(|| {
+        "Could not locate the ocr-runtime package in this development checkout. Set OCR_RUNTIME_ROOT."
+            .to_string()
+    })?;
+    let python = runtime_local_python(&root)
+        .or_else(|| first_existing_file(&inputs.development_pythons))
+        .ok_or_else(|| {
+            "Could not locate Python for this development OCR runtime. Set OCR_RUNTIME_PYTHON."
+                .to_string()
+        })?;
+    Ok(ResolvedOcrRuntime {
+        root,
+        python,
+        provenance: OcrRuntimeProvenance::DevelopmentCheckout,
+    })
+}
+
+fn resolve_current_managed_runtime(
+    inputs: &OcrRuntimeResolutionInputs,
+    definition: &ManagedOcrRuntimeDefinition,
+) -> Option<ResolvedOcrRuntime> {
+    for candidate in &inputs.managed_candidates {
+        let mut roots = vec![candidate.clone()];
+        if let Some(extracted_root) = resolve_extracted_root(candidate) {
+            if extracted_root != *candidate {
+                roots.push(extracted_root);
+            }
+        }
+        for root in roots {
+            if require_managed_runtime_compatible(&root, definition).is_err() {
+                continue;
+            }
+            let python = if definition.manifest_platform == "windows" {
+                root.join(".python").join("python.exe")
+            } else {
+                root.join(".python").join("bin").join("python3")
+            };
+            return Some(ResolvedOcrRuntime {
+                root,
+                python,
+                provenance: OcrRuntimeProvenance::CurrentManagedRuntime,
+            });
         }
     }
     None
 }
 
-/// Locate the `ocr-runtime/` package on disk. Mirrors `sidecar.rs`'s
-/// runtime resolution: prefer a checkout next to `src-tauri/`, then a
-/// managed install under app-data, finally an env override.
-fn locate_runtime_root() -> Option<PathBuf> {
-    if let Ok(custom) = std::env::var("OCR_RUNTIME_ROOT") {
-        let p = PathBuf::from(custom);
-        if is_runtime_root(&p) {
-            return Some(p);
-        }
-    }
+fn first_development_runtime_root(candidates: &[PathBuf]) -> Option<PathBuf> {
+    candidates
+        .iter()
+        .find(|candidate| is_runtime_root(candidate))
+        .cloned()
+}
 
-    if let Some(definition) = managed_ocr_runtime_definition() {
-        for candidate in managed_runtime_candidate_roots() {
-            if managed_runtime_matches_definition(&candidate, &definition) {
-                return Some(candidate);
-            }
-            if let Some(root) = resolve_extracted_root(&candidate) {
-                if managed_runtime_matches_definition(&root, &definition) {
-                    return Some(root);
-                }
-            }
-        }
-    }
+fn first_existing_file(candidates: &[PathBuf]) -> Option<PathBuf> {
+    candidates
+        .iter()
+        .find(|candidate| candidate.is_file())
+        .cloned()
+}
 
-    // Compile-time CARGO_MANIFEST_DIR points at src-tauri/, so the
-    // sibling package is at ../ocr-runtime in dev checkouts.
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+fn runtime_resolution_mode_for_executable(
+    executable: &Path,
+    manifest_dir: &Path,
+) -> OcrRuntimeResolutionMode {
+    // Runtime location is stronger provenance than `debug_assertions`: local
+    // release builds under target/ remain developer runs, while any build
+    // copied into an installed app location receives production rules.
+    let checkout_target = manifest_dir.join("target");
+    let executable = executable
+        .canonicalize()
+        .unwrap_or_else(|_| executable.to_path_buf());
+    let checkout_target = checkout_target.canonicalize().unwrap_or(checkout_target);
+    if executable.starts_with(checkout_target) {
+        OcrRuntimeResolutionMode::DevelopmentCheckout
+    } else {
+        OcrRuntimeResolutionMode::ProductionInstalled
+    }
+}
+
+fn development_runtime_root_candidates(manifest_dir: &Path) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
     if let Some(parent) = manifest_dir.parent() {
-        let candidate = parent.join("ocr-runtime");
-        if is_runtime_root(&candidate) {
-            return Some(candidate);
+        candidates.push(parent.join("ocr-runtime"));
+    }
+    if let Ok(executable) = std::env::current_exe() {
+        if let Some(executable_dir) = executable.parent() {
+            candidates.extend([
+                executable_dir.join("../Resources/ocr-runtime"),
+                executable_dir.join("../Resources/_up_/ocr-runtime"),
+                executable_dir.join("../Resources/resources/ocr-runtime"),
+            ]);
         }
     }
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(macos_dir) = exe.parent() {
-            let resource_candidates = [
-                macos_dir.join("../Resources/ocr-runtime"),
-                macos_dir.join("../Resources/_up_/ocr-runtime"),
-                macos_dir.join("../Resources/resources/ocr-runtime"),
-            ];
-            for candidate in resource_candidates {
-                let normalized = candidate.components().collect::<PathBuf>();
-                if is_runtime_root(&normalized) {
-                    return Some(normalized);
-                }
-            }
-        }
-    }
-
     if let Some(home) = dirs::home_dir() {
-        let candidate = home.join("Apps").join("Vox Jot").join("ocr-runtime");
-        if is_runtime_root(&candidate) {
-            return Some(candidate);
-        }
+        candidates.push(home.join("Apps").join("Vox Jot").join("ocr-runtime"));
     }
+    candidates
+        .into_iter()
+        .map(|candidate| candidate.components().collect::<PathBuf>())
+        .collect()
+}
 
-    None
+fn development_python_candidates() -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Some(home) = dirs::home_dir() {
+        candidates.extend([
+            home.join("Apps/speech-runtime/.venv/bin/python"),
+            home.join(".voxjot/speech-runtime/.venv/bin/python"),
+        ]);
+    }
+    let binary = if cfg!(target_os = "windows") {
+        "python.exe"
+    } else {
+        "python3"
+    };
+    if let Some(path) = std::env::var_os("PATH") {
+        candidates.extend(std::env::split_paths(&path).map(|directory| directory.join(binary)));
+    }
+    candidates
 }
 
 fn managed_runtime_candidate_roots() -> Vec<PathBuf> {

@@ -492,14 +492,45 @@ pub fn find_active_improvement_profile(app_handle: &AppHandle) -> Result<Option<
 fn profiles_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = portable::app_data_dir(app_handle)
         .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
-    Ok(app_data_dir.join("tts").join("profiles"))
+    profiles_root_from_app_data(&app_data_dir)
 }
 
 fn profile_dir(app_handle: &AppHandle, profile_id: &str) -> Result<PathBuf, String> {
+    let app_data_dir = portable::app_data_dir(app_handle)
+        .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
+    profile_dir_from_app_data(&app_data_dir, profile_id)
+}
+
+fn profiles_root_from_app_data(app_data_dir: &Path) -> Result<PathBuf, String> {
+    // Treat the resolved app-data directory as the storage boundary (including
+    // portable mode), but never follow symlinks in Vox Jot's app-controlled TTS
+    // storage components. Missing components are valid and may be created by a
+    // subsequent profile-creation operation.
+    let tts_root = app_data_dir.join("tts");
+    validate_storage_directory(&tts_root, "TTS storage directory")?;
+
+    let profiles_root = tts_root.join("profiles");
+    validate_storage_directory(&profiles_root, "TTS profile storage directory")?;
+    Ok(profiles_root)
+}
+
+fn profile_dir_from_app_data(app_data_dir: &Path, profile_id: &str) -> Result<PathBuf, String> {
     validate_profile_id(profile_id)?;
-    let path = profiles_root(app_handle)?.join(profile_id);
+    let path = profiles_root_from_app_data(app_data_dir)?.join(profile_id);
     validate_profile_directory(&path)?;
     Ok(path)
+}
+
+fn validate_storage_directory(path: &Path, label: &str) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            Err(format!("{label} cannot be a symbolic link."))
+        }
+        Ok(metadata) if !metadata.is_dir() => Err(format!("{label} is not a directory.")),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("Failed to inspect {label}: {error}")),
+    }
 }
 
 fn read_profile_metadata(profile_dir: &Path) -> Result<StoredTtsVoiceProfile, String> {
@@ -665,6 +696,38 @@ mod tests {
     use super::*;
 
     const PROFILE_ID: &str = "550e8400-e29b-41d4-a716-446655440000";
+    const OTHER_PROFILE_ID: &str = "67e55044-10b1-426f-9247-bb680e5fe0c8";
+
+    #[test]
+    fn normal_profile_storage_root_is_accepted() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_data_dir = dir.path().join("app-data");
+        let expected_root = app_data_dir.join("tts").join("profiles");
+        let expected_profile_dir = expected_root.join(PROFILE_ID);
+        fs::create_dir_all(&expected_profile_dir).expect("profile dir");
+
+        assert_eq!(
+            profiles_root_from_app_data(&app_data_dir).expect("valid profile root"),
+            expected_root
+        );
+        assert_eq!(
+            profile_dir_from_app_data(&app_data_dir, PROFILE_ID).expect("valid profile dir"),
+            expected_profile_dir
+        );
+    }
+
+    #[test]
+    fn missing_profile_storage_root_can_be_created_normally() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_data_dir = dir.path().join("app-data");
+        let profile_dir =
+            profile_dir_from_app_data(&app_data_dir, PROFILE_ID).expect("missing root is valid");
+
+        assert!(!profile_dir.exists());
+        fs::create_dir_all(&profile_dir).expect("create missing storage tree");
+        assert!(profile_dir.is_dir());
+        assert!(profile_dir_from_app_data(&app_data_dir, PROFILE_ID).is_ok());
+    }
 
     #[test]
     fn profile_id_must_be_a_canonical_uuid_component() {
@@ -690,6 +753,40 @@ mod tests {
         assert!(reference_audio_path(dir.path(), "../outside.wav").is_err());
         assert!(reference_audio_path(dir.path(), "/tmp/outside.wav").is_err());
         assert!(reference_audio_path(dir.path(), "other.wav").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn profiles_storage_directory_rejects_symbolic_links() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_data_dir = dir.path().join("app-data");
+        let outside = dir.path().join("outside");
+        fs::create_dir_all(app_data_dir.join("tts")).expect("tts dir");
+        fs::create_dir(&outside).expect("outside dir");
+        symlink(&outside, app_data_dir.join("tts").join("profiles")).expect("profiles symlink");
+
+        let error = profiles_root_from_app_data(&app_data_dir)
+            .expect_err("profiles symlink must be rejected");
+        assert!(error.contains("TTS profile storage directory cannot be a symbolic link"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tts_storage_directory_rejects_symbolic_links() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_data_dir = dir.path().join("app-data");
+        let outside = dir.path().join("outside");
+        fs::create_dir(&app_data_dir).expect("app data dir");
+        fs::create_dir(&outside).expect("outside dir");
+        symlink(&outside, app_data_dir.join("tts")).expect("tts symlink");
+
+        let error =
+            profiles_root_from_app_data(&app_data_dir).expect_err("tts symlink must be rejected");
+        assert!(error.contains("TTS storage directory cannot be a symbolic link"));
     }
 
     #[cfg(unix)]
@@ -722,5 +819,65 @@ mod tests {
 
         let error = validate_profile_directory(&linked).expect_err("symlink must be rejected");
         assert!(error.contains("symbolic link"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn profile_operations_cannot_escape_through_a_symlinked_storage_ancestor() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_data_dir = dir.path().join("app-data");
+        let outside = dir.path().join("outside");
+        let outside_profile = outside.join(PROFILE_ID);
+        let metadata_path = outside_profile.join(PROFILE_METADATA_FILE_NAME);
+        let reference_path = outside_profile.join(REFERENCE_AUDIO_FILE_NAME);
+        fs::create_dir_all(app_data_dir.join("tts")).expect("tts dir");
+        fs::create_dir_all(&outside_profile).expect("outside profile");
+        fs::write(&metadata_path, b"metadata sentinel").expect("metadata sentinel");
+        fs::write(&reference_path, b"reference sentinel").expect("reference sentinel");
+        symlink(&outside, app_data_dir.join("tts").join("profiles")).expect("profiles symlink");
+
+        let create_error = profile_dir_from_app_data(&app_data_dir, OTHER_PROFILE_ID)
+            .and_then(|path| {
+                fs::create_dir_all(path)
+                    .map_err(|error| format!("Failed to create escaped profile: {error}"))
+            })
+            .expect_err("profile creation must fail closed");
+        assert!(create_error.contains("symbolic link"));
+        assert!(!outside.join(OTHER_PROFILE_ID).exists());
+
+        let metadata_write_error = profile_dir_from_app_data(&app_data_dir, PROFILE_ID)
+            .and_then(|path| {
+                fs::write(path.join(PROFILE_METADATA_FILE_NAME), b"changed")
+                    .map_err(|error| format!("Failed to write escaped metadata: {error}"))
+            })
+            .expect_err("metadata write must fail closed");
+        assert!(metadata_write_error.contains("symbolic link"));
+        assert_eq!(
+            fs::read(&metadata_path).expect("metadata sentinel remains"),
+            b"metadata sentinel"
+        );
+
+        let reference_write_error = profile_dir_from_app_data(&app_data_dir, PROFILE_ID)
+            .and_then(|path| {
+                fs::write(path.join(REFERENCE_AUDIO_FILE_NAME), b"changed")
+                    .map_err(|error| format!("Failed to write escaped reference audio: {error}"))
+            })
+            .expect_err("reference audio write must fail closed");
+        assert!(reference_write_error.contains("symbolic link"));
+        assert_eq!(
+            fs::read(&reference_path).expect("reference sentinel remains"),
+            b"reference sentinel"
+        );
+
+        let delete_error = profile_dir_from_app_data(&app_data_dir, PROFILE_ID)
+            .and_then(|path| {
+                fs::remove_dir_all(path)
+                    .map_err(|error| format!("Failed to delete escaped profile: {error}"))
+            })
+            .expect_err("profile deletion must fail closed");
+        assert!(delete_error.contains("symbolic link"));
+        assert!(outside_profile.is_dir());
     }
 }

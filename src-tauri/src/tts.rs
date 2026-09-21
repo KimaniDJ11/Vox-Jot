@@ -4020,6 +4020,11 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        if engine == TtsEngineKind::Sidecar {
+            if let Some(profile_id) = selected_profile_id.as_deref() {
+                tts_profiles::validate_voice_profile_paths_for_use(&self.app_handle, profile_id)?;
+            }
+        }
         let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
 
         if self.request_was_cancelled(&session.ticket) {
@@ -4361,6 +4366,11 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        if engine == TtsEngineKind::Sidecar {
+            if let Some(profile_id) = selected_profile_id.as_deref() {
+                tts_profiles::validate_voice_profile_paths_for_use(&self.app_handle, profile_id)?;
+            }
+        }
         let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
 
         let chunks = chunk_text(trimmed);

@@ -392,8 +392,12 @@ pub fn clear_collected_data(
 
     // Remove the reference audio file if it exists
     let reference_path = reference_audio_path(&profile_dir, REFERENCE_AUDIO_FILE_NAME)?;
-    if reference_path.exists() {
-        let _ = fs::remove_file(&reference_path);
+    if let Err(error) = fs::remove_file(&reference_path) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            return Err(format!(
+                "Failed to remove TTS profile reference audio: {error}"
+            ));
+        }
     }
     metadata.reference_audio_file_name = None;
     metadata.sample_rate_hz = None;
@@ -412,6 +416,19 @@ pub fn get_profile_progress(
     }
     let metadata = read_profile_metadata(&profile_dir)?;
     metadata.into_descriptor(&profile_dir)
+}
+
+pub(crate) fn validate_voice_profile_paths_for_use(
+    app_handle: &AppHandle,
+    profile_id: &str,
+) -> Result<(), String> {
+    let profile_dir = profile_dir(app_handle, profile_id)?;
+    if !profile_dir.is_dir() {
+        return Err("Voice profile not found.".to_string());
+    }
+    profile_metadata_path(&profile_dir)?;
+    reference_audio_path(&profile_dir, REFERENCE_AUDIO_FILE_NAME)?;
+    Ok(())
 }
 
 /// Append audio samples (expected mono 24kHz f32) to the profile's reference WAV.
@@ -489,7 +506,7 @@ pub fn find_active_improvement_profile(app_handle: &AppHandle) -> Result<Option<
     Ok(None)
 }
 
-fn profiles_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn profiles_root(app_handle: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = portable::app_data_dir(app_handle)
         .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
     profiles_root_from_app_data(&app_data_dir)
@@ -535,7 +552,7 @@ fn validate_storage_directory(path: &Path, label: &str) -> Result<(), String> {
 
 fn read_profile_metadata(profile_dir: &Path) -> Result<StoredTtsVoiceProfile, String> {
     validate_profile_directory(profile_dir)?;
-    let metadata_path = profile_dir.join(PROFILE_METADATA_FILE_NAME);
+    let metadata_path = profile_metadata_path(profile_dir)?;
     let bytes = fs::read(&metadata_path)
         .map_err(|err| format!("Failed to read TTS profile metadata: {err}"))?;
     let mut metadata = serde_json::from_slice::<StoredTtsVoiceProfile>(&bytes)
@@ -556,9 +573,10 @@ fn write_profile_metadata(
 ) -> Result<(), String> {
     validate_profile_directory(profile_dir)?;
     validate_profile_metadata_location(profile_dir, metadata)?;
+    let metadata_path = profile_metadata_path(profile_dir)?;
     let bytes = serde_json::to_vec_pretty(metadata)
         .map_err(|err| format!("Failed to serialize TTS profile metadata: {err}"))?;
-    fs::write(profile_dir.join(PROFILE_METADATA_FILE_NAME), bytes)
+    fs::write(metadata_path, bytes)
         .map_err(|err| format!("Failed to write TTS profile metadata: {err}"))
 }
 
@@ -601,6 +619,24 @@ fn validate_profile_metadata_location(
         reference_audio_path(profile_dir, file_name)?;
     }
     Ok(())
+}
+
+fn profile_metadata_path(profile_dir: &Path) -> Result<PathBuf, String> {
+    let path = profile_dir.join(PROFILE_METADATA_FILE_NAME);
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            return Err("Voice profile metadata cannot be a symbolic link.".to_string());
+        }
+        Ok(metadata) if !metadata.is_file() => {
+            return Err("Voice profile metadata path is not a file.".to_string());
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(format!("Failed to inspect TTS profile metadata: {error}"));
+        }
+    }
+    Ok(path)
 }
 
 fn reference_audio_path(profile_dir: &Path, file_name: &str) -> Result<PathBuf, String> {
@@ -697,6 +733,23 @@ mod tests {
 
     const PROFILE_ID: &str = "550e8400-e29b-41d4-a716-446655440000";
     const OTHER_PROFILE_ID: &str = "67e55044-10b1-426f-9247-bb680e5fe0c8";
+
+    fn stored_profile() -> StoredTtsVoiceProfile {
+        StoredTtsVoiceProfile {
+            id: PROFILE_ID.to_string(),
+            label: "Test profile".to_string(),
+            description: None,
+            transcript: None,
+            compatible_provider_ids: vec![TTS_PROVIDER_QWEN3_NATIVE_ID.to_string()],
+            compatible_model_ids: vec![QWEN3_CLONE_MODEL_ID.to_string()],
+            reference_audio_file_name: None,
+            sample_rate_hz: None,
+            continuous_improvement_enabled: false,
+            collected_audio_duration_secs: 0.0,
+            satisfactory_threshold_secs: default_satisfactory_threshold_secs(),
+            fully_optimized: false,
+        }
+    }
 
     #[test]
     fn normal_profile_storage_root_is_accepted() {
@@ -804,6 +857,31 @@ mod tests {
         let error = reference_audio_path(&profile_dir, REFERENCE_AUDIO_FILE_NAME)
             .expect_err("symlink must be rejected");
         assert!(error.contains("symbolic link"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn profile_metadata_rejects_symbolic_links_without_overwriting_the_target() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let outside = dir.path().join("outside.json");
+        fs::write(&outside, b"metadata sentinel").expect("outside fixture");
+        let profile_dir = dir.path().join(PROFILE_ID);
+        fs::create_dir(&profile_dir).expect("profile dir");
+        symlink(&outside, profile_dir.join(PROFILE_METADATA_FILE_NAME)).expect("metadata symlink");
+
+        let read_error = read_profile_metadata(&profile_dir)
+            .expect_err("metadata read must reject symbolic links");
+        assert!(read_error.contains("symbolic link"));
+
+        let write_error = write_profile_metadata(&profile_dir, &stored_profile())
+            .expect_err("metadata write must reject symbolic links");
+        assert!(write_error.contains("symbolic link"));
+        assert_eq!(
+            fs::read(&outside).expect("outside target remains"),
+            b"metadata sentinel"
+        );
     }
 
     #[cfg(unix)]

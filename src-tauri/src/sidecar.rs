@@ -485,7 +485,7 @@ impl SidecarManager {
         let app_data_dir = crate::portable::app_data_dir(&self.app_handle)
             .map_err(|err| format!("Failed to resolve app data dir for Speech runtime: {err}"))?;
         let runtime_state_dir = app_data_dir.join("speech-runtime");
-        let voice_profiles_dir = app_data_dir.join("tts").join("profiles");
+        let voice_profiles_dir = crate::tts_profiles::profiles_root(&self.app_handle)?;
         let fallback_tts_prompt = crate::portable::resolve_resource(
             &self.app_handle,
             "resources/python/mlx_csm_default_prompt.wav",

@@ -19,10 +19,19 @@ def load_selection(path: Path) -> RuntimeSelection:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return RuntimeSelection()
+    if not isinstance(data, dict):
+        return RuntimeSelection()
+
+    def optional_string(key: str) -> str | None:
+        value = data.get(key)
+        if not isinstance(value, str):
+            return None
+        return value.strip() or None
+
     return RuntimeSelection(
-        provider_id=data.get("provider_id"),
-        model_id=data.get("model_id"),
-        profile_id=data.get("profile_id"),
+        provider_id=optional_string("provider_id"),
+        model_id=optional_string("model_id"),
+        profile_id=optional_string("profile_id"),
     )
 
 

@@ -3,12 +3,8 @@ import { formatDate, formatTime } from "./dateFormat";
 
 describe("date formatting", () => {
   it("does not partially parse malformed Unix timestamps", () => {
-    expect(formatDate("1700000000garbage", "en-US")).toBe(
-      "1700000000garbage",
-    );
-    expect(formatTime("1700000000garbage", "en-US")).toBe(
-      "1700000000garbage",
-    );
+    expect(formatDate("1700000000garbage", "en-US")).toBe("1700000000garbage");
+    expect(formatTime("1700000000garbage", "en-US")).toBe("1700000000garbage");
   });
 
   it("returns blank and non-finite timestamps unchanged", () => {

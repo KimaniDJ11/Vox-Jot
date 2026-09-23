@@ -1036,9 +1036,7 @@
     },
     {
       "id": "jina-ocr-v1",
-      "domains": [
-        "ocr"
-      ],
+      "domains": ["ocr"],
       "name": "Jina OCR v1",
       "upstream": "https://huggingface.co/jinaai/jina-ocr-v1",
       "distribution_source": "https://huggingface.co/jinaai/jina-ocr-v1",
@@ -1049,9 +1047,7 @@
         "model_attribution",
         "modification_notice"
       ],
-      "catalog_ids": [
-        "jina-ocr-v1"
-      ],
+      "catalog_ids": ["jina-ocr-v1"],
       "ui_acknowledgement_required": true
     }
   ]

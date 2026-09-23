@@ -21,16 +21,12 @@ import { bounce } from "@/motion/springs";
 type OverlayState = "recording" | "transcribing" | "processing" | "speech";
 type OverlayStyle = "compact" | "detailed" | "minimal" | "notch";
 type SpeechOverlayPhase =
-  | "queued"
-  | "preparing"
-  | "speaking"
-  | "failed"
-  | "stopped";
+  "queued" | "preparing" | "speaking" | "failed" | "stopped";
 
 interface ShowOverlayPayload {
-    state: OverlayState;
-    style: OverlayStyle;
-    mode?: "dictate" | "rewrite_selection";
+  state: OverlayState;
+  style: OverlayStyle;
+  mode?: "dictate" | "rewrite_selection";
 }
 
 interface SpeechOverlayPayload {
@@ -525,21 +521,21 @@ const RecordingOverlay: React.FC = () => {
       ? `${t("listen.createVoices.textToSpeech", {
           defaultValue: "Text to Speech",
         })} · ${speechStatusLabel}`
-    : isEditingSelection
-      ? state === "recording"
-        ? t("overlay.editingSelection", { defaultValue: "Editing selection" })
-        : state === "transcribing"
-          ? t("overlay.transcribingSelectionEdit", {
-              defaultValue: "Transcribing selection edit",
-            })
-          : t("overlay.applyingSelectionEdit", {
-              defaultValue: "Applying selection edit",
-            })
-      : state === "recording"
-        ? t("overlay.recording")
-        : state === "transcribing"
-          ? t("overlay.transcribing")
-          : t("overlay.processing");
+      : isEditingSelection
+        ? state === "recording"
+          ? t("overlay.editingSelection", { defaultValue: "Editing selection" })
+          : state === "transcribing"
+            ? t("overlay.transcribingSelectionEdit", {
+                defaultValue: "Transcribing selection edit",
+              })
+            : t("overlay.applyingSelectionEdit", {
+                defaultValue: "Applying selection edit",
+              })
+        : state === "recording"
+          ? t("overlay.recording")
+          : state === "transcribing"
+            ? t("overlay.transcribing")
+            : t("overlay.processing");
 
   return (
     <AnimatePresence>
@@ -556,9 +552,9 @@ const RecordingOverlay: React.FC = () => {
             isEditingSelection ? "recording-overlay--selection-edit" : "",
             correction ? "recording-overlay--correction" : "",
             !isCompact &&
-              !isMinimal &&
-              !isNotch &&
-              (state === "recording" || state === "speech")
+            !isMinimal &&
+            !isNotch &&
+            (state === "recording" || state === "speech")
               ? "is-interactive"
               : "",
           ]

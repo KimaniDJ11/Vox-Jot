@@ -39,7 +39,9 @@ describe("SpeechPlaybackStatus", () => {
       root.render(<SpeechPlaybackStatus status={status} onStop={onStop} />);
     });
 
-    const aside = container.querySelector('[data-testid="tts-playback-status"]');
+    const aside = container.querySelector(
+      '[data-testid="tts-playback-status"]',
+    );
     expect(aside).not.toBeNull();
     expect(aside?.getAttribute("data-phase")).toBe("preparing");
     expect(container.textContent).toContain("Text to Speech");
@@ -66,7 +68,9 @@ describe("SpeechPlaybackStatus", () => {
       root.render(<SpeechPlaybackStatus status={status} onStop={onStop} />);
     });
 
-    const aside = container.querySelector('[data-testid="tts-playback-status"]');
+    const aside = container.querySelector(
+      '[data-testid="tts-playback-status"]',
+    );
     expect(aside?.getAttribute("data-phase")).toBe("speaking");
     expect(container.textContent).toContain("Speaking…");
 
@@ -91,7 +95,9 @@ describe("SpeechPlaybackStatus", () => {
       root.render(<SpeechPlaybackStatus status={status} onStop={onStop} />);
     });
 
-    const aside = container.querySelector('[data-testid="tts-playback-status"]');
+    const aside = container.querySelector(
+      '[data-testid="tts-playback-status"]',
+    );
     expect(aside?.getAttribute("data-phase")).toBe("failed");
     expect(container.textContent).toContain("Speech failed");
 

@@ -6,12 +6,7 @@ export interface ModelStateEvent {
 }
 
 export type TtsPlaybackPhase =
-  | "queued"
-  | "preparing"
-  | "speaking"
-  | "completed"
-  | "stopped"
-  | "failed";
+  "queued" | "preparing" | "speaking" | "completed" | "stopped" | "failed";
 
 export interface TtsPlaybackStatusEvent {
   requestId: number;

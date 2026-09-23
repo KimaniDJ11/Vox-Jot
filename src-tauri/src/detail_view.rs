@@ -54,7 +54,6 @@ impl DetailViewRoutingState {
 
 #[cfg(target_os = "macos")]
 mod detail_panel {
-    use tauri::Manager;
     use tauri_nspanel::tauri_panel;
     tauri_panel! {
         panel!(DetailViewPanel {

@@ -46,7 +46,11 @@ import {
 } from "tauri-plugin-macos-permissions-api";
 import { LayoutGroup, motion } from "framer-motion";
 import { press } from "./motion/springs";
-import { ModelStateEvent } from "./lib/types/events";
+import {
+  isActiveTtsPlaybackPhase,
+  type ModelStateEvent,
+  type TtsPlaybackStatusEvent,
+} from "./lib/types/events";
 import { resolveListenSectionId } from "@/lib/sectionNavigation";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
@@ -80,6 +84,7 @@ import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
+import { SpeechPlaybackStatus } from "@/components/SpeechPlaybackStatus";
 const MeetingsSection = lazy(
   () => import("@/components/meetings/MeetingsSection"),
 );
@@ -442,6 +447,8 @@ function App() {
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
   const [isResolvingPreview, setIsResolvingPreview] = useState(false);
+  const [ttsPlaybackStatus, setTtsPlaybackStatus] =
+    useState<TtsPlaybackStatusEvent | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     if (!window.matchMedia("(min-width: 769px)").matches) return false;
@@ -912,6 +919,42 @@ function App() {
     return () => {
       unlisten.then((fn) => fn());
     };
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<TtsPlaybackStatusEvent>("tts-status", (event) => {
+      const next = event.payload;
+      setTtsPlaybackStatus((current) => {
+        if (isActiveTtsPlaybackPhase(next.phase) || next.phase === "failed") {
+          if (!current || next.requestId >= current.requestId) {
+            return next;
+          }
+          return current;
+        }
+
+        return current?.requestId === next.requestId ? null : current;
+      });
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ttsPlaybackStatus?.phase !== "failed") return;
+    const timer = setTimeout(() => {
+      setTtsPlaybackStatus((current) =>
+        current?.phase === "failed" ? null : current,
+      );
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [ttsPlaybackStatus]);
+
+  const stopSpeechPlayback = useCallback(async () => {
+    const result = await commands.ttsStop();
+    if (result.status === "error") {
+      toast.error(result.error);
+    }
   }, []);
 
   useEffect(() => {
@@ -1443,6 +1486,14 @@ function App() {
       />
 
       <main className="main-content relative flex min-w-0 flex-col overflow-hidden">
+        {ttsPlaybackStatus && (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">
+            <SpeechPlaybackStatus
+              status={ttsPlaybackStatus}
+              onStop={() => void stopSpeechPlayback()}
+            />
+          </div>
+        )}
         <div className="app-main-scroll min-h-0 flex-1 overflow-y-scroll">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (

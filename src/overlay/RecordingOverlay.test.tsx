@@ -27,6 +27,7 @@ const commandMocks = vi.hoisted(() => ({
     data: { status: "captured" },
   })),
   showDetailView: vi.fn(async () => ({ status: "ok", data: null })),
+  ttsStop: vi.fn(async () => ({ status: "ok", data: null })),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -41,6 +42,8 @@ import RecordingOverlay from "./RecordingOverlay";
 
 const OVERLAY_EVENTS = [
   "show-overlay",
+  "show-speech-overlay",
+  "hide-speech-overlay",
   "show-correction-overlay",
   "hide-overlay",
   "mic-level",
@@ -170,5 +173,90 @@ describe("RecordingOverlay", () => {
       });
     });
     expect(container.querySelector(".partial-text")).toBeNull();
+  });
+
+  it("shows an accessible speech-processing status and lets the user stop it", async () => {
+    await act(async () => {
+      root.render(<RecordingOverlay />);
+    });
+
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 42, phase: "preparing" },
+      });
+    });
+
+    const overlay = container.querySelector(".recording-overlay--speech");
+    expect(overlay).not.toBeNull();
+    expect(overlay?.textContent).toContain("Text to Speech");
+    expect(overlay?.getAttribute("data-speech-phase")).toBe("preparing");
+
+    const stopButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Stop"]',
+    );
+    expect(stopButton).not.toBeNull();
+    await act(async () => {
+      stopButton?.click();
+    });
+    expect(commandMocks.ttsStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("transitions through speech phases and shows error state with failed dot", async () => {
+    await act(async () => {
+      root.render(<RecordingOverlay />);
+    });
+
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 43, phase: "preparing" },
+      });
+    });
+
+    let overlay = container.querySelector(".recording-overlay--speech");
+    expect(overlay?.textContent).toContain("Preparing speech…");
+
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 43, phase: "speaking" },
+      });
+    });
+    expect(overlay?.textContent).toContain("Speaking…");
+
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 43, phase: "failed" },
+      });
+    });
+    expect(overlay?.textContent).toContain("Speech failed");
+    expect(container.querySelector(".status-dot--failed")).not.toBeNull();
+    expect(
+      container.querySelector<HTMLButtonElement>('button[aria-label="Stop"]'),
+    ).toBeNull();
+  });
+
+  it("ignores stale speech overlay events with an older requestId", async () => {
+    await act(async () => {
+      root.render(<RecordingOverlay />);
+    });
+
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 50, phase: "preparing" },
+      });
+    });
+
+    let overlay = container.querySelector(".recording-overlay--speech");
+    expect(overlay?.textContent).toContain("Preparing speech…");
+
+    // Stale event with older requestId 49 should be ignored
+    await act(async () => {
+      callbacks.get("show-speech-overlay")?.({
+        payload: { requestId: 49, phase: "speaking" },
+      });
+    });
+
+    overlay = container.querySelector(".recording-overlay--speech");
+    expect(overlay?.textContent).toContain("Preparing speech…");
+    expect(overlay?.getAttribute("data-speech-phase")).toBe("preparing");
   });
 });

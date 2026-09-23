@@ -8,7 +8,7 @@ import ScreenCaptureKit
 #endif
 
 private let screenContextMaxCaptureDimension = 2200
-private let screenContextCaptureLock = NSLock()
+private let screenContextCaptureGate = ScreenContextCaptureGate()
 
 private typealias ScreenContextPointer = UnsafeMutablePointer<ScreenContextCaptureResponse>
 
@@ -243,7 +243,7 @@ public func captureScreenContextApple(
         return responsePtr
     }
 
-    guard screenContextCaptureLock.try() else {
+    guard let captureToken = screenContextCaptureGate.tryBegin() else {
         responsePtr.pointee.error_message = duplicateScreenCString(
             "A screen context capture is already in progress."
         )
@@ -260,9 +260,9 @@ public func captureScreenContextApple(
     }
     let box = ResultBox()
 
-    Task.detached(priority: .userInitiated) {
+    let task = Task.detached(priority: .userInitiated) {
         defer {
-            screenContextCaptureLock.unlock()
+            screenContextCaptureGate.end(captureToken)
             semaphore.signal()
         }
 
@@ -290,6 +290,10 @@ public func captureScreenContextApple(
 
     let timeout = DispatchTime.now() + .milliseconds(max(100, Int(timeoutMs)))
     if semaphore.wait(timeout: timeout) == .timedOut {
+        // Cancel cooperatively and release THIS generation only. A stale
+        // deferred end(captureToken) must not clear a successor's ownership.
+        task.cancel()
+        screenContextCaptureGate.end(captureToken)
         responsePtr.pointee.error_message = duplicateScreenCString(
             "Timed out while capturing screen context."
         )
@@ -398,7 +402,7 @@ public func captureScreenContextBitmapApple(
         return responsePtr
     }
 
-    guard screenContextCaptureLock.try() else {
+    guard let captureToken = screenContextCaptureGate.tryBegin() else {
         responsePtr.pointee.error_message = duplicateScreenCString(
             "A screen context capture is already in progress."
         )
@@ -413,9 +417,9 @@ public func captureScreenContextBitmapApple(
     }
     let box = ResultBox()
 
-    Task.detached(priority: .userInitiated) {
+    let task = Task.detached(priority: .userInitiated) {
         defer {
-            screenContextCaptureLock.unlock()
+            screenContextCaptureGate.end(captureToken)
             semaphore.signal()
         }
         do {
@@ -431,6 +435,8 @@ public func captureScreenContextBitmapApple(
 
     let timeout = DispatchTime.now() + .milliseconds(max(100, Int(timeoutMs)))
     if semaphore.wait(timeout: timeout) == .timedOut {
+        task.cancel()
+        screenContextCaptureGate.end(captureToken)
         responsePtr.pointee.error_message = duplicateScreenCString(
             "Timed out while capturing the display bitmap."
         )

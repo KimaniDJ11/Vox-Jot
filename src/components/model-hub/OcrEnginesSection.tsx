@@ -89,6 +89,11 @@ const OCR_LICENSE_ACKNOWLEDGEMENT_GATES: Record<
     termsUrl:
       "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/main/LICENSE",
   },
+  "jina-ocr-v1": {
+    kind: "non_commercial",
+    licenseLabel: "CC BY-NC 4.0",
+    termsUrl: "https://huggingface.co/jinaai/jina-ocr-v1",
+  },
 };
 
 const ocrLicenseGate = (

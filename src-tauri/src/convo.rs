@@ -701,10 +701,9 @@ pub fn play_audio_base64(app_handle: &AppHandle, audio_base64: &str) -> Result<(
     std::fs::write(&temp_path, &wav_bytes)
         .map_err(|e| format!("Failed to write temp WAV: {}", e))?;
 
-    crate::audio_playback::play_audio_file_blocking(&temp_path, output_device, volume)
-        .map_err(|e| format!("Failed to play audio: {}", e))?;
-
+    let playback_result =
+        crate::audio_playback::play_audio_file_blocking(&temp_path, output_device, volume);
     let _ = std::fs::remove_file(&temp_path);
 
-    Ok(())
+    playback_result.map_err(|e| format!("Failed to play audio: {}", e))
 }

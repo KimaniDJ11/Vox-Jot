@@ -186,6 +186,38 @@ pub struct ContextCaptureManager {
     state: Arc<Mutex<ManagerState>>,
 }
 
+/// ScreenCaptureKit / Vision wait budget. Never inherits the neural cold-load floor.
+fn screen_capture_timeout_ms(configured_ms: u32) -> u32 {
+    configured_ms.clamp(
+        crate::settings::SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS,
+        crate::settings::SCREEN_CONTEXT_BITMAP_CAPTURE_TIMEOUT_MAX_MS,
+    )
+}
+
+/// Neural OCR inference budget only. VL/MLX/Paddle get a cold-load floor so a
+/// persisted short setting cannot kill Jina mid-load. Does not apply to bitmap
+/// capture or Vision fallback.
+fn effective_neural_ocr_timeout_ms(
+    configured_ms: u32,
+    neural_route: Option<&crate::ocr_backend::NeuralRoute>,
+) -> u32 {
+    const NEURAL_OCR_TIMEOUT_FLOOR_MS: u32 = 180_000;
+    match neural_route {
+        Some(route)
+            if !matches!(
+                route.backend,
+                crate::ocr_models::OcrBackendKind::TessdataPack
+            ) =>
+        {
+            configured_ms.clamp(
+                NEURAL_OCR_TIMEOUT_FLOOR_MS,
+                crate::settings::SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS,
+            )
+        }
+        _ => configured_ms,
+    }
+}
+
 impl ContextCaptureManager {
     pub fn new(app_handle: &AppHandle) -> Self {
         let manager = Self {
@@ -550,12 +582,17 @@ impl ContextCaptureManager {
         // neural backend first and fall through to the existing native /
         // backup pipeline on `NotImplemented` or any backend failure.
         let neural_route = crate::ocr_models::resolve_neural_route(&self.app_handle, settings);
+        let configured_timeout_ms = settings.screen_context_ocr_timeout_ms;
+        let capture_timeout_ms = screen_capture_timeout_ms(configured_timeout_ms);
+        let neural_ocr_timeout_ms =
+            effective_neural_ocr_timeout_ms(configured_timeout_ms, neural_route.as_ref());
 
         match native_capture_screen_context(
             settings.screen_context_ocr_engine,
             settings.screen_context_ocr_quality,
             settings.screen_context_token_budget as usize,
-            settings.screen_context_ocr_timeout_ms,
+            capture_timeout_ms,
+            neural_ocr_timeout_ms,
             neural_route,
         ) {
             Ok(native_payload) => {
@@ -1137,7 +1174,8 @@ fn native_capture_screen_context(
     engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
-    timeout_ms: u32,
+    capture_timeout_ms: u32,
+    neural_ocr_timeout_ms: u32,
     neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     let _ = engine;
@@ -1148,7 +1186,7 @@ fn native_capture_screen_context(
     }
 
     if let Some(route) = neural_route.as_ref() {
-        match capture_apple_bitmap(timeout_ms) {
+        match capture_apple_bitmap(capture_timeout_ms) {
             Ok(bitmap) => {
                 let frame = crate::screen_context_ocr_backup::OcrFrame {
                     width: bitmap.width(),
@@ -1157,7 +1195,7 @@ fn native_capture_screen_context(
                     pixels: bitmap.slice(),
                     format: crate::screen_context_ocr_backup::PixelFormat::Bgra8,
                 };
-                let timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+                let timeout = Duration::from_millis(neural_ocr_timeout_ms.max(150) as u64);
                 let req = crate::ocr_backend::NeuralOcrRequest {
                     route,
                     frame: &frame,
@@ -1206,7 +1244,7 @@ fn native_capture_screen_context(
         capture_screen_context_apple(
             quality_cstr.as_ptr(),
             max_words.min(i32::MAX as usize) as c_int,
-            timeout_ms.min(i32::MAX as u32) as c_int,
+            capture_timeout_ms.min(i32::MAX as u32) as c_int,
         )
     };
 
@@ -1246,14 +1284,16 @@ fn native_capture_screen_context(
     engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
-    timeout_ms: u32,
+    capture_timeout_ms: u32,
+    neural_ocr_timeout_ms: u32,
     neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     crate::screen_context_windows::native_capture_screen_context(
         engine,
         quality,
         max_words,
-        timeout_ms,
+        capture_timeout_ms,
+        neural_ocr_timeout_ms,
         neural_route,
     )
 }
@@ -1263,14 +1303,16 @@ fn native_capture_screen_context(
     engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
-    timeout_ms: u32,
+    capture_timeout_ms: u32,
+    neural_ocr_timeout_ms: u32,
     neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     crate::screen_context_linux::native_capture_screen_context(
         engine,
         quality,
         max_words,
-        timeout_ms,
+        capture_timeout_ms,
+        neural_ocr_timeout_ms,
         neural_route,
     )
 }
@@ -1284,7 +1326,8 @@ fn native_capture_screen_context(
     _engine: ScreenContextOcrEngine,
     _quality: OcrQualityMode,
     _max_words: usize,
-    _timeout_ms: u32,
+    _capture_timeout_ms: u32,
+    _neural_ocr_timeout_ms: u32,
     _neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     Err("Screen context capture is not supported on this platform.".to_string())
@@ -1405,6 +1448,49 @@ fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn neural_ocr_timeout_floor_does_not_inflate_bitmap_capture() {
+        let route = crate::ocr_backend::NeuralRoute {
+            backend: crate::ocr_models::OcrBackendKind::TransformersVl,
+            install_dir: std::path::PathBuf::from("/tmp"),
+            catalog_id: "jina-ocr-v1".into(),
+        };
+        let configured = 2_000;
+        assert_eq!(
+            super::effective_neural_ocr_timeout_ms(configured, Some(&route)),
+            180_000
+        );
+        assert_eq!(super::screen_capture_timeout_ms(configured), 2_000);
+        assert!(super::screen_capture_timeout_ms(configured) <= 5_000);
+        // Vision/native fallback uses the same short capture budget.
+        assert!(super::screen_capture_timeout_ms(configured) <= 5_000);
+        // Values below the floor clamp up; above-max clamps to shared max (= floor).
+        assert_eq!(
+            super::effective_neural_ocr_timeout_ms(150_000, Some(&route)),
+            180_000
+        );
+        assert_eq!(
+            super::effective_neural_ocr_timeout_ms(190_000, Some(&route)),
+            180_000
+        );
+        assert_eq!(super::screen_capture_timeout_ms(150_000), 5_000);
+        assert_eq!(super::effective_neural_ocr_timeout_ms(700, None), 700);
+        assert_eq!(super::screen_capture_timeout_ms(700), 700);
+    }
+
+    #[test]
+    fn normalize_ocr_timeout_agrees_with_shared_max() {
+        assert_eq!(
+            crate::settings::normalize_screen_context_ocr_timeout_ms(50),
+            crate::settings::SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS
+        );
+        assert_eq!(
+            crate::settings::normalize_screen_context_ocr_timeout_ms(999_999),
+            crate::settings::SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS
+        );
+        assert_eq!(crate::settings::SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS, 180_000);
+    }
+
     use super::*;
 
     fn snippet(text: &str, score: f32) -> RankedContextSnippet {

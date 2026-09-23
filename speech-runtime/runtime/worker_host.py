@@ -444,11 +444,12 @@ except Exception:
     ) -> dict[str, Any]:
         if worker.process.stdin is None or worker.process.stdout is None:
             raise RuntimeError("Speech worker pipes are not available.")
-        deadline = float(
+        timeout_secs = float(
             response_timeout_secs
             if response_timeout_secs is not None
             else WORKER_RESPONSE_TIMEOUT_SECS
         )
+        deadline = time.monotonic() + max(0.0, timeout_secs)
         try:
             worker.process.stdin.write(json.dumps(message) + "\n")
             worker.process.stdin.flush()
@@ -460,7 +461,12 @@ except Exception:
 
         ignored_lines: list[str] = []
         while True:
-            line = self._readline_with_timeout(worker, deadline)
+            remaining = deadline - time.monotonic()
+            line = (
+                self._readline_with_timeout(worker, remaining)
+                if remaining > 0.0
+                else None
+            )
             if line is None:
                 detail = self._collect_worker_detail(worker, ignored_lines)
                 self._drop_worker(worker)

@@ -9,10 +9,9 @@ available local dependency:
 * Paddle detector/recognizer packs use ``paddleocr`` when installed and return
   line snippets with normalised boxes.
 
-If an optional dependency is missing or a model-specific loader fails, the
-loader returns no snippets. The Rust router treats that as a backend miss and
-falls through to the existing system/Tesseract OCR policy within the capture
-timeout.
+Missing dependencies and model/inference failures raise so the IPC response is
+an error. A successful recognition that genuinely contains no text returns no
+snippets, allowing the Rust router to distinguish failure from empty content.
 """
 
 from __future__ import annotations
@@ -23,6 +22,32 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from .base import LoaderInfo, OcrLoader, Snippet
+
+
+def _set_offline_hf_env(model_root: Path) -> None:
+    """Force local-only Hugging Face access for managed OCR loads.
+
+    Managed external-model policy: model-root-derived cache paths must win
+    over any pre-existing host ``HF_HOME`` / ``HF_HUB_CACHE``.
+
+    Imported models are often a managed App Support symlink pointing at an
+    external volume. Resolve that symlink first so cache dirs land beside the
+    real weights (e.g. ``/Volumes/…/AI Models/.hf_cache``) rather than under
+    the internal symlink parent.
+    """
+    resolved_model_root = model_root.resolve()
+    parent = resolved_model_root.parent
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["HF_HOME"] = str(parent / ".hf_home")
+    os.environ["HF_HUB_CACHE"] = str(parent / ".hf_cache")
+
+
+def _jina_custom_modeling_present(model_root: Path) -> bool:
+    return (model_root / "modeling_deepseekocr.py").is_file() or (
+        model_root / "modeling_deepseek_ocr.py"
+    ).is_file()
+
 
 OCR_PROMPT = (
     "Read all visible text in this screenshot. Return only the text, preserving "
@@ -89,6 +114,15 @@ class TransformersVlLoader(OcrLoader):
             import torch
             from transformers import AutoProcessor, AutoTokenizer
 
+            _set_offline_hf_env(self._model_root)
+            if self.catalog_id == "jina-ocr-v1" and not _jina_custom_modeling_present(
+                self._model_root
+            ):
+                raise RuntimeError(
+                    "jina-ocr-v1 is missing modeling_deepseekocr.py; "
+                    "install/link the full local model tree before running."
+                )
+
             model_classes = []
             try:
                 from transformers import AutoModelForImageTextToText
@@ -113,11 +147,12 @@ class TransformersVlLoader(OcrLoader):
             if self.catalog_id == "lighton-ocr-2-1b":
                 from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
 
-                self._processor = LightOnOcrProcessor.from_pretrained(root)
+                self._processor = LightOnOcrProcessor.from_pretrained(root, local_files_only=True)
                 dtype = torch.float32 if self._device == "mps" else torch.float32
                 self._model = LightOnOcrForConditionalGeneration.from_pretrained(
                     root,
                     torch_dtype=dtype,
+                local_files_only=True,
                 )
                 self._model.eval()
                 if self._device != "cpu":
@@ -125,9 +160,9 @@ class TransformersVlLoader(OcrLoader):
                 self._torch = torch
                 return True
 
-            self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True)
+            self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True, local_files_only=True)
             try:
-                self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True)
+                self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True, local_files_only=True)
             except Exception:
                 self._tokenizer = None
 
@@ -144,13 +179,14 @@ class TransformersVlLoader(OcrLoader):
                     self._model = model_cls.from_pretrained(
                         root,
                         trust_remote_code=True,
+                        local_files_only=True,
                         torch_dtype="auto",
                         low_cpu_mem_usage=True,
                     )
                     break
                 except TypeError:
                     try:
-                        self._model = model_cls.from_pretrained(root, trust_remote_code=True)
+                        self._model = model_cls.from_pretrained(root, trust_remote_code=True, local_files_only=True)
                         break
                     except Exception as exc:  # noqa: BLE001
                         last_error = exc
@@ -185,12 +221,50 @@ class TransformersVlLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         processor = self._processor
         assert processor is not None
         try:
+            if self.catalog_id == "jina-ocr-v1":
+                # Official jinaai/jina-ocr-v1 flow (DeepSeek-OCR lineage):
+                # prepare_ocr_inputs → generate → decode_ocr.
+                if not hasattr(processor, "prepare_ocr_inputs") or not hasattr(
+                    processor, "decode_ocr"
+                ):
+                    raise RuntimeError(
+                        "jina-ocr-v1 processor is missing prepare_ocr_inputs/"
+                        "decode_ocr (custom processing_deepseek_ocr.py required)."
+                    )
+                torch = self._torch
+                assert torch is not None
+                inputs = processor.prepare_ocr_inputs(image, device=self._device)
+                with torch.no_grad():
+                    output = self._model.generate(
+                        **inputs,
+                        max_new_tokens=768,
+                        do_sample=False,
+                    )
+                text = processor.decode_ocr(output, inputs["input_ids"])
+                text = _word_clip(str(text or ""), max_words)
+                if not text:
+                    return ()
+                return (
+                    Snippet(
+                        text=text,
+                        confidence=0.0,
+                        x=0.0,
+                        y=0.0,
+                        width=1.0,
+                        height=1.0,
+                    ),
+                )
+
             if self.catalog_id == "lighton-ocr-2-1b":
                 messages = [
                     {
@@ -266,16 +340,21 @@ class TransformersVlLoader(OcrLoader):
                 ),
             )
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = (
+                f"{self.catalog_id} inference failed on device={self._device}: {exc}"
+            )
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
 
     def info(self) -> dict:
         loaded = self._ensure_loaded()
+        detail = self._load_error or "transformers loader ready"
         return LoaderInfo(
             catalog_id=self.catalog_id,
             backend=self._backend,
             loaded=loaded,
-            detail=self._load_error or "transformers loader ready",
+            detail=detail,
             model_root=str(self._model_root),
         ).to_json()
 
@@ -337,8 +416,12 @@ class MlxVlLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         tmp_path: Optional[str] = None
         try:
@@ -385,8 +468,10 @@ class MlxVlLoader(OcrLoader):
                 ),
             )
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = f"{self.catalog_id} inference failed: {exc}"
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
         finally:
             if tmp_path is not None:
                 try:
@@ -466,8 +551,12 @@ class PaddleOcrLoader(OcrLoader):
             stride=stride,
             pixel_format=pixel_format,
         )
-        if image is None or not self._ensure_loaded():
-            return ()
+        if image is None:
+            raise RuntimeError(f"{self.catalog_id} could not decode the OCR frame")
+        if not self._ensure_loaded():
+            raise RuntimeError(
+                f"{self.catalog_id} failed to load: {self._load_error or 'unknown loader error'}"
+            )
 
         try:
             with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
@@ -497,8 +586,10 @@ class PaddleOcrLoader(OcrLoader):
                 return tuple(clipped)
             return tuple(snippets)
         except Exception as exc:  # noqa: BLE001
-            self._load_error = str(exc)
-            return ()
+            self._load_error = f"{self.catalog_id} inference failed: {exc}"
+            raise RuntimeError(
+                f"{self.catalog_id} inference failed: {exc}"
+            ) from exc
 
     def info(self) -> dict:
         loaded = self._ensure_loaded()

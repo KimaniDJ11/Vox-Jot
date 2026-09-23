@@ -534,6 +534,55 @@ pub fn tts_temp_file(app_handle: &AppHandle, extension: &str) -> Result<PathBuf,
     Ok(tts_dir.join(format!("{}.{}", Uuid::new_v4(), extension)))
 }
 
+pub(crate) fn run_command_with_stop_flag(
+    mut command: Command,
+    stop_flag: &AtomicBool,
+    timeout: std::time::Duration,
+) -> Result<std::process::Output, String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Err("Speech output was cancelled.".to_string());
+    }
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("Failed to start speech process: {err}"))?;
+
+    let started_at = std::time::Instant::now();
+    loop {
+        if stop_flag.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Speech output was cancelled.".to_string());
+        }
+
+        if started_at.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!(
+                "Speech process timed out after {}s",
+                timeout.as_secs()
+            ));
+        }
+
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(30)),
+            Err(err) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("Failed while waiting for speech process: {err}"));
+            }
+        }
+    }
+
+    child
+        .wait_with_output()
+        .map_err(|err| format!("Failed to read speech process output: {err}"))
+}
+
 pub fn synthesize_sherpa_chunk(
     text: &str,
     context: &SherpaContext,
@@ -541,7 +590,7 @@ pub fn synthesize_sherpa_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let temp_file = std::env::temp_dir().join(format!("vox-jot-sherpa-{}.wav", Uuid::new_v4()));
@@ -615,11 +664,15 @@ pub fn synthesize_sherpa_chunk(
         command.env("PATH", runtime_path);
     }
 
-    let output = command
-        .arg(text)
-        .output()
-        .map_err(|err| format!("Failed to run Sherpa-ONNX TTS: {err}"))?;
+    command.arg(text);
+    let output =
+        run_command_with_stop_flag(command, stop_flag, std::time::Duration::from_secs(120))
+            .inspect_err(|_| {
+                let _ = fs::remove_file(&temp_file);
+            })?;
+
     if !output.status.success() {
+        let _ = fs::remove_file(&temp_file);
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         return Err(if !stderr.is_empty() {
@@ -633,12 +686,13 @@ pub fn synthesize_sherpa_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = fs::remove_file(&temp_file);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     Ok(temp_file)
 }
 
+#[allow(dead_code)]
 pub fn speak_sherpa_chunk(
     text: &str,
     context: &SherpaContext,
@@ -662,7 +716,7 @@ pub fn synthesize_lfm_audio_gguf_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -681,7 +735,7 @@ pub fn synthesize_lfm_audio_gguf_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     repair_wav_riff_header(&out_wav);
@@ -692,6 +746,7 @@ pub fn synthesize_lfm_audio_gguf_chunk(
     Ok(temp_file)
 }
 
+#[allow(dead_code)]
 pub fn speak_lfm_audio_gguf_chunk(
     text: &str,
     context: &crate::lfm_audio_gguf::LfmAudioGgufContext,
@@ -718,7 +773,7 @@ pub fn synthesize_vibevoice_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -737,7 +792,7 @@ pub fn synthesize_vibevoice_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let temp_file = std::env::temp_dir().join(format!("vox-jot-vibevoice-{}.wav", Uuid::new_v4()));
@@ -747,6 +802,7 @@ pub fn synthesize_vibevoice_chunk(
     Ok(temp_file)
 }
 
+#[allow(dead_code)]
 pub fn speak_vibevoice_chunk(
     text: &str,
     context: &crate::vibevoice::VibeVoiceContext,
@@ -773,7 +829,7 @@ pub fn synthesize_qwen3_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let binary_path = if context.clone_profile.is_some() {
@@ -818,9 +874,11 @@ pub fn synthesize_qwen3_chunk(
         }
     }
 
-    let output = command
-        .output()
-        .map_err(|err| format!("Failed to run Qwen3 TTS: {err}"))?;
+    let output =
+        run_command_with_stop_flag(command, stop_flag, std::time::Duration::from_secs(300))
+            .inspect_err(|_| {
+                let _ = std::fs::remove_dir_all(&temp_cwd);
+            })?;
 
     if !output.status.success() {
         let _ = std::fs::remove_dir_all(&temp_cwd);
@@ -871,7 +929,7 @@ pub fn synthesize_qwen3_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let temp_file = std::env::temp_dir().join(format!("vox-jot-qwen3-{}.wav", Uuid::new_v4()));
@@ -881,6 +939,7 @@ pub fn synthesize_qwen3_chunk(
     Ok(temp_file)
 }
 
+#[allow(dead_code)]
 pub fn speak_qwen3_chunk(
     text: &str,
     context: &Qwen3Context,
@@ -906,7 +965,7 @@ pub fn synthesize_mlx_audio_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let mlx_target = format!(
@@ -1039,7 +1098,7 @@ pub fn synthesize_mlx_audio_chunk(
             let _ = child.wait();
             let _ = std::fs::remove_dir_all(&temp_cwd);
             let _ = std::fs::remove_file(&output_path);
-            return Err("Story rendering was cancelled.".to_string());
+            return Err("Speech output was cancelled.".to_string());
         }
 
         if started_at.elapsed() >= timeout {
@@ -1110,13 +1169,14 @@ pub fn synthesize_mlx_audio_chunk(
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
         let _ = std::fs::remove_file(&output_path);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let _ = std::fs::remove_dir_all(&temp_cwd);
     Ok(output_path)
 }
 
+#[allow(dead_code)]
 pub fn speak_mlx_audio_chunk(
     text: &str,
     context: &MlxAudioContext,
@@ -1225,7 +1285,7 @@ fn synthesize_system_chunk_macos(
         let _ = child.wait();
         let _ = fs::remove_file(&synthesized_file);
         let _ = fs::remove_file(&playback_file);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     if !synthesized_file.exists() {
@@ -1297,12 +1357,13 @@ fn synthesize_system_chunk_windows(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = fs::remove_file(&temp_file);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     Ok(temp_file)
 }
 
+#[allow(dead_code)]
 pub fn speak_system_chunk(
     app_handle: &AppHandle,
     text: &str,

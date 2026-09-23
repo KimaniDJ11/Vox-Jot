@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
+use uuid::Uuid;
 
 use crate::audio_toolkit::save_wav_file;
 use crate::screen_context::ContextCaptureStatus;
@@ -89,6 +90,10 @@ static MIGRATIONS: &[M] = &[
 ];
 
 const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json, markdown_export_status, markdown_export_path, markdown_export_error, markdown_exported_at";
+
+fn history_audio_file_name(timestamp: i64) -> String {
+    format!("vox-jot-{timestamp}-{}.wav", Uuid::new_v4())
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -947,7 +952,10 @@ impl HistoryManager {
         duration_ms: Option<i64>,
     ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
-        let file_name = format!("vox-jot-{}.wav", timestamp);
+        // Multiple transcriptions can finish in the same second. A timestamp-only
+        // name lets one save overwrite another and leaves two database rows sharing
+        // one file, so cleanup of either row can break the other.
+        let file_name = history_audio_file_name(timestamp);
         let title = format_timestamp_title_value(timestamp);
         let (display_title, display_title_source) = compute_display_title(
             pasted_text.as_deref(),
@@ -964,14 +972,14 @@ impl HistoryManager {
 
         // Save WAV file
         let file_path = self.recordings_dir.join(&file_name);
-        save_wav_file(file_path, audio_samples.as_slice()).await?;
+        save_wav_file(&file_path, audio_samples.as_slice()).await?;
 
         let title_for_export = display_title.clone();
         let transcription_for_export = transcription_text.clone();
 
         // Save to database
-        let id = self.save_to_database(
-            file_name,
+        let id = match self.save_to_database(
+            file_name.clone(),
             timestamp,
             title,
             transcription_text,
@@ -985,10 +993,26 @@ impl HistoryManager {
             duration_ms,
             display_title,
             display_title_source,
-        )?;
+        ) {
+            Ok(id) => id,
+            Err(error) => {
+                if let Err(cleanup_error) = fs::remove_file(&file_path) {
+                    warn!(
+                        "Failed to remove orphaned history WAV '{}' after database error: {}",
+                        file_path.display(),
+                        cleanup_error
+                    );
+                }
+                return Err(error);
+            }
+        };
 
-        // Clean up old entries
-        self.cleanup_old_entries()?;
+        // Retention is best-effort housekeeping after the new row and WAV are
+        // durable. Reporting the whole save as failed here can make callers
+        // retry and create a duplicate even though the transcription was saved.
+        if let Err(error) = self.cleanup_old_entries() {
+            warn!("History entry {id} was saved, but retention cleanup failed: {error}");
+        }
 
         // Emit history updated event
         if let Err(e) = self.app_handle.emit("history-updated", ()) {
@@ -1985,6 +2009,16 @@ mod tests {
             ],
         )
         .expect("insert history entry");
+    }
+
+    #[test]
+    fn history_audio_names_are_unique_within_the_same_second() {
+        let first = history_audio_file_name(1_700_000_000);
+        let second = history_audio_file_name(1_700_000_000);
+
+        assert_ne!(first, second);
+        assert!(first.starts_with("vox-jot-1700000000-"));
+        assert!(first.ends_with(".wav"));
     }
 
     #[test]

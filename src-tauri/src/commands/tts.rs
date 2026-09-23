@@ -308,6 +308,7 @@ pub async fn tts_speak(
         "tts-command-speak",
     )
     .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -340,6 +341,7 @@ pub async fn tts_speak_with_preset(
         "tts-command-speak-preset",
     )
     .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -372,6 +374,7 @@ pub async fn tts_speak_reader(
         "tts-command-reader-speak",
     )
     .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -621,6 +624,7 @@ pub async fn preview_tts_voice(
         "tts-command-preview-voice",
     )
     .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -634,7 +638,9 @@ pub async fn preview_tts_voice_preset(
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset".to_string());
     request.preset_id = Some(preset_id);
-    speak_on_dedicated_thread(manager, request, "tts-command-preview-preset").await
+    speak_on_dedicated_thread(manager, request, "tts-command-preview-preset")
+        .await
+        .map(|_| ())
 }
 
 #[tauri::command]
@@ -648,7 +654,9 @@ pub async fn preview_tts_voice_preset_draft(
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset_draft".to_string());
     request.inline_preset = Some(preset_from_input(input, None)?);
-    speak_on_dedicated_thread(manager, request, "tts-command-preview-draft").await
+    speak_on_dedicated_thread(manager, request, "tts-command-preview-draft")
+        .await
+        .map(|_| ())
 }
 
 #[tauri::command]

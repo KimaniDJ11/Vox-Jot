@@ -38,6 +38,14 @@ export const SCREEN_OCR_EVALUATION_RUN = {
 
 export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
   {
+    engineId: "jina-ocr-v1",
+    label: "Jina OCR v1",
+    status: "pending",
+    notes:
+      "Diagnostic six-fixture harness exercised via consolidated ocr-runtime. Official ranked Benchmark v2 remains blocked: rankingEligible=false and required rotated/scaled + multilingual domains / installed-app ranked-v2 protocol are not satisfied by that harness.",
+  },
+
+  {
     engineId: "got-ocr2",
     label: "GOT-OCR 2.0 (General OCR Theory)",
     status: "tested",

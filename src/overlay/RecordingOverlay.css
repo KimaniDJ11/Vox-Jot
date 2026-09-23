@@ -187,6 +187,14 @@
     inset 0 -0.5px 0 rgba(255, 255, 255, 0.08);
 }
 
+/* Speech requests always use a readable status layout, regardless of the
+ * user's compact recording indicator preference. This is deliberately brief
+ * and non-activating so a global shortcut remains visible without obscuring
+ * the selected text in the active app. */
+.recording-overlay--speech {
+  width: 280px;
+}
+
 /* ---------- correction confirmation -------------------------- */
 .recording-overlay--correction {
   width: 300px;
@@ -416,6 +424,11 @@
   background: var(--ov-accent);
   animation: dot-pulse 1.4s ease-in-out infinite;
   flex-shrink: 0;
+}
+
+.status-dot--failed {
+  background: var(--ov-cancel);
+  animation: none;
 }
 
 @keyframes dot-pulse {

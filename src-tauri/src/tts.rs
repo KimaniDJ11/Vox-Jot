@@ -76,16 +76,14 @@ use runtime::{
     extract_archive, managed_speech_runtime_definition, managed_speech_runtime_entrypoint,
     mlx_audio_language_for_locale, qwen3_language_for_locale, qwen3_runtime_binary_path,
     qwen3_runtime_definition, resolve_extracted_root, sherpa_runtime_binary_path,
-    sherpa_runtime_definition, speak_lfm_audio_gguf_chunk, speak_mlx_audio_chunk,
-    speak_qwen3_chunk, speak_sherpa_chunk, speak_system_chunk, speak_vibevoice_chunk,
-    synthesize_lfm_audio_gguf_chunk, synthesize_mlx_audio_chunk, synthesize_qwen3_chunk,
-    synthesize_sherpa_chunk, synthesize_system_chunk, synthesize_vibevoice_chunk,
-    ManagedSpeechRuntimeDefinition, MlxAudioCloneProfile, MlxAudioContext, Qwen3CloneProfile,
-    Qwen3Context, SherpaContext,
+    sherpa_runtime_definition, synthesize_lfm_audio_gguf_chunk, synthesize_mlx_audio_chunk,
+    synthesize_qwen3_chunk, synthesize_sherpa_chunk, synthesize_system_chunk,
+    synthesize_vibevoice_chunk, ManagedSpeechRuntimeDefinition, MlxAudioCloneProfile,
+    MlxAudioContext, Qwen3CloneProfile, Qwen3Context, SherpaContext,
 };
 use sidecar::{
     sidecar_error_detail, sidecar_request_url_from_base, sidecar_runtime_target,
-    speak_sidecar_chunk, synthesize_sidecar_chunk, DEFAULT_SIDECAR_URL,
+    synthesize_sidecar_chunk, DEFAULT_SIDECAR_URL,
 };
 #[cfg(target_os = "macos")]
 use voices::macos_system_voices;
@@ -274,10 +272,142 @@ pub struct TtsAutoSpeakPlan {
 
 pub struct TtsManager {
     app_handle: AppHandle,
-    current_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
+    playback_tracker: Mutex<TtsPlaybackTracker>,
+    /// Physical audio playback must be serialized so concurrent or cancelled
+    /// requests never play audio to the sound device simultaneously.
+    audio_playback_gate: std::sync::Mutex<()>,
     last_output: Mutex<Option<LastOutput>>,
     cached_system_voices: Mutex<Option<Vec<VoiceInfo>>>,
     active_model_uses: Arc<Mutex<HashMap<String, usize>>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum TtsPlaybackPhase {
+    #[allow(dead_code)]
+    Queued,
+    Preparing,
+    Speaking,
+    Completed,
+    Stopped,
+    Failed,
+}
+
+impl TtsPlaybackPhase {
+    fn is_active(self) -> bool {
+        matches!(self, Self::Queued | Self::Preparing | Self::Speaking)
+    }
+
+    fn as_overlay_phase(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Preparing => "preparing",
+            Self::Speaking => "speaking",
+            Self::Failed => "failed",
+            Self::Completed | Self::Stopped => "stopped",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TtsPlaybackStatusEvent {
+    request_id: u64,
+    phase: TtsPlaybackPhase,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TtsPlaybackTicket {
+    pub(crate) request_id: u64,
+    pub(crate) stop_flag: Arc<AtomicBool>,
+}
+
+#[derive(Default)]
+pub(crate) struct TtsPlaybackTracker {
+    pub(crate) next_request_id: u64,
+    pub(crate) active: Option<TtsPlaybackTicket>,
+}
+
+impl TtsPlaybackTracker {
+    pub(crate) fn begin(&mut self) -> TtsPlaybackTicket {
+        if let Some(active) = self.active.as_ref() {
+            active.stop_flag.store(true, Ordering::Relaxed);
+        }
+
+        self.next_request_id = self.next_request_id.wrapping_add(1);
+        if self.next_request_id == 0 {
+            self.next_request_id = 1;
+        }
+
+        let ticket = TtsPlaybackTicket {
+            request_id: self.next_request_id,
+            stop_flag: Arc::new(AtomicBool::new(false)),
+        };
+        self.active = Some(ticket.clone());
+        ticket
+    }
+
+    pub(crate) fn stop(&mut self) -> Option<TtsPlaybackTicket> {
+        let ticket = self.active.take()?;
+        ticket.stop_flag.store(true, Ordering::Relaxed);
+        Some(ticket)
+    }
+
+    pub(crate) fn is_active(&self, ticket: &TtsPlaybackTicket) -> bool {
+        self.active
+            .as_ref()
+            .is_some_and(|active| active.request_id == ticket.request_id)
+            && !ticket.stop_flag.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn finish_if_active(&mut self, ticket: &TtsPlaybackTicket) -> bool {
+        if self
+            .active
+            .as_ref()
+            .is_none_or(|active| active.request_id != ticket.request_id)
+        {
+            return false;
+        }
+
+        self.active.take();
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TtsSpeakSession {
+    pub(crate) ticket: TtsPlaybackTicket,
+    pub(crate) settings: AppSettings,
+    pub(crate) effective_settings: AppSettings,
+    pub(crate) selected_preset: Option<TtsVoicePreset>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TtsPlaybackOutcome {
+    Played,
+    Cancelled,
+}
+
+pub(crate) fn effective_tts_settings_for_preset(
+    settings: &AppSettings,
+    selected_preset: Option<&TtsVoicePreset>,
+) -> AppSettings {
+    let mut effective_settings = settings.clone();
+    if let Some(preset) = selected_preset {
+        effective_settings.tts_active_preset_id = None;
+        effective_settings.selected_tts_provider_id = preset.provider_id.clone();
+        effective_settings.selected_tts_model_id = Some(preset.model_id.clone());
+        effective_settings.selected_tts_profile_id = preset.voice_profile_id.clone();
+        effective_settings.selected_tts_voice_id = preset.voice_id.clone();
+        effective_settings.tts_default_voice_id = preset.voice_id.clone();
+        effective_settings.tts_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
+    }
+    effective_settings
+}
+
+fn is_cancellation_error(err: &str) -> bool {
+    let lower = err.to_lowercase();
+    lower.contains("cancelled") || lower.contains("canceled")
 }
 
 fn tts_command_semaphore() -> &'static tokio::sync::Semaphore {
@@ -320,11 +450,15 @@ pub(crate) async fn speak_on_dedicated_thread(
     manager: Arc<TtsManager>,
     request: SpeakRequest,
     thread_name: &'static str,
-) -> Result<(), String> {
-    run_tts_async_on_dedicated_stack(
-        thread_name,
-        move || async move { manager.speak(request).await },
-    )
+) -> Result<TtsPlaybackOutcome, String> {
+    let Some(session) = manager.begin_speak_session(&request)? else {
+        return Ok(TtsPlaybackOutcome::Played);
+    };
+
+    let mgr = Arc::clone(&manager);
+    run_tts_async_on_dedicated_stack(thread_name, move || async move {
+        mgr.speak(request, session).await
+    })
     .await
 }
 
@@ -356,7 +490,8 @@ impl TtsManager {
     pub fn new(app_handle: &AppHandle) -> Self {
         let manager = Self {
             app_handle: app_handle.clone(),
-            current_stop_flag: Mutex::new(None),
+            playback_tracker: Mutex::new(TtsPlaybackTracker::default()),
+            audio_playback_gate: std::sync::Mutex::new(()),
             last_output: Mutex::new(None),
             cached_system_voices: Mutex::new(None),
             active_model_uses: Arc::new(Mutex::new(HashMap::new())),
@@ -367,6 +502,105 @@ impl TtsManager {
         }
 
         manager
+    }
+
+    /// Snapshot the voice configuration while a caller still represents the
+    /// user's explicit action. The actual synthesis work may wait behind a
+    /// model load, so reading settings later could otherwise make an old
+    /// shortcut speak using a voice the user has already replaced.
+    fn begin_speak_session(
+        &self,
+        request: &SpeakRequest,
+    ) -> Result<Option<TtsSpeakSession>, String> {
+        if request.text.trim().is_empty() {
+            return Ok(None);
+        }
+
+        if let Some(audio_manager) = self
+            .app_handle
+            .try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
+        {
+            if audio_manager.is_recording() {
+                return Err("Stop recording before playing speech output.".to_string());
+            }
+        }
+
+        let settings = get_settings(&self.app_handle);
+        let selected_preset = self.resolved_preset_for_request(&settings, request);
+        let effective_settings =
+            effective_tts_settings_for_preset(&settings, selected_preset.as_ref());
+        let ticket = self.begin_playback_ticket();
+        self.emit_playback_status(&ticket, TtsPlaybackPhase::Preparing);
+
+        Ok(Some(TtsSpeakSession {
+            ticket,
+            settings,
+            effective_settings,
+            selected_preset,
+        }))
+    }
+
+    pub(crate) fn begin_playback_ticket(&self) -> TtsPlaybackTicket {
+        self.playback_tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .begin()
+    }
+
+    pub(crate) fn is_playback_ticket_active(&self, ticket: &TtsPlaybackTicket) -> bool {
+        self.playback_tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_active(ticket)
+    }
+
+    pub(crate) fn finish_playback_ticket(
+        &self,
+        ticket: &TtsPlaybackTicket,
+        phase: TtsPlaybackPhase,
+    ) {
+        let finished_current_request = self
+            .playback_tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .finish_if_active(ticket);
+        if finished_current_request {
+            self.emit_playback_status(ticket, phase);
+        }
+    }
+
+    pub(crate) fn emit_playback_status(&self, ticket: &TtsPlaybackTicket, phase: TtsPlaybackPhase) {
+        if phase.is_active() && !self.is_playback_ticket_active(ticket) {
+            return;
+        }
+
+        let event = TtsPlaybackStatusEvent {
+            request_id: ticket.request_id,
+            phase,
+        };
+        let _ = self.app_handle.emit("tts-status", event);
+
+        if phase.is_active() {
+            crate::overlay::show_speech_overlay(
+                &self.app_handle,
+                ticket.request_id,
+                phase.as_overlay_phase(),
+            );
+        } else if phase == TtsPlaybackPhase::Failed {
+            crate::overlay::show_speech_overlay(&self.app_handle, ticket.request_id, "failed");
+            let app_handle = self.app_handle.clone();
+            let request_id = ticket.request_id;
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(2500));
+                crate::overlay::hide_speech_overlay(&app_handle, request_id);
+            });
+        } else {
+            crate::overlay::hide_speech_overlay(&self.app_handle, ticket.request_id);
+        }
+    }
+
+    pub(crate) fn request_was_cancelled(&self, ticket: &TtsPlaybackTicket) -> bool {
+        ticket.stop_flag.load(Ordering::Relaxed) || !self.is_playback_ticket_active(ticket)
     }
 
     pub(crate) fn track_model_use(&self, model_id: Option<&str>) -> TtsModelUseGuard {
@@ -1505,13 +1739,13 @@ impl TtsManager {
     }
 
     pub fn stop(&self) {
-        if let Some(flag) = self
-            .current_stop_flag
+        let stopped = self
+            .playback_tracker
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-        {
-            flag.store(true, Ordering::Relaxed);
+            .stop();
+        if let Some(ticket) = stopped {
+            self.emit_playback_status(&ticket, TtsPlaybackPhase::Stopped);
         }
     }
 
@@ -1532,30 +1766,37 @@ impl TtsManager {
             ));
         }
 
-        self.stop();
-
         let settings = get_settings(&self.app_handle);
-        let stop_flag = Arc::new(AtomicBool::new(false));
-        {
-            let mut guard = self
-                .current_stop_flag
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            *guard = Some(stop_flag.clone());
+        let ticket = self.begin_playback_ticket();
+        self.emit_playback_status(&ticket, TtsPlaybackPhase::Preparing);
+
+        let _playback_guard = self
+            .audio_playback_gate
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if ticket.stop_flag.load(Ordering::Relaxed) || !self.is_playback_ticket_active(&ticket) {
+            self.finish_playback_ticket(&ticket, TtsPlaybackPhase::Stopped);
+            return Ok(());
         }
+
+        self.emit_playback_status(&ticket, TtsPlaybackPhase::Speaking);
 
         let result = crate::audio_playback::play_audio_file_with_stop(
             &path,
             settings.selected_output_device.clone(),
             settings.tts_volume.clamp(0.0, 1.0),
-            &stop_flag,
+            &ticket.stop_flag,
         )
         .map_err(|err| format!("Reader cached audio playback failed: {err}"));
 
-        self.current_stop_flag
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
+        let phase = if ticket.stop_flag.load(Ordering::Relaxed) {
+            TtsPlaybackPhase::Stopped
+        } else if result.is_ok() {
+            TtsPlaybackPhase::Completed
+        } else {
+            TtsPlaybackPhase::Failed
+        };
+        self.finish_playback_ticket(&ticket, phase);
 
         result
     }
@@ -3715,46 +3956,57 @@ impl TtsManager {
         }
     }
 
-    pub async fn speak(&self, request: SpeakRequest) -> Result<(), String> {
-        let settings = get_settings(&self.app_handle);
-        let selected_preset = self.resolved_preset_for_request(&settings, &request);
-        let mut effective_settings = settings.clone();
-        if let Some(preset) = selected_preset.as_ref() {
-            effective_settings.tts_active_preset_id = None;
-            effective_settings.selected_tts_provider_id = preset.provider_id.clone();
-            effective_settings.selected_tts_model_id = Some(preset.model_id.clone());
-            effective_settings.selected_tts_profile_id = preset.voice_profile_id.clone();
-            effective_settings.selected_tts_voice_id = preset.voice_id.clone();
-            effective_settings.tts_default_voice_id = preset.voice_id.clone();
-            effective_settings.tts_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
+    async fn speak(
+        self: &Arc<Self>,
+        request: SpeakRequest,
+        session: TtsSpeakSession,
+    ) -> Result<TtsPlaybackOutcome, String> {
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(TtsPlaybackOutcome::Cancelled);
         }
+
+        let result = self.run_speak_session(request, &session).await;
+
+        if self.request_was_cancelled(&session.ticket) {
+            self.finish_playback_ticket(&session.ticket, TtsPlaybackPhase::Stopped);
+            return Ok(TtsPlaybackOutcome::Cancelled);
+        }
+
+        match result {
+            Ok(()) => {
+                self.finish_playback_ticket(&session.ticket, TtsPlaybackPhase::Completed);
+                Ok(TtsPlaybackOutcome::Played)
+            }
+            Err(err) if is_cancellation_error(&err) => {
+                self.finish_playback_ticket(&session.ticket, TtsPlaybackPhase::Stopped);
+                Ok(TtsPlaybackOutcome::Cancelled)
+            }
+            Err(err) => {
+                self.finish_playback_ticket(&session.ticket, TtsPlaybackPhase::Failed);
+                Err(err)
+            }
+        }
+    }
+
+    async fn run_speak_session(
+        self: &Arc<Self>,
+        request: SpeakRequest,
+        session: &TtsSpeakSession,
+    ) -> Result<(), String> {
+        let settings = session.settings.clone();
+        let selected_preset = session.selected_preset.clone();
+        let effective_settings = session.effective_settings.clone();
         let trimmed = request.text.trim();
         if trimmed.is_empty() {
             return Ok(());
         }
 
-        if let Some(audio_manager) = self
-            .app_handle
-            .try_state::<Arc<crate::managers::audio::AudioRecordingManager>>()
-        {
-            if audio_manager.is_recording() {
-                return Err("Stop recording before playing speech output.".to_string());
-            }
-        }
-
-        self.stop();
-
         if request.remember_last_output {
             self.set_last_output(trimmed.to_string(), request.locale.clone());
         }
 
-        let stop_flag = Arc::new(AtomicBool::new(false));
-        {
-            let mut guard = self
-                .current_stop_flag
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            *guard = Some(stop_flag.clone());
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
         }
 
         let locale = normalize_locale(request.locale.as_deref());
@@ -3768,7 +4020,16 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        if engine == TtsEngineKind::Sidecar {
+            if let Some(profile_id) = selected_profile_id.as_deref() {
+                tts_profiles::validate_voice_profile_paths_for_use(&self.app_handle, profile_id)?;
+            }
+        }
         let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
+
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
 
         let chunks = chunk_text(trimmed);
         if engine == TtsEngineKind::Sidecar {
@@ -3807,6 +4068,9 @@ impl TtsManager {
                 }
             }
         }
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let voice = self.select_voice(
             &effective_settings,
             engine,
@@ -3820,6 +4084,9 @@ impl TtsManager {
             ),
             _ => None,
         };
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let qwen3_context = match engine {
             TtsEngineKind::Qwen3Native => Some(
                 self.prepare_qwen3_context(&effective_settings, locale.as_deref(), voice.as_ref())
@@ -3827,6 +4094,9 @@ impl TtsManager {
             ),
             _ => None,
         };
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let mlx_audio_context = match engine {
             TtsEngineKind::MlxNative => Some(
                 self.prepare_mlx_audio_context(&effective_settings, locale.as_deref())
@@ -3834,6 +4104,9 @@ impl TtsManager {
             ),
             _ => None,
         };
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let lfm_audio_gguf_context = match engine {
             TtsEngineKind::LfmAudioGguf => Some(
                 crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(&self.app_handle)
@@ -3841,10 +4114,16 @@ impl TtsManager {
             ),
             _ => None,
         };
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let vibevoice_context = match engine {
             TtsEngineKind::VibeVoice => Some(self.prepare_vibevoice_context()?),
             _ => None,
         };
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
         let tts_volume = settings.tts_volume.clamp(0.0, 1.0);
         let output_device = settings.selected_output_device.clone();
         let app_handle = self.app_handle.clone();
@@ -3890,114 +4169,84 @@ impl TtsManager {
             trigger
         );
 
+        if self.request_was_cancelled(&session.ticket) {
+            return Ok(());
+        }
+
+        let manager = Arc::clone(self);
+        let ticket = session.ticket.clone();
         let (speak_tx, speak_rx) = tokio::sync::oneshot::channel();
         let spawn_result = thread::Builder::new()
             .name("tts-speak-chunks".to_string())
             .stack_size(TTS_RENDER_STACK_BYTES)
             .spawn(move || {
                 let result = (|| {
-                    for chunk in chunks {
-                        if stop_flag.load(Ordering::Relaxed) {
-                            break;
+                    let runtime = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|err| format!("Failed to start TTS render runtime: {err}"))?;
+                    let _runtime_guard = runtime.enter();
+
+                    for (index, chunk) in chunks.into_iter().enumerate() {
+                        if manager.request_was_cancelled(&ticket) {
+                            return Err("Speech output was cancelled.".to_string());
                         }
 
-                        match engine {
-                            TtsEngineKind::System => {
-                                speak_system_chunk(
-                                    &app_handle,
-                                    &chunk,
-                                    locale.as_deref(),
-                                    voice.as_ref(),
-                                    tuning.tempo_rate,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
+                        let temp_file = Self::synthesize_engine_chunk(
+                            engine,
+                            &app_handle,
+                            &chunk,
+                            locale.as_deref(),
+                            voice.as_ref(),
+                            &tuning,
+                            preferred_voice_id.as_deref(),
+                            &selected_provider_id,
+                            selected_model_id.as_deref(),
+                            selected_profile_id.as_deref(),
+                            sherpa_context.as_ref(),
+                            qwen3_context.as_ref(),
+                            mlx_audio_context.as_ref(),
+                            lfm_audio_gguf_context.as_ref(),
+                            vibevoice_context.as_ref(),
+                            &ticket.stop_flag,
+                        )?;
+
+                        if manager.request_was_cancelled(&ticket) {
+                            let _ = std::fs::remove_file(&temp_file);
+                            return Err("Speech output was cancelled.".to_string());
+                        }
+
+                        if index == 0 {
+                            manager.emit_playback_status(&ticket, TtsPlaybackPhase::Speaking);
+                        }
+
+                        let playback_result = {
+                            let _playback_guard = manager
+                                .audio_playback_gate
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner());
+
+                            if manager.request_was_cancelled(&ticket) {
+                                let _ = std::fs::remove_file(&temp_file);
+                                return Err("Speech output was cancelled.".to_string());
                             }
-                            TtsEngineKind::SherpaOnnx => {
-                                let sherpa_context = sherpa_context.as_ref().ok_or_else(|| {
-                                    "No Sherpa-ONNX TTS pack is available.".to_string()
-                                })?;
-                                speak_sherpa_chunk(
-                                    &chunk,
-                                    sherpa_context,
-                                    tuning.tempo_rate,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
-                            TtsEngineKind::Qwen3Native => {
-                                let qwen3_context = qwen3_context.as_ref().ok_or_else(|| {
-                                    "No Qwen3 Native models are available.".to_string()
-                                })?;
-                                speak_qwen3_chunk(
-                                    &chunk,
-                                    qwen3_context,
-                                    &tuning,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
-                            TtsEngineKind::MlxNative => {
-                                let mlx_audio_context =
-                                    mlx_audio_context.as_ref().ok_or_else(|| {
-                                        "No MLX speech models are available.".to_string()
-                                    })?;
-                                speak_mlx_audio_chunk(
-                                    &chunk,
-                                    mlx_audio_context,
-                                    preferred_voice_id.as_deref(),
-                                    voice.as_ref(),
-                                    &tuning,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
-                            TtsEngineKind::Sidecar => {
-                                speak_sidecar_chunk(
-                                    &chunk,
-                                    &selected_provider_id,
-                                    selected_model_id.as_deref(),
-                                    selected_profile_id.as_deref(),
-                                    locale.as_deref(),
-                                    preferred_voice_id.as_deref(),
-                                    voice.as_ref(),
-                                    &tuning,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
-                            TtsEngineKind::LfmAudioGguf => {
-                                let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
-                                    "LFM Audio GGUF context is not initialized.".to_string()
-                                })?;
-                                speak_lfm_audio_gguf_chunk(
-                                    &chunk,
-                                    context,
-                                    preferred_voice_id.as_deref(),
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
-                            TtsEngineKind::VibeVoice => {
-                                let context = vibevoice_context.as_ref().ok_or_else(|| {
-                                    "VibeVoice context is not initialized.".to_string()
-                                })?;
-                                speak_vibevoice_chunk(
-                                    &chunk,
-                                    context,
-                                    preferred_voice_id.as_deref(),
-                                    &tuning,
-                                    tts_volume,
-                                    output_device.clone(),
-                                    &stop_flag,
-                                )?;
-                            }
+
+                            let play_res = crate::audio_playback::play_audio_file_with_stop(
+                                &temp_file,
+                                output_device.clone(),
+                                tts_volume,
+                                &ticket.stop_flag,
+                            )
+                            .map_err(|err| format!("Failed to play speech audio: {err}"));
+
+                            let _ = std::fs::remove_file(&temp_file);
+                            play_res
+                        };
+
+                        playback_result?;
+
+                        if manager.request_was_cancelled(&ticket) {
+                            return Err("Speech output was cancelled.".to_string());
                         }
                     }
 
@@ -4006,10 +4255,6 @@ impl TtsManager {
                 let _ = speak_tx.send(result);
             });
         if let Err(err) = spawn_result {
-            self.current_stop_flag
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .take();
             return Err(format!("Failed to start TTS playback thread: {err}"));
         }
 
@@ -4017,12 +4262,82 @@ impl TtsManager {
             Ok(result) => result,
             Err(_) => Err("TTS playback thread stopped before returning a result.".to_string()),
         };
-        self.current_stop_flag
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
 
         join_result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn synthesize_engine_chunk(
+        engine: TtsEngineKind,
+        app_handle: &AppHandle,
+        chunk: &str,
+        locale: Option<&str>,
+        voice: Option<&VoiceInfo>,
+        tuning: &TtsVoiceTuningSettings,
+        preferred_voice_id: Option<&str>,
+        selected_provider_id: &str,
+        selected_model_id: Option<&str>,
+        selected_profile_id: Option<&str>,
+        sherpa_context: Option<&SherpaContext>,
+        qwen3_context: Option<&Qwen3Context>,
+        mlx_audio_context: Option<&MlxAudioContext>,
+        lfm_audio_gguf_context: Option<&crate::lfm_audio_gguf::LfmAudioGgufContext>,
+        vibevoice_context: Option<&crate::vibevoice::VibeVoiceContext>,
+        stop_flag: &AtomicBool,
+    ) -> Result<PathBuf, String> {
+        match engine {
+            TtsEngineKind::System => synthesize_system_chunk(
+                app_handle,
+                chunk,
+                locale,
+                voice,
+                tuning.tempo_rate,
+                stop_flag,
+            ),
+            TtsEngineKind::SherpaOnnx => {
+                let sherpa_context = sherpa_context
+                    .ok_or_else(|| "No Sherpa-ONNX TTS pack is available.".to_string())?;
+                synthesize_sherpa_chunk(chunk, sherpa_context, tuning.tempo_rate, stop_flag)
+            }
+            TtsEngineKind::Qwen3Native => {
+                let qwen3_context = qwen3_context
+                    .ok_or_else(|| "No Qwen3 Native models are available.".to_string())?;
+                synthesize_qwen3_chunk(chunk, qwen3_context, tuning, stop_flag)
+            }
+            TtsEngineKind::MlxNative => {
+                let mlx_audio_context = mlx_audio_context
+                    .ok_or_else(|| "No MLX speech models are available.".to_string())?;
+                synthesize_mlx_audio_chunk(
+                    chunk,
+                    mlx_audio_context,
+                    preferred_voice_id,
+                    voice,
+                    tuning,
+                    stop_flag,
+                )
+            }
+            TtsEngineKind::Sidecar => synthesize_sidecar_chunk(
+                chunk,
+                selected_provider_id,
+                selected_model_id,
+                selected_profile_id,
+                locale,
+                preferred_voice_id,
+                voice,
+                tuning,
+                stop_flag,
+            ),
+            TtsEngineKind::LfmAudioGguf => {
+                let context = lfm_audio_gguf_context
+                    .ok_or_else(|| "LFM Audio GGUF context is not initialized.".to_string())?;
+                synthesize_lfm_audio_gguf_chunk(chunk, context, preferred_voice_id, stop_flag)
+            }
+            TtsEngineKind::VibeVoice => {
+                let context = vibevoice_context
+                    .ok_or_else(|| "VibeVoice context is not initialized.".to_string())?;
+                synthesize_vibevoice_chunk(chunk, context, preferred_voice_id, tuning, stop_flag)
+            }
+        }
     }
 
     pub async fn synthesize_to_temp_files(
@@ -4032,16 +4347,8 @@ impl TtsManager {
     ) -> Result<Vec<PathBuf>, String> {
         let settings = get_settings(&self.app_handle);
         let selected_preset = self.resolved_preset_for_request(&settings, &request);
-        let mut effective_settings = settings.clone();
-        if let Some(preset) = selected_preset.as_ref() {
-            effective_settings.tts_active_preset_id = None;
-            effective_settings.selected_tts_provider_id = preset.provider_id.clone();
-            effective_settings.selected_tts_model_id = Some(preset.model_id.clone());
-            effective_settings.selected_tts_profile_id = preset.voice_profile_id.clone();
-            effective_settings.selected_tts_voice_id = preset.voice_id.clone();
-            effective_settings.tts_default_voice_id = preset.voice_id.clone();
-            effective_settings.tts_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
-        }
+        let effective_settings =
+            effective_tts_settings_for_preset(&settings, selected_preset.as_ref());
 
         let trimmed = request.text.trim();
         if trimmed.is_empty() {
@@ -4059,6 +4366,11 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        if engine == TtsEngineKind::Sidecar {
+            if let Some(profile_id) = selected_profile_id.as_deref() {
+                tts_profiles::validate_voice_profile_paths_for_use(&self.app_handle, profile_id)?;
+            }
+        }
         let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
 
         let chunks = chunk_text(trimmed);
@@ -4185,81 +4497,24 @@ impl TtsManager {
                             break;
                         }
 
-                        let file = match engine {
-                            TtsEngineKind::System => synthesize_system_chunk(
-                                &app_handle,
-                                &chunk,
-                                locale.as_deref(),
-                                voice.as_ref(),
-                                tuning.tempo_rate,
-                                &stop_flag,
-                            )?,
-                            TtsEngineKind::SherpaOnnx => {
-                                let sherpa_context = sherpa_context.as_ref().ok_or_else(|| {
-                                    "No Sherpa-ONNX TTS pack is available.".to_string()
-                                })?;
-                                synthesize_sherpa_chunk(
-                                    &chunk,
-                                    sherpa_context,
-                                    tuning.tempo_rate,
-                                    &stop_flag,
-                                )?
-                            }
-                            TtsEngineKind::Qwen3Native => {
-                                let qwen3_context = qwen3_context.as_ref().ok_or_else(|| {
-                                    "No Qwen3 Native models are available.".to_string()
-                                })?;
-                                synthesize_qwen3_chunk(&chunk, qwen3_context, &tuning, &stop_flag)?
-                            }
-                            TtsEngineKind::MlxNative => {
-                                let mlx_audio_context =
-                                    mlx_audio_context.as_ref().ok_or_else(|| {
-                                        "No MLX speech models are available.".to_string()
-                                    })?;
-                                synthesize_mlx_audio_chunk(
-                                    &chunk,
-                                    mlx_audio_context,
-                                    preferred_voice_id.as_deref(),
-                                    voice.as_ref(),
-                                    &tuning,
-                                    &stop_flag,
-                                )?
-                            }
-                            TtsEngineKind::Sidecar => synthesize_sidecar_chunk(
-                                &chunk,
-                                &selected_provider_id,
-                                selected_model_id.as_deref(),
-                                selected_profile_id.as_deref(),
-                                locale.as_deref(),
-                                preferred_voice_id.as_deref(),
-                                voice.as_ref(),
-                                &tuning,
-                                &stop_flag,
-                            )?,
-                            TtsEngineKind::LfmAudioGguf => {
-                                let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
-                                    "LFM Audio GGUF context is not initialized.".to_string()
-                                })?;
-                                synthesize_lfm_audio_gguf_chunk(
-                                    &chunk,
-                                    context,
-                                    preferred_voice_id.as_deref(),
-                                    &stop_flag,
-                                )?
-                            }
-                            TtsEngineKind::VibeVoice => {
-                                let context = vibevoice_context.as_ref().ok_or_else(|| {
-                                    "VibeVoice context is not initialized.".to_string()
-                                })?;
-                                synthesize_vibevoice_chunk(
-                                    &chunk,
-                                    context,
-                                    preferred_voice_id.as_deref(),
-                                    &tuning,
-                                    &stop_flag,
-                                )?
-                            }
-                        };
+                        let file = Self::synthesize_engine_chunk(
+                            engine,
+                            &app_handle,
+                            &chunk,
+                            locale.as_deref(),
+                            voice.as_ref(),
+                            &tuning,
+                            preferred_voice_id.as_deref(),
+                            &selected_provider_id,
+                            selected_model_id.as_deref(),
+                            selected_profile_id.as_deref(),
+                            sherpa_context.as_ref(),
+                            qwen3_context.as_ref(),
+                            mlx_audio_context.as_ref(),
+                            lfm_audio_gguf_context.as_ref(),
+                            vibevoice_context.as_ref(),
+                            &stop_flag,
+                        )?;
                         files.push(file);
                     }
                     Ok::<Vec<PathBuf>, String>(files)

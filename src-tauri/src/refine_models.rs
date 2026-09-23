@@ -10,8 +10,8 @@ use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc, Mutex as StdMutex,
 };
 use std::thread;
 use std::time::Duration;
@@ -23,6 +23,45 @@ use tokio::sync::Mutex;
 
 static ACTIVE_INSTALLS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+
+struct RefineSelectionGate {
+    generation: AtomicU64,
+    commit: StdMutex<()>,
+}
+
+impl RefineSelectionGate {
+    const fn new() -> Self {
+        Self {
+            generation: AtomicU64::new(0),
+            commit: StdMutex::new(()),
+        }
+    }
+
+    fn begin(&self) -> Result<u64, String> {
+        let _guard = self
+            .commit
+            .lock()
+            .map_err(|_| "Refine model selection state is unavailable.".to_string())?;
+        Ok(self.generation.fetch_add(1, Ordering::SeqCst) + 1)
+    }
+
+    fn commit_if_current<T>(
+        &self,
+        request_generation: u64,
+        commit: impl FnOnce() -> T,
+    ) -> Result<Option<T>, String> {
+        let _guard = self
+            .commit
+            .lock()
+            .map_err(|_| "Refine model selection state is unavailable.".to_string())?;
+        if self.generation.load(Ordering::SeqCst) != request_generation {
+            return Ok(None);
+        }
+        Ok(Some(commit()))
+    }
+}
+
+static REFINE_SELECTION_GATE: RefineSelectionGate = RefineSelectionGate::new();
 
 // Refine catalog/download commands can run under WebKit's URL-scheme callback.
 // Keep large Ollama/Hugging Face work off that stack on macOS.
@@ -532,7 +571,7 @@ mod tests {
         ollama_model_ids_equivalent, ollama_model_matches, ollama_model_page_url,
         remove_local_ollama_rows_shadowed_by_installed_hf_imports, replacement_ollama_model_id,
         runtime_model_id_for_hf_file_name, RefineModelDescriptor, RefineModelSourceKind,
-        OLLAMA_PROVIDER_ID,
+        RefineSelectionGate, OLLAMA_PROVIDER_ID,
     };
 
     fn refine_model(
@@ -686,6 +725,23 @@ mod tests {
             Some("minicpm5-2b-q4km")
         );
         assert_eq!(runtime_model_id_for_hf_file_name("custom.gguf"), None);
+    }
+
+    #[test]
+    fn refine_selection_gate_only_commits_the_latest_request() {
+        let gate = RefineSelectionGate::new();
+        let older = gate.begin().expect("older request");
+        let newer = gate.begin().expect("newer request");
+
+        let older_result = gate
+            .commit_if_current(older, || "older")
+            .expect("older commit check");
+        let newer_result = gate
+            .commit_if_current(newer, || "newer")
+            .expect("newer commit check");
+
+        assert_eq!(older_result, None);
+        assert_eq!(newer_result, Some("newer"));
     }
 }
 
@@ -1432,19 +1488,47 @@ fn validate_provider_exists(
     }
 }
 
+fn validate_refine_selection_policy(
+    settings: &settings::AppSettings,
+    provider_id: &str,
+) -> Result<(), String> {
+    validate_provider_exists(settings, provider_id)?;
+
+    if settings.local_privacy_mode && !settings.is_post_process_provider_local(provider_id) {
+        return Err(
+            "Local privacy mode is enabled. Select a local post-processing provider.".to_string(),
+        );
+    }
+
+    let provider = find_provider(settings, provider_id).ok_or_else(|| {
+        format!(
+            "Provider '{}' is not configured in this build.",
+            provider_id
+        )
+    })?;
+    if managed_provider_requires_api_key(provider)
+        && !managed_provider_has_api_key(settings, provider)
+    {
+        return Err(format!(
+            "Add an API key for {} before selecting this cloud refine model.",
+            provider.label
+        ));
+    }
+
+    Ok(())
+}
+
 pub async fn set_refine_model_selection_impl(
     app: &AppHandle,
     provider_id: String,
     model_id: String,
 ) -> Result<(), String> {
-    let mut settings = settings::get_settings(app);
-    validate_provider_exists(&settings, &provider_id)?;
-
-    if settings.local_privacy_mode && !settings.is_post_process_provider_local(&provider_id) {
-        return Err(
-            "Local privacy mode is enabled. Select a local post-processing provider.".to_string(),
-        );
-    }
+    // Selection validation can await a local or network runtime. Claim a
+    // generation before that work so a slower request cannot overwrite a
+    // newer user choice when it eventually finishes.
+    let request_generation = REFINE_SELECTION_GATE.begin()?;
+    let settings = settings::get_settings(app);
+    validate_refine_selection_policy(&settings, &provider_id)?;
 
     if provider_id == OLLAMA_PROVIDER_ID {
         let status = ollama::get_ollama_status().await;
@@ -1478,32 +1562,31 @@ pub async fn set_refine_model_selection_impl(
                 model_id
             ));
         }
-    } else {
-        let Some(provider) = find_provider(&settings, &provider_id) else {
-            return Err(format!(
-                "Provider '{}' is not configured in this build.",
-                provider_id
-            ));
-        };
-        if managed_provider_requires_api_key(provider)
-            && !managed_provider_has_api_key(&settings, provider)
-        {
-            return Err(format!(
-                "Add an API key for {} before selecting this cloud refine model.",
-                provider.label
-            ));
-        }
     }
 
-    settings
-        .post_process_models
-        .insert(provider_id.clone(), model_id.clone());
-    settings.post_process_provider_id = provider_id.clone();
-    settings.selected_llm_provider_id = provider_id;
-    settings.selected_llm_model_id = model_id;
-    settings.enforce_local_privacy_mode();
-    settings::write_settings(app, settings);
-    Ok(())
+    // Serialize the current-generation check with the write. A newer request
+    // can supersede this one while validation runs, but cannot slip between the
+    // check and persistence.
+    let Some(result) = REFINE_SELECTION_GATE.commit_if_current(request_generation, || {
+        // Model/runtime validation above may await external I/O. Re-read before
+        // persisting so unrelated settings changed during that wait are preserved,
+        // and re-check policy in case privacy/provider configuration changed.
+        let mut current_settings = settings::get_settings(app);
+        validate_refine_selection_policy(&current_settings, &provider_id)?;
+        current_settings
+            .post_process_models
+            .insert(provider_id.clone(), model_id.clone());
+        current_settings.post_process_provider_id = provider_id.clone();
+        current_settings.selected_llm_provider_id = provider_id;
+        current_settings.selected_llm_model_id = model_id;
+        current_settings.enforce_local_privacy_mode();
+        settings::write_settings(app, current_settings);
+        Ok(())
+    })?
+    else {
+        return Ok(());
+    };
+    result
 }
 
 async fn resolve_hf_gguf_file(repo_id: &str) -> Result<String, String> {

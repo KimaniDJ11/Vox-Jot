@@ -63,13 +63,15 @@ pub(crate) fn native_capture_screen_context(
     engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
-    timeout_ms: u32,
+    capture_timeout_ms: u32,
+    neural_ocr_timeout_ms: u32,
     neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     let frame = capture_screen()?;
     let captured_at_ms = current_time_millis();
 
-    let backup_timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+    let capture_budget = Duration::from_millis(capture_timeout_ms.max(150) as u64);
+    let neural_budget = Duration::from_millis(neural_ocr_timeout_ms.max(150) as u64);
     let ocr_frame =
         OcrFrame::new_packed(frame.width, frame.height, &frame.pixels, PixelFormat::Rgba8);
 
@@ -80,7 +82,7 @@ pub(crate) fn native_capture_screen_context(
             route,
             frame: &ocr_frame,
             quality,
-            timeout: backup_timeout,
+            timeout: neural_budget,
         };
         match crate::ocr_backend::run(req) {
             Ok(snippets) if !snippets.is_empty() => {
@@ -117,7 +119,7 @@ pub(crate) fn native_capture_screen_context(
     }
 
     let snippets =
-        screen_context_ocr_backup::run_tesseract_ocr(&ocr_frame, quality, backup_timeout)?;
+        screen_context_ocr_backup::run_tesseract_ocr(&ocr_frame, quality, capture_budget)?;
 
     let clipped = clip_snippets_by_word_budget(snippets, max_words);
 

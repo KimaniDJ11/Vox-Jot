@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +10,11 @@ from pydantic import BaseModel
 
 from .config import ENGINE_SPECS, EngineSpec, current_platform, load_runtime_config
 from .control_mapping import map_controls_for_engine, normalize_controls
+from .profile_store import (
+    ProfileStoreError,
+    load_profile_from_store,
+    validate_profile_id,
+)
 from .selection import RuntimeSelection, load_selection, save_selection
 from .worker_host import WorkerHost
 
@@ -69,9 +73,11 @@ REQUIRED_MODEL_FILES = {
 
 
 def model_has_required_assets(spec: EngineSpec, model_dir: Path) -> bool:
+    if not model_dir.is_dir():
+        return False
     required = REQUIRED_MODEL_FILES.get(spec.model_id)
     if not required:
-        return model_dir.exists() and any(model_dir.iterdir())
+        return any(model_dir.iterdir())
     return all((model_dir / relative).exists() for relative in required)
 
 
@@ -102,6 +108,7 @@ def engine_for_request(provider_id: str | None = None, model_id: str | None = No
         for spec in ENGINE_SPECS:
             if spec.provider_id == provider_id and spec.model_id == model_id:
                 return spec
+        return None
     if model_id:
         spec = engine_for_model(model_id)
         if spec is not None:
@@ -121,21 +128,7 @@ def engine_supports_voice_conversion(spec: EngineSpec) -> bool:
 
 
 def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
-    if not profile_id or not config.profiles_dir:
-        return None, None
-    profile_dir = config.profiles_dir / profile_id
-    reference_audio = profile_dir / "reference.wav"
-    metadata_path = profile_dir / "profile.json"
-    transcript = None
-    if metadata_path.exists():
-        try:
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            transcript = metadata.get("transcript")
-        except Exception:
-            transcript = None
-    if reference_audio.exists():
-        return str(reference_audio), transcript
-    return None, transcript
+    return load_profile_from_store(config.profiles_dir, profile_id)
 
 
 def selection_payload(selection: RuntimeSelection) -> dict[str, Any]:
@@ -305,14 +298,31 @@ async def listen_prepare(body: PrepareRequest) -> JSONResponse:
 
 @app.post("/listen/selection")
 async def listen_selection(body: SelectionRequest) -> JSONResponse:
+    provider_id = (body.provider_id or "").strip() or None
+    model_id = (body.model_id or "").strip() or None
+    profile_id = (
+        body.profile_id if body.profile_id and body.profile_id.strip() else None
+    )
+    if profile_id is not None:
+        try:
+            validate_profile_id(profile_id)
+        except ProfileStoreError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    spec = engine_for_request(provider_id, model_id)
+    if (provider_id or model_id) and spec is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown or mismatched provider and model.",
+        )
+
     selection = RuntimeSelection(
-        provider_id=(body.provider_id or "").strip() or None,
-        model_id=(body.model_id or "").strip() or None,
-        profile_id=(body.profile_id or "").strip() or None,
+        provider_id=provider_id,
+        model_id=model_id,
+        profile_id=profile_id,
     )
     save_selection(selection_file, selection)
 
-    spec = engine_for_request(selection.provider_id, selection.model_id)
     model_dir = discover_model(spec) if spec else None
     if spec and model_dir:
         asyncio.create_task(asyncio.to_thread(host.warm_model, spec, model_dir))
@@ -331,7 +341,10 @@ async def audio_speech(body: SpeechRequest) -> Response:
     spec, model_dir, selection = resolve_target(body)
     selected_voice = body.voice
     profile_id = body.profile_id or selection.profile_id
-    reference_audio_path, reference_transcript = load_profile(profile_id)
+    try:
+        reference_audio_path, reference_transcript = load_profile(profile_id)
+    except ProfileStoreError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     controls = normalize_controls(body.extra_controls)
     engine_controls = map_controls_for_engine(spec.provider_id, controls, spec.model_id)
 
@@ -376,7 +389,10 @@ async def audio_voice_conversion(body: VoiceConversionRequest) -> Response:
     if model_dir is None:
         raise HTTPException(status_code=404, detail=f"{spec.label} is not installed in the model store.")
 
-    target_audio_path, _target_transcript = load_profile(body.profile_id)
+    try:
+        target_audio_path, _target_transcript = load_profile(body.profile_id)
+    except ProfileStoreError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not target_audio_path:
         raise HTTPException(status_code=400, detail="Target voice profile needs reference audio first.")
 

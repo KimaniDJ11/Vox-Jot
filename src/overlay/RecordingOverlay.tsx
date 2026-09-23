@@ -18,13 +18,20 @@ import i18n from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
 
-type OverlayState = "recording" | "transcribing" | "processing";
+type OverlayState = "recording" | "transcribing" | "processing" | "speech";
 type OverlayStyle = "compact" | "detailed" | "minimal" | "notch";
+type SpeechOverlayPhase =
+  "queued" | "preparing" | "speaking" | "failed" | "stopped";
 
 interface ShowOverlayPayload {
   state: OverlayState;
   style: OverlayStyle;
   mode?: "dictate" | "rewrite_selection";
+}
+
+interface SpeechOverlayPayload {
+  requestId: number;
+  phase: SpeechOverlayPhase;
 }
 
 interface OverlayModePayload {
@@ -247,6 +254,8 @@ const RecordingOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
   const [style, setStyle] = useState<OverlayStyle>("compact");
+  const [speechPhase, setSpeechPhase] =
+    useState<SpeechOverlayPhase>("preparing");
   const [correction, setCorrection] = useState<CorrectionOverlayPayload | null>(
     null,
   );
@@ -280,6 +289,7 @@ const RecordingOverlay: React.FC = () => {
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const speechRequestIdRef = useRef<number | null>(null);
   const waveformEnabled =
     isVisible && !correction && !isMinimal && state === "recording";
   const { writeLevels } = useWaveform(
@@ -329,6 +339,7 @@ const RecordingOverlay: React.FC = () => {
     const payload = event.payload;
     setState(payload.state);
     setStyle(payload.style);
+    speechRequestIdRef.current = null;
     setOverlayMode(payload.mode || "dictate");
     setCorrection(null);
     if (payload.state !== "recording") {
@@ -336,6 +347,35 @@ const RecordingOverlay: React.FC = () => {
     }
     setIsVisible(true);
   });
+
+  useTauriEvent<SpeechOverlayPayload>("show-speech-overlay", (event) => {
+    if (
+      speechRequestIdRef.current !== null &&
+      event.payload.requestId < speechRequestIdRef.current
+    ) {
+      return;
+    }
+    speechRequestIdRef.current = event.payload.requestId;
+    setState("speech");
+    setStyle("detailed");
+    setSpeechPhase(event.payload.phase);
+    setOverlayMode("dictate");
+    setCorrection(null);
+    setPartialText("");
+    setIsVisible(true);
+  });
+
+  useTauriEvent<Pick<SpeechOverlayPayload, "requestId">>(
+    "hide-speech-overlay",
+    (event) => {
+      if (speechRequestIdRef.current !== event.payload.requestId) {
+        return;
+      }
+      speechRequestIdRef.current = null;
+      setIsVisible(false);
+      setPartialText("");
+    },
+  );
 
   useTauriEvent<OverlayModePayload>("overlay-mode", (event) => {
     setOverlayMode(event.payload.mode);
@@ -356,6 +396,7 @@ const RecordingOverlay: React.FC = () => {
     setPartialText("");
     setMatchedRule(null);
     setOverlayMode("dictate");
+    speechRequestIdRef.current = null;
     clearScreenContextPulse();
   });
 
@@ -466,37 +507,54 @@ const RecordingOverlay: React.FC = () => {
     screenContextStatus !== "disabled" &&
     screenContextStatus !== "excluded_app";
   const isEditingSelection = overlayMode === "rewrite_selection";
+  const speechStatusLabel =
+    speechPhase === "preparing"
+      ? t("listen.preparingSpeech", { defaultValue: "Preparing speech…" })
+      : speechPhase === "speaking"
+        ? t("listen.speaking", { defaultValue: "Speaking…" })
+        : speechPhase === "failed"
+          ? t("listen.speechFailed", { defaultValue: "Speech failed" })
+          : t("listen.stoppingSpeech", { defaultValue: "Stopping…" });
   const statusLabel = correction
     ? t("overlay.correctionPreview", { defaultValue: "Correction preview" })
-    : isEditingSelection
-      ? state === "recording"
-        ? t("overlay.editingSelection", { defaultValue: "Editing selection" })
-        : state === "transcribing"
-          ? t("overlay.transcribingSelectionEdit", {
-              defaultValue: "Transcribing selection edit",
-            })
-          : t("overlay.applyingSelectionEdit", {
-              defaultValue: "Applying selection edit",
-            })
-      : state === "recording"
-        ? t("overlay.recording")
-        : state === "transcribing"
-          ? t("overlay.transcribing")
-          : t("overlay.processing");
+    : state === "speech"
+      ? `${t("listen.createVoices.textToSpeech", {
+          defaultValue: "Text to Speech",
+        })} · ${speechStatusLabel}`
+      : isEditingSelection
+        ? state === "recording"
+          ? t("overlay.editingSelection", { defaultValue: "Editing selection" })
+          : state === "transcribing"
+            ? t("overlay.transcribingSelectionEdit", {
+                defaultValue: "Transcribing selection edit",
+              })
+            : t("overlay.applyingSelectionEdit", {
+                defaultValue: "Applying selection edit",
+              })
+        : state === "recording"
+          ? t("overlay.recording")
+          : state === "transcribing"
+            ? t("overlay.transcribing")
+            : t("overlay.processing");
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
           dir={direction}
+          data-speech-phase={state === "speech" ? speechPhase : undefined}
           className={[
             "recording-overlay",
             isCompact ? "recording-overlay--compact" : "",
             isMinimal ? "recording-overlay--minimal" : "",
             isNotch ? "recording-overlay--notch" : "",
+            state === "speech" ? "recording-overlay--speech" : "",
             isEditingSelection ? "recording-overlay--selection-edit" : "",
             correction ? "recording-overlay--correction" : "",
-            !isCompact && !isMinimal && !isNotch && state === "recording"
+            !isCompact &&
+            !isMinimal &&
+            !isNotch &&
+            (state === "recording" || state === "speech")
               ? "is-interactive"
               : "",
           ]
@@ -591,7 +649,9 @@ const RecordingOverlay: React.FC = () => {
                 ) : (
                   <div className="overlay-meta-row">
                     <div className="status-text">
-                      <span className="status-dot" />
+                      <span
+                        className={`status-dot ${state === "speech" && speechPhase === "failed" ? "status-dot--failed" : ""}`}
+                      />
                       {statusLabel}
                     </div>
                     <ScreenContextPulse visible={showScreenContextPulse} />
@@ -608,6 +668,18 @@ const RecordingOverlay: React.FC = () => {
                     <XIcon />
                   </button>
                 )}
+                {state === "speech" &&
+                  (speechPhase === "preparing" ||
+                    speechPhase === "speaking") && (
+                    <button
+                      className="cancel-button"
+                      onClick={() => void commands.ttsStop()}
+                      aria-label={t("common.stop", { defaultValue: "Stop" })}
+                      title={t("common.stop", { defaultValue: "Stop" })}
+                    >
+                      <XIcon />
+                    </button>
+                  )}
               </div>
             </>
           )}

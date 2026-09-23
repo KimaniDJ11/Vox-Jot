@@ -163,30 +163,46 @@ class EngineWorker:
 
     def synthesize(self, payload: dict[str, Any]) -> Path:
         self._ensure_engine()
-        output_path = Path(tempfile.gettempdir()) / f"vox-jot-{self.provider_id}-{os.getpid()}-{next(tempfile._get_candidate_names())}.wav"
-        if self.provider_id == "kokoro":
-            self._synthesize_kokoro(payload, output_path)
-        elif self.provider_id == "chatterbox":
-            self._synthesize_chatterbox(payload, output_path)
-        elif self.provider_id == "xtts":
-            self._synthesize_xtts(payload, output_path)
-        elif self.provider_id == "openvoice":
-            self._synthesize_openvoice(payload, output_path)
-        elif self.provider_id == "supertonic":
-            self._synthesize_supertonic(payload, output_path)
-        else:
-            raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
+        output_path = Path(tempfile.gettempdir()) / (
+            f"vox-jot-{self.provider_id}-{os.getpid()}-"
+            f"{next(tempfile._get_candidate_names())}.wav"
+        )
+        try:
+            if self.provider_id == "kokoro":
+                self._synthesize_kokoro(payload, output_path)
+            elif self.provider_id == "chatterbox":
+                self._synthesize_chatterbox(payload, output_path)
+            elif self.provider_id == "xtts":
+                self._synthesize_xtts(payload, output_path)
+            elif self.provider_id == "openvoice":
+                self._synthesize_openvoice(payload, output_path)
+            elif self.provider_id == "supertonic":
+                self._synthesize_supertonic(payload, output_path)
+            else:
+                raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
+        except Exception:
+            output_path.unlink(missing_ok=True)
+            raise
         return output_path
 
     def convert_voice(self, payload: dict[str, Any]) -> Path:
-        output_path = Path(tempfile.gettempdir()) / f"vox-jot-voice-converter-{self.provider_id}-{os.getpid()}-{next(tempfile._get_candidate_names())}.wav"
-        if self.provider_id == "openvoice":
-            self._ensure_engine()
-            self._convert_openvoice(payload, output_path)
-        elif self.provider_id == "chatterbox":
-            self._convert_chatterbox(payload, output_path)
-        else:
-            raise RuntimeError(f"Voice changing is not supported by provider '{self.provider_id}'.")
+        output_path = Path(tempfile.gettempdir()) / (
+            f"vox-jot-voice-converter-{self.provider_id}-{os.getpid()}-"
+            f"{next(tempfile._get_candidate_names())}.wav"
+        )
+        try:
+            if self.provider_id == "openvoice":
+                self._ensure_engine()
+                self._convert_openvoice(payload, output_path)
+            elif self.provider_id == "chatterbox":
+                self._convert_chatterbox(payload, output_path)
+            else:
+                raise RuntimeError(
+                    f"Voice changing is not supported by provider '{self.provider_id}'."
+                )
+        except Exception:
+            output_path.unlink(missing_ok=True)
+            raise
         return output_path
 
     def list_voices(self) -> list[dict[str, Any]]:

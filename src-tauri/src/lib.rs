@@ -20,7 +20,7 @@ mod browser_url;
 pub mod cli;
 pub mod cli_client;
 mod clipboard;
-mod commands;
+pub mod commands;
 pub mod context_hints;
 mod convo;
 mod correction_tracker;
@@ -44,7 +44,7 @@ mod ocr_backend;
 mod ocr_models;
 mod ocr_runtime;
 mod ollama;
-mod overlay;
+pub mod overlay;
 pub mod portable;
 mod post_processing;
 mod product_architecture;
@@ -75,7 +75,7 @@ mod tray;
 mod tray_i18n;
 mod tts;
 mod tts_profiles;
-mod utils;
+pub mod utils;
 mod vibevoice;
 mod write_rules;
 
@@ -478,10 +478,36 @@ fn warm_selected_stt_engine(
     }
 }
 
-async fn maybe_warm_selected_ollama_model(
-    app_handle: AppHandle,
-    mut settings: settings::AppSettings,
-) {
+fn replace_unavailable_startup_ollama_model(
+    settings: &mut settings::AppSettings,
+    expected_model: &str,
+    replacement_model: &str,
+) -> bool {
+    if !settings.post_process_enabled
+        || settings.post_process_provider_id != settings::OLLAMA_PROVIDER_ID
+        || settings
+            .post_process_models
+            .get(settings::OLLAMA_PROVIDER_ID)
+            .map(String::as_str)
+            != Some(expected_model)
+    {
+        return false;
+    }
+
+    settings.post_process_models.insert(
+        settings::OLLAMA_PROVIDER_ID.to_string(),
+        replacement_model.to_string(),
+    );
+    if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID
+        && settings.selected_llm_model_id == expected_model
+    {
+        settings.selected_llm_model_id = replacement_model.to_string();
+    }
+    settings.enforce_local_privacy_mode();
+    true
+}
+
+async fn maybe_warm_selected_ollama_model(app_handle: AppHandle, settings: settings::AppSettings) {
     if !settings.post_process_enabled
         || settings.post_process_provider_id != settings::OLLAMA_PROVIDER_ID
     {
@@ -536,16 +562,22 @@ async fn maybe_warm_selected_ollama_model(
     if !model_is_installed {
         let replacement_model = status.models.first().cloned().unwrap_or_default();
         let replacement_model_for_log = replacement_model.clone();
-        settings.post_process_models.insert(
-            settings::OLLAMA_PROVIDER_ID.to_string(),
-            replacement_model.clone(),
-        );
-        if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID
-            && settings.selected_llm_model_id == model
-        {
-            settings.selected_llm_model_id = replacement_model.clone();
+        // Startup probing awaits external I/O. Re-read settings before writing
+        // so a user change made during that wait is neither reverted nor
+        // replaced based on the obsolete startup snapshot.
+        let mut current_settings = settings::get_settings(&app_handle);
+        if !replace_unavailable_startup_ollama_model(
+            &mut current_settings,
+            &model,
+            &replacement_model,
+        ) {
+            log::debug!(
+                "Skipping stale Ollama startup repair for '{}' because settings changed",
+                model
+            );
+            return;
         }
-        settings::write_settings(&app_handle, settings);
+        settings::write_settings(&app_handle, current_settings);
 
         if status.models.is_empty() {
             log::info!(
@@ -1886,6 +1918,52 @@ mod specta_tests {
         assert_ne!(
             stale, generated,
             "Freshness comparison must detect simulated stale bindings mismatch"
+        );
+    }
+
+    #[test]
+    fn ollama_startup_repair_only_mutates_the_current_selection() {
+        let mut current = settings::get_default_settings();
+        current.post_process_enabled = true;
+        current.post_process_provider_id = settings::OLLAMA_PROVIDER_ID.to_string();
+        current.post_process_models.insert(
+            settings::OLLAMA_PROVIDER_ID.to_string(),
+            "missing:latest".into(),
+        );
+        current.selected_llm_provider_id = settings::OLLAMA_PROVIDER_ID.to_string();
+        current.selected_llm_model_id = "missing:latest".into();
+        current.show_tray_icon = false;
+
+        assert!(replace_unavailable_startup_ollama_model(
+            &mut current,
+            "missing:latest",
+            "installed:latest"
+        ));
+        assert_eq!(
+            current
+                .post_process_models
+                .get(settings::OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some("installed:latest")
+        );
+        assert_eq!(current.selected_llm_model_id, "installed:latest");
+        assert!(!current.show_tray_icon, "unrelated settings must survive");
+
+        current.post_process_models.insert(
+            settings::OLLAMA_PROVIDER_ID.to_string(),
+            "user-selected:latest".into(),
+        );
+        assert!(!replace_unavailable_startup_ollama_model(
+            &mut current,
+            "missing:latest",
+            "other:latest"
+        ));
+        assert_eq!(
+            current
+                .post_process_models
+                .get(settings::OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some("user-selected:latest")
         );
     }
 }

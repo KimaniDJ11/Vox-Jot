@@ -29,7 +29,7 @@ pub fn synthesize_sidecar_chunk(
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
 
     let sidecar_url = std::env::var("VOX_JOT_TTS_SIDECAR_URL")
@@ -63,7 +63,7 @@ pub fn synthesize_sidecar_chunk(
     fs::write(&temp_file, &bytes).map_err(|err| format!("Failed to save sidecar audio: {err}"))?;
     if stop_flag.load(Ordering::Relaxed) {
         let _ = fs::remove_file(&temp_file);
-        return Err("Story rendering was cancelled.".to_string());
+        return Err("Speech output was cancelled.".to_string());
     }
     Ok(temp_file)
 }
@@ -158,7 +158,7 @@ where
     let mut future = Box::pin(future);
     loop {
         if stop_flag.load(Ordering::Relaxed) {
-            return Err("Story rendering was cancelled.".to_string());
+            return Err("Speech output was cancelled.".to_string());
         }
         match poll_sidecar_cancelable(&mut future, stop_flag).await {
             Some(result) => return result,
@@ -178,7 +178,7 @@ where
         result = future.as_mut() => Some(result),
         _ = tokio::time::sleep(Duration::from_millis(SIDECAR_CANCEL_POLL_MS)) => {
             if stop_flag.load(Ordering::Relaxed) {
-                Some(Err("Story rendering was cancelled.".to_string()))
+                Some(Err("Speech output was cancelled.".to_string()))
             } else {
                 None
             }
@@ -186,6 +186,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub fn speak_sidecar_chunk(
     text: &str,
     provider_id: &str,

@@ -305,6 +305,22 @@ const CATALOG: &[OcrCatalogEntry] = &[
         upstream_url: "https://huggingface.co/nanonets/Nanonets-OCR2-3B",
         hf_repo_id: "mlx-community/Nanonets-OCR2-3B-4bit",
     },
+
+    OcrCatalogEntry {
+        id: "jina-ocr-v1",
+        title: "Jina OCR v1",
+        vendor: "Jina AI",
+        description: "Efficient multilingual document OCR (DeepSeek-OCR lineage with FastMTP). Local offline Transformers VL; non-commercial CC BY-NC 4.0.",
+        source_kind: OcrCatalogSourceKind::LocalDirectory,
+        backend: OcrBackendKind::TransformersVl,
+        conventional_subdir: "jina-ocr-v1",
+        required_files: &["config.json", "modeling_deepseekocr.py"],
+        size_hint_label: "~6.3 GB",
+        languages_label: "Multilingual",
+        license_label: "CC BY-NC 4.0",
+        upstream_url: "https://huggingface.co/jinaai/jina-ocr-v1",
+        hf_repo_id: "jinaai/jina-ocr-v1",
+    },
     OcrCatalogEntry {
         id: "tessdata-best",
         title: "Tesseract tessdata_best",
@@ -382,6 +398,8 @@ fn entry_install_dir(app: &AppHandle, entry: &OcrCatalogEntry) -> Result<PathBuf
 }
 
 fn directory_has_contents(path: &Path) -> bool {
+    // `read_dir` follows directory symlinks, so an install path that is a
+    // symlink to an external model tree still counts as installed.
     fs::read_dir(path)
         .map(|mut entries| entries.next().is_some())
         .unwrap_or(false)
@@ -557,6 +575,34 @@ mod tests {
     use std::fs;
 
     #[test]
+    fn jina_ocr_v1_is_in_catalog() {
+        let entry = CATALOG
+            .iter()
+            .find(|entry| entry.id == "jina-ocr-v1")
+            .expect("jina-ocr-v1 must be registered in the OCR catalog");
+        assert_eq!(entry.backend, OcrBackendKind::TransformersVl);
+        assert_eq!(entry.license_label, "CC BY-NC 4.0");
+        assert_eq!(entry.conventional_subdir, "jina-ocr-v1");
+        assert_eq!(entry.hf_repo_id, "jinaai/jina-ocr-v1");
+        assert!(entry.required_files.contains(&"modeling_deepseekocr.py"));
+    }
+
+    #[test]
+    fn symlink_points_to_detects_matching_link() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("model-src");
+        let dst = dir.path().join("model-dst");
+        fs::create_dir(&src).unwrap();
+        fs::write(src.join("config.json"), b"{}").unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&src, &dst).unwrap();
+            assert!(symlink_points_to(&dst, &src));
+            assert!(!symlink_points_to(&dst, dir.path()));
+        }
+    }
+
+    #[test]
     fn tessdata_pack_runnable_uses_platform_gate() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("eng.traineddata"), b"fake").unwrap();
@@ -694,6 +740,93 @@ pub fn resolve_neural_route(
     None
 }
 
+/// True when `dst` is a symlink whose resolved target equals `src`.
+fn symlink_points_to(dst: &Path, src: &Path) -> bool {
+    let meta = match fs::symlink_metadata(dst) {
+        Ok(meta) => meta,
+        Err(_) => return false,
+    };
+    if !meta.file_type().is_symlink() {
+        return false;
+    }
+    let Ok(link) = fs::read_link(dst) else {
+        return false;
+    };
+    let resolved = if link.is_absolute() {
+        link
+    } else {
+        match dst.parent() {
+            Some(parent) => parent.join(link),
+            None => link,
+        }
+    };
+    match (fs::canonicalize(&resolved), fs::canonicalize(src)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
+}
+
+fn remove_install_path(path: &Path) -> Result<(), String> {
+    let meta = fs::symlink_metadata(path).map_err(|err| {
+        format!(
+            "Failed to inspect existing install at '{}': {err}",
+            path.display()
+        )
+    })?;
+    if meta.file_type().is_symlink() || meta.is_file() {
+        fs::remove_file(path).map_err(|err| {
+            format!(
+                "Failed to remove existing install link at '{}': {err}",
+                path.display()
+            )
+        })
+    } else {
+        fs::remove_dir_all(path).map_err(|err| {
+            format!(
+                "Failed to clear existing install at '{}': {err}",
+                path.display()
+            )
+        })
+    }
+}
+
+/// Prefer a symlink into the caller's tree (e.g. external volume weights)
+/// so large models are not silently duplicated onto the internal SSD.
+/// Falls back to a recursive copy when symlink creation is unavailable.
+fn link_or_copy_model_tree(src: &Path, dst: &Path) -> Result<u64, String> {
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent).map_err(|err| {
+            format!(
+                "Failed to create install parent '{}': {err}",
+                parent.display()
+            )
+        })?;
+    }
+
+    #[cfg(unix)]
+    {
+        match std::os::unix::fs::symlink(src, dst) {
+            Ok(()) => {
+                info!(
+                    "Linked OCR model install '{}' -> '{}' (no copy)",
+                    dst.display(),
+                    src.display()
+                );
+                return Ok(0);
+            }
+            Err(err) => {
+                log::warn!(
+                    "Symlink install of '{}' -> '{}' failed ({err}); falling back to recursive copy",
+                    dst.display(),
+                    src.display()
+                );
+            }
+        }
+    }
+
+    copy_dir_recursive(src, dst)
+}
+
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<u64, String> {
     if !src.exists() {
         return Err(format!("Source path '{}' does not exist.", src.display()));
@@ -754,18 +887,29 @@ fn import_from_dir(
     }
 
     let dst = entry_install_dir(app, entry)?;
+    // Already linked to this source — treat as installed without touching bytes.
+    if symlink_points_to(&dst, src) {
+        info!(
+            "OCR model '{}' already linked from '{}' -> '{}'",
+            entry.id,
+            src.display(),
+            dst.display()
+        );
+        let settings = get_settings(app);
+        let selected_id = settings.screen_context_ocr_neural_model_id.as_deref();
+        if selected_id == Some(entry.id) {
+            refresh_neural_route_cache(app, &settings);
+        }
+        return Ok(descriptor_for(app, entry, selected_id));
+    }
     if dst.exists() {
-        fs::remove_dir_all(&dst).map_err(|err| {
-            format!(
-                "Failed to clear existing install at '{}': {err}",
-                dst.display()
-            )
-        })?;
+        remove_install_path(&dst)?;
     }
 
-    let bytes = copy_dir_recursive(src, &dst)?;
+    // Prefer symlink/register-without-copy for large external trees (e.g. jina-ocr-v1).
+    let bytes = link_or_copy_model_tree(src, &dst)?;
     info!(
-        "Imported OCR model '{}' from '{}' to '{}' ({} bytes)",
+        "Imported OCR model '{}' from '{}' to '{}' ({} bytes copied; 0 means symlink)",
         entry.id,
         src.display(),
         dst.display(),
@@ -959,11 +1103,19 @@ pub fn set_ocr_model_selection_impl(
     if let Some(route) = route {
         if !matches!(route.backend, OcrBackendKind::TessdataPack) {
             std::thread::spawn(move || {
+                // Cold neural loaders (e.g. jina-ocr-v1 ~6.3GB) cannot finish in
+                // 1.5s; a short probe timeout kills the still-loading child and
+                // leaves selection looking broken. Tessdata stays on a short
+                // budget; VL/MLX/Paddle get a cold-load window.
+                let probe_timeout = match route.backend {
+                    OcrBackendKind::TessdataPack => Duration::from_millis(1_500),
+                    _ => Duration::from_secs(180),
+                };
                 let _ = crate::ocr_runtime::shared().probe(
                     &route.catalog_id,
                     route.backend,
                     &route.install_dir,
-                    Duration::from_millis(1500),
+                    probe_timeout,
                 );
             });
         } else {

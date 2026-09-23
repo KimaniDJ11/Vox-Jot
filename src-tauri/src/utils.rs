@@ -77,23 +77,34 @@ pub fn cancel_current_operation(app: &AppHandle) {
     shortcut::unregister_cancel_shortcut(app);
 
     // Cancel any ongoing recording
-    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
-    let recording_was_active = audio_manager.is_recording();
-    audio_manager.cancel_recording();
+    let recording_was_active =
+        if let Some(audio_manager) = app.try_state::<Arc<AudioRecordingManager>>() {
+            let active = audio_manager.is_recording();
+            audio_manager.cancel_recording();
+            active
+        } else {
+            false
+        };
     crate::actions::clear_all_active_dictation_intents();
 
     if let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() {
         tts_manager.stop();
     }
 
+    // Consolidated warm OCR sidecar — Escape must abort in-flight neural OCR.
+    let _ = crate::ocr_runtime::shared().cancel_active();
+
     // Update tray icon and hide overlay
     change_tray_icon(app, crate::tray::TrayIconState::Idle);
     hide_recording_overlay(app);
+    // Clear OCR overlay ownership if Escape interrupted recognition.
+    crate::overlay::hide_ocr_overlay(app, crate::overlay::current_active_ocr_overlay_request());
 
     // Unload model if immediate unload is enabled
-    let tm = app.state::<Arc<TranscriptionManager>>();
-    tm.cancel_active_processing();
-    tm.maybe_unload_immediately("cancellation");
+    if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
+        tm.cancel_active_processing();
+        tm.maybe_unload_immediately("cancellation");
+    }
 
     // Notify coordinator so it can keep lifecycle state coherent.
     if let Some(coordinator) = app.try_state::<TranscriptionCoordinator>() {

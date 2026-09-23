@@ -793,6 +793,12 @@ pub struct AppSettings {
     pub screen_context_ocr_neural_model_id: Option<String>,
     #[serde(default = "default_screen_context_ocr_timeout_ms")]
     pub screen_context_ocr_timeout_ms: u32,
+    /// Policy version for one-time screen-context OCR timeout migrations.
+    /// Plain `#[serde(default)]` so old persisted settings missing this field
+    /// deserialize as `0` and still run the upgrade path. Fresh defaults pin
+    /// the current version explicitly in `get_default_settings()`.
+    #[serde(default)]
+    pub screen_context_ocr_timeout_policy_version: u32,
     #[serde(default = "default_screen_context_token_budget")]
     pub screen_context_token_budget: u32,
     #[serde(default = "default_screen_context_stale_threshold_ms")]
@@ -1226,8 +1232,62 @@ fn default_screen_context_ocr_engine() -> ScreenContextOcrEngine {
     ScreenContextOcrEngine::NativeThenBackup
 }
 
+/// Inclusive bounds for persisted `screen_context_ocr_timeout_ms`.
+pub const SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS: u32 = 200;
+pub const SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS: u32 = 180_000;
+
+/// Upper bound for ScreenCaptureKit / Vision capture waits (never the neural floor).
+pub const SCREEN_CONTEXT_BITMAP_CAPTURE_TIMEOUT_MAX_MS: u32 = 5_000;
+
+pub fn normalize_screen_context_ocr_timeout_ms(timeout_ms: u32) -> u32 {
+    timeout_ms.clamp(
+        SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS,
+        SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS,
+    )
+}
+
+/// Historical shipped default before the cold-Jina-safe native budget.
+const LEGACY_DEFAULT_SCREEN_CONTEXT_OCR_TIMEOUT_MS: u32 = 700;
+
+/// Bump when introducing another one-time screen-context OCR timeout policy.
+const SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION: u32 = 1;
+
 fn default_screen_context_ocr_timeout_ms() -> u32 {
-    700
+    // Native/Vision budget. Neural inference applies a separate cold-load floor
+    // via `effective_neural_ocr_timeout_ms` and must not inflate bitmap capture.
+    2_000
+}
+
+/// One-time policy migration for screen-context OCR timeout.
+///
+/// Existing installs may still have the historical default `700` written to
+/// disk. Serde defaults only apply when the field is missing, so upgrade that
+/// exact legacy default to the current safe default once, gated by
+/// `screen_context_ocr_timeout_policy_version`. After the policy is recorded,
+/// intentional values (including an explicit 700) are preserved. Out-of-range
+/// values still clamp through the shared normalizer on every load.
+fn ensure_screen_context_defaults(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+
+    if settings.screen_context_ocr_timeout_policy_version
+        < SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION
+    {
+        if settings.screen_context_ocr_timeout_ms == LEGACY_DEFAULT_SCREEN_CONTEXT_OCR_TIMEOUT_MS {
+            settings.screen_context_ocr_timeout_ms = default_screen_context_ocr_timeout_ms();
+        }
+        settings.screen_context_ocr_timeout_policy_version =
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION;
+        changed = true;
+    }
+
+    let normalized =
+        normalize_screen_context_ocr_timeout_ms(settings.screen_context_ocr_timeout_ms);
+    if settings.screen_context_ocr_timeout_ms != normalized {
+        settings.screen_context_ocr_timeout_ms = normalized;
+        changed = true;
+    }
+
+    changed
 }
 
 fn default_screen_context_token_budget() -> u32 {
@@ -2224,6 +2284,7 @@ pub fn get_default_settings() -> AppSettings {
         screen_context_ocr_engine: default_screen_context_ocr_engine(),
         screen_context_ocr_neural_model_id: None,
         screen_context_ocr_timeout_ms: default_screen_context_ocr_timeout_ms(),
+        screen_context_ocr_timeout_policy_version: SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION,
         screen_context_token_budget: default_screen_context_token_budget(),
         screen_context_stale_threshold_ms: default_screen_context_stale_threshold_ms(),
         post_process_mode: default_post_process_mode(),
@@ -2973,6 +3034,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
+    let screen_context_changed = ensure_screen_context_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -2981,6 +3043,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         || post_process_changed
         || model_platform_changed
         || http_api_changed
+        || screen_context_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -2999,6 +3062,7 @@ fn normalized_default_settings() -> AppSettings {
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
     ensure_http_api_defaults(&mut settings);
+    ensure_screen_context_defaults(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
     settings
 }
@@ -3035,6 +3099,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
+    let screen_context_changed = ensure_screen_context_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -3043,6 +3108,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         || post_process_changed
         || model_platform_changed
         || http_api_changed
+        || screen_context_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -3748,6 +3814,102 @@ mod tests {
             settings.tts_active_preset_id.as_deref(),
             Some("missing-profile")
         );
+    }
+
+    #[test]
+    fn ensure_screen_context_defaults_migrates_legacy_700_timeout() {
+        let mut settings = get_default_settings();
+        settings.screen_context_ocr_timeout_ms = 700;
+        settings.screen_context_ocr_timeout_policy_version = 0;
+
+        assert!(ensure_screen_context_defaults(&mut settings));
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 2_000);
+        assert_eq!(
+            settings.screen_context_ocr_timeout_policy_version,
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION
+        );
+        assert!(!ensure_screen_context_defaults(&mut settings));
+    }
+
+    #[test]
+    fn ensure_screen_context_defaults_preserves_explicit_700_after_policy_migration() {
+        let mut settings = get_default_settings();
+        settings.screen_context_ocr_timeout_ms = 700;
+        settings.screen_context_ocr_timeout_policy_version =
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION;
+
+        assert!(!ensure_screen_context_defaults(&mut settings));
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 700);
+        assert_eq!(
+            settings.screen_context_ocr_timeout_policy_version,
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION
+        );
+    }
+
+    #[test]
+    fn ensure_screen_context_defaults_preserves_explicit_nonlegacy_timeout() {
+        let mut settings = get_default_settings();
+        settings.screen_context_ocr_timeout_ms = 3_000;
+        settings.screen_context_ocr_timeout_policy_version =
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION;
+
+        assert!(!ensure_screen_context_defaults(&mut settings));
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 3_000);
+    }
+
+    #[test]
+    fn ensure_screen_context_defaults_normalizes_out_of_range_timeout() {
+        let mut settings = get_default_settings();
+        settings.screen_context_ocr_timeout_ms = 50;
+        settings.screen_context_ocr_timeout_policy_version =
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION;
+
+        assert!(ensure_screen_context_defaults(&mut settings));
+        assert_eq!(
+            settings.screen_context_ocr_timeout_ms,
+            SCREEN_CONTEXT_OCR_TIMEOUT_MIN_MS
+        );
+
+        settings.screen_context_ocr_timeout_ms = 500_000;
+        assert!(ensure_screen_context_defaults(&mut settings));
+        assert_eq!(
+            settings.screen_context_ocr_timeout_ms,
+            SCREEN_CONTEXT_OCR_TIMEOUT_MAX_MS
+        );
+    }
+
+    #[test]
+    fn missing_screen_context_ocr_timeout_policy_version_deserializes_as_zero_and_migrates() {
+        let mut payload = serde_json::to_value(get_default_settings()).expect("serialize defaults");
+        let obj = payload.as_object_mut().expect("settings object");
+        obj.remove("screen_context_ocr_timeout_policy_version");
+        obj.insert(
+            "screen_context_ocr_timeout_ms".to_string(),
+            serde_json::json!(700),
+        );
+
+        let mut settings: AppSettings =
+            serde_json::from_value(payload).expect("deserialize old settings");
+        assert_eq!(settings.screen_context_ocr_timeout_policy_version, 0);
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 700);
+
+        assert!(ensure_screen_context_defaults(&mut settings));
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 2_000);
+        assert_eq!(
+            settings.screen_context_ocr_timeout_policy_version,
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION
+        );
+        assert!(!ensure_screen_context_defaults(&mut settings));
+    }
+
+    #[test]
+    fn default_settings_pin_current_screen_context_ocr_timeout_policy_version() {
+        let settings = get_default_settings();
+        assert_eq!(
+            settings.screen_context_ocr_timeout_policy_version,
+            SCREEN_CONTEXT_OCR_TIMEOUT_POLICY_VERSION
+        );
+        assert_eq!(settings.screen_context_ocr_timeout_ms, 2_000);
     }
 
     #[test]

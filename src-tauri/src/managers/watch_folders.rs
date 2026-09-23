@@ -508,7 +508,10 @@ fn find_owning_folder<'a>(
 ) -> Option<(PathBuf, &'a WatchFolderConfig)> {
     folders
         .iter()
-        .find(|(root, _)| path.starts_with(root))
+        // Nested watched folders are valid, but HashMap iteration order is not.
+        // Always apply the most specific folder's format/delete policy.
+        .filter(|(root, _)| path.starts_with(root))
+        .max_by_key(|(root, _)| root.components().count())
         .map(|(root, cfg)| (root.clone(), cfg))
 }
 
@@ -622,6 +625,36 @@ fn wait_for_stable_file(path: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn watch_folder(id: &str, path: &str, delete_after: bool) -> WatchFolderConfig {
+        WatchFolderConfig {
+            id: id.to_string(),
+            path: path.to_string(),
+            output_format: WatchFolderOutputFormat::Text,
+            missing: false,
+            delete_after,
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn nested_watch_folder_uses_most_specific_configuration() {
+        let mut folders = HashMap::new();
+        folders.insert(
+            PathBuf::from("watched"),
+            watch_folder("parent", "watched", false),
+        );
+        folders.insert(
+            PathBuf::from("watched/interviews"),
+            watch_folder("child", "watched/interviews", true),
+        );
+
+        let (_, owner) = find_owning_folder(Path::new("watched/interviews/session.wav"), &folders)
+            .expect("nested file should have an owner");
+
+        assert_eq!(owner.id, "child");
+        assert!(owner.delete_after);
+    }
 
     #[test]
     fn scan_finds_nested_media_and_skips_hidden_and_unsupported() {

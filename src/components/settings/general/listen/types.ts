@@ -21,7 +21,6 @@ export type VoiceArchitectDraftState = {
 
 export type VoiceArchitectUiDraftState = {
   saveProfileNameDraft: string;
-  previewTextDraft: string;
   modelSearchQuery: string;
   createVoiceTool: "my-voices" | "tuning";
 };

@@ -1,11 +1,11 @@
-import React, { act } from "react";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type EventCallback = (event: { payload: unknown }) => void;
-type AppSettingsResult = {
-  status: string;
-  data: { screen_context_enabled?: boolean; show_live_partials?: boolean };
+type OverlaySettings = {
+  screen_context_enabled?: boolean;
+  show_live_partials?: boolean;
 };
 type DiagnosticsResult = { status: string; data: { status: string } };
 
@@ -18,10 +18,12 @@ const eventMocks = vi.hoisted(() => ({
 }));
 
 const commandMocks = vi.hoisted(() => ({
-  getAppSettings: vi.fn(async (): Promise<AppSettingsResult> => ({
-    status: "ok",
-    data: {},
-  })),
+  getSettingsSnapshot: vi.fn(
+    async (): Promise<{ revision: number; settings: OverlaySettings }> => ({
+      revision: 0,
+      settings: {},
+    }),
+  ),
   getScreenContextDiagnostics: vi.fn(async (): Promise<DiagnosticsResult> => ({
     status: "ok",
     data: { status: "captured" },
@@ -50,7 +52,7 @@ const OVERLAY_EVENTS = [
   "partial-transcription",
   "write-rule-matched",
   "write-rule-cleared",
-  "settings-changed",
+  "settings-snapshot",
   "screen-context-status",
   "screen-context-capture",
 ];
@@ -84,10 +86,12 @@ describe("RecordingOverlay", () => {
   });
 
   // Regression: the overlay used to register its listeners only after
-  // awaiting getAppSettings/getScreenContextDiagnostics, so a failing or
+  // awaiting getSettingsSnapshot/getScreenContextDiagnostics, so a failing or
   // slow settings read left the overlay permanently deaf to `show-overlay`.
   it("subscribes to every overlay event even when the settings read rejects", async () => {
-    commandMocks.getAppSettings.mockRejectedValue(new Error("ipc offline"));
+    commandMocks.getSettingsSnapshot.mockRejectedValue(
+      new Error("ipc offline"),
+    );
     commandMocks.getScreenContextDiagnostics.mockRejectedValue(
       new Error("ipc offline"),
     );
@@ -114,11 +118,11 @@ describe("RecordingOverlay", () => {
   });
 
   it("shows the overlay for a show-overlay event that arrives before settings resolve", async () => {
-    let resolveSettings!: (value: AppSettingsResult) => void;
-    commandMocks.getAppSettings.mockReturnValue(
-      new Promise<AppSettingsResult>((resolve) => {
+    let resolveSettings!: (value: OverlaySettings) => void;
+    commandMocks.getSettingsSnapshot.mockReturnValue(
+      new Promise<OverlaySettings>((resolve) => {
         resolveSettings = resolve;
-      }),
+      }).then((settings) => ({ revision: 0, settings })),
     );
     commandMocks.getScreenContextDiagnostics.mockResolvedValue({
       status: "ok",
@@ -137,15 +141,12 @@ describe("RecordingOverlay", () => {
     expect(container.querySelector(".recording-overlay")).not.toBeNull();
 
     await act(async () => {
-      resolveSettings({
-        status: "ok",
-        data: { screen_context_enabled: true },
-      });
+      resolveSettings({ screen_context_enabled: true });
     });
     expect(container.querySelector(".recording-overlay")).not.toBeNull();
   });
 
-  it("reacts to structured live-partials events and ignores generic settings sync events", async () => {
+  it("follows live-partials in committed settings snapshots", async () => {
     await act(async () => {
       root.render(<RecordingOverlay />);
     });
@@ -161,15 +162,23 @@ describe("RecordingOverlay", () => {
     );
 
     await act(async () => {
-      callbacks.get("settings-changed")?.({ payload: null });
+      callbacks.get("settings-snapshot")?.({
+        payload: {
+          revision: 1,
+          settings: { show_live_partials: true, screen_context_enabled: true },
+        },
+      });
     });
     expect(container.querySelector(".partial-text")?.textContent).toContain(
       "Draft text",
     );
 
     await act(async () => {
-      callbacks.get("settings-changed")?.({
-        payload: { setting: "show_live_partials", value: false },
+      callbacks.get("settings-snapshot")?.({
+        payload: {
+          revision: 2,
+          settings: { show_live_partials: false, screen_context_enabled: true },
+        },
       });
     });
     expect(container.querySelector(".partial-text")).toBeNull();

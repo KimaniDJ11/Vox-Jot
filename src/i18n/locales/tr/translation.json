@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Yardımcı boşta",
       "app": "Uygulama {{count}} MB",
       "sidecar": "Yardımcı {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Değişiklik kaydedilemedi: {{error}}",
+      "modelListFailed": "Modeller yüklenemedi: {{error}}"
     }
   },
   "footer": {

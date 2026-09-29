@@ -1,5 +1,5 @@
 use crate::secret_store;
-use crate::settings::{get_settings, write_settings};
+use crate::settings::get_settings;
 use crate::storage_paths;
 use futures_util::StreamExt;
 use log::info;
@@ -1937,24 +1937,17 @@ pub fn delete_model(
         return Err(format!("No local files were found for {}.", model.label));
     }
 
-    let mut settings = get_settings(app);
-    let mut changed = false;
-    if settings.file_transcription_asr_model_id == model.id {
-        settings.file_transcription_asr_model_id = default_asr_model_id();
-        changed = true;
-    }
-    if settings.file_transcription_diarization_model_id == model.id {
-        settings.file_transcription_diarization_model_id = default_diarization_model_id();
-        changed = true;
-    }
-    if settings.file_transcription_emotion_model_id == model.id {
-        settings.file_transcription_emotion_model_id = default_emotion_model_id();
-        changed = true;
-    }
-    if changed {
-        write_settings(app, settings.clone());
-        let _ = app.emit("settings-changed", settings);
-    }
+    crate::settings::update(app, |settings| {
+        if settings.file_transcription_asr_model_id == model.id {
+            settings.file_transcription_asr_model_id = default_asr_model_id();
+        }
+        if settings.file_transcription_diarization_model_id == model.id {
+            settings.file_transcription_diarization_model_id = default_diarization_model_id();
+        }
+        if settings.file_transcription_emotion_model_id == model.id {
+            settings.file_transcription_emotion_model_id = default_emotion_model_id();
+        }
+    });
     if crate::shared_model_assets::is_shared_model_asset(&model.id) {
         let _ = app.emit("model-deleted", &model.id);
     }
@@ -2013,29 +2006,30 @@ pub fn get_model(app: &AppHandle, model_id: &str) -> Option<SpeechAnalysisModelD
     model_by_id(model_id).map(|model| descriptor_with_install_state(app, model))
 }
 
+/// The selected models, with catalog defaults standing in for ids that are no
+/// longer in the catalog.
 pub fn selection_from_settings(app: &AppHandle) -> SpeechAnalysisSelection {
-    let mut settings = get_settings(app);
-    let mut changed = false;
-    if model_by_id(&settings.file_transcription_asr_model_id).is_none() {
-        settings.file_transcription_asr_model_id = default_asr_model_id();
-        changed = true;
-    }
-    if model_by_id(&settings.file_transcription_diarization_model_id).is_none() {
-        settings.file_transcription_diarization_model_id = default_diarization_model_id();
-        changed = true;
-    }
-    if model_by_id(&settings.file_transcription_emotion_model_id).is_none() {
-        settings.file_transcription_emotion_model_id = default_emotion_model_id();
-        changed = true;
-    }
-    if changed {
-        write_settings(app, settings.clone());
-        let _ = app.emit("settings-changed", settings.clone());
-    }
+    let settings = get_settings(app);
+    let known_or = |id: String, default: fn() -> String| {
+        if model_by_id(&id).is_some() {
+            id
+        } else {
+            default()
+        }
+    };
     SpeechAnalysisSelection {
-        asr_model_id: settings.file_transcription_asr_model_id,
-        diarization_model_id: settings.file_transcription_diarization_model_id,
-        emotion_model_id: settings.file_transcription_emotion_model_id,
+        asr_model_id: known_or(
+            settings.file_transcription_asr_model_id,
+            default_asr_model_id,
+        ),
+        diarization_model_id: known_or(
+            settings.file_transcription_diarization_model_id,
+            default_diarization_model_id,
+        ),
+        emotion_model_id: known_or(
+            settings.file_transcription_emotion_model_id,
+            default_emotion_model_id,
+        ),
     }
 }
 
@@ -2074,12 +2068,11 @@ pub fn set_selection(
         ));
     }
 
-    let mut settings = get_settings(app);
-    settings.file_transcription_asr_model_id = asr_model_id;
-    settings.file_transcription_diarization_model_id = diarization_model_id;
-    settings.file_transcription_emotion_model_id = emotion_model_id;
-    write_settings(app, settings.clone());
-    let _ = app.emit("settings-changed", settings);
+    crate::settings::update(app, |settings| {
+        settings.file_transcription_asr_model_id = asr_model_id;
+        settings.file_transcription_diarization_model_id = diarization_model_id;
+        settings.file_transcription_emotion_model_id = emotion_model_id;
+    });
     Ok(selection_from_settings(app))
 }
 

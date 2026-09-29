@@ -1,4 +1,3 @@
-import React from "react";
 import { Binary, Cpu, Package } from "lucide-react";
 
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";

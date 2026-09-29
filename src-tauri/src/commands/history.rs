@@ -155,78 +155,6 @@ pub async fn delete_history_entry(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn update_history_limit(
-    app: AppHandle,
-    history_manager: State<'_, Arc<HistoryManager>>,
-    limit: usize,
-) -> Result<(), String> {
-    let mut settings = crate::settings::get_settings(&app);
-    settings.history_limit = limit;
-    crate::settings::write_settings(&app, settings);
-
-    history_manager
-        .cleanup_old_entries()
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn update_history_auto_analyze_speakers_long_recordings_enabled(
-    app: AppHandle,
-    enabled: bool,
-) -> Result<(), String> {
-    let mut settings = crate::settings::get_settings(&app);
-    settings.history_auto_analyze_speakers_long_recordings_enabled = enabled;
-    crate::settings::write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn update_history_auto_analyze_speakers_min_duration_ms(
-    app: AppHandle,
-    min_duration_ms: u32,
-) -> Result<(), String> {
-    let mut settings = crate::settings::get_settings(&app);
-    settings.history_auto_analyze_speakers_min_duration_ms =
-        min_duration_ms.clamp(30_000, 7_200_000);
-    crate::settings::write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn update_recording_retention_period(
-    app: AppHandle,
-    history_manager: State<'_, Arc<HistoryManager>>,
-    period: String,
-) -> Result<(), String> {
-    use crate::settings::RecordingRetentionPeriod;
-
-    let retention_period = match period.as_str() {
-        "never" => RecordingRetentionPeriod::Never,
-        "preserve_limit" => RecordingRetentionPeriod::PreserveLimit,
-        "days3" => RecordingRetentionPeriod::Days3,
-        "weeks2" => RecordingRetentionPeriod::Weeks2,
-        "months3" => RecordingRetentionPeriod::Months3,
-        _ => return Err(format!("Invalid retention period: {}", period)),
-    };
-
-    let mut settings = crate::settings::get_settings(&app);
-    settings.recording_retention_period = retention_period;
-    crate::settings::write_settings(&app, settings);
-
-    history_manager
-        .cleanup_old_entries()
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
 /// Called by the frontend (or internally) to store what was observed in the
 /// text field ~30 seconds after Vox Jot pasted text into it.
 #[tauri::command]
@@ -267,19 +195,6 @@ pub async fn update_history_entry_display_title(
 ) -> Result<(), String> {
     history_manager
         .update_display_title(id, title)
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn update_history_entry_speaker_labels_visible(
-    _app: AppHandle,
-    history_manager: State<'_, Arc<HistoryManager>>,
-    id: i64,
-    visible: bool,
-) -> Result<(), String> {
-    history_manager
-        .update_speaker_labels_visible(id, visible)
         .map_err(|e| e.to_string())
 }
 
@@ -500,4 +415,17 @@ pub(crate) fn maybe_queue_auto_speaker_analysis(
             );
         }
     });
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_history_entry_speaker_labels_visible(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+    visible: bool,
+) -> Result<(), String> {
+    history_manager
+        .update_speaker_labels_visible(id, visible)
+        .map_err(|e| e.to_string())
 }

@@ -1637,6 +1637,10 @@
       "sidecarIdle": "輔助程序閒置",
       "app": "應用程式 {{count}} MB",
       "sidecar": "輔助程序 {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "無法儲存你的變更：{{error}}",
+      "modelListFailed": "無法載入模型：{{error}}"
     }
   },
   "footer": {

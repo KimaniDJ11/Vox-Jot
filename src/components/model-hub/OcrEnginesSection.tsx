@@ -11,7 +11,6 @@ import {
   Languages,
   Loader2,
   ScanSearch,
-  Trash2,
   X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -40,10 +39,7 @@ import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
-import {
-  ProviderIcon,
-  resolveModelProviderId,
-} from "@/components/ui/ProviderIcon";
+import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,

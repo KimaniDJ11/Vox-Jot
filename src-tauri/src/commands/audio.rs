@@ -1,8 +1,7 @@
 use crate::audio_feedback;
-use crate::audio_toolkit::audio::{list_input_devices, list_output_devices};
-use crate::managers::audio::{AudioRecordingManager, MicrophoneMode};
-use crate::settings::{get_settings, write_settings};
-use log::warn;
+use crate::audio_toolkit::audio::{list_input_devices, list_output_devices, CpalDeviceInfo};
+use crate::managers::audio::AudioRecordingManager;
+use crate::settings::get_settings;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 #[cfg(target_os = "windows")]
@@ -152,33 +151,6 @@ pub fn open_microphone_privacy_settings() -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn update_microphone_mode(app: AppHandle, always_on: bool) -> Result<(), String> {
-    // Update settings
-    let mut settings = get_settings(&app);
-    settings.always_on_microphone = always_on;
-    write_settings(&app, settings);
-
-    // Update the audio manager mode
-    let rm = app.state::<Arc<AudioRecordingManager>>();
-    let new_mode = if always_on {
-        MicrophoneMode::AlwaysOn
-    } else {
-        MicrophoneMode::OnDemand
-    };
-
-    rm.update_mode(new_mode)
-        .map_err(|e| format!("Failed to update microphone mode: {}", e))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_microphone_mode(app: AppHandle) -> Result<bool, String> {
-    let settings = get_settings(&app);
-    Ok(settings.always_on_microphone)
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn start_microphone_level_preview(app: AppHandle) -> Result<(), String> {
     let audio_manager = app.state::<Arc<AudioRecordingManager>>();
     audio_manager
@@ -199,44 +171,63 @@ pub fn stop_microphone_level_preview(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-#[specta::specta]
-pub fn get_available_microphones() -> Result<Vec<AudioDevice>, String> {
-    let devices =
-        list_input_devices().map_err(|e| format!("Failed to list audio devices: {}", e))?;
-
-    let mut result = vec![AudioDevice {
+/// The system default device, listed first. Selecting it stores no device name.
+fn with_default_device(devices: Vec<CpalDeviceInfo>) -> Vec<AudioDevice> {
+    std::iter::once(AudioDevice {
         index: "default".to_string(),
         name: "Default".to_string(),
         is_default: true,
-    }];
-
-    result.extend(devices.into_iter().map(|d| AudioDevice {
-        index: d.index,
-        name: d.name,
-        is_default: false, // The explicit default is handled separately
-    }));
-
-    Ok(result)
+    })
+    .chain(devices.into_iter().map(|device| AudioDevice {
+        index: device.index,
+        name: device.name,
+        is_default: false,
+    }))
+    .collect()
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn set_selected_microphone(app: AppHandle, device_name: String) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.selected_microphone = if device_name == "default" {
-        None
-    } else {
-        Some(device_name)
+pub fn get_available_microphones() -> Result<Vec<AudioDevice>, String> {
+    list_input_devices()
+        .map(with_default_device)
+        .map_err(|e| format!("Failed to list audio devices: {}", e))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_available_output_devices() -> Result<Vec<AudioDevice>, String> {
+    list_output_devices()
+        .map(with_default_device)
+        .map_err(|e| format!("Failed to list output devices: {}", e))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn play_test_sound(app: AppHandle, sound_type: String) {
+    let sound = match sound_type.as_str() {
+        "start" => audio_feedback::SoundType::Start,
+        "stop" => audio_feedback::SoundType::Stop,
+        other => {
+            log::warn!("Unknown sound type: {other}");
+            return;
+        }
     };
-    write_settings(&app, settings);
+    audio_feedback::play_test_sound(&app, sound);
+}
 
-    // Update the audio manager to use the new device
-    let rm = app.state::<Arc<AudioRecordingManager>>();
-    rm.update_selected_device()
-        .map_err(|e| format!("Failed to update selected device: {}", e))?;
+#[tauri::command]
+#[specta::specta]
+pub fn is_recording(app: AppHandle) -> bool {
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    audio_manager.is_recording()
+}
 
-    Ok(())
+#[tauri::command]
+#[specta::specta]
+pub fn get_microphone_mode(app: AppHandle) -> Result<bool, String> {
+    let settings = get_settings(&app);
+    Ok(settings.always_on_microphone)
 }
 
 #[tauri::command]
@@ -250,40 +241,6 @@ pub fn get_selected_microphone(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_available_output_devices() -> Result<Vec<AudioDevice>, String> {
-    let devices =
-        list_output_devices().map_err(|e| format!("Failed to list output devices: {}", e))?;
-
-    let mut result = vec![AudioDevice {
-        index: "default".to_string(),
-        name: "Default".to_string(),
-        is_default: true,
-    }];
-
-    result.extend(devices.into_iter().map(|d| AudioDevice {
-        index: d.index,
-        name: d.name,
-        is_default: false, // The explicit default is handled separately
-    }));
-
-    Ok(result)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn set_selected_output_device(app: AppHandle, device_name: String) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.selected_output_device = if device_name == "default" {
-        None
-    } else {
-        Some(device_name)
-    };
-    write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn get_selected_output_device(app: AppHandle) -> Result<String, String> {
     let settings = get_settings(&app);
     Ok(settings
@@ -293,43 +250,9 @@ pub fn get_selected_output_device(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn play_test_sound(app: AppHandle, sound_type: String) {
-    let sound = match sound_type.as_str() {
-        "start" => audio_feedback::SoundType::Start,
-        "stop" => audio_feedback::SoundType::Stop,
-        _ => {
-            warn!("Unknown sound type: {}", sound_type);
-            return;
-        }
-    };
-    audio_feedback::play_test_sound(&app, sound);
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn set_clamshell_microphone(app: AppHandle, device_name: String) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.clamshell_microphone = if device_name == "default" {
-        None
-    } else {
-        Some(device_name)
-    };
-    write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn get_clamshell_microphone(app: AppHandle) -> Result<String, String> {
     let settings = get_settings(&app);
     Ok(settings
         .clamshell_microphone
         .unwrap_or_else(|| "default".to_string()))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn is_recording(app: AppHandle) -> bool {
-    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
-    audio_manager.is_recording()
 }

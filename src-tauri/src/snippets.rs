@@ -251,6 +251,67 @@ pub fn parse_snippet_import_json(json: &str) -> Result<Vec<Snippet>, String> {
     Ok(snippets)
 }
 
+/// Check a complete Phrase Key list against the supported limits.
+pub fn validate_snippets(snippets: &[Snippet]) -> Result<(), String> {
+    if snippets.len() > MAX_IMPORT_SNIPPETS {
+        return Err("Phrase Key limit is 1,000 entries.".to_string());
+    }
+    snippets.iter().try_for_each(validate_snippet)
+}
+
+pub fn validate_snippet(snippet: &Snippet) -> Result<(), String> {
+    if snippet.trigger.trim().is_empty() || snippet.expansion.trim().is_empty() {
+        return Err("Phrase Key triggers and expansions cannot be empty.".to_string());
+    }
+    if snippet.trigger.chars().count() > MAX_TRIGGER_CHARS
+        || snippet.expansion.chars().count() > MAX_EXPANSION_CHARS
+    {
+        return Err(format!(
+            "Phrase Key '{}' exceeds the supported length limit ({MAX_TRIGGER_CHARS} characters for triggers, {MAX_EXPANSION_CHARS} for expansions).",
+            snippet.trigger
+        ));
+    }
+    let unsupported = unsupported_template_variables(&snippet.expansion);
+    if !unsupported.is_empty() {
+        return Err(format!(
+            "Phrase Key '{}' uses unsupported variable(s): {}",
+            snippet.trigger,
+            unsupported.join(", ")
+        ));
+    }
+    Ok(())
+}
+
+/// Append imported Phrase Keys whose triggers are not already present,
+/// assigning fresh ids where an import id is missing or taken. Returns how
+/// many were added.
+pub fn merge_imported_snippets(
+    existing: &mut Vec<Snippet>,
+    imported: Vec<Snippet>,
+    id_prefix: &str,
+) -> usize {
+    let mut triggers: std::collections::HashSet<String> = existing
+        .iter()
+        .map(|snippet| snippet.trigger.trim().to_lowercase())
+        .collect();
+    let mut ids: std::collections::HashSet<String> =
+        existing.iter().map(|snippet| snippet.id.clone()).collect();
+
+    let mut added = 0;
+    for mut snippet in imported {
+        if !triggers.insert(snippet.trigger.trim().to_lowercase()) {
+            continue;
+        }
+        if snippet.id.trim().is_empty() || ids.contains(&snippet.id) {
+            snippet.id = format!("snippet_import_{id_prefix}_{added}");
+        }
+        ids.insert(snippet.id.clone());
+        existing.push(snippet);
+        added += 1;
+    }
+    added
+}
+
 /// Strip punctuation from edges of a word for matching purposes.
 fn strip_punctuation(s: &str) -> &str {
     let s = s.trim_start_matches(|c: char| c.is_ascii_punctuation());

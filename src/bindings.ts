@@ -4,113 +4,12 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
+	/**
+	 *  Assign a new key combination to a shortcut. The previous combination stays
+	 *  registered unless the new one is valid and registers successfully.
+	 */
 	changeBinding: (id: string, binding: string) => typedError<BindingResponse, string>(__TAURI_INVOKE("change_binding", { id, binding })),
 	resetBinding: (id: string) => typedError<BindingResponse, string>(__TAURI_INVOKE("reset_binding", { id })),
-	changePttSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_ptt_setting", { enabled })),
-	changeAudioFeedbackSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_feedback_setting", { enabled })),
-	changeAudioFeedbackVolumeSetting: (volume: number | null) => typedError<null, string>(__TAURI_INVOKE("change_audio_feedback_volume_setting", { volume })),
-	changeSoundThemeSetting: (theme: string) => typedError<null, string>(__TAURI_INVOKE("change_sound_theme_setting", { theme })),
-	changeAppThemeSetting: (theme: string) => typedError<null, string>(__TAURI_INVOKE("change_app_theme_setting", { theme })),
-	changeAppFontScaleSetting: (scale: number | null) => typedError<null, string>(__TAURI_INVOKE("change_app_font_scale_setting", { scale })),
-	changeStartHiddenSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_start_hidden_setting", { enabled })),
-	changeAutostartSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_autostart_setting", { enabled })),
-	changeTranslateToEnglishSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_translate_to_english_setting", { enabled })),
-	changeSelectedLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_selected_language_setting", { language })),
-	changeTranslationOutputModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_output_mode_setting", { mode })),
-	changeTranslationTargetLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_target_language_setting", { language })),
-	changeTranslationRoutePreferenceSetting: (route: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_route_preference_setting", { route })),
-	changeTranslationBilingualLayoutSetting: (layout: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_bilingual_layout_setting", { layout })),
-	changeTranslationTranslateSnippetsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_translation_translate_snippets_setting", { enabled })),
-	changeTranslationDestinationModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_destination_mode_setting", { mode })),
-	changeSelectionTranslationDestinationModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_selection_translation_destination_mode_setting", { mode })),
-	changeTtsEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_tts_enabled_setting", { enabled })),
-	changeTtsEnginePreferenceSetting: (preference: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_engine_preference_setting", { preference })),
-	changeTtsAutoReadbackModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_auto_readback_mode_setting", { mode })),
-	changeTtsAutoReadbackScopeSetting: (scope: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_auto_readback_scope_setting", { scope })),
-	changeTtsReadbackTextModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_readback_text_mode_setting", { mode })),
-	changeTtsDefaultVoiceIdSetting: (voiceId: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_default_voice_id_setting", { voiceId })),
-	changeTtsRateSetting: (rate: number | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_rate_setting", { rate })),
-	changeTtsVolumeSetting: (volume: number | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_volume_setting", { volume })),
-	changeTtsStopOnRecordSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_tts_stop_on_record_setting", { enabled })),
-	changeAudioEnhancementEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_enabled_setting", { enabled })),
-	changeAudioEnhancementModelSetting: (model: string) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_model_setting", { model })),
-	changeAcousticProfileSetting: (profile: string) => typedError<null, string>(__TAURI_INVOKE("change_acoustic_profile_setting", { profile })),
-	changeTtsModelStorePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_model_store_path_setting", { path })),
-	changeExternalModelStorageEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_enabled_setting", { enabled })),
-	changeExternalModelStorageAutoDetectSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_auto_detect_setting", { enabled })),
-	changeExternalModelStoragePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_path_setting", { path })),
-	changeSpeechRuntimePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_speech_runtime_path_setting", { path })),
-	changeOverlayPositionSetting: (position: string) => typedError<null, string>(__TAURI_INVOKE("change_overlay_position_setting", { position })),
-	changeRecordingOverlayStyleSetting: (style: string) => typedError<null, string>(__TAURI_INVOKE("change_recording_overlay_style_setting", { style })),
-	changeDebugModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_debug_mode_setting", { enabled })),
-	changeShowTechnicalFeaturesSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_technical_features_setting", { enabled })),
-	changeWordCorrectionThresholdSetting: (threshold: number | null) => typedError<null, string>(__TAURI_INVOKE("change_word_correction_threshold_setting", { threshold })),
-	changePasteMethodSetting: (method: string) => typedError<null, string>(__TAURI_INVOKE("change_paste_method_setting", { method })),
-	getAvailableTypingTools: () => __TAURI_INVOKE<string[]>("get_available_typing_tools"),
-	changeTypingToolSetting: (tool: string) => typedError<null, string>(__TAURI_INVOKE("change_typing_tool_setting", { tool })),
-	changeExternalScriptPathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_external_script_path_setting", { path })),
-	changeClipboardHandlingSetting: (handling: string) => typedError<null, string>(__TAURI_INVOKE("change_clipboard_handling_setting", { handling })),
-	changeAutoSubmitSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_setting", { enabled })),
-	changeAutoSubmitKeySetting: (key: string) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_key_setting", { key })),
-	changePostProcessEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_post_process_enabled_setting", { enabled })),
-	changeAdaptiveSelectionRewriteEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_adaptive_selection_rewrite_enabled_setting", { enabled })),
-	changeCloudSelectionRewriteAllowedSetting: (allowed: boolean) => typedError<null, string>(__TAURI_INVOKE("change_cloud_selection_rewrite_allowed_setting", { allowed })),
-	changeMarkdownExportEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_enabled_setting", { enabled })),
-	changeMarkdownExportDirSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_dir_setting", { path })),
-	changeMarkdownExportMinWordsSetting: (minWords: number) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_min_words_setting", { minWords })),
-	changeMarkdownExportContentSourceSetting: (source: string) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_content_source_setting", { source })),
-	changeMarkdownExportFrontmatterSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_frontmatter_setting", { enabled })),
-	changeMarkdownExportIncludeRewriteSelectionSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_rewrite_selection_setting", { enabled })),
-	changeMarkdownExportIncludeFailedPasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_failed_paste_setting", { enabled })),
-	testMarkdownExportWrite: () => typedError<string, string>(__TAURI_INVOKE("test_markdown_export_write")),
-	changeSuggestMeetingAppsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_suggest_meeting_apps_setting", { enabled })),
-	changeShowLivePartialsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_live_partials_setting", { enabled })),
-	changeLocalPrivacyModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_local_privacy_mode_setting", { enabled })),
-	/**
-	 *  Persist whether the first-run onboarding wizard has been completed. The
-	 *  frontend calls this when the wizard finishes so subsequent launches skip
-	 *  straight to the app, while a fresh install (no stored flag) always shows
-	 *  onboarding regardless of which speech models happen to be available.
-	 */
-	setOnboardingCompleted: (completed: boolean) => typedError<null, string>(__TAURI_INVOKE("set_onboarding_completed", { completed })),
-	changeScreenContextEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_enabled_setting", { enabled })),
-	changeScreenContextExcludedBundleIdsSetting: (bundleIds: string[]) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_excluded_bundle_ids_setting", { bundleIds })),
-	changeScreenContextPauseOnIdleSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_pause_on_idle_setting", { enabled })),
-	changeScreenContextIdleThresholdMsSetting: (thresholdMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_idle_threshold_ms_setting", { thresholdMs })),
-	changeContextCaptureModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_context_capture_mode_setting", { mode })),
-	changeScreenContextOcrQualitySetting: (quality: string) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_quality_setting", { quality })),
-	changeScreenContextOcrEngineSetting: (engine: string) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_engine_setting", { engine })),
-	changeScreenContextOcrTimeoutMsSetting: (timeoutMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_timeout_ms_setting", { timeoutMs })),
-	changeScreenContextTokenBudgetSetting: (tokenBudget: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_token_budget_setting", { tokenBudget })),
-	changeScreenContextStaleThresholdMsSetting: (staleThresholdMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_stale_threshold_ms_setting", { staleThresholdMs })),
-	changePostProcessModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_mode_setting", { mode })),
-	changePostProcessCleanupLevelSetting: (level: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_cleanup_level_setting", { level })),
-	changeExperimentalEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_experimental_enabled_setting", { enabled })),
-	changePostProcessBaseUrlSetting: (providerId: string, baseUrl: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_base_url_setting", { providerId, baseUrl })),
-	changePostProcessApiKeySetting: (providerId: string, apiKey: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_api_key_setting", { providerId, apiKey })),
-	changePostProcessModelSetting: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_model_setting", { providerId, model })),
-	changeTranslationModelSetting: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_model_setting", { providerId, model })),
-	changeTranslationModelIdsSetting: (modelIds: { [key in string]: string }) => typedError<null, string>(__TAURI_INVOKE("change_translation_model_ids_setting", { modelIds })),
-	setPostProcessProvider: (providerId: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_provider", { providerId })),
-	setTranslationProvider: (providerId: string) => typedError<null, string>(__TAURI_INVOKE("set_translation_provider", { providerId })),
-	fetchPostProcessModels: (providerId: string) => typedError<string[], string>(__TAURI_INVOKE("fetch_post_process_models", { providerId })),
-	addPostProcessPrompt: (name: string, prompt: string) => typedError<LLMPrompt, string>(__TAURI_INVOKE("add_post_process_prompt", { name, prompt })),
-	updatePostProcessPrompt: (id: string, name: string, prompt: string) => typedError<null, string>(__TAURI_INVOKE("update_post_process_prompt", { id, name, prompt })),
-	deletePostProcessPrompt: (id: string) => typedError<null, string>(__TAURI_INVOKE("delete_post_process_prompt", { id })),
-	setPostProcessSelectedPrompt: (id: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_selected_prompt", { id })),
-	updateCustomWords: (words: string[]) => typedError<null, string>(__TAURI_INVOKE("update_custom_words", { words })),
-	changeCustomFillerWordsSetting: (words: string[] | null) => typedError<null, string>(__TAURI_INVOKE("change_custom_filler_words_setting", { words })),
-	updatePersonalDictionary: (entries: DictionaryEntry[]) => typedError<null, string>(__TAURI_INVOKE("update_personal_dictionary", { entries })),
-	changeMaxRewriteStrengthSetting: (strength: number) => typedError<null, string>(__TAURI_INVOKE("change_max_rewrite_strength_setting", { strength })),
-	changeShowPreviewBeforePasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_preview_before_paste_setting", { enabled })),
-	changeFallbackToRawOnFailureSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_fallback_to_raw_on_failure_setting", { enabled })),
-	changeAppAwareToneEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_app_aware_tone_enabled_setting", { enabled })),
-	/**
-	 *  Set the explicit Write-Profiles master toggle. Pass `null` to
-	 *  clear the override and inherit from `app_aware_tone_enabled`.
-	 */
-	changeWriteRulesEnabledSetting: (enabled: boolean | null) => typedError<null, string>(__TAURI_INVOKE("change_write_rules_enabled_setting", { enabled })),
-	updateToneDefinitions: (definitions: ToneDefinition[]) => typedError<null, string>(__TAURI_INVOKE("update_tone_definitions", { definitions })),
 	/**
 	 *  Temporarily unregister a binding while the user is editing it in the UI.
 	 *  This avoids firing the action while keys are being recorded.
@@ -118,50 +17,53 @@ export const commands = {
 	suspendBinding: (id: string) => typedError<null, string>(__TAURI_INVOKE("suspend_binding", { id })),
 	/**  Re-register the binding after the user has finished editing. */
 	resumeBinding: (id: string) => typedError<null, string>(__TAURI_INVOKE("resume_binding", { id })),
-	changeMuteWhileRecordingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_mute_while_recording_setting", { enabled })),
-	changeAudioDuckingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_ducking_setting", { enabled })),
-	changeAppendTrailingSpaceSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_append_trailing_space_setting", { enabled })),
-	changeAppLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_app_language_setting", { language })),
-	changeGlobalLanguageSyncEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_global_language_sync_enabled_setting", { enabled })),
-	changeUpdateChecksSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_update_checks_setting", { enabled })),
-	changeCrashReportingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_crash_reporting_setting", { enabled })),
-	changeUsageAnalyticsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_usage_analytics_setting", { enabled })),
 	/**
 	 *  Change the keyboard implementation with runtime switching.
 	 *  This will unregister all shortcuts from the old implementation,
 	 *  validate shortcuts for the new implementation (resetting invalid ones to defaults),
 	 *  and register them with the new implementation.
 	 */
-	changeKeyboardImplementationSetting: (implementation: string) => typedError<ImplementationChangeResult, string>(__TAURI_INVOKE("change_keyboard_implementation_setting", { implementation })),
-	/**  Get the current keyboard implementation */
-	getKeyboardImplementation: () => __TAURI_INVOKE<string>("get_keyboard_implementation"),
-	changeShowTrayIconSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_tray_icon_setting", { enabled })),
-	changeCorrectionTrackingEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_correction_tracking_enabled_setting", { enabled })),
-	changeFileTranscriptionApplyDictionarySetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_file_transcription_apply_dictionary_setting", { enabled })),
-	changeSnippetsEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_snippets_enabled_setting", { enabled })),
-	updateSnippets: (snippets: Snippet[]) => typedError<null, string>(__TAURI_INVOKE("update_snippets", { snippets })),
-	importSnippets: (json: string) => typedError<number, string>(__TAURI_INVOKE("import_snippets", { json })),
-	exportSnippets: () => typedError<string, string>(__TAURI_INVOKE("export_snippets")),
+	changeKeyboardImplementation: (implementation: KeyboardImplementation) => typedError<ImplementationChangeResult, string>(__TAURI_INVOKE("change_keyboard_implementation", { implementation })),
 	/**  Start key recording mode */
 	startHandyKeysRecording: (bindingId: string) => typedError<null, string>(__TAURI_INVOKE("start_handy_keys_recording", { bindingId })),
 	/**  Stop key recording mode */
 	stopHandyKeysRecording: () => typedError<null, string>(__TAURI_INVOKE("stop_handy_keys_recording")),
-	triggerUpdateCheck: () => typedError<null, string>(__TAURI_INVOKE("trigger_update_check")),
+	getAppSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_app_settings")),
+	getSettingsSnapshot: () => __TAURI_INVOKE<SettingsSnapshot_Serialize>("get_settings_snapshot"),
+	getDefaultSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_default_settings")),
+	/**
+	 *  Validate, persist, and apply one preference change. Return the same
+	 *  revisioned state that other windows receive through `settings-snapshot`.
+	 */
+	updateSetting: (update: SettingUpdate_Deserialize) => typedError<SettingsSnapshot_Serialize, string>(__TAURI_INVOKE("update_setting", { update })),
+	getAvailableTypingTools: () => __TAURI_INVOKE<string[]>("get_available_typing_tools"),
+	testMarkdownExportWrite: () => typedError<string, string>(__TAURI_INVOKE("test_markdown_export_write")),
+	/**
+	 *  Point the custom provider at a new endpoint. The saved model is cleared
+	 *  because it belongs to the previous endpoint.
+	 */
+	setPostProcessBaseUrl: (providerId: string, baseUrl: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_base_url", { providerId, baseUrl })),
+	/**  Store or clear a provider's API key in the OS credential store. */
+	setPostProcessApiKey: (providerId: string, apiKey: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_api_key", { providerId, apiKey })),
+	setPostProcessModel: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_model", { providerId, model })),
+	setTranslationModel: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("set_translation_model", { providerId, model })),
+	fetchPostProcessModels: (providerId: string) => typedError<string[], string>(__TAURI_INVOKE("fetch_post_process_models", { providerId })),
+	addPostProcessPrompt: (name: string, prompt: string) => typedError<LLMPrompt, string>(__TAURI_INVOKE("add_post_process_prompt", { name, prompt })),
+	updatePostProcessPrompt: (id: string, name: string, prompt: string) => typedError<null, string>(__TAURI_INVOKE("update_post_process_prompt", { id, name, prompt })),
+	deletePostProcessPrompt: (id: string) => typedError<null, string>(__TAURI_INVOKE("delete_post_process_prompt", { id })),
+	/**
+	 *  Add Phrase Keys from a JSON export, skipping triggers that already exist.
+	 *  Returns how many were added.
+	 */
+	importSnippets: (json: string) => typedError<number, string>(__TAURI_INVOKE("import_snippets", { json })),
+	exportSnippets: () => typedError<string, string>(__TAURI_INVOKE("export_snippets")),
 	showMainWindowCommand: () => typedError<null, string>(__TAURI_INVOKE("show_main_window_command")),
 	cancelOperation: () => __TAURI_INVOKE<void>("cancel_operation"),
 	getAppDirPath: () => typedError<string, string>(__TAURI_INVOKE("get_app_dir_path")),
 	getExternalModelStorageStatus: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("get_external_model_storage_status")),
-	getExternalModelStorageDisconnectEvent: () => __TAURI_INVOKE<{
-	volume_name: string | null,
-	fell_back: boolean,
-} | null>("get_external_model_storage_disconnect_event"),
-	refreshExternalModelStorage: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("refresh_external_model_storage")),
 	pickExternalModelStorageDir: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("pick_external_model_storage_dir")),
 	openExternalModelStorageDir: () => typedError<null, string>(__TAURI_INVOKE("open_external_model_storage_dir")),
-	getAppSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_app_settings")),
-	getDefaultSettings: () => typedError<AppSettings_Serialize, string>(__TAURI_INVOKE("get_default_settings")),
 	getLogDirPath: () => typedError<string, string>(__TAURI_INVOKE("get_log_dir_path")),
-	setLogLevel: (level: LogLevel) => typedError<null, string>(__TAURI_INVOKE("set_log_level", { level })),
 	openRecordingsFolder: () => typedError<null, string>(__TAURI_INVOKE("open_recordings_folder")),
 	openLogDir: () => typedError<null, string>(__TAURI_INVOKE("open_log_dir")),
 	openAppDataDir: () => typedError<null, string>(__TAURI_INVOKE("open_app_data_dir")),
@@ -178,7 +80,6 @@ export const commands = {
 	prepareMacosPermissionRelaunch: (reason: string) => typedError<null, string>(__TAURI_INVOKE("prepare_macos_permission_relaunch", { reason })),
 	openScreenRecordingSettings: () => typedError<null, string>(__TAURI_INVOKE("open_screen_recording_settings")),
 	ttsSpeak: (text: string, locale: string | null, preferredVoiceId: string | null, trigger: string | null, rememberLastOutput: boolean | null) => typedError<null, string>(__TAURI_INVOKE("tts_speak", { text, locale, preferredVoiceId, trigger, rememberLastOutput })),
-	ttsSpeakWithPreset: (text: string, locale: string | null, presetId: string, trigger: string | null, rememberLastOutput: boolean | null) => typedError<null, string>(__TAURI_INVOKE("tts_speak_with_preset", { text, locale, presetId, trigger, rememberLastOutput })),
 	ttsSpeakReader: (text: string, locale: string | null, presetId: string | null, playbackRate: number | null, trigger: string | null, rememberLastOutput: boolean | null) => typedError<null, string>(__TAURI_INVOKE("tts_speak_reader", { text, locale, presetId, playbackRate, trigger, rememberLastOutput })),
 	exportReaderAudio: (units: ReaderAudioExportUnit[], outputPath: string, playbackRate: number | null) => typedError<ReaderAudioExportResult, string>(__TAURI_INVOKE("export_reader_audio", { units, outputPath, playbackRate })),
 	/**
@@ -190,7 +91,6 @@ export const commands = {
 	exportReaderAudiobook: (documentId: string, chapters: ReaderAudiobookChapter[], outputPath: string, format: string, playbackRate: number | null, language: string | null, title: string | null, author: string | null, coverDataUrl: string | null) => typedError<ReaderAudiobookResult, string>(__TAURI_INVOKE("export_reader_audiobook", { documentId, chapters, outputPath, format, playbackRate, language, title, author, coverDataUrl })),
 	getReaderAudioCacheStatus: (documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null, language: string | null) => typedError<ReaderAudioCacheStatus, string>(__TAURI_INVOKE("get_reader_audio_cache_status", { documentId, units, playbackRate, language })),
 	prepareReaderAudioCache: (documentId: string, units: ReaderAudioCacheUnit[], playbackRate: number | null, language: string | null) => typedError<ReaderAudioCachePrepareResult, string>(__TAURI_INVOKE("prepare_reader_audio_cache", { documentId, units, playbackRate, language })),
-	playReaderAudioUnit: (documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null, language: string | null) => typedError<ReaderAudioCachePlayResult, string>(__TAURI_INVOKE("play_reader_audio_unit", { documentId, unit, playbackRate, language })),
 	/**
 	 *  Ensure a reader unit is synthesized to its cache WAV and return the on-disk
 	 *  path plus per-word timings, WITHOUT playing it. The frontend `<audio>`
@@ -205,7 +105,6 @@ export const commands = {
 	getAvailableTtsVoices: () => typedError<VoiceInfo[], string>(__TAURI_INVOKE("get_available_tts_voices")),
 	getTtsVoicesForSelection: (providerId: string, modelId: string | null) => typedError<VoiceInfo[], string>(__TAURI_INVOKE("get_tts_voices_for_selection", { providerId, modelId })),
 	refreshTtsVoices: () => typedError<VoiceInfo[], string>(__TAURI_INVOKE("refresh_tts_voices")),
-	previewTtsVoice: (voiceId: string | null, previewText: string | null) => typedError<null, string>(__TAURI_INVOKE("preview_tts_voice", { voiceId, previewText })),
 	previewTtsVoicePreset: (presetId: string, previewText: string | null) => typedError<null, string>(__TAURI_INVOKE("preview_tts_voice_preset", { presetId, previewText })),
 	previewTtsVoicePresetDraft: (input: TtsVoicePresetInput_Deserialize, previewText: string | null) => typedError<null, string>(__TAURI_INVOKE("preview_tts_voice_preset_draft", { input, previewText })),
 	prepareSidecarEngine: (providerId: string) => typedError<null, string>(__TAURI_INVOKE("prepare_sidecar_engine", { providerId })),
@@ -223,7 +122,6 @@ export const commands = {
 	deleteTtsVoiceProfile: (profileId: string) => typedError<null, string>(__TAURI_INVOKE("delete_tts_voice_profile", { profileId })),
 	setActiveImprovementProfile: (profileId: string, enabled: boolean) => typedError<TtsVoiceProfileDescriptor, string>(__TAURI_INVOKE("set_active_improvement_profile", { profileId, enabled })),
 	clearProfileCollectedData: (profileId: string) => typedError<TtsVoiceProfileDescriptor, string>(__TAURI_INVOKE("clear_profile_collected_data", { profileId })),
-	getVoiceProfileProgress: (profileId: string) => typedError<TtsVoiceProfileDescriptor, string>(__TAURI_INVOKE("get_voice_profile_progress", { profileId })),
 	convertVoiceSample: (sourcePath: string, profileId: string, tau: number | null, providerId: string | null, modelId: string | null) => typedError<VoiceChangerResult, string>(__TAURI_INVOKE("convert_voice_sample", { sourcePath, profileId, tau, providerId, modelId })),
 	convertVoiceRecording: (wavBytes: number[], profileId: string, tau: number | null, providerId: string | null, modelId: string | null) => typedError<VoiceChangerResult, string>(__TAURI_INVOKE("convert_voice_recording", { wavBytes, profileId, tau, providerId, modelId })),
 	/**
@@ -264,38 +162,23 @@ export const commands = {
 	downloadModel: (modelId: string) => typedError<null, string>(__TAURI_INVOKE("download_model", { modelId })),
 	deleteModel: (modelId: string) => typedError<null, string>(__TAURI_INVOKE("delete_model", { modelId })),
 	cancelDownload: (modelId: string) => typedError<null, string>(__TAURI_INVOKE("cancel_download", { modelId })),
-	setSttPlatformSelection: (providerId: string, modelId: string) => typedError<null, string>(__TAURI_INVOKE("set_stt_platform_selection", { providerId, modelId })),
 	setTtsPlatformSelection: (providerId: string, modelId: string | null) => typedError<null, string>(__TAURI_INVOKE("set_tts_platform_selection", { providerId, modelId })),
 	downloadTtsHfModel: (repoId: string) => typedError<null, string>(__TAURI_INVOKE("download_tts_hf_model", { repoId })),
 	cancelArtifactDownload: (domain: string, artifactId: string) => typedError<null, string>(__TAURI_INVOKE("cancel_artifact_download", { domain, artifactId })),
-	deleteTtsHfModel: (repoId: string) => typedError<null, string>(__TAURI_INVOKE("delete_tts_hf_model", { repoId })),
 	setActiveModel: (modelId: string) => typedError<null, string>(__TAURI_INVOKE("set_active_model", { modelId })),
 	getCurrentModel: () => typedError<string, string>(__TAURI_INVOKE("get_current_model")),
 	getTranscriptionModelStatus: () => typedError<string | null, string>(__TAURI_INVOKE("get_transcription_model_status")),
-	isModelLoading: () => typedError<boolean, string>(__TAURI_INVOKE("is_model_loading")),
 	hasAnyModelsAvailable: () => typedError<boolean, string>(__TAURI_INVOKE("has_any_models_available")),
-	hasAnyModelsOrDownloads: () => typedError<boolean, string>(__TAURI_INVOKE("has_any_models_or_downloads")),
-	updateMicrophoneMode: (alwaysOn: boolean) => typedError<null, string>(__TAURI_INVOKE("update_microphone_mode", { alwaysOn })),
-	getMicrophoneMode: () => typedError<boolean, string>(__TAURI_INVOKE("get_microphone_mode")),
 	startMicrophoneLevelPreview: () => typedError<null, string>(__TAURI_INVOKE("start_microphone_level_preview")),
 	stopMicrophoneLevelPreview: () => typedError<null, string>(__TAURI_INVOKE("stop_microphone_level_preview")),
 	getWindowsMicrophonePermissionStatus: () => __TAURI_INVOKE<WindowsMicrophonePermissionStatus>("get_windows_microphone_permission_status"),
 	openMicrophonePrivacySettings: () => typedError<null, string>(__TAURI_INVOKE("open_microphone_privacy_settings")),
 	getAvailableMicrophones: () => typedError<AudioDevice[], string>(__TAURI_INVOKE("get_available_microphones")),
-	setSelectedMicrophone: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_selected_microphone", { deviceName })),
-	getSelectedMicrophone: () => typedError<string, string>(__TAURI_INVOKE("get_selected_microphone")),
 	getAvailableOutputDevices: () => typedError<AudioDevice[], string>(__TAURI_INVOKE("get_available_output_devices")),
-	setSelectedOutputDevice: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_selected_output_device", { deviceName })),
-	getSelectedOutputDevice: () => typedError<string, string>(__TAURI_INVOKE("get_selected_output_device")),
 	playTestSound: (soundType: string) => __TAURI_INVOKE<void>("play_test_sound", { soundType }),
 	checkCustomSounds: () => __TAURI_INVOKE<CustomSounds>("check_custom_sounds"),
-	setClamshellMicrophone: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_clamshell_microphone", { deviceName })),
-	getClamshellMicrophone: () => typedError<string, string>(__TAURI_INVOKE("get_clamshell_microphone")),
 	isRecording: () => __TAURI_INVOKE<boolean>("is_recording"),
-	setModelUnloadTimeout: (timeout: ModelUnloadTimeout) => typedError<null, string>(__TAURI_INVOKE("set_model_unload_timeout", { timeout })),
-	getModelLoadStatus: () => typedError<ModelLoadStatus, string>(__TAURI_INVOKE("get_model_load_status")),
 	getRuntimeMemoryStatus: () => typedError<RuntimeMemoryStatus, string>(__TAURI_INVOKE("get_runtime_memory_status")),
-	unloadModelManually: () => typedError<null, string>(__TAURI_INVOKE("unload_model_manually")),
 	cleanAudioFile: (path: string, outputPath: string | null) => typedError<CleanAudioFileResult, string>(__TAURI_INVOKE("clean_audio_file", { path, outputPath })),
 	enhanceAudioFile: (path: string, outputPath: string | null, options: {
 	/**  Engine id: "rnnoise" (default), "spectral", or "deepfilternet". */
@@ -367,7 +250,6 @@ export const commands = {
 	 */
 	transcribeWatchFolderFiles: (id: string, paths: string[]) => typedError<number, string>(__TAURI_INVOKE("transcribe_watch_folder_files", { id, paths })),
 	removeWatchFolder: (id: string) => typedError<null, string>(__TAURI_INVOKE("remove_watch_folder", { id })),
-	setWatchFolderEnabled: (id: string, enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_watch_folder_enabled", { id, enabled })),
 	updateWatchFolderFormat: (id: string, outputFormat: WatchFolderOutputFormat) => typedError<null, string>(__TAURI_INVOKE("update_watch_folder_format", { id, outputFormat })),
 	listReaderDocuments: () => typedError<ReaderStoredDocument[], string>(__TAURI_INVOKE("list_reader_documents")),
 	readReaderDocument: (sourcePath: string) => typedError<ReaderDocument, string>(__TAURI_INVOKE("read_reader_document", { sourcePath })),
@@ -386,30 +268,6 @@ export const commands = {
 	 */
 	renderReaderPage: (documentId: string, pageIndex: number, scale: number | null) => typedError<ReaderRenderedPage, string>(__TAURI_INVOKE("render_reader_page", { documentId, pageIndex, scale })),
 	getSpeechAnalysisCatalog: () => typedError<SpeechAnalysisCatalog, string>(__TAURI_INVOKE("get_speech_analysis_catalog")),
-	getSpeechAnalysisModel: (modelId: string) => typedError<{
-	id: string,
-	label: string,
-	provider: string,
-	repo_id: string | null,
-	source_kind: SpeechAnalysisSourceKind,
-	source_url: string | null,
-	license_label: string | null,
-	gated: boolean,
-	downloadable: boolean,
-	installed: boolean,
-	storage_location?: ModelStorageLocation | null,
-	local_path: string | null,
-	size_hint_label: string | null,
-	task: SpeechAnalysisTask,
-	engine: SpeechAnalysisEngine,
-	runtime: SpeechAnalysisRuntime,
-	description: string,
-	readiness: SpeechAnalysisReadiness,
-	supported_languages: string[],
-	output_contract: string[],
-	capabilities: SpeechAnalysisCapabilityFlags,
-} | null, string>(__TAURI_INVOKE("get_speech_analysis_model", { modelId })),
-	getSpeechAnalysisSelection: () => typedError<SpeechAnalysisSelection, string>(__TAURI_INVOKE("get_speech_analysis_selection")),
 	setSpeechAnalysisSelection: (asrModelId: string, diarizationModelId: string, emotionModelId: string) => typedError<SpeechAnalysisSelection, string>(__TAURI_INVOKE("set_speech_analysis_selection", { asrModelId, diarizationModelId, emotionModelId })),
 	downloadSpeechAnalysisModel: (modelId: string) => typedError<SpeechAnalysisModelDescriptor, string>(__TAURI_INVOKE("download_speech_analysis_model", { modelId })),
 	cancelSpeechAnalysisDownload: (modelId: string) => typedError<null, string>(__TAURI_INVOKE("cancel_speech_analysis_download", { modelId })),
@@ -434,7 +292,6 @@ export const commands = {
 	overrides: WriteRuleOverrides,
 } | null, string>(__TAURI_INVOKE("test_resolve_write_rule", { bundleId, appName, url })),
 	getFrontmostUrlForWriteRules: (bundleId: string | null) => typedError<string | null, string>(__TAURI_INVOKE("get_frontmost_url_for_write_rules", { bundleId })),
-	changeWriteRulesUrlCaptureEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled })),
 	setHttpApiEnabled: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_http_api_enabled", { enabled })),
 	setHttpApiPort: (port: number) => typedError<null, string>(__TAURI_INVOKE("set_http_api_port", { port })),
 	getHttpApiStatus: () => typedError<HttpApiStatus, string>(__TAURI_INVOKE("get_http_api_status")),
@@ -497,10 +354,6 @@ export const commands = {
 	retryHistoryMarkdownExport: (id: number) => typedError<null, string>(__TAURI_INVOKE("retry_history_markdown_export", { id })),
 	revealHistoryMarkdownExport: (id: number) => typedError<null, string>(__TAURI_INVOKE("reveal_history_markdown_export", { id })),
 	deleteHistoryEntry: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_history_entry", { id })),
-	updateHistoryLimit: (limit: number) => typedError<null, string>(__TAURI_INVOKE("update_history_limit", { limit })),
-	updateHistoryAutoAnalyzeSpeakersLongRecordingsEnabled: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("update_history_auto_analyze_speakers_long_recordings_enabled", { enabled })),
-	updateHistoryAutoAnalyzeSpeakersMinDurationMs: (minDurationMs: number) => typedError<null, string>(__TAURI_INVOKE("update_history_auto_analyze_speakers_min_duration_ms", { minDurationMs })),
-	updateRecordingRetentionPeriod: (period: string) => typedError<null, string>(__TAURI_INVOKE("update_recording_retention_period", { period })),
 	/**
 	 *  Called by the frontend (or internally) to store what was observed in the
 	 *  text field ~30 seconds after Vox Jot pasted text into it.
@@ -512,7 +365,6 @@ export const commands = {
 	 */
 	updateHistoryEntryTranscription: (id: number, text: string) => typedError<null, string>(__TAURI_INVOKE("update_history_entry_transcription", { id, text })),
 	updateHistoryEntryDisplayTitle: (id: number, title: string) => typedError<null, string>(__TAURI_INVOKE("update_history_entry_display_title", { id, title })),
-	updateHistoryEntrySpeakerLabelsVisible: (id: number, visible: boolean) => typedError<null, string>(__TAURI_INVOKE("update_history_entry_speaker_labels_visible", { id, visible })),
 	updateHistoryEntrySpeakerDisplayNames: (id: number, names: { [key in string]: string }) => typedError<HistoryEntry, string>(__TAURI_INVOKE("update_history_entry_speaker_display_names", { id, names })),
 	/**
 	 *  Re-run file transcription with the currently selected speaker isolation model
@@ -581,9 +433,6 @@ export const commands = {
 	addTranscriptWordCorrection: (original: string, corrected: string) => typedError<boolean, string>(__TAURI_INVOKE("add_transcript_word_correction", { original, corrected })),
 	getDictationStats: () => typedError<DictationStats, string>(__TAURI_INVOKE("get_dictation_stats")),
 	renderStoryAudio: (request: StoryRenderRequest) => typedError<StoryRenderEnqueueResult, string>(__TAURI_INVOKE("render_story_audio", { request })),
-	generateCreateSpeechAudio: (request: CreateSpeechAudioRequest_Deserialize) => typedError<StoryRenderEnqueueResult, string>(__TAURI_INVOKE("generate_create_speech_audio", { request })),
-	getStableAudio3Status: () => typedError<StableAudio3Status, string>(__TAURI_INVOKE("get_stable_audio3_status")),
-	prepareStableAudio3: (request: PrepareStableAudio3Request) => typedError<StableAudio3Status, string>(__TAURI_INVOKE("prepare_stable_audio3", { request })),
 	getCreativeAudioModelCatalog: () => typedError<CreativeAudioModelCatalog, string>(__TAURI_INVOKE("get_creative_audio_model_catalog")),
 	setCreativeAudioModelSelection: (modelId: string) => typedError<CreativeAudioModelCatalog, string>(__TAURI_INVOKE("set_creative_audio_model_selection", { modelId })),
 	downloadCreativeAudioModel: (modelId: string) => typedError<CreativeAudioModelDescriptor, string>(__TAURI_INVOKE("download_creative_audio_model", { modelId })),
@@ -600,7 +449,6 @@ export const commands = {
 	listStoryAudio: () => typedError<StoryAudioItem[], string>(__TAURI_INVOKE("list_story_audio")),
 	toggleStoryAudioStarred: (id: string) => typedError<StoryAudioItem, string>(__TAURI_INVOKE("toggle_story_audio_starred", { id })),
 	renameStoryAudio: (id: string, title: string) => typedError<StoryAudioItem, string>(__TAURI_INVOKE("rename_story_audio", { id, title })),
-	updateStoryAudioTitle: (id: string, title: string) => typedError<StoryAudioItem, string>(__TAURI_INVOKE("update_story_audio_title", { id, title })),
 	deleteStoryAudio: (id: string) => typedError<null, string>(__TAURI_INVOKE("delete_story_audio", { id })),
 	createProcessedStoryAudio: (request: ProcessStoryAudioRequest) => typedError<StoryAudioItem, string>(__TAURI_INVOKE("create_processed_story_audio", { request })),
 	showDetailView: (section: string) => typedError<null, string>(__TAURI_INVOKE("show_detail_view", { section })),
@@ -635,9 +483,177 @@ export const commands = {
 	 *  them. Other platforms return `None` and the frontend uses its folder glyph.
 	 */
 	getFileIcon: (path: string) => typedError<string | null, string>(__TAURI_INVOKE("get_file_icon", { path })),
-	convoCheckAvailability: () => typedError<ConvoAvailability, string>(__TAURI_INVOKE("convo_check_availability")),
 	convoPrepareSession: (mode: ConvoMode, voiceId: string | null, context: string | null) => typedError<ConvoSessionState, string>(__TAURI_INVOKE("convo_prepare_session", { mode, voiceId, context })),
 	convoSendTextTurn: (sessionId: string, text: string, context: string | null) => typedError<ConvoTurnResponse, string>(__TAURI_INVOKE("convo_send_text_turn", { sessionId, text, context })),
+	convoStartAudioCapture: () => typedError<ConvoAudioCaptureStatus, string>(__TAURI_INVOKE("convo_start_audio_capture")),
+	convoStopAudioCapture: () => typedError<number[], string>(__TAURI_INVOKE("convo_stop_audio_capture")),
+	convoSaveAudioCapture: (filePath: string, wavBytes: number[]) => typedError<string, string>(__TAURI_INVOKE("convo_save_audio_capture", { filePath, wavBytes })),
+	changePttSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_ptt_setting", { enabled })),
+	changeAudioFeedbackSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_feedback_setting", { enabled })),
+	changeAudioFeedbackVolumeSetting: (volume: number | null) => typedError<null, string>(__TAURI_INVOKE("change_audio_feedback_volume_setting", { volume })),
+	changeSoundThemeSetting: (theme: string) => typedError<null, string>(__TAURI_INVOKE("change_sound_theme_setting", { theme })),
+	changeAppThemeSetting: (theme: string) => typedError<null, string>(__TAURI_INVOKE("change_app_theme_setting", { theme })),
+	changeAppFontScaleSetting: (scale: number | null) => typedError<null, string>(__TAURI_INVOKE("change_app_font_scale_setting", { scale })),
+	changeStartHiddenSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_start_hidden_setting", { enabled })),
+	changeAutostartSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_autostart_setting", { enabled })),
+	changeTranslateToEnglishSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_translate_to_english_setting", { enabled })),
+	changeSelectedLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_selected_language_setting", { language })),
+	changeTranslationOutputModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_output_mode_setting", { mode })),
+	changeTranslationTargetLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_target_language_setting", { language })),
+	changeTranslationRoutePreferenceSetting: (route: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_route_preference_setting", { route })),
+	changeTranslationBilingualLayoutSetting: (layout: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_bilingual_layout_setting", { layout })),
+	changeTranslationTranslateSnippetsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_translation_translate_snippets_setting", { enabled })),
+	changeTranslationDestinationModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_destination_mode_setting", { mode })),
+	changeSelectionTranslationDestinationModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_selection_translation_destination_mode_setting", { mode })),
+	changeTtsEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_tts_enabled_setting", { enabled })),
+	changeTtsEnginePreferenceSetting: (preference: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_engine_preference_setting", { preference })),
+	changeTtsAutoReadbackModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_auto_readback_mode_setting", { mode })),
+	changeTtsAutoReadbackScopeSetting: (scope: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_auto_readback_scope_setting", { scope })),
+	changeTtsReadbackTextModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_tts_readback_text_mode_setting", { mode })),
+	changeTtsDefaultVoiceIdSetting: (voiceId: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_default_voice_id_setting", { voiceId })),
+	changeTtsRateSetting: (rate: number | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_rate_setting", { rate })),
+	changeTtsVolumeSetting: (volume: number | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_volume_setting", { volume })),
+	changeTtsStopOnRecordSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_tts_stop_on_record_setting", { enabled })),
+	changeAudioEnhancementEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_enabled_setting", { enabled })),
+	changeAudioEnhancementModelSetting: (model: string) => typedError<null, string>(__TAURI_INVOKE("change_audio_enhancement_model_setting", { model })),
+	changeAcousticProfileSetting: (profile: string) => typedError<null, string>(__TAURI_INVOKE("change_acoustic_profile_setting", { profile })),
+	changeTtsModelStorePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_tts_model_store_path_setting", { path })),
+	changeExternalModelStorageEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_enabled_setting", { enabled })),
+	changeExternalModelStorageAutoDetectSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_auto_detect_setting", { enabled })),
+	changeExternalModelStoragePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_external_model_storage_path_setting", { path })),
+	changeSpeechRuntimePathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_speech_runtime_path_setting", { path })),
+	changeOverlayPositionSetting: (position: string) => typedError<null, string>(__TAURI_INVOKE("change_overlay_position_setting", { position })),
+	changeRecordingOverlayStyleSetting: (style: string) => typedError<null, string>(__TAURI_INVOKE("change_recording_overlay_style_setting", { style })),
+	changeDebugModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_debug_mode_setting", { enabled })),
+	changeShowTechnicalFeaturesSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_technical_features_setting", { enabled })),
+	changeWordCorrectionThresholdSetting: (threshold: number | null) => typedError<null, string>(__TAURI_INVOKE("change_word_correction_threshold_setting", { threshold })),
+	changePasteMethodSetting: (method: string) => typedError<null, string>(__TAURI_INVOKE("change_paste_method_setting", { method })),
+	changeTypingToolSetting: (tool: string) => typedError<null, string>(__TAURI_INVOKE("change_typing_tool_setting", { tool })),
+	changeExternalScriptPathSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_external_script_path_setting", { path })),
+	changeClipboardHandlingSetting: (handling: string) => typedError<null, string>(__TAURI_INVOKE("change_clipboard_handling_setting", { handling })),
+	changeAutoSubmitSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_setting", { enabled })),
+	changeAutoSubmitKeySetting: (key: string) => typedError<null, string>(__TAURI_INVOKE("change_auto_submit_key_setting", { key })),
+	changePostProcessEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_post_process_enabled_setting", { enabled })),
+	changeAdaptiveSelectionRewriteEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_adaptive_selection_rewrite_enabled_setting", { enabled })),
+	changeCloudSelectionRewriteAllowedSetting: (allowed: boolean) => typedError<null, string>(__TAURI_INVOKE("change_cloud_selection_rewrite_allowed_setting", { allowed })),
+	changeMarkdownExportEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_enabled_setting", { enabled })),
+	changeMarkdownExportDirSetting: (path: string | null) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_dir_setting", { path })),
+	changeMarkdownExportMinWordsSetting: (minWords: number) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_min_words_setting", { minWords })),
+	changeMarkdownExportContentSourceSetting: (source: string) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_content_source_setting", { source })),
+	changeMarkdownExportFrontmatterSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_frontmatter_setting", { enabled })),
+	changeMarkdownExportIncludeRewriteSelectionSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_rewrite_selection_setting", { enabled })),
+	changeMarkdownExportIncludeFailedPasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_markdown_export_include_failed_paste_setting", { enabled })),
+	changeSuggestMeetingAppsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_suggest_meeting_apps_setting", { enabled })),
+	changeShowLivePartialsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_live_partials_setting", { enabled })),
+	changeLocalPrivacyModeSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_local_privacy_mode_setting", { enabled })),
+	setOnboardingCompleted: (completed: boolean) => typedError<null, string>(__TAURI_INVOKE("set_onboarding_completed", { completed })),
+	changeScreenContextEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_enabled_setting", { enabled })),
+	changeScreenContextExcludedBundleIdsSetting: (bundleIds: string[]) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_excluded_bundle_ids_setting", { bundleIds })),
+	changeScreenContextPauseOnIdleSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_pause_on_idle_setting", { enabled })),
+	changeScreenContextIdleThresholdMsSetting: (thresholdMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_idle_threshold_ms_setting", { thresholdMs })),
+	changeContextCaptureModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_context_capture_mode_setting", { mode })),
+	changeScreenContextOcrQualitySetting: (quality: string) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_quality_setting", { quality })),
+	changeScreenContextOcrEngineSetting: (engine: string) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_engine_setting", { engine })),
+	changeScreenContextOcrTimeoutMsSetting: (timeoutMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_ocr_timeout_ms_setting", { timeoutMs })),
+	changeScreenContextTokenBudgetSetting: (tokenBudget: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_token_budget_setting", { tokenBudget })),
+	changeScreenContextStaleThresholdMsSetting: (staleThresholdMs: number) => typedError<null, string>(__TAURI_INVOKE("change_screen_context_stale_threshold_ms_setting", { staleThresholdMs })),
+	changePostProcessModeSetting: (mode: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_mode_setting", { mode })),
+	changePostProcessCleanupLevelSetting: (level: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_cleanup_level_setting", { level })),
+	changeExperimentalEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_experimental_enabled_setting", { enabled })),
+	changePostProcessBaseUrlSetting: (providerId: string, baseUrl: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_base_url_setting", { providerId, baseUrl })),
+	changePostProcessApiKeySetting: (providerId: string, apiKey: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_api_key_setting", { providerId, apiKey })),
+	changePostProcessModelSetting: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("change_post_process_model_setting", { providerId, model })),
+	changeTranslationModelSetting: (providerId: string, model: string) => typedError<null, string>(__TAURI_INVOKE("change_translation_model_setting", { providerId, model })),
+	changeTranslationModelIdsSetting: (modelIds: { [key in string]: string }) => typedError<null, string>(__TAURI_INVOKE("change_translation_model_ids_setting", { modelIds })),
+	setPostProcessProvider: (providerId: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_provider", { providerId })),
+	setTranslationProvider: (providerId: string) => typedError<null, string>(__TAURI_INVOKE("set_translation_provider", { providerId })),
+	setPostProcessSelectedPrompt: (id: string) => typedError<null, string>(__TAURI_INVOKE("set_post_process_selected_prompt", { id })),
+	updateCustomWords: (words: string[]) => typedError<null, string>(__TAURI_INVOKE("update_custom_words", { words })),
+	changeCustomFillerWordsSetting: (words: string[] | null) => typedError<null, string>(__TAURI_INVOKE("change_custom_filler_words_setting", { words })),
+	updatePersonalDictionary: (entries: DictionaryEntry[]) => typedError<null, string>(__TAURI_INVOKE("update_personal_dictionary", { entries })),
+	changeMaxRewriteStrengthSetting: (strength: number) => typedError<null, string>(__TAURI_INVOKE("change_max_rewrite_strength_setting", { strength })),
+	changeShowPreviewBeforePasteSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_preview_before_paste_setting", { enabled })),
+	changeFallbackToRawOnFailureSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_fallback_to_raw_on_failure_setting", { enabled })),
+	changeAppAwareToneEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_app_aware_tone_enabled_setting", { enabled })),
+	changeWriteRulesEnabledSetting: (enabled: boolean | null) => typedError<null, string>(__TAURI_INVOKE("change_write_rules_enabled_setting", { enabled })),
+	updateToneDefinitions: (definitions: ToneDefinition[]) => typedError<null, string>(__TAURI_INVOKE("update_tone_definitions", { definitions })),
+	changeMuteWhileRecordingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_mute_while_recording_setting", { enabled })),
+	changeAudioDuckingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_audio_ducking_setting", { enabled })),
+	changeAppendTrailingSpaceSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_append_trailing_space_setting", { enabled })),
+	changeAppLanguageSetting: (language: string) => typedError<null, string>(__TAURI_INVOKE("change_app_language_setting", { language })),
+	changeGlobalLanguageSyncEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_global_language_sync_enabled_setting", { enabled })),
+	changeUpdateChecksSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_update_checks_setting", { enabled })),
+	changeCrashReportingSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_crash_reporting_setting", { enabled })),
+	changeUsageAnalyticsSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_usage_analytics_setting", { enabled })),
+	changeKeyboardImplementationSetting: (implementation: string) => typedError<ImplementationChangeResult, string>(__TAURI_INVOKE("change_keyboard_implementation_setting", { implementation })),
+	getKeyboardImplementation: () => __TAURI_INVOKE<string>("get_keyboard_implementation"),
+	changeShowTrayIconSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_show_tray_icon_setting", { enabled })),
+	changeCorrectionTrackingEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_correction_tracking_enabled_setting", { enabled })),
+	changeFileTranscriptionApplyDictionarySetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_file_transcription_apply_dictionary_setting", { enabled })),
+	changeSnippetsEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_snippets_enabled_setting", { enabled })),
+	updateSnippets: (snippets: Snippet[]) => typedError<null, string>(__TAURI_INVOKE("update_snippets", { snippets })),
+	triggerUpdateCheck: () => typedError<null, string>(__TAURI_INVOKE("trigger_update_check")),
+	getExternalModelStorageDisconnectEvent: () => __TAURI_INVOKE<{
+	volume_name: string | null,
+	fell_back: boolean,
+} | null>("get_external_model_storage_disconnect_event"),
+	refreshExternalModelStorage: () => typedError<ExternalModelStorageStatus, string>(__TAURI_INVOKE("refresh_external_model_storage")),
+	setLogLevel: (level: LogLevel) => typedError<null, string>(__TAURI_INVOKE("set_log_level", { level })),
+	ttsSpeakWithPreset: (text: string, locale: string | null, presetId: string, trigger: string | null, rememberLastOutput: boolean | null) => typedError<null, string>(__TAURI_INVOKE("tts_speak_with_preset", { text, locale, presetId, trigger, rememberLastOutput })),
+	playReaderAudioUnit: (documentId: string, unit: ReaderAudioCacheUnit, playbackRate: number | null, language: string | null) => typedError<ReaderAudioCachePlayResult, string>(__TAURI_INVOKE("play_reader_audio_unit", { documentId, unit, playbackRate, language })),
+	previewTtsVoice: (voiceId: string | null, previewText: string | null) => typedError<null, string>(__TAURI_INVOKE("preview_tts_voice", { voiceId, previewText })),
+	getVoiceProfileProgress: (profileId: string) => typedError<TtsVoiceProfileDescriptor, string>(__TAURI_INVOKE("get_voice_profile_progress", { profileId })),
+	setSttPlatformSelection: (providerId: string, modelId: string) => typedError<null, string>(__TAURI_INVOKE("set_stt_platform_selection", { providerId, modelId })),
+	deleteTtsHfModel: (repoId: string) => typedError<null, string>(__TAURI_INVOKE("delete_tts_hf_model", { repoId })),
+	isModelLoading: () => typedError<boolean, string>(__TAURI_INVOKE("is_model_loading")),
+	hasAnyModelsOrDownloads: () => typedError<boolean, string>(__TAURI_INVOKE("has_any_models_or_downloads")),
+	updateMicrophoneMode: (alwaysOn: boolean) => typedError<null, string>(__TAURI_INVOKE("update_microphone_mode", { alwaysOn })),
+	getMicrophoneMode: () => typedError<boolean, string>(__TAURI_INVOKE("get_microphone_mode")),
+	setSelectedMicrophone: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_selected_microphone", { deviceName })),
+	getSelectedMicrophone: () => typedError<string, string>(__TAURI_INVOKE("get_selected_microphone")),
+	setSelectedOutputDevice: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_selected_output_device", { deviceName })),
+	getSelectedOutputDevice: () => typedError<string, string>(__TAURI_INVOKE("get_selected_output_device")),
+	setClamshellMicrophone: (deviceName: string) => typedError<null, string>(__TAURI_INVOKE("set_clamshell_microphone", { deviceName })),
+	getClamshellMicrophone: () => typedError<string, string>(__TAURI_INVOKE("get_clamshell_microphone")),
+	setModelUnloadTimeout: (timeout: ModelUnloadTimeout) => typedError<null, string>(__TAURI_INVOKE("set_model_unload_timeout", { timeout })),
+	getModelLoadStatus: () => typedError<ModelLoadStatus, string>(__TAURI_INVOKE("get_model_load_status")),
+	unloadModelManually: () => typedError<null, string>(__TAURI_INVOKE("unload_model_manually")),
+	setWatchFolderEnabled: (id: string, enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_watch_folder_enabled", { id, enabled })),
+	getSpeechAnalysisModel: (modelId: string) => typedError<{
+	id: string,
+	label: string,
+	provider: string,
+	repo_id: string | null,
+	source_kind: SpeechAnalysisSourceKind,
+	source_url: string | null,
+	license_label: string | null,
+	gated: boolean,
+	downloadable: boolean,
+	installed: boolean,
+	storage_location?: ModelStorageLocation | null,
+	local_path: string | null,
+	size_hint_label: string | null,
+	task: SpeechAnalysisTask,
+	engine: SpeechAnalysisEngine,
+	runtime: SpeechAnalysisRuntime,
+	description: string,
+	readiness: SpeechAnalysisReadiness,
+	supported_languages: string[],
+	output_contract: string[],
+	capabilities: SpeechAnalysisCapabilityFlags,
+} | null, string>(__TAURI_INVOKE("get_speech_analysis_model", { modelId })),
+	getSpeechAnalysisSelection: () => typedError<SpeechAnalysisSelection, string>(__TAURI_INVOKE("get_speech_analysis_selection")),
+	changeWriteRulesUrlCaptureEnabledSetting: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled })),
+	updateHistoryLimit: (limit: number) => typedError<null, string>(__TAURI_INVOKE("update_history_limit", { limit })),
+	updateHistoryAutoAnalyzeSpeakersLongRecordingsEnabled: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("update_history_auto_analyze_speakers_long_recordings_enabled", { enabled })),
+	updateHistoryAutoAnalyzeSpeakersMinDurationMs: (minDurationMs: number) => typedError<null, string>(__TAURI_INVOKE("update_history_auto_analyze_speakers_min_duration_ms", { minDurationMs })),
+	updateRecordingRetentionPeriod: (period: string) => typedError<null, string>(__TAURI_INVOKE("update_recording_retention_period", { period })),
+	updateHistoryEntrySpeakerLabelsVisible: (id: number, visible: boolean) => typedError<null, string>(__TAURI_INVOKE("update_history_entry_speaker_labels_visible", { id, visible })),
+	generateCreateSpeechAudio: (request: CreateSpeechAudioRequest_Deserialize) => typedError<StoryRenderEnqueueResult, string>(__TAURI_INVOKE("generate_create_speech_audio", { request })),
+	getStableAudio3Status: () => typedError<StableAudio3Status, string>(__TAURI_INVOKE("get_stable_audio3_status")),
+	prepareStableAudio3: (request: PrepareStableAudio3Request) => typedError<StableAudio3Status, string>(__TAURI_INVOKE("prepare_stable_audio3", { request })),
+	updateStoryAudioTitle: (id: string, title: string) => typedError<StoryAudioItem, string>(__TAURI_INVOKE("update_story_audio_title", { id, title })),
+	convoCheckAvailability: () => typedError<ConvoAvailability, string>(__TAURI_INVOKE("convo_check_availability")),
 	convoResetSession: (sessionId: string) => typedError<ConvoSessionState, string>(__TAURI_INVOKE("convo_reset_session", { sessionId })),
 	convoGetSession: (sessionId: string) => typedError<ConvoSessionState, string>(__TAURI_INVOKE("convo_get_session", { sessionId })),
 	convoUpdateSpeakReplies: (sessionId: string, enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("convo_update_speak_replies", { sessionId, enabled })),
@@ -649,9 +665,6 @@ export const commands = {
 	convoPickFilesContext: (sessionId: string) => typedError<ConvoContextItem[], string>(__TAURI_INVOKE("convo_pick_files_context", { sessionId })),
 	convoPickFolderContext: (sessionId: string) => typedError<ConvoContextItem[], string>(__TAURI_INVOKE("convo_pick_folder_context", { sessionId })),
 	convoGetSettingsCatalog: () => typedError<SettingsCatalogEntry[], string>(__TAURI_INVOKE("convo_get_settings_catalog")),
-	convoStartAudioCapture: () => typedError<ConvoAudioCaptureStatus, string>(__TAURI_INVOKE("convo_start_audio_capture")),
-	convoStopAudioCapture: () => typedError<number[], string>(__TAURI_INVOKE("convo_stop_audio_capture")),
-	convoSaveAudioCapture: (filePath: string, wavBytes: number[]) => typedError<string, string>(__TAURI_INVOKE("convo_save_audio_capture", { filePath, wavBytes })),
 	convoSendAudioTurn: (sessionId: string, wavBytes: number[], context: string | null) => typedError<ConvoTurnResponse, string>(__TAURI_INVOKE("convo_send_audio_turn", { sessionId, wavBytes, context })),
 	convoPlayAudioReply: (audioBase64: string) => typedError<null, string>(__TAURI_INVOKE("convo_play_audio_reply", { audioBase64 })),
 	convoEnsureHelperRunning: () => typedError<null, string>(__TAURI_INVOKE("convo_ensure_helper_running")),
@@ -2067,6 +2080,24 @@ export type ScreenContextOcrEngine = "auto" | "native_only" | "backup_only" | "n
 
 export type SelectionTranslationDestinationMode = "preview_then_replace" | "replace_selection";
 
+/**
+ *  One preference and its new value, serialized as
+ *  `{ "key": <AppSettings field>, "value": <field value> }`.
+ */
+export type SettingUpdate = SettingUpdate_Serialize | SettingUpdate_Deserialize;
+
+/**
+ *  One preference and its new value, serialized as
+ *  `{ "key": <AppSettings field>, "value": <field value> }`.
+ */
+export type SettingUpdate_Deserialize = { key: "push_to_talk"; value: boolean } | { key: "audio_feedback"; value: boolean } | { key: "audio_feedback_volume"; value: number | null } | { key: "sound_theme"; value: SoundTheme } | { key: "app_theme"; value: string } | { key: "app_font_scale"; value: number | null } | { key: "start_hidden"; value: boolean } | { key: "autostart_enabled"; value: boolean } | { key: "update_checks_enabled"; value: boolean } | { key: "enable_crash_reporting"; value: boolean } | { key: "enable_usage_analytics"; value: boolean } | { key: "always_on_microphone"; value: boolean } | { key: "selected_microphone"; value: string | null } | { key: "clamshell_microphone"; value: string | null } | { key: "selected_output_device"; value: string | null } | { key: "acoustic_profile"; value: AcousticProfile } | { key: "audio_enhancement_enabled"; value: boolean } | { key: "audio_enhancement_model"; value: string } | { key: "mute_while_recording"; value: boolean } | { key: "audio_ducking_enabled"; value: boolean } | { key: "translate_to_english"; value: boolean } | { key: "selected_language"; value: string } | { key: "translation_output_mode"; value: TranslationOutputMode } | { key: "translation_target_language"; value: string } | { key: "translation_route_preference"; value: TranslationRoutePreference } | { key: "translation_provider_id"; value: string } | { key: "translation_bilingual_layout"; value: TranslationBilingualLayout } | { key: "translation_translate_snippets"; value: boolean } | { key: "translation_destination_mode"; value: TranslationDestinationMode } | { key: "selection_translation_destination_mode"; value: SelectionTranslationDestinationMode } | { key: "tts_enabled"; value: boolean } | { key: "tts_engine_preference"; value: TtsEnginePreference } | { key: "tts_auto_readback_mode"; value: TtsAutoReadbackMode } | { key: "tts_auto_readback_scope"; value: TtsAutoReadbackScope } | { key: "tts_readback_text_mode"; value: TtsReadbackTextMode } | { key: "tts_default_voice_id"; value: string | null } | { key: "tts_rate"; value: number | null } | { key: "tts_volume"; value: number | null } | { key: "tts_stop_on_record"; value: boolean } | { key: "speech_runtime_path"; value: string | null } | { key: "speech_backend_override"; value: string | null } | { key: "continuous_improvement_hq_capture"; value: boolean } | { key: "tts_model_store_path"; value: string | null } | { key: "external_model_storage_enabled"; value: boolean } | { key: "external_model_storage_auto_detect"; value: boolean } | { key: "external_model_storage_path"; value: string | null } | { key: "overlay_position"; value: OverlayPosition } | { key: "recording_overlay_style"; value: RecordingOverlayStyle } | { key: "show_live_partials"; value: boolean } | { key: "suggest_meeting_apps"; value: boolean } | { key: "debug_mode"; value: boolean } | { key: "show_technical_features"; value: boolean } | { key: "log_level"; value: LogLevel } | { key: "custom_words"; value: string[] } | { key: "custom_filler_words"; value: string[] | null } | { key: "word_correction_threshold"; value: number | null } | { key: "paste_method"; value: PasteMethod } | { key: "paste_delay_ms"; value: number } | { key: "typing_tool"; value: TypingTool } | { key: "external_script_path"; value: string | null } | { key: "clipboard_handling"; value: ClipboardHandling } | { key: "auto_submit"; value: boolean } | { key: "auto_submit_key"; value: AutoSubmitKey } | { key: "append_trailing_space"; value: boolean } | { key: "history_limit"; value: number } | { key: "history_auto_analyze_speakers_long_recordings_enabled"; value: boolean } | { key: "history_auto_analyze_speakers_min_duration_ms"; value: number } | { key: "recording_retention_period"; value: RecordingRetentionPeriod } | { key: "post_process_enabled"; value: boolean } | { key: "post_process_provider_id"; value: string } | { key: "post_process_mode"; value: PostProcessMode } | { key: "post_process_cleanup_level"; value: PostProcessCleanupLevel } | { key: "post_process_selected_prompt_id"; value: string | null } | { key: "max_rewrite_strength"; value: number } | { key: "show_preview_before_paste"; value: boolean } | { key: "fallback_to_raw_on_failure"; value: boolean } | { key: "adaptive_selection_rewrite_enabled"; value: boolean } | { key: "cloud_selection_rewrite_allowed"; value: boolean } | { key: "personal_dictionary"; value: DictionaryEntry[] } | { key: "app_aware_tone_enabled"; value: boolean } | { key: "tone_definitions"; value: ToneDefinition[] } | { key: "write_rules_enabled_override"; value: boolean | null } | { key: "write_rules_url_capture_enabled"; value: boolean } | { key: "markdown_export_enabled"; value: boolean } | { key: "markdown_export_dir"; value: string | null } | { key: "markdown_export_min_words"; value: number } | { key: "markdown_export_content_source"; value: MarkdownExportContentSource } | { key: "markdown_export_frontmatter"; value: boolean } | { key: "markdown_export_include_rewrite_selection"; value: boolean } | { key: "markdown_export_include_failed_paste"; value: boolean } | { key: "local_privacy_mode"; value: boolean } | { key: "screen_context_enabled"; value: boolean } | { key: "screen_context_excluded_bundle_ids"; value: string[] } | { key: "screen_context_pause_on_idle"; value: boolean } | { key: "screen_context_idle_threshold_ms"; value: number } | { key: "context_capture_mode"; value: ContextCaptureMode } | { key: "screen_context_ocr_quality"; value: OcrQualityMode } | { key: "screen_context_ocr_engine"; value: ScreenContextOcrEngine } | { key: "screen_context_ocr_timeout_ms"; value: number } | { key: "screen_context_token_budget"; value: number } | { key: "screen_context_stale_threshold_ms"; value: number } | { key: "app_language"; value: string } | { key: "global_language_sync_enabled"; value: boolean } | { key: "experimental_enabled"; value: boolean } | { key: "show_tray_icon"; value: boolean } | { key: "correction_tracking_enabled"; value: boolean } | { key: "file_transcription_apply_dictionary"; value: boolean } | { key: "snippets_enabled"; value: boolean } | { key: "snippets"; value: Snippet[] } | { key: "model_unload_timeout"; value: ModelUnloadTimeout } | { key: "onboarding_completed"; value: boolean } | { key: "tts_active_preset_id"; value: string | null } | { key: "tts_voice_presets"; value: TtsVoicePreset_Deserialize[] } | { key: "post_process_prompts"; value: LLMPrompt[] } | { key: "post_process_prompt_policy_version"; value: number } | { key: "screen_context_ocr_timeout_policy_version"; value: number } | { key: "file_transcription_asr_model_id"; value: string } | { key: "file_transcription_diarization_model_id"; value: string } | { key: "file_transcription_emotion_model_id"; value: string } | { key: "watch_folders"; value: WatchFolderConfig[] };
+
+/**
+ *  One preference and its new value, serialized as
+ *  `{ "key": <AppSettings field>, "value": <field value> }`.
+ */
+export type SettingUpdate_Serialize = { key: "push_to_talk"; value: boolean } | { key: "audio_feedback"; value: boolean } | { key: "audio_feedback_volume"; value: number | null } | { key: "sound_theme"; value: SoundTheme } | { key: "app_theme"; value: string } | { key: "app_font_scale"; value: number | null } | { key: "start_hidden"; value: boolean } | { key: "autostart_enabled"; value: boolean } | { key: "update_checks_enabled"; value: boolean } | { key: "enable_crash_reporting"; value: boolean } | { key: "enable_usage_analytics"; value: boolean } | { key: "always_on_microphone"; value: boolean } | { key: "selected_microphone"; value: string | null } | { key: "clamshell_microphone"; value: string | null } | { key: "selected_output_device"; value: string | null } | { key: "acoustic_profile"; value: AcousticProfile } | { key: "audio_enhancement_enabled"; value: boolean } | { key: "audio_enhancement_model"; value: string } | { key: "mute_while_recording"; value: boolean } | { key: "audio_ducking_enabled"; value: boolean } | { key: "translate_to_english"; value: boolean } | { key: "selected_language"; value: string } | { key: "translation_output_mode"; value: TranslationOutputMode } | { key: "translation_target_language"; value: string } | { key: "translation_route_preference"; value: TranslationRoutePreference } | { key: "translation_provider_id"; value: string } | { key: "translation_bilingual_layout"; value: TranslationBilingualLayout } | { key: "translation_translate_snippets"; value: boolean } | { key: "translation_destination_mode"; value: TranslationDestinationMode } | { key: "selection_translation_destination_mode"; value: SelectionTranslationDestinationMode } | { key: "tts_enabled"; value: boolean } | { key: "tts_engine_preference"; value: TtsEnginePreference } | { key: "tts_auto_readback_mode"; value: TtsAutoReadbackMode } | { key: "tts_auto_readback_scope"; value: TtsAutoReadbackScope } | { key: "tts_readback_text_mode"; value: TtsReadbackTextMode } | { key: "tts_default_voice_id"; value: string | null } | { key: "tts_rate"; value: number | null } | { key: "tts_volume"; value: number | null } | { key: "tts_stop_on_record"; value: boolean } | { key: "speech_runtime_path"; value: string | null } | { key: "speech_backend_override"; value: string | null } | { key: "continuous_improvement_hq_capture"; value: boolean } | { key: "tts_model_store_path"; value: string | null } | { key: "external_model_storage_enabled"; value: boolean } | { key: "external_model_storage_auto_detect"; value: boolean } | { key: "external_model_storage_path"; value: string | null } | { key: "overlay_position"; value: OverlayPosition } | { key: "recording_overlay_style"; value: RecordingOverlayStyle } | { key: "show_live_partials"; value: boolean } | { key: "suggest_meeting_apps"; value: boolean } | { key: "debug_mode"; value: boolean } | { key: "show_technical_features"; value: boolean } | { key: "log_level"; value: LogLevel } | { key: "custom_words"; value: string[] } | { key: "custom_filler_words"; value: string[] | null } | { key: "word_correction_threshold"; value: number | null } | { key: "paste_method"; value: PasteMethod } | { key: "paste_delay_ms"; value: number } | { key: "typing_tool"; value: TypingTool } | { key: "external_script_path"; value: string | null } | { key: "clipboard_handling"; value: ClipboardHandling } | { key: "auto_submit"; value: boolean } | { key: "auto_submit_key"; value: AutoSubmitKey } | { key: "append_trailing_space"; value: boolean } | { key: "history_limit"; value: number } | { key: "history_auto_analyze_speakers_long_recordings_enabled"; value: boolean } | { key: "history_auto_analyze_speakers_min_duration_ms"; value: number } | { key: "recording_retention_period"; value: RecordingRetentionPeriod } | { key: "post_process_enabled"; value: boolean } | { key: "post_process_provider_id"; value: string } | { key: "post_process_mode"; value: PostProcessMode } | { key: "post_process_cleanup_level"; value: PostProcessCleanupLevel } | { key: "post_process_selected_prompt_id"; value: string | null } | { key: "max_rewrite_strength"; value: number } | { key: "show_preview_before_paste"; value: boolean } | { key: "fallback_to_raw_on_failure"; value: boolean } | { key: "adaptive_selection_rewrite_enabled"; value: boolean } | { key: "cloud_selection_rewrite_allowed"; value: boolean } | { key: "personal_dictionary"; value: DictionaryEntry[] } | { key: "app_aware_tone_enabled"; value: boolean } | { key: "tone_definitions"; value: ToneDefinition[] } | { key: "write_rules_enabled_override"; value: boolean | null } | { key: "write_rules_url_capture_enabled"; value: boolean } | { key: "markdown_export_enabled"; value: boolean } | { key: "markdown_export_dir"; value: string | null } | { key: "markdown_export_min_words"; value: number } | { key: "markdown_export_content_source"; value: MarkdownExportContentSource } | { key: "markdown_export_frontmatter"; value: boolean } | { key: "markdown_export_include_rewrite_selection"; value: boolean } | { key: "markdown_export_include_failed_paste"; value: boolean } | { key: "local_privacy_mode"; value: boolean } | { key: "screen_context_enabled"; value: boolean } | { key: "screen_context_excluded_bundle_ids"; value: string[] } | { key: "screen_context_pause_on_idle"; value: boolean } | { key: "screen_context_idle_threshold_ms"; value: number } | { key: "context_capture_mode"; value: ContextCaptureMode } | { key: "screen_context_ocr_quality"; value: OcrQualityMode } | { key: "screen_context_ocr_engine"; value: ScreenContextOcrEngine } | { key: "screen_context_ocr_timeout_ms"; value: number } | { key: "screen_context_token_budget"; value: number } | { key: "screen_context_stale_threshold_ms"; value: number } | { key: "app_language"; value: string } | { key: "global_language_sync_enabled"; value: boolean } | { key: "experimental_enabled"; value: boolean } | { key: "show_tray_icon"; value: boolean } | { key: "correction_tracking_enabled"; value: boolean } | { key: "file_transcription_apply_dictionary"; value: boolean } | { key: "snippets_enabled"; value: boolean } | { key: "snippets"; value: Snippet[] } | { key: "model_unload_timeout"; value: ModelUnloadTimeout } | { key: "onboarding_completed"; value: boolean } | { key: "tts_active_preset_id"; value: string | null } | { key: "tts_voice_presets"; value: TtsVoicePreset_Serialize[] } | { key: "post_process_prompts"; value: LLMPrompt[] } | { key: "post_process_prompt_policy_version"; value: number } | { key: "screen_context_ocr_timeout_policy_version"; value: number } | { key: "file_transcription_asr_model_id"; value: string } | { key: "file_transcription_diarization_model_id"; value: string } | { key: "file_transcription_emotion_model_id"; value: string } | { key: "watch_folders"; value: WatchFolderConfig[] };
+
 export type SettingsCatalogEntry = {
 	key: string,
 	label: string,
@@ -2074,6 +2105,45 @@ export type SettingsCatalogEntry = {
 	current_value: string,
 	category: string,
 	setting_section: string,
+};
+
+/**
+ *  Parsed, normalized settings shared by every reader.
+ *
+ *  `get_settings` sits on the dictation hot path (every shortcut press, plus
+ *  the transcribe action, mic start, and mute), so re-parsing the whole
+ *  settings JSON and re-running the `ensure_*_defaults` passes per call is
+ *  wasted work. Every write goes through `write_settings`, which refreshes
+ *  this snapshot, so readers can serve a clone instead.
+ */
+export type SettingsSnapshot = SettingsSnapshot_Serialize | SettingsSnapshot_Deserialize;
+
+/**
+ *  Parsed, normalized settings shared by every reader.
+ *
+ *  `get_settings` sits on the dictation hot path (every shortcut press, plus
+ *  the transcribe action, mic start, and mute), so re-parsing the whole
+ *  settings JSON and re-running the `ensure_*_defaults` passes per call is
+ *  wasted work. Every write goes through `write_settings`, which refreshes
+ *  this snapshot, so readers can serve a clone instead.
+ */
+export type SettingsSnapshot_Deserialize = {
+	revision: number,
+	settings: AppSettings_Deserialize,
+};
+
+/**
+ *  Parsed, normalized settings shared by every reader.
+ *
+ *  `get_settings` sits on the dictation hot path (every shortcut press, plus
+ *  the transcribe action, mic start, and mute), so re-parsing the whole
+ *  settings JSON and re-running the `ensure_*_defaults` passes per call is
+ *  wasted work. Every write goes through `write_settings`, which refreshes
+ *  this snapshot, so readers can serve a clone instead.
+ */
+export type SettingsSnapshot_Serialize = {
+	revision: number,
+	settings: AppSettings_Serialize,
 };
 
 export type ShortcutBinding = {

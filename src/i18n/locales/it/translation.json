@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Assistente inattivo",
       "app": "Applicazione {{count}} MB",
       "sidecar": "Assistente {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Impossibile salvare la modifica: {{error}}",
+      "modelListFailed": "Impossibile caricare i modelli: {{error}}"
     }
   },
   "footer": {

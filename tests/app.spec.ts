@@ -330,6 +330,14 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
     let inputMonitoringChecks = 0;
     let microphoneChecks = 0;
     let screenRecordingChecks = 0;
+    let settingsRevision = 0;
+    const listeners = new Map<number, { event: string; handler: number }>();
+    const emit = (event: string, payload: unknown) => {
+      for (const [id, listener] of listeners) {
+        if (listener.event === event)
+          callbacks[listener.handler]?.({ event, id, payload });
+      }
+    };
 
     const state = {
       models: activeScenario.models,
@@ -339,6 +347,16 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
 
     const getModelById = (modelId: string) =>
       state.models.find((model) => model.id === modelId);
+
+    const externalStorageStatus = () => ({
+      enabled: state.settings.external_model_storage_enabled ?? false,
+      auto_detect: state.settings.external_model_storage_auto_detect ?? true,
+      connected: !!state.settings.external_model_storage_path,
+      configured_path: state.settings.external_model_storage_path ?? null,
+      resolved_path: state.settings.external_model_storage_path ?? null,
+      volume_name: state.settings.external_model_storage_path ? "Models" : null,
+      model_count: state.settings.external_model_storage_path ? 3 : 0,
+    });
 
     (
       window as Window & {
@@ -394,8 +412,13 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
         switch (cmd) {
           case "plugin:event|listen":
             eventListenerId += 1;
+            listeners.set(eventListenerId, {
+              event: args.event as string,
+              handler: args.handler as number,
+            });
             return eventListenerId;
           case "plugin:event|unlisten":
+            listeners.delete(args.eventId as number);
             return null;
           case "plugin:app|version":
             return "1.0.0";
@@ -458,6 +481,37 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
           case "get_default_settings":
           case "get_app_settings":
             return state.settings;
+          case "get_settings_snapshot":
+            return {
+              revision: settingsRevision,
+              settings: structuredClone(state.settings),
+            };
+          case "update_setting": {
+            const { key, value } = args.update as {
+              key: string;
+              value: unknown;
+            };
+            state.settings[key] = value;
+            const snapshot = {
+              revision: ++settingsRevision,
+              settings: structuredClone(state.settings),
+            };
+            emit("settings-snapshot", snapshot);
+            if (key.startsWith("external_model_storage_"))
+              emit("external-model-storage-changed", externalStorageStatus());
+            return snapshot;
+          }
+          case "get_external_model_storage_status":
+            return externalStorageStatus();
+          case "pick_external_model_storage_dir":
+            state.settings.external_model_storage_path =
+              "/Volumes/Models/VoxJot";
+            state.settings.external_model_storage_enabled = true;
+            emit("settings-snapshot", {
+              revision: ++settingsRevision,
+              settings: structuredClone(state.settings),
+            });
+            return externalStorageStatus();
           case "check_custom_sounds":
             return { start: false, stop: false };
           case "get_runtime_memory_status":
@@ -741,6 +795,51 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
 };
 
 test.describe("Vox Jot app", () => {
+  test("enables external storage and opens the native folder-selection command", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      settings: {
+        external_model_storage_enabled: false,
+        external_model_storage_auto_detect: true,
+        external_model_storage_path: null,
+      },
+    });
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page
+      .getByRole("navigation", { name: "Section navigation" })
+      .getByRole("button", { name: "Privacy & Storage", exact: true })
+      .click();
+    const storage = page.getByRole("switch", {
+      name: "Scan external storage for models",
+      exact: true,
+    });
+    await expect(storage).toHaveAttribute("aria-checked", "false");
+    await storage.focus();
+    await storage.press("Space");
+    await expect(storage).toHaveAttribute("aria-checked", "true");
+    await expect(
+      page.getByRole("switch", {
+        name: "Auto-detect Vox Jot folders on connected drives",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Browse…", exact: true }).click();
+    await expect(
+      page.getByText("Connected: Models (3 models detected)", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("/Volumes/Models/VoxJot", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Use auto-detect", exact: true })
+      .click();
+    await expect(
+      page.getByText("External storage disconnected", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+
   test("renders every left sidebar section and the model hub launcher", async ({
     page,
   }) => {

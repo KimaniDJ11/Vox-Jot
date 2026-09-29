@@ -307,7 +307,11 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
           </button>
         )}
         <ResetButton
-          onClick={() => resetBinding(shortcutId)}
+          onClick={() =>
+            void resetBinding(shortcutId).catch(() =>
+              toast.error(t("settings.general.shortcut.errors.reset")),
+            )
+          }
           disabled={disabled || isUpdating(`binding_${shortcutId}`)}
         />
       </div>

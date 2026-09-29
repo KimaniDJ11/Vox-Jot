@@ -1,3 +1,4 @@
+import { unwrapCommandResult } from "@/lib/commandResult";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -94,10 +95,10 @@ export const FeatureHealthCheckPanel: React.FC = () => {
       {
         id: "settings",
         label: t("settings.diagnostics.featureHealth.features.settings"),
-        run: async () =>
-          commandResult(await commands.getAppSettings(), commandFailed, () =>
-            ok(t("settings.diagnostics.featureHealth.details.settings")),
-          ),
+        run: async () => {
+          await unwrapCommandResult(commands.getAppSettings());
+          return ok(t("settings.diagnostics.featureHealth.details.settings"));
+        },
       },
       {
         id: "app_directories",

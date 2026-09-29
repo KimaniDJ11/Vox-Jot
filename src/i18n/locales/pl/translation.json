@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Pomocnik bezczynny",
       "app": "Aplikacja {{count}} MB",
       "sidecar": "Pomocnik {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Nie udało się zapisać zmiany: {{error}}",
+      "modelListFailed": "Nie udało się wczytać modeli: {{error}}"
     }
   },
   "footer": {

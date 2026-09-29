@@ -455,10 +455,7 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
         if id == "cancel" {
             continue;
         }
-        // Skip post-processing shortcut when the feature is disabled
-        if (id == "transcribe_with_post_process" || id == "rewrite_selection")
-            && !user_settings.post_process_enabled
-        {
+        if super::is_post_process_binding(&id) && !user_settings.post_process_enabled {
             continue;
         }
 

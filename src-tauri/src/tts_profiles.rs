@@ -1,5 +1,5 @@
 use crate::portable;
-use crate::settings::{get_settings, write_settings, TTS_PROVIDER_QWEN3_NATIVE_ID};
+use crate::settings::TTS_PROVIDER_QWEN3_NATIVE_ID;
 use crate::tts::supported_voice_profile_compatibility;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -265,12 +265,9 @@ pub fn delete_voice_profile(app_handle: &AppHandle, profile_id: &str) -> Result<
             .map_err(|err| format!("Failed to remove TTS voice profile: {err}"))?;
     }
 
-    let mut settings = get_settings(app_handle);
-    let selected_deleted_profile = settings.selected_tts_profile_id.as_deref() == Some(profile_id);
-    let removed_presets = settings.delete_tts_presets_for_profile(profile_id);
-    if removed_presets > 0 || selected_deleted_profile {
-        write_settings(app_handle, settings);
-    }
+    crate::settings::update(app_handle, |settings| {
+        settings.delete_tts_presets_for_profile(profile_id)
+    });
 
     Ok(())
 }

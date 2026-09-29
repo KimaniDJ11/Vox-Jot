@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Trình hỗ trợ đang chờ",
       "app": "Ứng dụng {{count}} MB",
       "sidecar": "Trình hỗ trợ {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Không thể lưu thay đổi của bạn: {{error}}",
+      "modelListFailed": "Không thể tải các mô hình: {{error}}"
     }
   },
   "footer": {

@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Помощник простаивает",
       "app": "Приложение {{count}} МБ",
       "sidecar": "Помощник {{count}} МБ"
+    },
+    "errors": {
+      "saveFailed": "Не удалось сохранить изменение: {{error}}",
+      "modelListFailed": "Не удалось загрузить модели: {{error}}"
     }
   },
   "footer": {

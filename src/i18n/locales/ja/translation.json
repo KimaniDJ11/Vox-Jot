@@ -1637,6 +1637,10 @@
       "sidecarIdle": "サイドカー待機中",
       "app": "アプリ {{count}} MB",
       "sidecar": "サイドカー {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "変更を保存できませんでした: {{error}}",
+      "modelListFailed": "モデルを読み込めませんでした: {{error}}"
     }
   },
   "footer": {

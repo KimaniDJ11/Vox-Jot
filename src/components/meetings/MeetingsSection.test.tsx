@@ -18,12 +18,12 @@ const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   remove: vi.fn(),
   read: vi.fn(),
-  getAppSettings: vi.fn(),
+  suggestMeetingApps: false,
+  updateSetting: vi.fn(),
   getMeetingTemplates: vi.fn(),
   updateMeetingSpeakers: vi.fn(),
   summarizeMeeting: vi.fn(),
   enhanceMeeting: vi.fn(),
-  changeSuggestMeetingAppsSetting: vi.fn(),
 }));
 vi.mock("@/bindings", () => ({
   commands: {
@@ -33,17 +33,19 @@ vi.mock("@/bindings", () => ({
     stopMeeting: mocks.stop,
     deleteMeeting: mocks.remove,
     readMeeting: mocks.read,
-    getAppSettings: mocks.getAppSettings,
     getMeetingTemplates: mocks.getMeetingTemplates,
     updateMeetingSpeakers: mocks.updateMeetingSpeakers,
     summarizeMeeting: mocks.summarizeMeeting,
     enhanceMeeting: mocks.enhanceMeeting,
-    changeSuggestMeetingAppsSetting: mocks.changeSuggestMeetingAppsSetting,
     requestMeetingPermissions: vi.fn(),
     cancelMeetingAnalysis: vi.fn(),
   },
 }));
 vi.mock("@/hooks/useTauriEvent", () => ({ useTauriEvent: vi.fn() }));
+vi.mock("@/hooks/useSettings", () => ({
+  useSetting: () => mocks.suggestMeetingApps,
+  useUpdateSetting: () => mocks.updateSetting,
+}));
 vi.mock("@/components/app-sections/shared", () => ({
   SectionIntro: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -125,10 +127,8 @@ beforeEach(() => {
     status: "ok",
     data: { session: saved, summary: null, segments: [] },
   });
-  mocks.getAppSettings.mockResolvedValue({
-    status: "ok",
-    data: { suggest_meeting_apps: false },
-  });
+  mocks.suggestMeetingApps = false;
+  mocks.updateSetting.mockResolvedValue(true);
   mocks.getMeetingTemplates.mockResolvedValue([
     {
       id: "default",
@@ -144,10 +144,6 @@ beforeEach(() => {
   mocks.updateMeetingSpeakers.mockResolvedValue({ status: "ok", data: null });
   mocks.summarizeMeeting.mockResolvedValue({ status: "ok", data: null });
   mocks.enhanceMeeting.mockResolvedValue({ status: "ok", data: null });
-  mocks.changeSuggestMeetingAppsSetting.mockResolvedValue({
-    status: "ok",
-    data: null,
-  });
 });
 afterEach(async () => {
   if (root) await act(async () => root.unmount());
@@ -320,10 +316,7 @@ describe("Meetings", () => {
     expect(formatMeetingDuration(3661000)).toBe("01:01:01");
   });
   it("shows detected meeting app banner when suggest_meeting_apps is enabled", async () => {
-    mocks.getAppSettings.mockResolvedValue({
-      status: "ok",
-      data: { suggest_meeting_apps: true },
-    });
+    mocks.suggestMeetingApps = true;
     mocks.capabilities.mockResolvedValue({
       status: "ok",
       data: {

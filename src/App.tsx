@@ -1,3 +1,4 @@
+import { unwrapCommandResult } from "@/lib/commandResult";
 import React, {
   lazy,
   useCallback,
@@ -1134,10 +1135,8 @@ function App() {
 
   const checkOnboardingStatus = async () => {
     try {
-      const settingsResult = await commands.getAppSettings();
-      const onboardingCompleted =
-        settingsResult.status === "ok" &&
-        settingsResult.data.onboarding_completed === true;
+      const settings = await unwrapCommandResult(commands.getAppSettings());
+      const onboardingCompleted = settings.onboarding_completed === true;
       const currentPlatform = platform();
 
       if (onboardingCompleted) {
@@ -1165,9 +1164,7 @@ function App() {
                 checkScreenRecordingPermission(),
               ]);
               const screenContextEnabled =
-                settingsResult.status === "ok"
-                  ? (settingsResult.data.screen_context_enabled ?? true)
-                  : true;
+                settings.screen_context_enabled ?? true;
               if (
                 !hasAccessibility ||
                 !hasMicrophone ||
@@ -1216,10 +1213,7 @@ function App() {
   };
 
   const handleOnboardingComplete = async () => {
-    const result = await commands.setOnboardingCompleted(true);
-    if (result.status !== "ok") {
-      console.error("Failed to persist onboarding completion:", result.error);
-    }
+    if (!(await updateSetting("onboarding_completed", true))) return;
     setOnboardingStep("done");
   };
 

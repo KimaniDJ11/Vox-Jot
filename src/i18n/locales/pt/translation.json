@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Assistente ocioso",
       "app": "Aplicativo {{count}} MB",
       "sidecar": "Assistente {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Não foi possível salvar a alteração: {{error}}",
+      "modelListFailed": "Não foi possível carregar os modelos: {{error}}"
     }
   },
   "footer": {

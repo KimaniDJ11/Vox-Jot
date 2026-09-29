@@ -19,15 +19,10 @@ import { EnhanceAudioPanel } from "@/components/dictate/EnhanceAudioPanel";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
-import { Button } from "@/components/ui/Button";
-import {
-  SectionFeatureCards,
-  SectionIntro,
-} from "@/components/app-sections/shared";
+import { SectionFeatureCards } from "@/components/app-sections/shared";
 import { useDictationStats } from "@/hooks/useDictationStats";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import { useSettings } from "@/hooks/useSettings";
-import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
 const formatShortcut = (binding: string | undefined): string => {
   if (!binding) return "Not set";
@@ -288,7 +283,6 @@ export const DictateModelsSection: React.FC<{
 );
 
 export const DictateHistorySection: React.FC = () => {
-  const { t } = useTranslation();
   const { getSetting } = useSettings();
   const [hasCompletedFirstDictation, setHasCompletedFirstDictation] = useState<
     boolean | null

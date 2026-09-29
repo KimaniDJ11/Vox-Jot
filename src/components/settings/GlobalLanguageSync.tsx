@@ -21,7 +21,9 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
     const currentAppLanguage = settings?.app_language ?? "en";
 
     const handleToggleChange = async (checked: boolean) => {
-      await updateSetting("global_language_sync_enabled", checked);
+      if (!(await updateSetting("global_language_sync_enabled", checked))) {
+        return;
+      }
       setStatusMessage(
         checked
           ? t("settings.globalLanguageSync.enabledStatus")
@@ -31,15 +33,16 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
 
     const handleSyncNow = async () => {
       setIsSyncing(true);
-      try {
-        await applyGlobalLanguageSync(currentAppLanguage, "manual");
-        setStatusMessage(t("settings.globalLanguageSync.done"));
-      } catch (error) {
-        console.error("Language sync failed:", error);
-        setStatusMessage(t("settings.globalLanguageSync.failed"));
-      } finally {
-        setIsSyncing(false);
-      }
+      const synced = await applyGlobalLanguageSync(
+        currentAppLanguage,
+        "manual",
+      );
+      setStatusMessage(
+        synced
+          ? t("settings.globalLanguageSync.done")
+          : t("settings.globalLanguageSync.failed"),
+      );
+      setIsSyncing(false);
     };
 
     return (

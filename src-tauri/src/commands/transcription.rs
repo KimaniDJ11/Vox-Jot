@@ -8,9 +8,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::managers::watch_folders::{
     build_output_path, is_supported_media_file, scan_existing_media_files, WatchFolderManager,
 };
-use crate::settings::{
-    get_settings, write_settings, ModelUnloadTimeout, WatchFolderConfig, WatchFolderOutputFormat,
-};
+use crate::settings::{self, get_settings, WatchFolderConfig, WatchFolderOutputFormat};
 use crate::sidecar::SidecarManager;
 use crate::speech_analysis::{
     self, EmotionResult, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment,
@@ -108,26 +106,6 @@ fn process_rss_mb(pid: u32) -> Option<f64> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn set_model_unload_timeout(app: AppHandle, timeout: ModelUnloadTimeout) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.model_unload_timeout = timeout;
-    write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_model_load_status(
-    transcription_manager: State<'_, Arc<TranscriptionManager>>,
-) -> Result<ModelLoadStatus, String> {
-    Ok(ModelLoadStatus {
-        is_loaded: transcription_manager.is_model_loaded(),
-        current_model: transcription_manager.get_current_model(),
-    })
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn get_runtime_memory_status(
     sidecar_manager: State<'_, Arc<SidecarManager>>,
 ) -> Result<RuntimeMemoryStatus, String> {
@@ -138,24 +116,6 @@ pub fn get_runtime_memory_status(
         sidecar_running: sidecar_manager.is_running(),
         sidecar_pid,
     })
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn unload_model_manually(
-    app: AppHandle,
-    transcription_manager: State<'_, Arc<TranscriptionManager>>,
-) -> Result<(), String> {
-    // "Unload" means "free the RAM now", so also drop the background
-    // file-transcription engine if it is holding a model copy.
-    if let Some(file_engine) = app.try_state::<crate::managers::FileTranscriptionEngine>() {
-        if let Err(e) = file_engine.0.unload_model() {
-            warn!("Failed to unload background file engine: {}", e);
-        }
-    }
-    transcription_manager
-        .unload_model()
-        .map_err(|e| format!("Failed to unload model: {}", e))
 }
 
 fn target_triple_str() -> &'static str {
@@ -1784,7 +1744,7 @@ pub fn export_subtitles_vtt(segments: Vec<TimedSegment>, path: String) -> Result
 
 // ─────────────────────────────────────────────────────────────────────────
 // Watch folders (auto-transcribe files dropped into chosen folders).
-// All commands persist via `write_settings`, then ask the manager to
+// All commands persist via `settings::try_update`, then ask the manager to
 // rebuild its watch list on the next tick. The watcher itself runs on a
 // background supervisor thread spun up at startup in `lib.rs`.
 // ─────────────────────────────────────────────────────────────────────────
@@ -1818,10 +1778,6 @@ pub fn add_watch_folder(
     if !Path::new(&path).is_dir() {
         return Err(format!("'{}' is not a folder", path));
     }
-    let mut settings = get_settings(&app);
-    if settings.watch_folders.iter().any(|f| f.path == path) {
-        return Err(format!("'{}' is already being watched", path));
-    }
     let cfg = WatchFolderConfig {
         id: uuid::Uuid::new_v4().to_string(),
         path,
@@ -1830,8 +1786,13 @@ pub fn add_watch_folder(
         delete_after,
         enabled: true,
     };
-    settings.watch_folders.push(cfg.clone());
-    write_settings(&app, settings);
+    settings::try_update(&app, |settings| {
+        if settings.watch_folders.iter().any(|f| f.path == cfg.path) {
+            return Err(format!("'{}' is already being watched", cfg.path));
+        }
+        settings.watch_folders.push(cfg.clone());
+        Ok(())
+    })?;
     watch_manager.reload_from_settings();
     Ok(cfg)
 }
@@ -2015,33 +1976,14 @@ pub fn remove_watch_folder(
     watch_manager: State<'_, Arc<WatchFolderManager>>,
     id: String,
 ) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    let before = settings.watch_folders.len();
-    settings.watch_folders.retain(|f| f.id != id);
-    if settings.watch_folders.len() == before {
-        return Err(format!("watch folder {} not found", id));
-    }
-    write_settings(&app, settings);
-    watch_manager.reload_from_settings();
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn set_watch_folder_enabled(
-    app: AppHandle,
-    watch_manager: State<'_, Arc<WatchFolderManager>>,
-    id: String,
-    enabled: bool,
-) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    let folder = settings
-        .watch_folders
-        .iter_mut()
-        .find(|f| f.id == id)
-        .ok_or_else(|| format!("watch folder {} not found", id))?;
-    folder.enabled = enabled;
-    write_settings(&app, settings);
+    settings::try_update(&app, |settings| {
+        let before = settings.watch_folders.len();
+        settings.watch_folders.retain(|f| f.id != id);
+        if settings.watch_folders.len() == before {
+            return Err(format!("watch folder {} not found", id));
+        }
+        Ok(())
+    })?;
     watch_manager.reload_from_settings();
     Ok(())
 }
@@ -2054,14 +1996,15 @@ pub fn update_watch_folder_format(
     id: String,
     output_format: WatchFolderOutputFormat,
 ) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    let folder = settings
-        .watch_folders
-        .iter_mut()
-        .find(|f| f.id == id)
-        .ok_or_else(|| format!("watch folder {} not found", id))?;
-    folder.output_format = output_format;
-    write_settings(&app, settings);
+    settings::try_update(&app, |settings| {
+        let folder = settings
+            .watch_folders
+            .iter_mut()
+            .find(|f| f.id == id)
+            .ok_or_else(|| format!("watch folder {} not found", id))?;
+        folder.output_format = output_format;
+        Ok::<_, String>(())
+    })?;
     watch_manager.reload_from_settings();
     Ok(())
 }
@@ -2418,4 +2361,54 @@ download progress: 100%
         assert_eq!(labeled[0].speaker_id, "HIGH");
         assert_eq!(labeled[0].confidence, Some(0.95));
     }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_model_load_status(
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
+) -> Result<ModelLoadStatus, String> {
+    Ok(ModelLoadStatus {
+        is_loaded: transcription_manager.is_model_loaded(),
+        current_model: transcription_manager.get_current_model(),
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn unload_model_manually(
+    app: AppHandle,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
+) -> Result<(), String> {
+    // "Unload" means "free the RAM now", so also drop the background
+    // file-transcription engine if it is holding a model copy.
+    if let Some(file_engine) = app.try_state::<crate::managers::FileTranscriptionEngine>() {
+        if let Err(e) = file_engine.0.unload_model() {
+            warn!("Failed to unload background file engine: {}", e);
+        }
+    }
+    transcription_manager
+        .unload_model()
+        .map_err(|e| format!("Failed to unload model: {}", e))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_watch_folder_enabled(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    crate::settings::try_update(&app, |settings| {
+        let folder = settings
+            .watch_folders
+            .iter_mut()
+            .find(|f| f.id == id)
+            .ok_or_else(|| format!("watch folder {} not found", id))?;
+        folder.enabled = enabled;
+        Ok::<_, String>(())
+    })?;
+    watch_manager.reload_from_settings();
+    Ok(())
 }

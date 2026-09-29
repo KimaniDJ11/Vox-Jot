@@ -20,8 +20,7 @@ interface PasteMethodProps {
 export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
   ({ descriptionMode = "tooltip", grouped = false }) => {
     const { t } = useTranslation();
-    const { getSetting, updateSetting, isUpdating, refreshSettings } =
-      useSettings();
+    const { getSetting, updateSetting, isUpdating } = useSettings();
     const osType = useOsType();
 
     const getPasteMethodOptions = (osType: string) => {
@@ -109,17 +108,11 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
       const nextPath = externalScriptDraft.trim();
       setIsSavingExternalScriptPath(true);
       try {
-        const result = await commands.changeExternalScriptPathSetting(
-          nextPath.length > 0 ? nextPath : null,
-        );
-
-        if (result.status === "error") {
-          setExternalScriptError(String(result.error));
-          return;
-        }
-
-        setExternalScriptError("");
-        await refreshSettings();
+        const result = await commands.updateSetting({
+          key: "external_script_path",
+          value: nextPath.length > 0 ? nextPath : null,
+        });
+        setExternalScriptError(result.status === "error" ? result.error : "");
       } catch (error) {
         setExternalScriptError(
           error instanceof Error ? error.message : String(error),

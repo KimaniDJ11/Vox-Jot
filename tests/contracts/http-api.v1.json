@@ -1,0 +1,420 @@
+{
+  "baseline": "cadc0a5170ea77314993b4c285f55892a356bca8",
+  "routes": [
+    {
+      "path": "/v1/health",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/readiness",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/app/settings",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/settings",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/settings/schema",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/settings/patch",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/settings/command",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/settings/shortcut",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/settings/shortcut/reset",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/app/show",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/app/navigate",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/app/windows",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/app/navigation-schema",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/app/cancel",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictation/status",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/dictation/start",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictation/stop",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictation/toggle",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/model-platform",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/models/stt/select",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/models/stt/download",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/models/tts/select",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/models/tts/download",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/models/downloads/cancel",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/ocr/models",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/ocr/download",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/ocr/prepare",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/ocr/select",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/ocr/downloads",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/audio/devices",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/audio/microphone",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/audio/output",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/audio/transcribe-file",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/audio/clean",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/audio/enhance",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/audio/clamshell-microphone",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/history",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/history/latest",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/stats/dictation",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/screen-context/diagnostics",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/dictionary/corrections",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/update",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/toggle",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/disabled-apps",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/delete",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/import",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/dictionary/corrections/export",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/phrase-keys",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/phrase-keys/update",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/phrase-keys/delete",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/phrase-keys/import",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/phrase-keys/export",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/phrase-keys/enabled",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/phrase-keys/reorder",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/write-rules/delete",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules/preview",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules/reorder",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules/test-resolve",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules/enabled",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/write-rules/url-capture-enabled",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/refine/preview",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/models",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/voices",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/speak",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/tts/synthesize",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/tts/presets",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/tts/presets/active",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/tts/profiles",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/tts/profiles/import-sample",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/voice-clone/profiles",
+      "methods": ["get", "post"]
+    },
+    {
+      "path": "/v1/voice-clone/import-sample",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/voice-clone/synthesize",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/voice-changer/convert",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/reader/documents",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/reader/document",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/reader/export-audio",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/reader/synthesize-unit",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/reader/transform",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/creative-audio/models",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/creative-audio/download",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/creative-audio/generate",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/story/audio",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/story/jobs",
+      "methods": ["get"]
+    },
+    {
+      "path": "/v1/story/render",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/story/render-sync",
+      "methods": ["post"]
+    },
+    {
+      "path": "/v1/transcribe",
+      "methods": ["post"]
+    },
+    {
+      "path": "/mcp",
+      "methods": ["post"]
+    }
+  ],
+  "patchable": [
+    "always_on_microphone",
+    "app_aware_tone_enabled",
+    "append_trailing_space",
+    "audio_ducking_enabled",
+    "audio_feedback",
+    "audio_feedback_volume",
+    "auto_submit",
+    "auto_submit_key",
+    "clipboard_handling",
+    "continuous_improvement_hq_capture",
+    "correction_tracking_enabled",
+    "custom_filler_words",
+    "custom_words",
+    "experimental_enabled",
+    "fallback_to_raw_on_failure",
+    "file_transcription_apply_dictionary",
+    "file_transcription_asr_model_id",
+    "file_transcription_diarization_model_id",
+    "file_transcription_emotion_model_id",
+    "global_language_sync_enabled",
+    "history_auto_analyze_speakers_long_recordings_enabled",
+    "history_auto_analyze_speakers_min_duration_ms",
+    "history_limit",
+    "log_level",
+    "model_unload_timeout",
+    "mute_while_recording",
+    "onboarding_completed",
+    "paste_delay_ms",
+    "paste_method",
+    "personal_dictionary",
+    "post_process_mode",
+    "post_process_prompt_policy_version",
+    "post_process_prompts",
+    "post_process_selected_prompt_id",
+    "push_to_talk",
+    "recording_retention_period",
+    "screen_context_ocr_timeout_policy_version",
+    "selected_language",
+    "selection_translation_destination_mode",
+    "show_live_partials",
+    "show_preview_before_paste",
+    "show_tray_icon",
+    "sound_theme",
+    "speech_backend_override",
+    "suggest_meeting_apps",
+    "tone_definitions",
+    "translation_bilingual_layout",
+    "translation_destination_mode",
+    "translation_output_mode",
+    "translation_target_language",
+    "translation_translate_snippets",
+    "tts_active_preset_id",
+    "tts_auto_readback_mode",
+    "tts_auto_readback_scope",
+    "tts_enabled",
+    "tts_readback_text_mode",
+    "tts_stop_on_record",
+    "tts_voice_presets",
+    "typing_tool",
+    "watch_folders",
+    "word_correction_threshold"
+  ]
+}

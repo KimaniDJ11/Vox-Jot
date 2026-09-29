@@ -354,7 +354,7 @@ async fn local_file_len(path: &Path) -> Result<Option<u64>, String> {
     }
 }
 
-fn safe_join(root: &Path, rel_path: &str) -> Result<PathBuf, String> {
+pub(crate) fn safe_join(root: &Path, rel_path: &str) -> Result<PathBuf, String> {
     let path = Path::new(rel_path);
     let mut safe = PathBuf::new();
     for component in path.components() {

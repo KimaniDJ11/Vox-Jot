@@ -203,9 +203,7 @@ describe("languageSync", () => {
       "current-model",
     );
 
-    expect(
-      pickTtsModelForLanguage(overview, createSettings(), "fr", "auto"),
-    ).toBe(currentModel);
+    expect(pickTtsModelForLanguage(overview, "fr", "auto")).toBe(currentModel);
   });
 
   it("prefers higher-ranked runnable models and ignores excluded providers", () => {
@@ -238,9 +236,9 @@ describe("languageSync", () => {
       localeFallback,
     ]);
 
-    expect(
-      pickTtsModelForLanguage(overview, createSettings(), "fr", "manual"),
-    ).toBe(openvoiceModel);
+    expect(pickTtsModelForLanguage(overview, "fr", "manual")).toBe(
+      openvoiceModel,
+    );
   });
 
   it("matches voices by language and preserves a compatible current voice", () => {

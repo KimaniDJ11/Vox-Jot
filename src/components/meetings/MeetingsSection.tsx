@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SwitchControl } from "@/components/ui/SwitchControl";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
+import { useSetting, useUpdateSetting } from "@/hooks/useSettings";
 import { SectionIntro } from "@/components/app-sections/shared";
 import {
   interactiveFocusRingClass,
@@ -235,7 +236,8 @@ export default function MeetingsSection({
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [visible, setVisible] = useState(15);
-  const [suggestMeetingApps, setSuggestMeetingApps] = useState(false);
+  const suggestMeetingApps = useSetting("suggest_meeting_apps") ?? false;
+  const updateSetting = useUpdateSetting();
   const [appCooldowns, setAppCooldowns] = useState<Record<string, number>>({});
   const [enhanceBeforeTranscribe, setEnhanceBeforeTranscribe] = useState(false);
   const [templates, setTemplates] = useState<MeetingTemplate[]>([]);
@@ -252,25 +254,10 @@ export default function MeetingsSection({
   const detailSessionId = detail?.session.id;
 
   useEffect(() => {
-    void commands.getAppSettings().then((res) => {
-      if (res.status === "ok") {
-        setSuggestMeetingApps(res.data.suggest_meeting_apps ?? false);
-      }
-    });
     void commands.getMeetingTemplates().then((templates) => {
       setTemplates(templates);
     });
   }, []);
-
-  useTauriEvent<{ setting?: string; value?: unknown } | null>(
-    "settings-changed",
-    ({ payload }) => {
-      if (!payload || typeof payload !== "object") return;
-      if (payload.setting === "suggest_meeting_apps") {
-        setSuggestMeetingApps(Boolean(payload.value));
-      }
-    },
-  );
 
   const detectedMeetingApp = useMemo(() => {
     if (!suggestMeetingApps || !capabilities?.applications) return null;
@@ -781,8 +768,7 @@ export default function MeetingsSection({
                             defaultValue: "Suggest meeting recording",
                           })}
                           onChange={(next) => {
-                            setSuggestMeetingApps(next);
-                            void commands.changeSuggestMeetingAppsSetting(next);
+                            void updateSetting("suggest_meeting_apps", next);
                           }}
                         />
                       </div>

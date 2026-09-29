@@ -324,13 +324,6 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           return;
         }
 
-        const settingsResult = await commands.getAppSettings();
-        if (settingsResult.status === "error") {
-          setImportError(settingsResult.error);
-          return;
-        }
-
-        await updateSetting("snippets", settingsResult.data.snippets);
         setImportMessage(
           result.data > 0
             ? t("settings.snippets.list.importSuccess", {

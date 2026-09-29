@@ -1637,6 +1637,10 @@
       "sidecarIdle": "辅助进程空闲",
       "app": "应用 {{count}} MB",
       "sidecar": "辅助进程 {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "无法保存你的更改：{{error}}",
+      "modelListFailed": "无法加载模型：{{error}}"
     }
   },
   "footer": {

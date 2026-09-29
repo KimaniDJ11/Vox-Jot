@@ -2,14 +2,15 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { useSetting } from "../../hooks/useSettings";
-import { useSettingsStore } from "../../stores/settingsStore";
-import type { AppSettings } from "@/bindings";
+import {
+  useSettingsStore,
+  type SettingKey,
+  type SettingValue,
+} from "../../stores/settingsStore";
 
 type BooleanSettingKey = {
-  [K in keyof AppSettings]-?: NonNullable<AppSettings[K]> extends boolean
-    ? K
-    : never;
-}[keyof AppSettings];
+  [K in SettingKey]: SettingValue<K> extends boolean ? K : never;
+}[SettingKey];
 
 interface BooleanSettingProps {
   settingKey: BooleanSettingKey;
@@ -53,10 +54,7 @@ export const BooleanSetting: React.FC<BooleanSettingProps> = React.memo(
       <ToggleSwitch
         checked={checked}
         onChange={(enabled) => {
-          void updateSetting(
-            settingKey,
-            enabled as AppSettings[typeof settingKey],
-          );
+          void updateSetting(settingKey, enabled);
           onChange?.(enabled);
         }}
         isUpdating={isUpdating}

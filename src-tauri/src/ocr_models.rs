@@ -36,7 +36,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 
 use crate::artifact_download::{emit_artifact_progress, ArtifactProgress, HfRepoDownloadOptions};
-use crate::settings::{get_settings, write_settings};
+use crate::settings::get_settings;
 use crate::storage_paths;
 
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
@@ -1059,13 +1059,14 @@ pub fn delete_ocr_model_impl(
     // If the deleted model was the selected one, fall back to the built-in
     // routing policy automatically — leaving a dangling reference would hide
     // the System card from the UI.
-    let mut settings = get_settings(app);
-    let mut selected_id = settings.screen_context_ocr_neural_model_id.clone();
+    let mut selected_id = get_settings(app).screen_context_ocr_neural_model_id;
     if selected_id.as_deref() == Some(entry.id) {
         crate::ocr_runtime::shared().shutdown();
-        settings.screen_context_ocr_neural_model_id = None;
         selected_id = None;
-        write_settings(app, settings.clone());
+        let settings = crate::settings::update(app, |settings| {
+            settings.screen_context_ocr_neural_model_id = None;
+            settings.clone()
+        });
         refresh_neural_route_cache(app, &settings);
     }
 
@@ -1096,9 +1097,10 @@ pub fn set_ocr_model_selection_impl(
         }
     }
 
-    let mut settings = get_settings(app);
-    settings.screen_context_ocr_neural_model_id = neural_model_id;
-    write_settings(app, settings.clone());
+    let settings = crate::settings::update(app, |settings| {
+        settings.screen_context_ocr_neural_model_id = neural_model_id;
+        settings.clone()
+    });
     let route = refresh_neural_route_cache(app, &settings);
     if let Some(route) = route {
         if !matches!(route.backend, OcrBackendKind::TessdataPack) {

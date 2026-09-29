@@ -2182,6 +2182,10 @@
       "sidecarIdle": "Sidecar idle",
       "app": "App {{count}} MB",
       "sidecar": "Sidecar {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Could not save your change: {{error}}",
+      "modelListFailed": "Could not load models: {{error}}"
     }
   },
   "modelHub": {

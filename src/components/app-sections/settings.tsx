@@ -17,7 +17,6 @@ import {
   FlaskConical,
   HardDrive,
   Headphones,
-  Info,
   Keyboard,
   Languages,
   Layers,
@@ -1247,6 +1246,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
   const {
     getSetting,
     updateSetting,
+    updateTranslationModel,
     fetchPostProcessModels,
     postProcessModelOptions,
   } = useSettings();
@@ -1254,8 +1254,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
 
   const providers = getSetting("post_process_providers") || [];
   const providerId = getSetting("translation_provider_id") || "";
-  const translationModelIds = getSetting("translation_model_ids") || {};
-  const selectedModel = translationModelIds[providerId] || "";
+  const selectedModel = getSetting("translation_model_ids")?.[providerId] || "";
   const cachedOptions = postProcessModelOptions[providerId] || [];
   const modelOptions = selectedModel
     ? Array.from(new Set([...cachedOptions, selectedModel]))
@@ -1271,11 +1270,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
   }));
 
   const saveModel = async () => {
-    const trimmed = modelDraft.trim();
-    await updateSetting("translation_model_ids", {
-      ...translationModelIds,
-      [providerId]: trimmed,
-    });
+    await updateTranslationModel(providerId, modelDraft.trim());
   };
 
   return (

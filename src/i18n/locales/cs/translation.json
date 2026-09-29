@@ -1637,6 +1637,10 @@
       "sidecarIdle": "Pomocník nečinný",
       "app": "Aplikace {{count}} MB",
       "sidecar": "Pomocník {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Změnu se nepodařilo uložit: {{error}}",
+      "modelListFailed": "Modely se nepodařilo načíst: {{error}}"
     }
   },
   "footer": {

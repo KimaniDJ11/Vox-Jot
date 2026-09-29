@@ -1,10 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import { listen } from "@/lib/tauriEvents";
+import { subscribeSettingsSnapshots } from "@/lib/settingsEvents";
 import { locale } from "@tauri-apps/plugin-os";
 import { LANGUAGE_METADATA } from "./languages";
 import enTranslation from "./locales/en/translation.json";
-import { commands } from "@/bindings";
+import { commands, type SettingsSnapshot } from "@/bindings";
+import { AppLanguageSync } from "./AppLanguageSync";
 import {
   getLanguageDirection,
   updateDocumentDirection,
@@ -93,48 +94,25 @@ i18n.use(initReactI18next).init({
   },
 });
 
-// Sync language from app settings
-export const syncLanguageFromSettings = async () => {
-  try {
-    const result = await commands.getAppSettings();
-    if (result.status === "ok" && result.data.app_language) {
-      const supported = getSupportedLanguage(result.data.app_language);
-      if (supported && supported !== i18n.language) {
-        await ensureLanguageResource(supported);
-        await i18n.changeLanguage(supported);
-      }
-    } else {
-      // Fall back to system locale detection if no saved preference
-      const systemLocale = await locale();
-      const supported = getSupportedLanguage(systemLocale);
-      if (supported && supported !== i18n.language) {
-        await ensureLanguageResource(supported);
-        await i18n.changeLanguage(supported);
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to sync language from settings:", e);
-  }
+const languageSync = new AppLanguageSync({
+  systemLocale: locale,
+  supportedLanguage: getSupportedLanguage,
+  load: ensureLanguageResource,
+  change: (language) => i18n.changeLanguage(language),
+});
+const applySnapshot = (snapshot: SettingsSnapshot) => {
+  void languageSync.accept(snapshot).catch((error) => {
+    console.warn("Failed to apply the app language:", error);
+  });
 };
 
-// Run language sync on init
-syncLanguageFromSettings();
-
-let settingsChangedLanguageSyncDebounce: ReturnType<typeof setTimeout> | null =
-  null;
-
-listen("settings-changed", () => {
-  if (settingsChangedLanguageSyncDebounce) {
-    clearTimeout(settingsChangedLanguageSyncDebounce);
-  }
-
-  settingsChangedLanguageSyncDebounce = setTimeout(() => {
-    settingsChangedLanguageSyncDebounce = null;
-    void syncLanguageFromSettings();
-  }, 150);
-}).catch(() => {
-  /* listener setup may fail in test / non-Tauri environments */
-});
+subscribeSettingsSnapshots(applySnapshot);
+void commands
+  .getSettingsSnapshot()
+  .then(applySnapshot)
+  .catch((error) => {
+    console.warn("Failed to read the app language:", error);
+  });
 
 // Listen for language changes to update HTML dir and lang attributes
 i18n.on("languageChanged", (lng) => {

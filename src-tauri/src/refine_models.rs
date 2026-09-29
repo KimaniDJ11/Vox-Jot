@@ -1568,20 +1568,19 @@ pub async fn set_refine_model_selection_impl(
     // can supersede this one while validation runs, but cannot slip between the
     // check and persistence.
     let Some(result) = REFINE_SELECTION_GATE.commit_if_current(request_generation, || {
-        // Model/runtime validation above may await external I/O. Re-read before
-        // persisting so unrelated settings changed during that wait are preserved,
-        // and re-check policy in case privacy/provider configuration changed.
-        let mut current_settings = settings::get_settings(app);
-        validate_refine_selection_policy(&current_settings, &provider_id)?;
-        current_settings
-            .post_process_models
-            .insert(provider_id.clone(), model_id.clone());
-        current_settings.post_process_provider_id = provider_id.clone();
-        current_settings.selected_llm_provider_id = provider_id;
-        current_settings.selected_llm_model_id = model_id;
-        current_settings.enforce_local_privacy_mode();
-        settings::write_settings(app, current_settings);
-        Ok(())
+        // Model/runtime validation above may await external I/O, so the
+        // privacy/provider policy is checked again against the current settings.
+        settings::try_update(app, |current_settings| {
+            validate_refine_selection_policy(current_settings, &provider_id)?;
+            current_settings
+                .post_process_models
+                .insert(provider_id.clone(), model_id.clone());
+            current_settings.post_process_provider_id = provider_id.clone();
+            current_settings.selected_llm_provider_id = provider_id;
+            current_settings.selected_llm_model_id = model_id;
+            current_settings.enforce_local_privacy_mode();
+            Ok(())
+        })
     })?
     else {
         return Ok(());
@@ -2108,29 +2107,27 @@ pub async fn delete_refine_model_impl(
         replacement_ollama_model_id(&status.models, &model_id)
     };
 
-    let mut settings = settings::get_settings(app);
+    settings::update(app, |settings| {
+        if settings
+            .post_process_models
+            .get(&provider_id)
+            .map(|s| s.as_str())
+            == Some(model_id.as_str())
+        {
+            settings.post_process_models.insert(
+                provider_id.clone(),
+                replacement_model_id.clone().unwrap_or_default(),
+            );
+        }
 
-    if settings
-        .post_process_models
-        .get(&provider_id)
-        .map(|s| s.as_str())
-        == Some(model_id.as_str())
-    {
-        settings.post_process_models.insert(
-            provider_id.clone(),
-            replacement_model_id.clone().unwrap_or_default(),
-        );
-    }
+        if settings.selected_llm_provider_id == provider_id
+            && settings.selected_llm_model_id == model_id
+        {
+            settings.selected_llm_model_id = replacement_model_id.unwrap_or_default();
+        }
 
-    if settings.selected_llm_provider_id == provider_id
-        && settings.selected_llm_model_id == model_id
-    {
-        settings.selected_llm_model_id = replacement_model_id.unwrap_or_default();
-    }
-
-    settings.enforce_local_privacy_mode();
-    settings::write_settings(app, settings.clone());
-    let _ = app.emit("settings-changed", settings);
+        settings.enforce_local_privacy_mode();
+    });
     Ok(())
 }
 

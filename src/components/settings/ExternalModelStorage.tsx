@@ -27,7 +27,7 @@ export const ExternalModelStorage: React.FC<{
   grouped?: boolean;
 }> = ({ grouped = true }) => {
   const { t } = useTranslation();
-  const { getSetting, refreshSettings } = useSettings();
+  const { getSetting, updateSetting } = useSettings();
   const enabled = getSetting("external_model_storage_enabled") ?? false;
   const autoDetect = getSetting("external_model_storage_auto_detect") ?? true;
   const [status, setStatus] = useState<ExternalModelStorageStatus>(emptyStatus);
@@ -67,50 +67,33 @@ export const ExternalModelStorage: React.FC<{
     },
   );
 
-  const refreshAfterSettingChange = async () => {
-    await refreshSettings();
-    const result = await commands.refreshExternalModelStorage();
-    if (result.status === "error") {
-      setError(result.error);
-      return;
-    }
-    applyStatus(result.data);
-    setError(null);
-  };
-
-  const handleEnabledChange = async (value: boolean) => {
+  // A committed storage change refreshes the status through
+  // `external-model-storage-changed`.
+  const saveStorageSetting = async (
+    change: () => Promise<boolean>,
+  ): Promise<void> => {
     setBusy(true);
     try {
-      const result =
-        await commands.changeExternalModelStorageEnabledSetting(value);
-      if (result.status === "error") {
-        setError(result.error);
-        return;
-      }
-      await refreshAfterSettingChange();
-    } catch (settingError) {
-      setError(errorMessage(settingError));
+      await change();
     } finally {
       setBusy(false);
     }
   };
 
-  const handleAutoDetectChange = async (value: boolean) => {
-    setBusy(true);
-    try {
-      const result =
-        await commands.changeExternalModelStorageAutoDetectSetting(value);
-      if (result.status === "error") {
-        setError(result.error);
-        return;
-      }
-      await refreshAfterSettingChange();
-    } catch (settingError) {
-      setError(errorMessage(settingError));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const handleEnabledChange = (value: boolean) =>
+    saveStorageSetting(() =>
+      updateSetting("external_model_storage_enabled", value),
+    );
+
+  const handleAutoDetectChange = (value: boolean) =>
+    saveStorageSetting(() =>
+      updateSetting("external_model_storage_auto_detect", value),
+    );
+
+  const handleClear = () =>
+    saveStorageSetting(() =>
+      updateSetting("external_model_storage_path", null),
+    );
 
   const handleBrowse = async () => {
     setBusy(true);
@@ -119,28 +102,11 @@ export const ExternalModelStorage: React.FC<{
       if (result.status === "ok") {
         applyStatus(result.data);
         setError(null);
-        await refreshSettings();
       } else {
         setError(result.error);
       }
     } catch (browseError) {
       setError(errorMessage(browseError));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleClear = async () => {
-    setBusy(true);
-    try {
-      const result = await commands.changeExternalModelStoragePathSetting(null);
-      if (result.status === "error") {
-        setError(result.error);
-        return;
-      }
-      await refreshAfterSettingChange();
-    } catch (clearError) {
-      setError(errorMessage(clearError));
     } finally {
       setBusy(false);
     }

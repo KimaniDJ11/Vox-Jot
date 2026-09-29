@@ -77,11 +77,7 @@ import {
 } from "../utils";
 import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import { readVoiceCloningDraft, writeVoiceCloningDraft } from "../draftStorage";
-import {
-  DraftVoiceModelLibraryCard,
-  SelectField,
-  WorkflowField,
-} from "../sharedComponents";
+import { DraftVoiceModelLibraryCard, WorkflowField } from "../sharedComponents";
 
 interface TtsHfDownloadProgress {
   repo_id: string;

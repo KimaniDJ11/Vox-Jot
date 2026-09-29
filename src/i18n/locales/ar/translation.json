@@ -1637,6 +1637,10 @@
       "sidecarIdle": "المساعد خامل",
       "app": "التطبيق {{count}} ميجابايت",
       "sidecar": "المساعد {{count}} ميجابايت"
+    },
+    "errors": {
+      "saveFailed": "تعذّر حفظ التغيير: {{error}}",
+      "modelListFailed": "تعذّر تحميل النماذج: {{error}}"
     }
   },
   "footer": {

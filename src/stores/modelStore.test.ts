@@ -15,6 +15,10 @@ const commandMocks = vi.hoisted(() => ({
   getCurrentModel: vi.fn(),
   hasAnyModelsAvailable: vi.fn(),
   downloadModel: vi.fn(),
+  getSettingsSnapshot: vi.fn(async () => ({
+    revision: 0,
+    settings: { app_language: "en" },
+  })),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({

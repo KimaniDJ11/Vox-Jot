@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { deviceNameForSetting, deviceSettingForName } from "@/lib/audioDevices";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { prepareMacosPermissionRelaunch } from "@/lib/macosPermissionRelaunch";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -199,10 +200,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       : [{ index: "default", name: "Default", is_default: true }];
   }, [audioDevices]);
 
-  const selectedMicrophone = useMemo(() => {
-    const value = settings?.selected_microphone;
-    return !value || value === "default" ? "Default" : value;
-  }, [settings?.selected_microphone]);
+  const selectedMicrophone = useMemo(
+    () =>
+      deviceNameForSetting(microphoneOptions, settings?.selected_microphone),
+    [microphoneOptions, settings?.selected_microphone],
+  );
 
   const selectedMicrophoneLabel = useMemo(() => {
     return (
@@ -509,10 +511,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     try {
       await prepareMacosPermissionRelaunch("onboarding:screen-recording");
       await requestScreenRecordingPermission();
-      const result = await commands.changeScreenContextEnabledSetting(true);
-      if (result.status !== "ok") {
-        toast.error(result.error);
-      }
+      await updateSetting("screen_context_enabled", true);
       setPermissions((prev) => ({ ...prev, screenRecording: "waiting" }));
       setSkippedOptional((prev) => ({ ...prev, screenRecording: false }));
       startPolling();
@@ -535,12 +534,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 
   const handleSkipOptional = async (id: PermissionId) => {
     if (permissionStories[id].required) return;
-    if (id === "screenRecording") {
-      const result = await commands.changeScreenContextEnabledSetting(false);
-      if (result.status !== "ok") {
-        toast.error(result.error);
-        return;
-      }
+    if (
+      id === "screenRecording" &&
+      !(await updateSetting("screen_context_enabled", false))
+    ) {
+      return;
     }
     setSkippedOptional((prev) => ({ ...prev, [id]: true }));
   };
@@ -554,11 +552,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     if (!requiredPermissionsGranted) return;
 
     if (isMacOS && permissions.screenRecording !== "granted") {
-      const result = await commands.changeScreenContextEnabledSetting(false);
-      if (result.status !== "ok") {
-        toast.error(result.error);
-        return;
-      }
+      if (!(await updateSetting("screen_context_enabled", false))) return;
       setSkippedOptional((prev) => ({ ...prev, screenRecording: true }));
     }
 
@@ -572,7 +566,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     setMicPreviewStatus("starting");
     setMicPreviewError(null);
     setMicLevels(emptyMicLevels);
-    await updateSetting("selected_microphone", nextMicrophone);
+    await updateSetting(
+      "selected_microphone",
+      deviceSettingForName(microphoneOptions, nextMicrophone),
+    );
 
     const result = await commands.startMicrophoneLevelPreview();
     if (result.status === "error") {

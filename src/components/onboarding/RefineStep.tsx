@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useOllamaStore } from "@/stores/ollamaStore";
@@ -33,7 +32,12 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
     loadRecommendedModels,
     recommendedModels,
   } = useOllamaStore();
-  const { setPostProcessProvider } = useSettingsStore();
+  const setPostProcessProvider = useSettingsStore(
+    (s) => s.setPostProcessProvider,
+  );
+  const updatePostProcessModel = useSettingsStore(
+    (s) => s.updatePostProcessModel,
+  );
 
   const [error, setError] = useState<string | null>(null);
   const autoFinishedRef = useRef(false);
@@ -77,14 +81,12 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   const finalizeAndContinue = async (modelId: string) => {
     if (autoFinishedRef.current) return;
     autoFinishedRef.current = true;
-    try {
-      await setPostProcessProvider("ollama");
-      await invoke("change_post_process_model_setting", {
-        providerId: "ollama",
-        model: modelId,
-      });
-    } catch (e) {
-      console.error("Failed to set default Refine provider/model:", e);
+    if (
+      !(await setPostProcessProvider("ollama")) ||
+      !(await updatePostProcessModel("ollama", modelId))
+    ) {
+      autoFinishedRef.current = false;
+      return;
     }
     onComplete();
   };

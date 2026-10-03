@@ -12235,12 +12235,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ----- END UPSTREAM FILE: LICENSE.txt -----
 
-brace-expansion 5.0.5
----------------------
+brace-expansion 5.0.12
+----------------------
 Ecosystem: npm
 Declared license: MIT
 Upstream attribution: Not specified in package metadata
-Upstream source: git+ssh://git@github.com/juliangruber/brace-expansion.git
+Upstream source: git+https://github.com/juliangruber/brace-expansion.git
 
 ----- BEGIN UPSTREAM FILE: LICENSE -----
 MIT License
@@ -12268,12 +12268,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ----- END UPSTREAM FILE: LICENSE -----
 
-brace-expansion 5.0.9
+brace-expansion 5.0.5
 ---------------------
 Ecosystem: npm
 Declared license: MIT
 Upstream attribution: Not specified in package metadata
-Upstream source: git+https://github.com/juliangruber/brace-expansion.git
+Upstream source: git+ssh://git@github.com/juliangruber/brace-expansion.git
 
 ----- BEGIN UPSTREAM FILE: LICENSE -----
 MIT License
@@ -172276,7 +172276,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 ----- END UPSTREAM FILE: LICENSE-ZLIB -----
 
-yoke-derive 0.8.3
+yoke-derive 0.8.4
 -----------------
 Ecosystem: Cargo
 Declared license: Unicode-3.0

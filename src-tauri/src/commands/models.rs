@@ -7,7 +7,7 @@ use crate::model_platform::{
     TtsDeliverySupport, TtsExpressivenessMode,
 };
 use crate::settings::{
-    get_settings, write_settings, AppSettings, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_KOKORO_ID,
+    get_settings, AppSettings, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_KOKORO_ID,
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
     TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
     TTS_PROVIDER_XTTS_ID,
@@ -1099,16 +1099,6 @@ pub fn cancel_artifact_download(domain: String, artifact_id: String) -> Result<(
     }
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn delete_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
-    let manager = app_handle.state::<Arc<TtsManager>>().inner().clone();
-    run_model_platform_command_on_stack("delete-tts-hf-model", move || async move {
-        manager.remove_pack(&repo_id)
-    })
-    .await
-}
-
 fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
     let selected_provider_id = if !settings.selected_llm_provider_id.trim().is_empty() {
         settings.selected_llm_provider_id.clone()
@@ -1400,81 +1390,50 @@ pub async fn delete_model(
             .map_err(|e| e.to_string())?;
 
         if deleting_active_model {
-            let fallback = stt_fallback_after_delete(&model_manager, &model_id);
-            let mut settings = get_settings(&app_handle);
-
-            if let Some(fallback_model) = fallback {
-                let load_model_id = fallback_model.id.clone();
-                let transcription_manager = transcription_manager.clone();
-                match tokio::task::spawn_blocking(move || {
-                    transcription_manager.load_model(&load_model_id)
+            let clear_selection = || {
+                crate::settings::update(&app_handle, |settings| {
+                    settings.selected_model.clear();
+                    settings.selected_stt_model_id.clear();
+                    settings.selected_stt_provider_id.clear();
                 })
-                .await
-                {
-                    Ok(Ok(())) => {
-                        sync_stt_selection_fields(&mut settings, &fallback_model);
-                        write_settings(&app_handle, settings.clone());
-                        let _ = app_handle.emit("settings-changed", settings);
-                        let _ = app_handle.emit("active-model-changed", fallback_model.id);
-                    }
-                    Ok(Err(err)) => {
-                        settings.selected_model.clear();
-                        settings.selected_stt_model_id.clear();
-                        settings.selected_stt_provider_id.clear();
-                        write_settings(&app_handle, settings.clone());
-                        let _ = app_handle.emit("settings-changed", settings);
-                        return Err(format!(
-                            "Deleted model '{}', but failed to load fallback STT model '{}': {err}",
-                            model_id, fallback_model.id
-                        ));
-                    }
-                    Err(err) => {
-                        settings.selected_model.clear();
-                        settings.selected_stt_model_id.clear();
-                        settings.selected_stt_provider_id.clear();
-                        write_settings(&app_handle, settings.clone());
-                        let _ = app_handle.emit("settings-changed", settings);
-                        return Err(format!(
-                            "Deleted model '{}', but failed to join fallback STT load task: {err}",
-                            model_id
-                        ));
-                    }
-                }
-            } else {
-                settings.selected_model.clear();
-                settings.selected_stt_model_id.clear();
-                settings.selected_stt_provider_id.clear();
-                write_settings(&app_handle, settings.clone());
-                let _ = app_handle.emit("settings-changed", settings);
+            };
+            let Some(fallback_model) = stt_fallback_after_delete(&model_manager, &model_id) else {
+                clear_selection();
                 let _ = app_handle.emit("active-model-changed", String::new());
+                return Ok(());
+            };
+
+            let load_model_id = fallback_model.id.clone();
+            let transcription_manager = transcription_manager.clone();
+            let loaded = tokio::task::spawn_blocking(move || {
+                transcription_manager.load_model(&load_model_id)
+            })
+            .await;
+            match loaded {
+                Ok(Ok(())) => {
+                    crate::settings::update(&app_handle, |settings| {
+                        sync_stt_selection_fields(settings, &fallback_model)
+                    });
+                    let _ = app_handle.emit("active-model-changed", fallback_model.id);
+                }
+                Ok(Err(err)) => {
+                    clear_selection();
+                    return Err(format!(
+                        "Deleted model '{}', but failed to load fallback STT model '{}': {err}",
+                        model_id, fallback_model.id
+                    ));
+                }
+                Err(err) => {
+                    clear_selection();
+                    return Err(format!(
+                        "Deleted model '{}', but failed to join fallback STT load task: {err}",
+                        model_id
+                    ));
+                }
             }
         }
 
         Ok(())
-    })
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn set_stt_platform_selection(
-    app_handle: AppHandle,
-    model_manager: State<'_, Arc<ModelManager>>,
-    transcription_manager: State<'_, Arc<TranscriptionManager>>,
-    provider_id: String,
-    model_id: String,
-) -> Result<(), String> {
-    let model_manager = model_manager.inner().clone();
-    let transcription_manager = transcription_manager.inner().clone();
-    run_model_platform_command_on_stack("set-stt-platform-selection", move || async move {
-        set_stt_platform_selection_impl(
-            app_handle,
-            model_manager,
-            transcription_manager,
-            provider_id,
-            model_id,
-        )
-        .await
     })
     .await
 }
@@ -1530,9 +1489,9 @@ pub(crate) async fn set_stt_platform_selection_impl(
         .map_err(|err| format!("Failed to join STT model load task: {err}"))?
         .map_err(|e| e.to_string())?;
 
-    let mut settings = get_settings(&app_handle);
-    sync_stt_selection_fields(&mut settings, &model_info);
-    write_settings(&app_handle, settings);
+    crate::settings::update(&app_handle, |settings| {
+        sync_stt_selection_fields(settings, &model_info)
+    });
     app_handle
         .emit("active-model-changed", resolved_model_id)
         .map_err(|e| e.to_string())?;
@@ -1576,9 +1535,9 @@ pub(crate) async fn set_active_model_impl(
         .map_err(|err| format!("Failed to join STT model load task: {err}"))?
         .map_err(|e| e.to_string())?;
 
-    let mut settings = get_settings(&app_handle);
-    sync_stt_selection_fields(&mut settings, &model_info);
-    write_settings(&app_handle, settings);
+    crate::settings::update(&app_handle, |settings| {
+        sync_stt_selection_fields(settings, &model_info)
+    });
     app_handle
         .emit("active-model-changed", model_id)
         .map_err(|e| e.to_string())?;
@@ -1693,76 +1652,78 @@ async fn set_tts_platform_selection_impl(
         }
     }
 
-    let mut settings = get_settings(&app_handle);
-    settings.tts_engine_preference = match provider_id.as_str() {
-        TTS_PROVIDER_SYSTEM_BUILTIN_ID => crate::settings::TtsEnginePreference::System,
-        TTS_PROVIDER_SHERPA_PACK_ID => crate::settings::TtsEnginePreference::SherpaOnnx,
-        TTS_PROVIDER_LOCAL_SIDECAR_API_ID
-        | TTS_PROVIDER_OPENVOICE_ID
-        | TTS_PROVIDER_CHATTERBOX_ID
-        | TTS_PROVIDER_KOKORO_ID
-        | TTS_PROVIDER_SUPERTONIC_ID
-        | TTS_PROVIDER_XTTS_ID => crate::settings::TtsEnginePreference::Sidecar,
-        _ => {
-            if model.source_kind == CatalogSourceKind::Runtime {
+    let select = |settings: &mut AppSettings| {
+        settings.tts_engine_preference = match provider_id.as_str() {
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID => crate::settings::TtsEnginePreference::System,
+            TTS_PROVIDER_SHERPA_PACK_ID => crate::settings::TtsEnginePreference::SherpaOnnx,
+            TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+            | TTS_PROVIDER_OPENVOICE_ID
+            | TTS_PROVIDER_CHATTERBOX_ID
+            | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_SUPERTONIC_ID
+            | TTS_PROVIDER_XTTS_ID => crate::settings::TtsEnginePreference::Sidecar,
+            _ if model.source_kind == CatalogSourceKind::Runtime => {
                 crate::settings::TtsEnginePreference::Sidecar
-            } else {
-                settings.tts_engine_preference
             }
+            _ => settings.tts_engine_preference,
+        };
+
+        let next_profile_id = if tts_model_supports_voice_profile(model) {
+            settings
+                .active_tts_preset()
+                .and_then(|preset| preset.voice_profile_id.clone())
+                .or_else(|| settings.selected_tts_profile_id.clone())
+        } else {
+            None
+        };
+
+        if let Some(active_preset) = settings.active_tts_preset_mut() {
+            let previous_provider_id = active_preset.provider_id.clone();
+            active_preset.provider_id = provider_id.clone();
+            active_preset.model_id = resolved_model_id.clone();
+            match provider_id.as_str() {
+                TTS_PROVIDER_SHERPA_PACK_ID | TTS_PROVIDER_QWEN3_NATIVE_ID => {
+                    active_preset.voice_id = Some(resolved_model_id.clone());
+                    active_preset.voice_label_snapshot = Some(model.label.clone());
+                }
+                TTS_PROVIDER_SYSTEM_BUILTIN_ID => {}
+                _ => {
+                    // Clear stale voice_id when switching between providers so a
+                    // voice identifier from one engine isn't misinterpreted by
+                    // another (e.g. a Qwen3 model ID treated as a Kokoro voice).
+                    if previous_provider_id != provider_id {
+                        active_preset.voice_id = None;
+                    }
+                    if active_preset.voice_profile_id.is_none() {
+                        active_preset.voice_label_snapshot = active_preset
+                            .voice_label_snapshot
+                            .clone()
+                            .or_else(|| active_preset.voice_id.clone());
+                    }
+                }
+            }
+            active_preset.voice_profile_id = next_profile_id;
         }
+
+        settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone());
+        settings.sync_legacy_tts_state_from_active_preset();
     };
 
-    let next_profile_id = if tts_model_supports_voice_profile(model) {
-        settings
-            .active_tts_preset()
-            .and_then(|preset| preset.voice_profile_id.clone())
-            .or_else(|| settings.selected_tts_profile_id.clone())
-    } else {
-        None
-    };
-
-    if let Some(active_preset) = settings.active_tts_preset_mut() {
-        let previous_provider_id = active_preset.provider_id.clone();
-        active_preset.provider_id = provider_id.clone();
-        active_preset.model_id = resolved_model_id.clone();
-        match provider_id.as_str() {
-            TTS_PROVIDER_SHERPA_PACK_ID | TTS_PROVIDER_QWEN3_NATIVE_ID => {
-                active_preset.voice_id = Some(resolved_model_id.clone());
-                active_preset.voice_label_snapshot = Some(model.label.clone());
-            }
-            TTS_PROVIDER_SYSTEM_BUILTIN_ID => {}
-            _ => {
-                // Clear stale voice_id when switching between providers so a
-                // voice identifier from one engine isn't misinterpreted by
-                // another (e.g. a Qwen3 model ID treated as a Kokoro voice).
-                if previous_provider_id != provider_id {
-                    active_preset.voice_id = None;
-                }
-                if active_preset.voice_profile_id.is_none() {
-                    active_preset.voice_label_snapshot = active_preset
-                        .voice_label_snapshot
-                        .clone()
-                        .or_else(|| active_preset.voice_id.clone());
-                }
-            }
-        }
-        active_preset.voice_profile_id = next_profile_id.clone();
-    }
-
-    settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone());
-    settings.sync_legacy_tts_state_from_active_preset();
-
+    // The runtime must accept the selection before it is persisted, so the
+    // selection is previewed on a copy and applied to fresh settings after.
     if model.source_kind == CatalogSourceKind::Runtime {
+        let mut preview = get_settings(&app_handle);
+        select(&mut preview);
         tts_manager
             .sync_runtime_selection(
                 &provider_id,
                 &resolved_model_id,
-                settings.selected_tts_profile_id.as_deref(),
+                preview.selected_tts_profile_id.as_deref(),
             )
             .await?;
     }
 
-    write_settings(&app_handle, settings);
+    crate::settings::update(&app_handle, select);
     Ok(())
 }
 
@@ -1783,25 +1744,7 @@ pub async fn get_transcription_model_status(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn is_model_loading(
-    transcription_manager: State<'_, Arc<TranscriptionManager>>,
-) -> Result<bool, String> {
-    let current_model = transcription_manager.get_current_model();
-    Ok(current_model.is_none())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub async fn has_any_models_available(
-    model_manager: State<'_, Arc<ModelManager>>,
-) -> Result<bool, String> {
-    let models = model_manager.get_available_models();
-    Ok(models.iter().any(model_is_available))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn has_any_models_or_downloads(
     model_manager: State<'_, Arc<ModelManager>>,
 ) -> Result<bool, String> {
     let models = model_manager.get_available_models();
@@ -1831,4 +1774,56 @@ mod tests {
             "ResembleAI/chatterbox-turbo"
         ));
     }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_stt_platform_selection(
+    app_handle: AppHandle,
+    model_manager: State<'_, Arc<ModelManager>>,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    let model_manager = model_manager.inner().clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    run_model_platform_command_on_stack("set-stt-platform-selection", move || async move {
+        set_stt_platform_selection_impl(
+            app_handle,
+            model_manager,
+            transcription_manager,
+            provider_id,
+            model_id,
+        )
+        .await
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
+    let manager = app_handle.state::<Arc<TtsManager>>().inner().clone();
+    run_model_platform_command_on_stack("delete-tts-hf-model", move || async move {
+        manager.remove_pack(&repo_id)
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn is_model_loading(
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
+) -> Result<bool, String> {
+    let current_model = transcription_manager.get_current_model();
+    Ok(current_model.is_none())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn has_any_models_or_downloads(
+    model_manager: State<'_, Arc<ModelManager>>,
+) -> Result<bool, String> {
+    let models = model_manager.get_available_models();
+    Ok(models.iter().any(model_is_available))
 }

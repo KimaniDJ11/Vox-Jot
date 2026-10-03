@@ -19,7 +19,7 @@ import {
   ToggleSwitch,
 } from "@/components/ui";
 import { Button } from "../../ui/Button";
-import { ResetButton } from "../../ui/ResetButton";
+import { ActionIconButton } from "../../ui/ActionIconButton";
 import { Input } from "../../ui/Input";
 
 import { ProviderSelect } from "../PostProcessingSettingsApi/ProviderSelect";
@@ -239,16 +239,18 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                 onBlur={() => {}}
                 className="flex-1 min-w-[380px]"
               />
-              <ResetButton
+              <ActionIconButton
                 onClick={state.handleRefreshModels}
                 disabled={disabled || state.isFetchingModels}
-                ariaLabel={t("settings.postProcessing.api.model.refreshModels")}
-                className="flex h-10 w-10 items-center justify-center"
+                aria-label={t(
+                  "settings.postProcessing.api.model.refreshModels",
+                )}
+                className="h-11 w-11"
               >
                 <RefreshCcw
                   className={`h-4 w-4 ${state.isFetchingModels ? "animate-spin" : ""}`}
                 />
-              </ResetButton>
+              </ActionIconButton>
             </div>
           </SettingContainer>
         </>

@@ -1,3 +1,4 @@
+import type { SettingsSnapshot } from "@/bindings";
 import React, {
   useCallback,
   useEffect,
@@ -10,11 +11,14 @@ import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
 import {
   commands,
+  type AppSettings,
   type ContextCaptureStatus,
   type ResolvedWriteRule,
 } from "@/bindings";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
+import { usePinState } from "@/hooks/usePinState";
 import i18n from "@/i18n";
+import { SETTINGS_SNAPSHOT_EVENT } from "@/lib/settingsEvents";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
 
@@ -43,11 +47,6 @@ interface CorrectionOverlayPayload {
   corrected: string;
   confidence: number;
   additionalCount?: number;
-}
-
-interface SettingsChangedPayload {
-  setting?: string;
-  value?: unknown;
 }
 
 interface ScreenContextCapturePayload {
@@ -250,6 +249,7 @@ function roundedRect(
 }
 
 const RecordingOverlay: React.FC = () => {
+  const pin = usePinState();
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
@@ -416,31 +416,36 @@ const RecordingOverlay: React.FC = () => {
     setMatchedRule(null);
   });
 
-  useTauriEvent<SettingsChangedPayload | null>("settings-changed", (event) => {
-    const payload = event.payload;
-    // Some settings writers send a generic synchronization event with no
-    // payload. Only structured setting events can update overlay state.
-    if (!payload || typeof payload !== "object") return;
-
-    if (payload.setting === "show_live_partials") {
-      const nextPartials = payload.value !== false;
+  const applyOverlaySettings = useCallback(
+    (settings: AppSettings) => {
+      const nextPartials = settings.show_live_partials ?? true;
       setShowLivePartials(nextPartials);
-      if (!nextPartials) {
-        setPartialText("");
+      if (!nextPartials) setPartialText("");
+
+      const nextEnabled = settings.screen_context_enabled ?? true;
+      screenContextEnabledRef.current = nextEnabled;
+      setScreenContextEnabled(nextEnabled);
+      if (!nextEnabled) {
+        screenContextStatusRef.current = "disabled";
+        setScreenContextStatus("disabled");
+        clearScreenContextPulse();
       }
-      return;
-    }
-    if (payload.setting !== "screen_context_enabled") {
-      return;
-    }
-    const nextEnabled = payload.value !== false;
-    screenContextEnabledRef.current = nextEnabled;
-    setScreenContextEnabled(nextEnabled);
-    if (!nextEnabled) {
-      screenContextStatusRef.current = "disabled";
-      setScreenContextStatus("disabled");
-      clearScreenContextPulse();
-    }
+    },
+    [clearScreenContextPulse],
+  );
+
+  const settingsRevisionRef = useRef(-1);
+  const applySettingsSnapshot = useCallback(
+    (snapshot: SettingsSnapshot) => {
+      if (snapshot.revision <= settingsRevisionRef.current) return;
+      settingsRevisionRef.current = snapshot.revision;
+      applyOverlaySettings(snapshot.settings);
+    },
+    [applyOverlaySettings],
+  );
+
+  useTauriEvent<SettingsSnapshot>(SETTINGS_SNAPSHOT_EVENT, (event) => {
+    applySettingsSnapshot(event.payload);
   });
 
   useTauriEvent<ContextCaptureStatus>("screen-context-status", (event) => {
@@ -469,15 +474,8 @@ const RecordingOverlay: React.FC = () => {
 
     const loadScreenContextState = async () => {
       try {
-        const settingsResult = await commands.getAppSettings();
-        if (!cancelled && settingsResult.status === "ok") {
-          const nextEnabled =
-            settingsResult.data.screen_context_enabled ?? true;
-          screenContextEnabledRef.current = nextEnabled;
-          setScreenContextEnabled(nextEnabled);
-          const nextPartials = settingsResult.data.show_live_partials ?? true;
-          setShowLivePartials(nextPartials);
-        }
+        const snapshot = await commands.getSettingsSnapshot();
+        if (!cancelled) applySettingsSnapshot(snapshot);
       } catch (error) {
         console.error("Failed to read settings in overlay:", error);
       }
@@ -497,7 +495,7 @@ const RecordingOverlay: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applySettingsSnapshot]);
 
   useEffect(() => clearScreenContextPulse, [clearScreenContextPulse]);
 
@@ -628,6 +626,16 @@ const RecordingOverlay: React.FC = () => {
                               …
                             </span>
                           </div>
+                        ) : pin?.target && pin.bound && !isEditingSelection ? (
+                          <span
+                            className="truncate text-xs text-[var(--text)]"
+                            title={pin.target.locator.label}
+                          >
+                            {t("pinnedTarget.status", {
+                              defaultValue: "Pinned: {{app}}",
+                              app: pin.target.app_name,
+                            })}
+                          </span>
                         ) : matchedRule ? (
                           <button
                             type="button"

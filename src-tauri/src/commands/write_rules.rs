@@ -1,5 +1,5 @@
 use crate::post_processing::{ActiveAppContext, ResolvedWriteRule, WriteRule};
-use crate::settings::{get_settings, write_settings};
+use crate::settings::{self, get_settings};
 use crate::write_rules::{needs_url_capture, validate_write_rules, RuleResolver};
 use tauri::AppHandle;
 
@@ -16,27 +16,26 @@ pub fn upsert_write_rule(app: AppHandle, rule: WriteRule) -> Result<WriteRule, S
         return Err("Profile name is required.".to_string());
     }
 
-    let mut settings = get_settings(&app);
-    if let Some(existing) = settings
-        .write_rules
-        .iter_mut()
-        .find(|existing| existing.id == rule.id)
-    {
-        *existing = rule.clone();
-    } else {
-        settings.write_rules.push(rule.clone());
-    }
-    validate_write_rules(&settings.write_rules)?;
-    write_settings(&app, settings);
+    settings::try_update(&app, |settings| {
+        match settings
+            .write_rules
+            .iter_mut()
+            .find(|existing| existing.id == rule.id)
+        {
+            Some(existing) => *existing = rule.clone(),
+            None => settings.write_rules.push(rule.clone()),
+        }
+        validate_write_rules(&settings.write_rules)
+    })?;
     Ok(rule)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub fn delete_write_rule(app: AppHandle, id: String) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.write_rules.retain(|rule| rule.id != id);
-    write_settings(&app, settings);
+    settings::update(&app, |settings| {
+        settings.write_rules.retain(|rule| rule.id != id)
+    });
     Ok(())
 }
 
@@ -58,18 +57,18 @@ pub async fn preview_write_rule_text(
 #[tauri::command]
 #[specta::specta]
 pub fn reorder_write_rules(app: AppHandle, ordered_ids: Vec<String>) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    let mut priority = (ordered_ids.len() as i32) * 10;
-    for id in ordered_ids {
-        if let Some(rule) = settings.write_rules.iter_mut().find(|rule| rule.id == id) {
-            rule.priority = priority;
-            priority -= 10;
+    settings::update(&app, |settings| {
+        let mut priority = (ordered_ids.len() as i32) * 10;
+        for id in &ordered_ids {
+            if let Some(rule) = settings.write_rules.iter_mut().find(|rule| &rule.id == id) {
+                rule.priority = priority;
+                priority -= 10;
+            }
         }
-    }
-    settings
-        .write_rules
-        .sort_by_key(|rule| std::cmp::Reverse(rule.priority));
-    write_settings(&app, settings);
+        settings
+            .write_rules
+            .sort_by_key(|rule| std::cmp::Reverse(rule.priority));
+    });
     Ok(())
 }
 
@@ -124,16 +123,4 @@ pub fn get_frontmost_url_for_write_rules(
     }
 
     Ok(crate::browser_url::active_browser_url(&app, bundle_id))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn change_write_rules_url_capture_enabled_setting(
-    app: AppHandle,
-    enabled: bool,
-) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.write_rules_url_capture_enabled = enabled;
-    write_settings(&app, settings);
-    Ok(())
 }

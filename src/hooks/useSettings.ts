@@ -1,68 +1,37 @@
 import { useMemo } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
-import type {
-  AppSettings as Settings,
-  AudioDevice,
-  PostProcessResult,
-  VoiceInfo,
-} from "@/bindings";
-import type { LanguageSyncResult } from "@/stores/settingsStore";
-import type { LanguageSyncTrigger } from "@/lib/languageSync";
+import type { AppSettings } from "@/bindings";
+import type { SettingsStore } from "@/stores/settings/types";
 
-interface UseSettingsReturn {
-  // State
-  settings: Settings | null;
-  isLoading: boolean;
-  isUpdating: (key: string) => boolean;
-  audioDevices: AudioDevice[];
-  outputDevices: AudioDevice[];
+type UseSettingsReturn = Pick<
+  SettingsStore,
+  | "settings"
+  | "isLoading"
+  | "audioDevices"
+  | "outputDevices"
+  | "postProcessModelOptions"
+  | "updateSetting"
+  | "resetSetting"
+  | "refreshSettings"
+  | "refreshAudioDevices"
+  | "refreshOutputDevices"
+  | "updateBinding"
+  | "resetBinding"
+  | "getSetting"
+  | "setPostProcessProvider"
+  | "updatePostProcessBaseUrl"
+  | "updatePostProcessApiKey"
+  | "updatePostProcessModel"
+  | "updateTranslationModel"
+  | "fetchPostProcessModels"
+  | "previewPostProcessText"
+  | "setAppLanguageWithSync"
+  | "applyGlobalLanguageSync"
+> & {
+  isUpdating: SettingsStore["isUpdatingKey"];
   audioFeedbackEnabled: boolean;
-  postProcessModelOptions: Record<string, string[]>;
-
-  // Actions
-  updateSetting: <K extends keyof Settings>(
-    key: K,
-    value: Settings[K],
-  ) => Promise<void>;
-  resetSetting: (key: keyof Settings) => Promise<void>;
-  refreshSettings: () => Promise<void>;
-  refreshAudioDevices: () => Promise<void>;
-  refreshOutputDevices: () => Promise<void>;
-
-  // Binding-specific actions
-  updateBinding: (id: string, binding: string) => Promise<void>;
-  resetBinding: (id: string) => Promise<void>;
-
-  // Convenience getters
-  getSetting: <K extends keyof Settings>(key: K) => Settings[K] | undefined;
-
-  // Post-processing helpers
-  setPostProcessProvider: (providerId: string) => Promise<void>;
-  updatePostProcessBaseUrl: (
-    providerId: string,
-    baseUrl: string,
-  ) => Promise<void>;
-  updatePostProcessApiKey: (
-    providerId: string,
-    apiKey: string,
-  ) => Promise<void>;
-  updatePostProcessModel: (providerId: string, model: string) => Promise<void>;
-  fetchPostProcessModels: (providerId: string) => Promise<string[]>;
-  previewPostProcessText: (
-    text: string,
-    appBundleIdOverride?: string | null,
-  ) => Promise<PostProcessResult>;
-  setAppLanguageWithSync: (appLanguage: string) => Promise<LanguageSyncResult>;
-  applyGlobalLanguageSync: (
-    appLanguage: string,
-    trigger: LanguageSyncTrigger,
-  ) => Promise<LanguageSyncResult>;
-  setTtsVoiceSelection: (
-    voiceId: string | null,
-    voice?: VoiceInfo | null,
-  ) => Promise<void>;
-}
+};
 
 export const useSettings = (): UseSettingsReturn => {
   const storeProps = useSettingsStore(
@@ -87,16 +56,16 @@ export const useSettings = (): UseSettingsReturn => {
       updatePostProcessBaseUrl: store.updatePostProcessBaseUrl,
       updatePostProcessApiKey: store.updatePostProcessApiKey,
       updatePostProcessModel: store.updatePostProcessModel,
+      updateTranslationModel: store.updateTranslationModel,
       fetchPostProcessModels: store.fetchPostProcessModels,
       previewPostProcessText: store.previewPostProcessText,
       setAppLanguageWithSync: store.setAppLanguageWithSync,
       applyGlobalLanguageSync: store.applyGlobalLanguageSync,
-      setTtsVoiceSelection: store.setTtsVoiceSelection,
     })),
   );
 
   return useMemo(() => {
-    const { isUpdating: updatingByKey, isUpdatingKey, ...rest } = storeProps;
+    const { isUpdating: _updatingByKey, isUpdatingKey, ...rest } = storeProps;
     return {
       ...rest,
       isUpdating: isUpdatingKey,
@@ -110,9 +79,9 @@ export const useSettings = (): UseSettingsReturn => {
  * so hot components (sliders, toggles, overlays) don't repaint on unrelated
  * settings writes like `useSettings()` would.
  */
-export function useSetting<K extends keyof Settings>(
+export function useSetting<K extends keyof AppSettings>(
   key: K,
-): Settings[K] | undefined {
+): AppSettings[K] | undefined {
   return useSettingsStore((s) => s.settings?.[key]);
 }
 
@@ -121,12 +90,12 @@ export function useSetting<K extends keyof Settings>(
  * Prefer this over `useSettings()` when a component reads more than one key
  * but far fewer than all of them.
  */
-export function useSettingsSlice<K extends keyof Settings>(
+export function useSettingsSlice<K extends keyof AppSettings>(
   keys: readonly K[],
-): { [P in K]: Settings[P] | undefined } {
+): { [P in K]: AppSettings[P] | undefined } {
   return useSettingsStore(
     useShallow((s) => {
-      const slice = {} as { [P in K]: Settings[P] | undefined };
+      const slice = {} as { [P in K]: AppSettings[P] | undefined };
       for (const k of keys) slice[k] = s.settings?.[k];
       return slice;
     }),

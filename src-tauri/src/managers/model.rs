@@ -1,7 +1,7 @@
 use crate::artifact_download::{emit_artifact_progress, ArtifactProgress, HfRepoDownloadOptions};
 use crate::external_model_storage::{self, ModelStorageLocation};
 use crate::github_release;
-use crate::settings::{get_settings, write_settings};
+use crate::settings::get_settings;
 use anyhow::Result;
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
@@ -1597,8 +1597,7 @@ impl ModelManager {
     /// to a local/built-in model.
     pub fn fallback_selected_model_if_unavailable(&self) -> Result<SelectedModelDisconnectOutcome> {
         self.update_download_status()?;
-        let mut settings = get_settings(&self.app_handle);
-        let selected = settings.selected_model.clone();
+        let selected = get_settings(&self.app_handle).selected_model;
 
         let models = self
             .available_models
@@ -1626,20 +1625,37 @@ impl ModelManager {
 
         let Some(fallback) = fallback else {
             if !selected.is_empty() {
-                settings.selected_model = String::new();
-                settings.selected_stt_model_id = String::new();
-                settings.selected_stt_provider_id = String::new();
-                write_settings(&self.app_handle, settings);
+                self.select_stt_model_if_unchanged(&selected, None);
             }
             return Ok(SelectedModelDisconnectOutcome::Unavailable);
         };
 
-        settings.selected_model = fallback.id.clone();
-        settings.selected_stt_model_id = fallback.id.clone();
-        settings.selected_stt_provider_id =
-            Self::stt_provider_id_for_engine(&fallback.engine_type).to_string();
-        write_settings(&self.app_handle, settings);
-        Ok(SelectedModelDisconnectOutcome::FellBack(fallback.id))
+        if self.select_stt_model_if_unchanged(&selected, Some(&fallback)) {
+            Ok(SelectedModelDisconnectOutcome::FellBack(fallback.id))
+        } else {
+            Ok(SelectedModelDisconnectOutcome::StillAvailable)
+        }
+    }
+
+    /// Replace the selected STT model with `model` (or clear it), unless the
+    /// selection has changed since it was observed as `expected`.
+    fn select_stt_model_if_unchanged(&self, expected: &str, model: Option<&ModelInfo>) -> bool {
+        crate::settings::update(&self.app_handle, |settings| {
+            if settings.selected_model != expected {
+                return false;
+            }
+            let (id, provider_id) = match model {
+                Some(model) => (
+                    model.id.clone(),
+                    Self::stt_provider_id_for_engine(&model.engine_type).to_string(),
+                ),
+                None => (String::new(), String::new()),
+            };
+            settings.selected_model = id.clone();
+            settings.selected_stt_model_id = id;
+            settings.selected_stt_provider_id = provider_id;
+            true
+        })
     }
 
     fn migrate_bundled_models(&self) -> Result<()> {
@@ -1798,52 +1814,45 @@ impl ModelManager {
     }
 
     fn auto_select_model_if_needed(&self) -> Result<()> {
-        let mut settings = get_settings(&self.app_handle);
+        let mut selected = get_settings(&self.app_handle).selected_model;
 
         // Clear stale selection: selected model is set but doesn't exist
         // in available_models (e.g. deleted custom model file)
-        if !settings.selected_model.is_empty() {
-            let models = self
+        if !selected.is_empty() {
+            let exists = self
                 .available_models
                 .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            let exists = models.contains_key(&settings.selected_model);
-            drop(models);
+                .unwrap_or_else(|e| e.into_inner())
+                .contains_key(&selected);
 
             if !exists {
                 info!(
                     "Selected model '{}' not found in available models, clearing selection",
-                    settings.selected_model
+                    selected
                 );
-                settings.selected_model = String::new();
-                settings.selected_stt_model_id = String::new();
-                settings.selected_stt_provider_id = String::new();
-                write_settings(&self.app_handle, settings.clone());
+                if self.select_stt_model_if_unchanged(&selected, None) {
+                    selected.clear();
+                }
             }
         }
 
         // If no model is selected, pick the first available one
-        if settings.selected_model.is_empty() {
-            // Find the first available model
-            let models = self
+        if selected.is_empty() {
+            let available_model = self
                 .available_models
                 .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            if let Some(available_model) = models.values().find(|model| model_is_available(model)) {
+                .unwrap_or_else(|e| e.into_inner())
+                .values()
+                .find(|model| model_is_available(model))
+                .cloned();
+            if let Some(available_model) = available_model {
                 info!(
                     "Auto-selecting model: {} ({})",
                     available_model.id, available_model.name
                 );
-
-                // Update settings with the selected model
-                let mut updated_settings = settings;
-                updated_settings.selected_model = available_model.id.clone();
-                updated_settings.selected_stt_model_id = available_model.id.clone();
-                updated_settings.selected_stt_provider_id =
-                    Self::stt_provider_id_for_engine(&available_model.engine_type).to_string();
-                write_settings(&self.app_handle, updated_settings);
-
-                info!("Successfully auto-selected model: {}", available_model.id);
+                if self.select_stt_model_if_unchanged("", Some(&available_model)) {
+                    info!("Successfully auto-selected model: {}", available_model.id);
+                }
             }
         }
 

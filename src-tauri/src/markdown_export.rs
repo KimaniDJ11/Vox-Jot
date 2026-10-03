@@ -544,7 +544,7 @@ fn write_with_snapshot(
             .ok_or_else(|| {
                 "Folder authorization is missing. Choose the export folder again.".to_string()
             })?;
-        return macos_security_scope::write_file(bookmark, &snapshot.filename, content);
+        macos_security_scope::write_file(bookmark, &snapshot.filename, content)
     }
 
     #[cfg(all(vox_jot_app_store, target_os = "macos", not(target_arch = "aarch64")))]
@@ -650,7 +650,7 @@ pub fn reveal_markdown_export(
             .ok_or_else(|| {
                 "Folder authorization is missing. Choose the export folder again.".to_string()
             })?;
-        return macos_security_scope::reveal_file(bookmark, &snapshot.filename);
+        macos_security_scope::reveal_file(bookmark, &snapshot.filename)
     }
 
     #[cfg(not(all(vox_jot_app_store, target_os = "macos", target_arch = "aarch64")))]

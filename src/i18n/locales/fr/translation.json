@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Menu de commande",
             "description": "Ouvrez la palette de commandes de n'importe où."
+          },
+          "pin_field": {
+            "name": "Épingler le champ de texte",
+            "description": "Cliquez sur un champ de texte, puis utilisez le raccourci Épingler le champ de texte. La prochaine dictée ou réunion y sera ajoutée pendant que vous travaillez ailleurs. L’autorisation d’accessibilité est requise. Aucun message n’est envoyé automatiquement."
+          },
+          "clear_pin": {
+            "name": "Libérer le champ épinglé",
+            "description": "Libérer le champ épinglé"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Assistant inactif",
       "app": "Application {{count}} Mo",
       "sidecar": "Assistant {{count}} Mo"
+    },
+    "errors": {
+      "saveFailed": "Impossible d’enregistrer la modification : {{error}}",
+      "modelListFailed": "Impossible de charger les modèles : {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Échec de l'annulation du téléchargement : {{detail}}",
       "deleteModel": "Échec de la suppression du modèle : {{detail}}",
       "extractModel": "Échec de l'extraction du modèle : {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Destination épinglée",
+    "label": "Conserver la destination d’un enregistrement",
+    "description": "Cliquez sur un champ de texte, puis utilisez le raccourci Épingler le champ de texte. La prochaine dictée ou réunion y sera ajoutée pendant que vous travaillez ailleurs. L’autorisation d’accessibilité est requise. Aucun message n’est envoyé automatiquement.",
+    "pinShortcut": "Épingler le champ de texte",
+    "clearShortcut": "Libérer le champ épinglé",
+    "status": "Épinglé : {{app}}",
+    "bound": "lié à l’enregistrement",
+    "next": "prochain enregistrement",
+    "clear": "Libérer",
+    "copied": "Texte enregistré copié",
+    "copy": "Copier le texte enregistré",
+    "working": "En cours…",
+    "retry": "Réessayer l’insertion en arrière-plan",
+    "paste": "Mettre l’app au premier plan et coller",
+    "dismiss": "Fermer",
+    "inserted": "Inséré dans {{app}}",
+    "loadError": "Impossible de charger l’insertion enregistrée.",
+    "delivery": {
+      "pending": "Enregistré · en attente d’insertion",
+      "delivering": "Insertion dans le champ épinglé…",
+      "delivered": "Inséré dans le champ épinglé",
+      "deferred": "Enregistré · non inséré",
+      "partial": "Insertion partielle · vérifiez le champ",
+      "uncertain": "Insertion non confirmée · vérifiez le champ",
+      "cancelled": "Enregistré · insertion annulée"
     }
   }
 }

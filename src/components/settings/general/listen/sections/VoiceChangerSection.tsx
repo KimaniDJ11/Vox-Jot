@@ -25,7 +25,6 @@ import {
 import { commands } from "@/bindings";
 import { convertVoiceRecording, convertVoiceSample } from "@/lib/voiceChanger";
 import ModelListControls from "@/components/model-hub/ModelListControls";
-import { ActionIconButton } from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";

@@ -18,6 +18,7 @@ use crate::correction_tracker::InsertedSpanTracker;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::{HistoryManager, TranslationHistoryContext};
 use crate::managers::transcription::TranscriptionManager;
+use crate::pinned_target::{DeliveryRecord, DeliverySource, PinManager, PinnedTarget};
 use crate::post_processing::{
     apply_personal_dictionary, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
@@ -54,6 +55,7 @@ use tauri::Manager;
 use tauri::{AppHandle, Emitter};
 
 mod active_app;
+mod history_save;
 mod post_process;
 mod prompt;
 mod route;
@@ -179,16 +181,69 @@ struct ActiveDictationIntent {
     run_id: u64,
     intent: DictationIntent,
     selection_probe_pending: bool,
+    pinned_target: Option<PinnedTarget>,
 }
 
 static NEXT_DICTATION_RUN_ID: AtomicU64 = AtomicU64::new(1);
 static ACTIVE_DICTATION_INTENTS: Lazy<Mutex<HashMap<String, ActiveDictationIntent>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+struct PinRunGuard {
+    app: AppHandle,
+    target: Option<PinnedTarget>,
+    handed_off: bool,
+}
+impl Drop for PinRunGuard {
+    fn drop(&mut self) {
+        if !self.handed_off {
+            if let (Some(target), Some(manager)) =
+                (&self.target, self.app.try_state::<Arc<PinManager>>())
+            {
+                if manager.valid(target) {
+                    manager.clear(&self.app);
+                }
+            }
+        }
+    }
+}
+
+async fn save_pinned_dictation(
+    app: &AppHandle,
+    history: Arc<HistoryManager>,
+    request: DeferredHistorySave,
+    record: DeliveryRecord,
+) -> Result<i64, String> {
+    let duration = (!request.audio_samples.is_empty()).then(|| {
+        (request.audio_samples.len() as i64 * 1000)
+            / crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE as i64
+    });
+    let result = history
+        .save_transcription_with_delivery(
+            request.audio_samples,
+            request.transcription_text,
+            request.post_processed_text,
+            request.post_process_prompt,
+            request.dictionary_hits,
+            None,
+            request.translation_context,
+            request.tts_context,
+            request.screen_context_metadata,
+            duration,
+            Some(record.clone()),
+        )
+        .await
+        .map_err(|e| e.to_string());
+    if result.is_err() {
+        app.state::<Arc<PinManager>>().retain_unsaved(app, record);
+    }
+    result
+}
+
 fn begin_active_dictation_intent(
     binding_id: &str,
     intent: DictationIntent,
     selection_probe_pending: bool,
+    pinned_target: Option<PinnedTarget>,
 ) -> u64 {
     let run_id = NEXT_DICTATION_RUN_ID.fetch_add(1, Ordering::Relaxed);
     let mut guard = ACTIVE_DICTATION_INTENTS
@@ -200,6 +255,7 @@ fn begin_active_dictation_intent(
             run_id,
             intent,
             selection_probe_pending,
+            pinned_target,
         },
     );
     run_id
@@ -258,7 +314,10 @@ pub(crate) fn clear_all_active_dictation_intents() {
         .clear();
 }
 
-fn take_active_dictation_intent(binding_id: &str, default_mode: &DictationMode) -> DictationIntent {
+fn take_active_dictation_intent(
+    binding_id: &str,
+    default_mode: &DictationMode,
+) -> (DictationIntent, Option<PinnedTarget>) {
     let mut guard = ACTIVE_DICTATION_INTENTS
         .lock()
         .unwrap_or_else(|e| e.into_inner());
@@ -266,7 +325,7 @@ fn take_active_dictation_intent(binding_id: &str, default_mode: &DictationMode) 
     guard
         .remove(binding_id)
         .map(|active| {
-            if active.selection_probe_pending {
+            let intent = if active.selection_probe_pending {
                 // Never delay microphone stop for an unfinished selection probe.
                 // For adaptive dictation, fail closed: treating this as normal
                 // dictation could paste spoken edit instructions over a real
@@ -281,20 +340,26 @@ fn take_active_dictation_intent(binding_id: &str, default_mode: &DictationMode) 
                 }
             } else {
                 active.intent
-            }
+            };
+            (intent, active.pinned_target)
         })
-        .unwrap_or_else(|| match default_mode {
-            DictationMode::Dictate { post_process } => DictationIntent::Dictate {
-                post_process: *post_process,
-            },
-            DictationMode::Adaptive { post_process } => DictationIntent::Dictate {
-                post_process: *post_process,
-            },
-            DictationMode::RewriteSelection => DictationIntent::RewriteSelection {
-                selected_text: String::new(),
-                source: RewriteSelectionSource::ExplicitShortcut,
-                target_guard: None,
-            },
+        .unwrap_or_else(|| {
+            (
+                match default_mode {
+                    DictationMode::Dictate { post_process } => DictationIntent::Dictate {
+                        post_process: *post_process,
+                    },
+                    DictationMode::Adaptive { post_process } => DictationIntent::Dictate {
+                        post_process: *post_process,
+                    },
+                    DictationMode::RewriteSelection => DictationIntent::RewriteSelection {
+                        selected_text: String::new(),
+                        source: RewriteSelectionSource::ExplicitShortcut,
+                        target_guard: None,
+                    },
+                },
+                None,
+            )
         })
 }
 
@@ -934,6 +999,12 @@ impl ShortcutAction for TranscribeAction {
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
         let settings = get_settings(app);
+        if settings.pinned_paste_enabled && !matches!(self.mode, DictationMode::RewriteSelection) {
+            if let Some(error) = app.state::<Arc<PinManager>>().snapshot().error {
+                let _=app.emit("pin-error",format!("{error} Clear the failed destination or pin another field before recording."));
+                return;
+            }
+        }
         if matches!(self.mode, DictationMode::RewriteSelection) && !settings.post_process_enabled {
             debug!(
                 "Ignoring rewrite-selection binding '{}' because post-processing is disabled",
@@ -969,6 +1040,13 @@ impl ShortcutAction for TranscribeAction {
             DictationMode::Dictate { post_process } => DictationIntent::Dictate { post_process },
             DictationMode::Adaptive { post_process } => DictationIntent::Dictate { post_process },
         };
+        let pinned_target = if settings.pinned_paste_enabled
+            && !matches!(self.mode, DictationMode::RewriteSelection)
+        {
+            app.state::<Arc<PinManager>>().bind()
+        } else {
+            None
+        };
         let should_probe_selection = match self.mode {
             DictationMode::RewriteSelection => true,
             DictationMode::Adaptive { .. } => {
@@ -979,15 +1057,20 @@ impl ShortcutAction for TranscribeAction {
                             || settings.cloud_selection_rewrite_allowed
                     })
                     .unwrap_or(false);
-                cfg!(target_os = "macos")
+                pinned_target.is_none()
+                    && cfg!(target_os = "macos")
                     && settings.adaptive_selection_rewrite_enabled
                     && settings.post_process_enabled
                     && provider_allows_adaptive_selection
             }
             DictationMode::Dictate { .. } => false,
         };
-        let dictation_run_id =
-            begin_active_dictation_intent(&binding_id, initial_intent, should_probe_selection);
+        let dictation_run_id = begin_active_dictation_intent(
+            &binding_id,
+            initial_intent,
+            should_probe_selection,
+            pinned_target.clone(),
+        );
 
         let rm = app.state::<Arc<AudioRecordingManager>>();
 
@@ -1045,6 +1128,9 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
+            if pinned_target.is_some() {
+                app.state::<Arc<PinManager>>().publish(app);
+            }
             if should_probe_selection {
                 let app_clone = app.clone();
                 let b_id_clone = binding_id.clone();
@@ -1119,10 +1205,22 @@ impl ShortcutAction for TranscribeAction {
                     }
                 });
             }
-            if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
-                context_manager.request_immediate_capture("dictation_start");
+            if pinned_target.is_none() {
+                if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
+                    context_manager.request_immediate_capture("dictation_start");
+                }
             }
-            let prepared_context = capture_prepared_write_context(app, &settings);
+            let prepared_context = if let Some(target) = pinned_target.as_ref() {
+                PreparedActiveAppContext {
+                    active_app_context: Some(crate::post_processing::ActiveAppContext {
+                        bundle_id: target.bundle_id.clone(),
+                        localized_name: target.app_name.clone(),
+                    }),
+                    active_url: None,
+                }
+            } else {
+                capture_prepared_write_context(app, &settings)
+            };
             let resolved_rule = resolve_active_write_rule(&settings, &prepared_context);
             emit_write_rule_resolution(app, resolved_rule.as_ref());
             let effective_settings =
@@ -1143,6 +1241,11 @@ impl ShortcutAction for TranscribeAction {
             shortcut::register_cancel_shortcut(app);
         } else {
             // Starting failed (for example due to blocked microphone permissions).
+            if let Some(target) = pinned_target.as_ref() {
+                let manager = app.state::<Arc<PinManager>>();
+                manager.release_binding(target);
+                manager.publish(app);
+            }
             // Revert UI state so we don't stay stuck in the recording overlay.
             tm.stop_partial_provider();
             clear_active_dictation_intent(&binding_id, dictation_run_id);
@@ -1174,7 +1277,7 @@ impl ShortcutAction for TranscribeAction {
         let context_manager = Arc::clone(&app.state::<Arc<ContextCaptureManager>>());
 
         let binding_id = binding_id.to_string();
-        let intent = take_active_dictation_intent(&binding_id, &self.mode);
+        let (intent, pinned_target) = take_active_dictation_intent(&binding_id, &self.mode);
         let overlay_mode = if matches!(&intent, DictationIntent::RewriteSelection { .. }) {
             "rewrite_selection"
         } else {
@@ -1192,6 +1295,11 @@ impl ShortcutAction for TranscribeAction {
         let processing_generation = tm.begin_processing_run();
 
         tauri::async_runtime::spawn(async move {
+            let mut pin_guard = PinRunGuard {
+                app: ah.clone(),
+                target: pinned_target.clone(),
+                handed_off: false,
+            };
             let (
                 post_process,
                 rewrite_selection,
@@ -1263,6 +1371,10 @@ impl ShortcutAction for TranscribeAction {
                 emit_write_rule_resolution(&ah, resolved_rule.as_ref());
                 let mut effective_settings =
                     apply_resolved_rule_to_settings(&settings, resolved_rule.as_ref());
+                if pinned_target.is_some() {
+                    effective_settings.screen_context_enabled = false;
+                    effective_settings.auto_submit = false;
+                }
                 if resolved_rule.is_none() && !settings.write_rules.is_empty() {
                     effective_settings.app_aware_tone_enabled = false;
                 }
@@ -2078,6 +2190,73 @@ impl ShortcutAction for TranscribeAction {
                                     .as_ref()
                                     .map(|ctx| ctx.bundle_id.clone()),
                             };
+                            if let (Some(target), Some(text)) =
+                                (pinned_target.as_ref(), text_to_paste.as_ref())
+                            {
+                                let mut text = text.clone();
+                                if effective_settings.append_trailing_space {
+                                    text.push(' ');
+                                }
+                                let record = DeliveryRecord::pending(
+                                    DeliverySource::History,
+                                    String::new(),
+                                    target.clone(),
+                                    text.clone(),
+                                );
+                                let record_id = record.id.clone();
+                                let delivery_tm = Arc::clone(&tm);
+                                pin_guard.handed_off = true;
+                                // Saving and AX verification use the background
+                                // path; the recorder is free as soon as output is ready.
+                                utils::hide_recording_overlay(&ah);
+                                change_tray_icon(&ah, TrayIconState::Idle);
+                                drop(finish_guard.take());
+                                match save_pinned_dictation(
+                                    &ah,
+                                    Arc::clone(&hm),
+                                    history_save_request,
+                                    record,
+                                )
+                                .await
+                                {
+                                    Ok(history_id) => {
+                                        if effective_settings.paste_method == crate::settings::PasteMethod::None
+                                            && effective_settings.clipboard_handling == crate::settings::ClipboardHandling::CopyToClipboard
+                                        {
+                                            use tauri_plugin_clipboard_manager::ClipboardExt;
+                                            if let Err(error) = ah.clipboard().write_text(text) {
+                                                let _ = ah.emit("pin-error", format!("The result is saved, but copying failed: {error}"));
+                                            }
+                                        }
+                                        let manager = ah.state::<Arc<PinManager>>().inner().clone();
+                                        match manager.deliver(&ah,&record_id,Arc::new(move ||delivery_tm.is_processing_cancelled(processing_generation))).await {
+                                            Ok(record) if record.state==crate::pinned_target::DeliveryState::Delivered=>{
+                                                crate::telemetry::track_first_dictation_success();
+                                                if auto_speak_plan.should_speak {
+                                                    spawn_tts_playback(&ah,SpeakRequest{text:auto_speak_plan.text,locale:auto_speak_plan.locale,preferred_voice_id:None,preset_id:None,inline_preset:None,trigger:Some(auto_speak_plan.trigger),remember_last_output:false},Some(history_id));
+                                                }
+                                            }
+                                            Ok(_)=>{},
+                                            Err(error)=>{let _=ah.emit("recording-error",format!("Pinned delivery stopped: {error}. The result is saved in History."));}
+                                        }
+                                    }
+                                    Err(error) => {
+                                        let _=ah.emit("history-save-failed",format!("Pinned result could not be saved: {error}. Use Copy in the delivery notice."));
+                                    }
+                                }
+                                return;
+                            }
+                            // Preserve history if cancellation or main-thread dispatch
+                            // drops the output callback. Saving remains
+                            // deferred and does not copy the shared audio buffer.
+                            let history_app = ah.clone();
+                            let hm_for_history = Arc::clone(&hm);
+                            let history_save_guard = history_save::HistorySaveGuard::new(
+                                history_save_request,
+                                move |request| {
+                                    spawn_history_save(&history_app, hm_for_history, request);
+                                },
+                            );
 
                             if let Some(ref text_to_paste) = text_to_paste {
                                 if dictation_run_cancelled(
@@ -2153,9 +2332,7 @@ impl ShortcutAction for TranscribeAction {
                                 let paste_time = Instant::now();
                                 let stop_to_paste_started = stop_time;
                                 let submit_override = submit_override;
-                                let hm_for_paste = Arc::clone(&hm);
                                 let tm_for_paste = Arc::clone(&tm);
-                                let history_save_request = history_save_request;
                                 let finish_guard_for_paste = finish_guard.take();
                                 let auto_speak_request = if auto_speak_plan.should_speak {
                                     Some(SpeakRequest {
@@ -2213,7 +2390,6 @@ impl ShortcutAction for TranscribeAction {
                                         )
                                     };
 
-                                    let mut history_save_request = history_save_request;
                                     match paste_result {
                                         Ok(()) => {
                                             crate::product_architecture::record_dictation_latency(
@@ -2244,11 +2420,7 @@ impl ShortcutAction for TranscribeAction {
                                                     insertion_method,
                                                 );
                                             }
-                                            spawn_history_save(
-                                                &ah_clone,
-                                                Arc::clone(&hm_for_paste),
-                                                history_save_request,
-                                            );
+                                            history_save_guard.finish(true);
 
                                             if let Some(auto_speak_request) =
                                                 auto_speak_request.clone()
@@ -2262,15 +2434,7 @@ impl ShortcutAction for TranscribeAction {
                                         }
                                         Err(e) => {
                                             error!("Failed to paste transcription: {}", e);
-                                            // Paste did not reach the user; clear pasted_text so
-                                            // history reflects actual delivery, but still save the
-                                            // transcription so the user can recover it.
-                                            history_save_request.pasted_text = None;
-                                            spawn_history_save(
-                                                &ah_clone,
-                                                Arc::clone(&hm_for_paste),
-                                                history_save_request,
-                                            );
+                                            history_save_guard.finish(false);
                                         }
                                     }
                                     // Hide the overlay after transcription is complete
@@ -2288,9 +2452,7 @@ impl ShortcutAction for TranscribeAction {
                                      failed, or output blocked); persisting transcription to \
                                      history so it is recoverable."
                                 );
-                                // text_to_paste is None here, so history_save_request.pasted_text
-                                // already reflects that nothing was pasted.
-                                spawn_history_save(&ah, Arc::clone(&hm), history_save_request);
+                                history_save_guard.finish(false);
                                 utils::hide_recording_overlay(&ah);
                                 change_tray_icon(&ah, TrayIconState::Idle);
                             }
@@ -2490,8 +2652,8 @@ mod tests {
         let initial = super::DictationIntent::Dictate {
             post_process: false,
         };
-        let old_run = super::begin_active_dictation_intent(binding, initial.clone(), true);
-        let current_run = super::begin_active_dictation_intent(binding, initial, true);
+        let old_run = super::begin_active_dictation_intent(binding, initial.clone(), true, None);
+        let current_run = super::begin_active_dictation_intent(binding, initial, true, None);
         assert!(!super::finish_selection_probe(
             binding,
             old_run,
@@ -2508,7 +2670,7 @@ mod tests {
             Some("second result".into())
         ));
         assert_eq!(
-            super::take_active_dictation_intent(binding, &mode),
+            super::take_active_dictation_intent(binding, &mode).0,
             super::DictationIntent::RewriteSelection {
                 selected_text: "current text".into(),
                 source: super::RewriteSelectionSource::AdaptiveShortcut,
@@ -2534,11 +2696,12 @@ mod tests {
                 post_process: false,
             },
             true,
+            None,
         );
 
         assert!(super::finish_selection_probe(binding, run, None));
         assert_eq!(
-            super::take_active_dictation_intent(binding, &mode),
+            super::take_active_dictation_intent(binding, &mode).0,
             super::DictationIntent::Dictate {
                 post_process: false,
             },
@@ -2557,9 +2720,10 @@ mod tests {
                 post_process: false,
             },
             true,
+            None,
         );
         assert_eq!(
-            super::take_active_dictation_intent(binding, &mode),
+            super::take_active_dictation_intent(binding, &mode).0,
             super::DictationIntent::RewriteSelection {
                 selected_text: String::new(),
                 source: super::RewriteSelectionSource::AdaptiveShortcut,
@@ -2585,9 +2749,10 @@ mod tests {
                 target_guard: None,
             },
             true,
+            None,
         );
         assert_eq!(
-            super::take_active_dictation_intent(binding, &mode),
+            super::take_active_dictation_intent(binding, &mode).0,
             super::DictationIntent::RewriteSelection {
                 selected_text: String::new(),
                 source: super::RewriteSelectionSource::ExplicitShortcut,
@@ -3334,8 +3499,38 @@ mod tests {
 }
 
 // Static Action Map
+struct PinFieldAction;
+impl ShortcutAction for PinFieldAction {
+    fn start(&self, app: &AppHandle, _id: &str, _shortcut: &str) {
+        let app = app.clone();
+        let target_pid = crate::pinned_target::frontmost_pid();
+        let manager = app.state::<Arc<PinManager>>().inner().clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = manager.pin_for_pid(&app, target_pid).await {
+                let _ = app.emit("pin-error", error);
+            }
+        });
+    }
+    fn stop(&self, _app: &AppHandle, _id: &str, _shortcut: &str) {}
+}
+struct ClearPinAction;
+impl ShortcutAction for ClearPinAction {
+    fn start(&self, app: &AppHandle, _id: &str, _shortcut: &str) {
+        app.state::<Arc<PinManager>>().clear(app);
+    }
+    fn stop(&self, _app: &AppHandle, _id: &str, _shortcut: &str) {}
+}
+
 pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::new(|| {
     let mut map = HashMap::new();
+    map.insert(
+        "pin_field".into(),
+        Arc::new(PinFieldAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "clear_pin".into(),
+        Arc::new(ClearPinAction) as Arc<dyn ShortcutAction>,
+    );
     map.insert(
         "transcribe".to_string(),
         Arc::new(TranscribeAction {

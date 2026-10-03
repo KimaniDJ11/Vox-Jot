@@ -5,7 +5,11 @@ pub mod denoise;
 pub mod history;
 pub mod http_api;
 pub mod models;
+pub mod pinned_target;
+pub mod post_process;
 pub mod reader;
+pub mod settings;
+pub mod snippets;
 pub mod speech_analysis;
 pub mod stats;
 pub mod story_studio;
@@ -16,9 +20,7 @@ pub mod write_rules;
 use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{ActiveAppContext, InstalledApp, PostProcessResult, PreviewManager};
 use crate::screen_context::{ContextCaptureManager, ScreenContextDiagnostics};
-use crate::settings::{
-    get_settings, get_settings_without_secrets, write_settings, AppSettings, LogLevel,
-};
+use crate::settings::SettingUpdate;
 use crate::utils::cancel_current_operation;
 #[cfg(target_os = "macos")]
 use std::path::{Path, PathBuf};
@@ -52,21 +54,6 @@ pub fn get_external_model_storage_status(
 
 #[tauri::command]
 #[specta::specta]
-pub fn refresh_external_model_storage(
-    app: AppHandle,
-) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
-    Ok(crate::external_model_storage::refresh_and_notify(&app))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_external_model_storage_disconnect_event(
-) -> Option<crate::external_model_storage::ExternalModelStorageDisconnectEvent> {
-    None
-}
-
-#[tauri::command]
-#[specta::specta]
 pub async fn pick_external_model_storage_dir(
     app: AppHandle,
 ) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
@@ -87,7 +74,13 @@ pub async fn pick_external_model_storage_dir(
     let path = path
         .into_path()
         .map_err(|error| format!("Selected folder path is not readable: {error}"))?;
-    crate::external_model_storage::set_path(&app, Some(path.display().to_string()))
+    let update = SettingUpdate::ExternalModelStoragePath(Some(path.display().to_string()));
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::settings_runtime::apply_setting_updates(&app, vec![update])
+    })
+    .await
+    .map_err(|error| format!("Settings update did not finish: {error}"))??;
+    Ok(crate::external_model_storage::cached_status())
 }
 
 #[tauri::command]
@@ -105,41 +98,11 @@ pub fn open_external_model_storage_dir(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, String> {
-    Ok(get_settings_without_secrets(&app))
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_default_settings(_app: AppHandle) -> Result<AppSettings, String> {
-    Ok(crate::settings::get_default_settings())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn get_log_dir_path(app: AppHandle) -> Result<String, String> {
     let log_dir = crate::portable::app_log_dir(&app)
         .map_err(|e| format!("Failed to get log directory: {}", e))?;
 
     Ok(log_dir.to_string_lossy().to_string())
-}
-
-#[specta::specta]
-#[tauri::command]
-pub fn set_log_level(app: AppHandle, level: LogLevel) -> Result<(), String> {
-    let tauri_log_level: tauri_plugin_log::LogLevel = level.into();
-    let log_level: log::Level = tauri_log_level.into();
-    // Update the file log level atomic so the filter picks up the new level
-    crate::FILE_LOG_LEVEL.store(
-        log_level.to_level_filter() as u8,
-        std::sync::atomic::Ordering::Relaxed,
-    );
-
-    let mut settings = get_settings(&app);
-    settings.log_level = level;
-    write_settings(&app, settings);
-
-    Ok(())
 }
 
 #[specta::specta]
@@ -780,4 +743,19 @@ fn macos_file_icon_data_url(path: &str) -> Result<Option<String>, String> {
 
     let encoded = base64::engine::general_purpose::STANDARD.encode(png_bytes);
     Ok(Some(format!("data:image/png;base64,{}", encoded)))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_external_model_storage_disconnect_event(
+) -> Option<crate::external_model_storage::ExternalModelStorageDisconnectEvent> {
+    None
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn refresh_external_model_storage(
+    app: AppHandle,
+) -> Result<crate::external_model_storage::ExternalModelStorageStatus, String> {
+    Ok(crate::external_model_storage::refresh_and_notify(&app))
 }

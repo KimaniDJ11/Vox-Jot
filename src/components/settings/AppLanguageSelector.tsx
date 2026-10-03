@@ -2,11 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Dropdown } from "../ui/Dropdown";
 import { SettingContainer } from "../ui/SettingContainer";
-import {
-  ensureLanguageResource,
-  SUPPORTED_LANGUAGES,
-  type SupportedLanguageCode,
-} from "../../i18n";
+import { SUPPORTED_LANGUAGES, type SupportedLanguageCode } from "../../i18n";
 import { useSettings } from "@/hooks/useSettings";
 
 interface AppLanguageSelectorProps {
@@ -28,16 +24,7 @@ export const AppLanguageSelector: React.FC<AppLanguageSelectorProps> =
     }));
 
     const handleLanguageChange = async (langCode: string) => {
-      const previousLanguage = i18n.language;
-      await ensureLanguageResource(langCode);
-      await i18n.changeLanguage(langCode);
-      try {
-        await setAppLanguageWithSync(langCode);
-      } catch (error) {
-        await ensureLanguageResource(previousLanguage);
-        await i18n.changeLanguage(previousLanguage);
-        console.error("Failed to apply app language change:", error);
-      }
+      await setAppLanguageWithSync(langCode);
     };
 
     return (

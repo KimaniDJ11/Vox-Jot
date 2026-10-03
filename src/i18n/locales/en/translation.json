@@ -1252,6 +1252,14 @@
           "toggle_command_menu": {
             "name": "Command Menu",
             "description": "Open the command palette from anywhere."
+          },
+          "pin_field": {
+            "name": "Pin text field",
+            "description": "Click a text field, then use the Pin text field shortcut. The next dictation or meeting appends there while you work elsewhere. Accessibility permission is required. Messages are never sent automatically."
+          },
+          "clear_pin": {
+            "name": "Clear pinned field",
+            "description": "Clear pinned field"
           }
         },
         "errors": {
@@ -2182,6 +2190,10 @@
       "sidecarIdle": "Sidecar idle",
       "app": "App {{count}} MB",
       "sidecar": "Sidecar {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Could not save your change: {{error}}",
+      "modelListFailed": "Could not load models: {{error}}"
     }
   },
   "modelHub": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Failed to cancel download: {{detail}}",
       "deleteModel": "Failed to delete model: {{detail}}",
       "extractModel": "Failed to extract model: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Pinned destination",
+    "label": "Keep a recording’s destination",
+    "description": "Click a text field, then use the Pin text field shortcut. The next dictation or meeting appends there while you work elsewhere. Accessibility permission is required. Messages are never sent automatically.",
+    "pinShortcut": "Pin text field",
+    "clearShortcut": "Clear pinned field",
+    "status": "Pinned: {{app}}",
+    "bound": "bound to recording",
+    "next": "next recording",
+    "clear": "Clear",
+    "copied": "Copied saved text",
+    "copy": "Copy saved text",
+    "working": "Working…",
+    "retry": "Retry background insertion",
+    "paste": "Bring app forward and paste",
+    "dismiss": "Dismiss",
+    "inserted": "Inserted into {{app}}",
+    "loadError": "Could not load saved delivery.",
+    "delivery": {
+      "pending": "Saved · waiting to insert",
+      "delivering": "Inserting into pinned field…",
+      "delivered": "Inserted into pinned field",
+      "deferred": "Saved · not inserted",
+      "partial": "Partly inserted · check the field",
+      "uncertain": "Insertion unconfirmed · check the field",
+      "cancelled": "Saved · delivery cancelled"
     }
   }
 }

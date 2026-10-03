@@ -42,10 +42,7 @@ import {
   isDownloadCancelled,
   isDownloadFailed,
 } from "@/components/model-hub/hubDownloadState";
-import {
-  ProviderIcon,
-  resolveModelProviderId,
-} from "@/components/ui/ProviderIcon";
+import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";

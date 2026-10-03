@@ -239,6 +239,7 @@ fn paste_via_clipboard(
     paste_method: &PasteMethod,
     paste_delay_ms: u64,
     restore_target: ClipboardRestoreTarget,
+    guard: Option<&dyn Fn() -> bool>,
 ) -> Result<(), String> {
     let clipboard = app_handle.clipboard();
     let clipboard_content = clipboard.read_text().unwrap_or_default();
@@ -269,6 +270,20 @@ fn paste_via_clipboard(
     let restore_change_count = pasteboard_change_count();
 
     std::thread::sleep(Duration::from_millis(paste_delay_ms));
+
+    // A guarded recovery must recheck after clipboard preparation and the
+    // configured delay, immediately before sending any keyboard input.
+    if guard.is_some_and(|valid| !valid()) {
+        schedule_clipboard_restore(
+            app_handle.clone(),
+            clipboard_content,
+            clipboard_restore_delay_ms(app_handle),
+            restore_change_count,
+            text.to_string(),
+            restore_generation,
+        );
+        return Err(PASTE_TARGET_CHANGED.into());
+    }
 
     // Send paste key combo
     #[cfg(target_os = "linux")]
@@ -1072,6 +1087,32 @@ pub fn paste_with_settings_and_submit_override(
     settings: &crate::settings::AppSettings,
     submit_override: Option<AutoSubmitKey>,
 ) -> Result<(), String> {
+    paste_with_settings_and_guard(text, app_handle, settings, submit_override, None)
+}
+
+pub(crate) const PASTE_TARGET_CHANGED: &str = "The destination changed before paste.";
+
+#[cfg(all(target_os = "macos", not(vox_jot_app_store)))]
+pub(crate) fn paste_with_focus_guard(
+    text: String,
+    app_handle: AppHandle,
+    settings: &crate::settings::AppSettings,
+    guard: &dyn Fn() -> bool,
+) -> Result<(), String> {
+    let mut settings = settings.clone();
+    settings.paste_method = PasteMethod::CtrlV;
+    settings.append_trailing_space = false;
+    settings.auto_submit = false;
+    paste_with_settings_and_guard(text, app_handle, &settings, None, Some(guard))
+}
+
+fn paste_with_settings_and_guard(
+    text: String,
+    app_handle: AppHandle,
+    settings: &crate::settings::AppSettings,
+    submit_override: Option<AutoSubmitKey>,
+    guard: Option<&dyn Fn() -> bool>,
+) -> Result<(), String> {
     let requested_paste_method = settings.paste_method;
     let paste_method = effective_paste_method(requested_paste_method);
     let paste_delay_ms = settings.paste_delay_ms;
@@ -1135,6 +1176,7 @@ pub fn paste_with_settings_and_submit_override(
                 } else {
                     ClipboardRestoreTarget::PreviousContent
                 },
+                guard,
             )?
         }
         PasteMethod::ExternalScript => {

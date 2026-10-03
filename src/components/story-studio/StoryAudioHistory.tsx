@@ -17,7 +17,6 @@ import {
   FolderOpen,
   Forward,
   Loader2,
-  Music2,
   Rewind,
   Save,
   SkipBack,
@@ -125,9 +124,6 @@ type StoryAudioView = "timeline" | "player";
 
 const compactAudioSelectClassName =
   "h-9 max-w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--bg)] py-1.5 pe-8 ps-3 text-[12px] font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50";
-
-const storyChipClassName =
-  "inline-flex max-w-full min-w-0 items-center rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold leading-4 text-[var(--muted)]";
 
 const storyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";

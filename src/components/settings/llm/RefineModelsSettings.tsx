@@ -68,7 +68,6 @@ import {
   type ModelSortMode,
 } from "@/lib/modelListOrdering";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
-import { useSettings } from "@/hooks/useSettings";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
 
 type RefineModelSourceKind =
@@ -262,7 +261,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   showEvaluationPanel = true,
 }) => {
   const { t } = useTranslation();
-  const { refreshSettings } = useSettings();
   const [catalog, setCatalog] = useState<RefineModelCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -718,7 +716,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         providerId: model.runtime_provider_id,
         modelId: model.runtime_model_id,
       });
-      await refreshSettings();
       await loadCatalog({ silent: true });
       toast.success(
         t("settings.refineModels.toast.activated", { title: model.title }),
@@ -750,7 +747,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         return;
       }
       setConfirmingDeleteRuntimeId(null);
-      await refreshSettings();
       await loadCatalog({ silent: true });
       toast.success(
         t("settings.refineModels.toast.removed", { title: model.title }),
@@ -794,7 +790,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         sourceRepoId: model.source_repo_id ?? null,
         sourceFileName: model.source_file_name ?? null,
       });
-      await refreshSettings();
       await loadCatalog({ silent: true });
       setProgressMap((prev) => {
         const next = { ...prev };
@@ -885,7 +880,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         sourceRepoId: repoId,
         sourceFileName: customFileName.trim() || null,
       });
-      await refreshSettings();
       await loadCatalog({ silent: true });
       setCustomFileName("");
       setCustomModelId(modelId);
@@ -935,7 +929,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     setApiKeySaving(true);
     setApiKeyError(null);
     try {
-      const result = await commands.changePostProcessApiKeySetting(
+      const result = await commands.setPostProcessApiKey(
         apiKeyDialog.providerId,
         trimmed,
       );
@@ -943,7 +937,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         setApiKeyError(result.error);
         return;
       }
-      await refreshSettings();
       await loadCatalog({ silent: true });
       toast.success(
         t("settings.refineModels.apiKeyDialog.saved", {
@@ -964,14 +957,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     } finally {
       setApiKeySaving(false);
     }
-  }, [
-    apiKeyDialog,
-    apiKeyDraft,
-    apiKeySaving,
-    loadCatalog,
-    refreshSettings,
-    t,
-  ]);
+  }, [apiKeyDialog, apiKeyDraft, apiKeySaving, loadCatalog, t]);
 
   const getTrailing = (model: RefineModelDescriptor): HubTrailing => {
     const isBusy = busyModelIds.has(model.runtime_model_id);

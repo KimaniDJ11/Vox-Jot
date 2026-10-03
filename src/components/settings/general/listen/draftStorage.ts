@@ -4,7 +4,7 @@ import type {
   VoiceArchitectUiDraftState,
   VoiceCloningDraftState,
 } from "./types";
-import { DEFAULT_TTS_PREVIEW_TEXT, defaultVoiceTuning } from "./utils";
+import { defaultVoiceTuning } from "./utils";
 
 let cachedVoiceArchitectDraft: VoiceArchitectDraftState | null = null;
 
@@ -13,7 +13,6 @@ const voiceCloningDraftStorageKey = "vox-jot-voice-cloning-draft-v1";
 
 const defaultVoiceArchitectUiDraft: VoiceArchitectUiDraftState = {
   saveProfileNameDraft: "",
-  previewTextDraft: DEFAULT_TTS_PREVIEW_TEXT,
   modelSearchQuery: "",
   createVoiceTool: "my-voices",
 };
@@ -96,10 +95,6 @@ function normalizeVoiceArchitectUiDraft(
       typeof draft.saveProfileNameDraft === "string"
         ? draft.saveProfileNameDraft
         : defaultVoiceArchitectUiDraft.saveProfileNameDraft,
-    previewTextDraft:
-      typeof draft.previewTextDraft === "string"
-        ? draft.previewTextDraft
-        : defaultVoiceArchitectUiDraft.previewTextDraft,
     modelSearchQuery:
       typeof draft.modelSearchQuery === "string"
         ? draft.modelSearchQuery

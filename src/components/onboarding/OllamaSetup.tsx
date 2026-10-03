@@ -25,7 +25,13 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
     startServe,
   } = useOllamaStore();
 
-  const { settings, setPostProcessProvider } = useSettingsStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const setPostProcessProvider = useSettingsStore(
+    (s) => s.setPostProcessProvider,
+  );
+  const updatePostProcessModel = useSettingsStore(
+    (s) => s.updatePostProcessModel,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,13 +68,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
   };
 
   const handleSelectModel = async (modelId: string) => {
-    await setPostProcessProvider("ollama");
-    // Save selected LLM model in settings
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("change_post_process_model_setting", {
-      providerId: "ollama",
-      model: modelId,
-    });
+    if (!(await setPostProcessProvider("ollama"))) return;
+    if (!(await updatePostProcessModel("ollama", modelId))) return;
     onComplete();
   };
 

@@ -38,7 +38,6 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
     null,
   );
   const [originalBinding, setOriginalBinding] = useState<string>("");
-  const [confirmingReset, setConfirmingReset] = useState(false);
   const shortcutRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
   const osType = useOsType();
 
@@ -318,32 +317,14 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
             {formatKeyCombination(binding.current_binding, osType)}
           </button>
         )}
-        {confirmingReset ? (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className={`rounded-md border border-[var(--border-strong)] bg-[var(--input)] px-2 py-1 text-xs font-semibold text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-              onClick={() => setConfirmingReset(false)}
-            >
-              {t("common.cancel", { defaultValue: "Cancel" })}
-            </button>
-            <button
-              type="button"
-              className={`rounded-md border border-logo-primary bg-logo-primary/30 px-2 py-1 text-xs font-semibold text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-              onClick={() => {
-                setConfirmingReset(false);
-                resetBinding(shortcutId);
-              }}
-            >
-              {t("settings.general.shortcut.confirmReset")}
-            </button>
-          </div>
-        ) : (
-          <ResetButton
-            onClick={() => setConfirmingReset(true)}
-            disabled={disabled || isUpdating(`binding_${shortcutId}`)}
-          />
-        )}
+        <ResetButton
+          onClick={() =>
+            void resetBinding(shortcutId).catch(() =>
+              toast.error(t("settings.general.shortcut.errors.reset")),
+            )
+          }
+          disabled={disabled || isUpdating(`binding_${shortcutId}`)}
+        />
       </div>
     </SettingContainer>
   );

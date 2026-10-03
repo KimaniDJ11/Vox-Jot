@@ -23,7 +23,7 @@ import {
   refreshInstalledApps,
   subscribeInstalledApps,
 } from "@/lib/installedApps";
-import { useRefreshSettings } from "@/hooks/useSettings";
+import { unwrapCommandResult } from "@/lib/commandResult";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import OnboardingLayout from "./OnboardingLayout";
 
@@ -199,7 +199,6 @@ const DictationModesStep: React.FC<DictationModesStepProps> = ({
   onBack,
 }) => {
   const { t } = useTranslation();
-  const refreshSettings = useRefreshSettings();
   const [apps, setApps] = useState<InstalledApp[]>(
     () => readCachedInstalledApps() ?? [],
   );
@@ -316,17 +315,18 @@ const DictationModesStep: React.FC<DictationModesStepProps> = ({
           },
           overrides: suggestion.blueprint.overrides,
         };
-        const result = await commands.upsertWriteRule(rule);
-        if (result.status === "error") throw new Error(result.error);
+        await unwrapCommandResult(commands.upsertWriteRule(rule));
       }
 
-      const rulesEnabled = await commands.changeWriteRulesEnabledSetting(true);
-      if (rulesEnabled.status === "error") throw new Error(rulesEnabled.error);
-      const appAwareTone =
-        await commands.changeAppAwareToneEnabledSetting(true);
-      if (appAwareTone.status === "error") throw new Error(appAwareTone.error);
-
-      await refreshSettings();
+      await unwrapCommandResult(
+        commands.updateSetting({
+          key: "write_rules_enabled_override",
+          value: true,
+        }),
+      );
+      await unwrapCommandResult(
+        commands.updateSetting({ key: "app_aware_tone_enabled", value: true }),
+      );
       onComplete();
     } catch (error) {
       console.error("Failed to create onboarding dictation modes:", error);

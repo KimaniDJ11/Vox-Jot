@@ -12,6 +12,30 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::Instant;
 use tauri::{Emitter, Manager};
 
+/// The settings that shape how the recorder processes microphone input.
+#[derive(Clone, PartialEq)]
+struct CaptureSettings {
+    acoustic_profile: AcousticProfile,
+    audio_enhancement_enabled: bool,
+    audio_enhancement_model: String,
+}
+
+impl CaptureSettings {
+    fn of(settings: &AppSettings) -> Self {
+        Self {
+            acoustic_profile: settings.acoustic_profile,
+            audio_enhancement_enabled: settings.audio_enhancement_enabled,
+            audio_enhancement_model: settings.audio_enhancement_model.clone(),
+        }
+    }
+
+    fn restore(self, settings: &mut AppSettings) {
+        settings.acoustic_profile = self.acoustic_profile;
+        settings.audio_enhancement_enabled = self.audio_enhancement_enabled;
+        settings.audio_enhancement_model = self.audio_enhancement_model;
+    }
+}
+
 fn query_mute() -> Option<bool> {
     #[cfg(target_os = "windows")]
     {
@@ -780,7 +804,7 @@ impl AudioRecordingManager {
         Ok(())
     }
 
-    pub fn update_audio_enhancement(&self) -> Result<(), anyhow::Error> {
+    fn rebuild_recorder(&self) -> Result<(), anyhow::Error> {
         let was_open = self.is_open.load(Ordering::SeqCst);
 
         if was_open {
@@ -795,34 +819,37 @@ impl AudioRecordingManager {
         Ok(())
     }
 
-    pub fn update_acoustic_profile(&self, profile: AcousticProfile) -> Result<(), anyhow::Error> {
-        // Serialize this settings-only reconfiguration against recorder start.
-        // Checking is_recording() separately leaves a check/use race that can
-        // tear down a recording which began between those operations.
-        let state = self.state.try_lock().map_err(|_| {
-            anyhow::anyhow!("The microphone is busy. Try changing the profile again.")
-        })?;
+    /// Commit a change to the capture pipeline (acoustic profile or noise
+    /// reduction) and rebuild the recorder with it. The previous capture
+    /// settings are restored if the rebuilt stream cannot start.
+    pub fn reconfigure_capture<T>(
+        &self,
+        commit: impl FnOnce() -> Result<T, String>,
+    ) -> Result<T, String> {
+        // Holding the state lock for the whole change keeps a recording from
+        // starting between the idle check and the recorder rebuild.
+        let state = self
+            .state
+            .try_lock()
+            .map_err(|_| "The microphone is busy. Try again in a moment.".to_string())?;
         if !matches!(*state, RecordingState::Idle) || self.is_recording() {
-            anyhow::bail!("Stop recording before changing the acoustic profile.");
+            return Err("Stop recording before changing microphone processing.".to_string());
         }
-        let mut settings = get_settings(&self.app_handle);
-        let previous_profile = settings.acoustic_profile;
-        if previous_profile == profile {
-            return Ok(());
+
+        let previous = CaptureSettings::of(&get_settings(&self.app_handle));
+        let committed = commit()?;
+        if CaptureSettings::of(&get_settings(&self.app_handle)) == previous {
+            return Ok(committed);
         }
-        settings.acoustic_profile = profile;
-        crate::settings::write_settings(&self.app_handle, settings);
-        if let Err(error) = self.update_audio_enhancement() {
-            let mut settings = get_settings(&self.app_handle);
-            settings.acoustic_profile = previous_profile;
-            crate::settings::write_settings(&self.app_handle, settings);
-            // Discard a partially prepared profile so the next start rebuilds
-            // the restored settings instead of reporting a false UI success.
+        if let Err(error) = self.rebuild_recorder() {
+            crate::settings::update(&self.app_handle, |settings| previous.restore(settings));
+            // Discard a partially prepared recorder so the next start rebuilds
+            // from the restored settings instead of reporting a false success.
             *self.recorder.lock().unwrap_or_else(|e| e.into_inner()) = None;
             self.stream_failed.store(true, Ordering::SeqCst);
-            return Err(error);
+            return Err(format!("Failed to apply microphone processing: {error}"));
         }
-        Ok(())
+        Ok(committed)
     }
 
     pub fn stop_recording(&self, binding_id: &str) -> Option<Vec<f32>> {

@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Nabídka příkazů",
             "description": "Otevřete paletu příkazů odkudkoli."
+          },
+          "pin_field": {
+            "name": "Připnout textové pole",
+            "description": "Klikněte do textového pole a použijte zkratku Připnout textové pole. Další diktát nebo schůzka se připojí tam, zatímco pracujete jinde. Je vyžadováno oprávnění zpřístupnění. Zprávy se nikdy neodesílají automaticky."
+          },
+          "clear_pin": {
+            "name": "Uvolnit připnuté pole",
+            "description": "Uvolnit připnuté pole"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Pomocník nečinný",
       "app": "Aplikace {{count}} MB",
       "sidecar": "Pomocník {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Změnu se nepodařilo uložit: {{error}}",
+      "modelListFailed": "Modely se nepodařilo načíst: {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Zrušení stahování se nezdařilo: {{detail}}",
       "deleteModel": "Smazání modelu se nezdařilo: {{detail}}",
       "extractModel": "Rozbalení modelu se nezdařilo: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Připnutý cíl",
+    "label": "Zachovat cíl nahrávky",
+    "description": "Klikněte do textového pole a použijte zkratku Připnout textové pole. Další diktát nebo schůzka se připojí tam, zatímco pracujete jinde. Je vyžadováno oprávnění zpřístupnění. Zprávy se nikdy neodesílají automaticky.",
+    "pinShortcut": "Připnout textové pole",
+    "clearShortcut": "Uvolnit připnuté pole",
+    "status": "Připnuto: {{app}}",
+    "bound": "svázáno s nahrávkou",
+    "next": "další nahrávka",
+    "clear": "Uvolnit",
+    "copied": "Uložený text zkopírován",
+    "copy": "Kopírovat uložený text",
+    "working": "Probíhá…",
+    "retry": "Zkusit znovu vložení na pozadí",
+    "paste": "Přenést aplikaci do popředí a vložit",
+    "dismiss": "Zavřít",
+    "inserted": "Vloženo do {{app}}",
+    "loadError": "Uložené doručení nelze načíst.",
+    "delivery": {
+      "pending": "Uloženo · čeká na vložení",
+      "delivering": "Vkládání do připnutého pole…",
+      "delivered": "Vloženo do připnutého pole",
+      "deferred": "Uloženo · nevloženo",
+      "partial": "Částečně vloženo · zkontrolujte pole",
+      "uncertain": "Vložení nepotvrzeno · zkontrolujte pole",
+      "cancelled": "Uloženo · doručení zrušeno"
     }
   }
 }

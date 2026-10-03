@@ -1,7 +1,5 @@
 use crate::commands::tts::preset_from_input;
-use crate::settings::{
-    get_settings, write_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput,
-};
+use crate::settings::{get_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput};
 use crate::tts::{SpeakRequest, TtsManager};
 use hound::{WavSpec, WavWriter};
 use log::warn;
@@ -644,27 +642,6 @@ pub fn list_story_render_jobs() -> Result<Vec<StoryRenderJobSummary>, String> {
     Ok(story_render_job_summaries())
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn generate_create_speech_audio(
-    app: AppHandle,
-    request: CreateSpeechAudioRequest,
-) -> Result<StoryRenderEnqueueResult, String> {
-    let text = request.text.trim().to_string();
-    if text.is_empty() {
-        return Err("Enter speech text before generating audio.".to_string());
-    }
-
-    let render_id = request.render_id.clone();
-    let _ = preset_from_input(request.preset.clone(), None)?;
-    spawn_story_generation_thread(app.clone(), request)?;
-
-    Ok(StoryRenderEnqueueResult {
-        render_id,
-        queue_position: 1,
-    })
-}
-
 fn spawn_story_generation_thread(
     app: AppHandle,
     request: CreateSpeechAudioRequest,
@@ -703,12 +680,6 @@ fn spawn_story_generation_thread(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_stable_audio3_status(app: AppHandle) -> Result<StableAudio3Status, String> {
-    stable_audio3_status(&app)
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn get_creative_audio_model_catalog(
     app: AppHandle,
 ) -> Result<CreativeAudioModelCatalog, String> {
@@ -729,10 +700,9 @@ pub fn set_creative_audio_model_selection(
         ));
     }
 
-    let mut settings = get_settings(&app);
-    settings.selected_creative_audio_model_id = Some(model.id);
-    write_settings(&app, settings.clone());
-    let _ = app.emit("settings-changed", settings);
+    crate::settings::update(&app, |settings| {
+        settings.selected_creative_audio_model_id = Some(model.id)
+    });
     let _ = app.emit("creative-audio-selection-changed", &model_id);
     creative_audio_model_catalog(&app)
 }
@@ -915,31 +885,16 @@ pub fn delete_creative_audio_model(
 }
 
 fn clear_creative_audio_selection_if_deleted(app: &AppHandle, model_id: &str) {
-    let mut settings = get_settings(app);
-    if settings.selected_creative_audio_model_id.as_deref() != Some(model_id) {
-        return;
+    let cleared = crate::settings::update(app, |settings| {
+        let selected = settings.selected_creative_audio_model_id.as_deref() == Some(model_id);
+        if selected {
+            settings.selected_creative_audio_model_id = None;
+        }
+        selected
+    });
+    if cleared {
+        let _ = app.emit("creative-audio-selection-changed", "");
     }
-    settings.selected_creative_audio_model_id = None;
-    write_settings(app, settings.clone());
-    let _ = app.emit("settings-changed", settings);
-    let _ = app.emit("creative-audio-selection-changed", "");
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn prepare_stable_audio3(
-    app: AppHandle,
-    request: PrepareStableAudio3Request,
-) -> Result<StableAudio3Status, String> {
-    request.mode.stable_audio3_dit()?;
-    let stop_flag = Arc::new(AtomicBool::new(false));
-    ensure_stable_audio3_runtime_installed(&app, STABLE_AUDIO3_MODEL_MUSIC_ID, stop_flag).await?;
-    tokio::task::spawn_blocking(move || {
-        run_stable_audio3_install(&app, request.mode, None)?;
-        stable_audio3_status(&app)
-    })
-    .await
-    .map_err(|err| format!("Stable Audio 3 preparation task failed: {err}"))?
 }
 
 #[tauri::command]
@@ -3248,16 +3203,6 @@ pub fn rename_story_audio(
 
 #[tauri::command]
 #[specta::specta]
-pub fn update_story_audio_title(
-    app: AppHandle,
-    id: String,
-    title: String,
-) -> Result<StoryAudioItem, String> {
-    rename_story_audio(app, id, title)
-}
-
-#[tauri::command]
-#[specta::specta]
 pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
     let mut items = read_story_audio_items(&app)?;
     let Some(index) = items.iter().position(|item| item.id == id) else {
@@ -5204,4 +5149,58 @@ mod tests {
         }
         writer.finalize().map_err(|err| err.to_string())
     }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn generate_create_speech_audio(
+    app: AppHandle,
+    request: CreateSpeechAudioRequest,
+) -> Result<StoryRenderEnqueueResult, String> {
+    let text = request.text.trim().to_string();
+    if text.is_empty() {
+        return Err("Enter speech text before generating audio.".to_string());
+    }
+
+    let render_id = request.render_id.clone();
+    let _ = preset_from_input(request.preset.clone(), None)?;
+    spawn_story_generation_thread(app.clone(), request)?;
+
+    Ok(StoryRenderEnqueueResult {
+        render_id,
+        queue_position: 1,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_stable_audio3_status(app: AppHandle) -> Result<StableAudio3Status, String> {
+    stable_audio3_status(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_stable_audio3(
+    app: AppHandle,
+    request: PrepareStableAudio3Request,
+) -> Result<StableAudio3Status, String> {
+    request.mode.stable_audio3_dit()?;
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    ensure_stable_audio3_runtime_installed(&app, STABLE_AUDIO3_MODEL_MUSIC_ID, stop_flag).await?;
+    tokio::task::spawn_blocking(move || {
+        run_stable_audio3_install(&app, request.mode, None)?;
+        stable_audio3_status(&app)
+    })
+    .await
+    .map_err(|err| format!("Stable Audio 3 preparation task failed: {err}"))?
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_story_audio_title(
+    app: AppHandle,
+    id: String,
+    title: String,
+) -> Result<StoryAudioItem, String> {
+    rename_story_audio(app, id, title)
 }

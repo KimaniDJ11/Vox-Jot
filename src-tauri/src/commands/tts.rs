@@ -1,8 +1,8 @@
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{
-    build_tts_preset_from_legacy, get_settings, sanitize_tts_voice_tuning_for_target,
-    write_settings, AppSettings, TtsStyleControlValue, TtsVoicePreset, TtsVoicePresetInput,
-    TtsVoiceTuningSettings,
+    build_tts_preset_from_legacy, get_settings, normalize_optional_string,
+    sanitize_tts_voice_tuning_for_target, AppSettings, TtsStyleControlValue, TtsVoicePreset,
+    TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts::{
@@ -40,17 +40,6 @@ const READER_EXPORT_SAMPLE_RATE: u32 = 24_000;
 const READER_EXPORT_UNIT_GAP_SECONDS: f32 = 0.12;
 const READER_AUDIO_CACHE_DIR: &str = "audio-cache";
 const READER_AUDIO_CACHE_VERSION: &str = "reader-audio-cache-v1";
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    value.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
-}
 
 fn normalize_reader_playback_rate(value: Option<f32>) -> Result<Option<f32>, String> {
     match value {
@@ -313,39 +302,6 @@ pub async fn tts_speak(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn tts_speak_with_preset(
-    app: AppHandle,
-    text: String,
-    locale: Option<String>,
-    preset_id: String,
-    trigger: Option<String>,
-    remember_last_output: Option<bool>,
-) -> Result<(), String> {
-    let normalized_preset_id = preset_id.trim().to_string();
-    if normalized_preset_id.is_empty() {
-        return Err("A voice preset is required for Reader playback.".to_string());
-    }
-
-    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_dedicated_thread(
-        manager,
-        SpeakRequest {
-            text,
-            locale,
-            preferred_voice_id: None,
-            preset_id: Some(normalized_preset_id),
-            inline_preset: None,
-            trigger,
-            remember_last_output: remember_last_output.unwrap_or(false),
-        },
-        "tts-command-speak-preset",
-    )
-    .await
-    .map(|_| ())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub async fn tts_speak_reader(
     app: AppHandle,
     text: String,
@@ -480,36 +436,6 @@ pub async fn prepare_reader_audio_cache(
     .await
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn play_reader_audio_unit(
-    app: AppHandle,
-    document_id: String,
-    unit: ReaderAudioCacheUnit,
-    playback_rate: Option<f32>,
-    language: Option<String>,
-) -> Result<ReaderAudioCachePlayResult, String> {
-    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
-    ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
-    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    run_tts_async_on_dedicated_stack("tts-command-reader-cache-play", move || async move {
-        let settings = get_settings(&app);
-        let (cache_path, cache_hit) = ensure_reader_audio_cache_unit(
-            &app,
-            Arc::clone(&manager),
-            &settings,
-            &document_id,
-            &unit,
-            normalized_rate,
-            language.as_deref(),
-        )
-        .await?;
-        manager.play_cached_audio_file(cache_path)?;
-        Ok(ReaderAudioCachePlayResult { cache_hit })
-    })
-    .await
-}
-
 /// Ensure a reader unit is synthesized to its cache WAV and return the on-disk
 /// path plus per-word timings, WITHOUT playing it. The frontend `<audio>`
 /// element plays the file (read via `readFile` → blob URL), which gives a
@@ -608,23 +534,6 @@ pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String
         manager.get_available_voices()
     })
     .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn preview_tts_voice(
-    app: AppHandle,
-    voice_id: Option<String>,
-    preview_text: Option<String>,
-) -> Result<(), String> {
-    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    speak_on_dedicated_thread(
-        manager,
-        default_preview_request(voice_id, normalize_optional_string(preview_text)),
-        "tts-command-preview-voice",
-    )
-    .await
-    .map(|_| ())
 }
 
 #[tauri::command]
@@ -1858,17 +1767,14 @@ pub fn remove_tts_pack(app: AppHandle, pack_id: String) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 pub fn list_tts_voice_presets(app: AppHandle) -> Result<Vec<TtsVoicePreset>, String> {
-    let mut settings = get_settings(&app);
     let profiles = list_voice_profiles(&app)?;
-    let removed_presets = settings.delete_tts_presets_for_missing_profiles(
-        profiles.iter().map(|profile| profile.id.as_str()),
-    );
-    let removed_retired_presets =
+    Ok(crate::settings::update(&app, |settings| {
+        settings.delete_tts_presets_for_missing_profiles(
+            profiles.iter().map(|profile| profile.id.as_str()),
+        );
         settings.delete_tts_presets_for_models(crate::tts::retired_tts_model_ids().iter().copied());
-    if removed_presets > 0 || removed_retired_presets > 0 {
-        write_settings(&app, settings.clone());
-    }
-    Ok(settings.tts_voice_presets)
+        settings.tts_voice_presets.clone()
+    }))
 }
 
 #[tauri::command]
@@ -1877,12 +1783,12 @@ pub fn create_tts_voice_preset(
     app: AppHandle,
     input: TtsVoicePresetInput,
 ) -> Result<TtsVoicePreset, String> {
-    let mut settings = get_settings(&app);
     let preset = preset_from_input(input, None)?;
-    settings.upsert_tts_preset(preset.clone());
-    settings.set_active_tts_preset_id(Some(preset.id.clone()));
-    settings.sync_legacy_tts_state_from_active_preset();
-    write_settings(&app, settings);
+    crate::settings::update(&app, |settings| {
+        settings.upsert_tts_preset(preset.clone());
+        settings.set_active_tts_preset_id(Some(preset.id.clone()));
+        settings.sync_legacy_tts_state_from_active_preset();
+    });
     Ok(preset)
 }
 
@@ -1893,31 +1799,31 @@ pub fn update_tts_voice_preset(
     preset_id: String,
     input: TtsVoicePresetInput,
 ) -> Result<TtsVoicePreset, String> {
-    let mut settings = get_settings(&app);
-    if settings.tts_preset(&preset_id).is_none() {
-        return Err(format!("Unknown voice preset '{}'.", preset_id));
-    }
-
     let preset = preset_from_input(input, Some(preset_id.clone()))?;
-    settings.upsert_tts_preset(preset.clone());
-    if settings.tts_active_preset_id.as_deref() == Some(preset_id.as_str()) {
-        settings.sync_legacy_tts_state_from_active_preset();
-    }
-    write_settings(&app, settings);
+    crate::settings::try_update(&app, |settings| {
+        if settings.tts_preset(&preset_id).is_none() {
+            return Err(format!("Unknown voice preset '{}'.", preset_id));
+        }
+        settings.upsert_tts_preset(preset.clone());
+        if settings.tts_active_preset_id.as_deref() == Some(preset_id.as_str()) {
+            settings.sync_legacy_tts_state_from_active_preset();
+        }
+        Ok(())
+    })?;
     Ok(preset)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub fn delete_tts_voice_preset(app: AppHandle, preset_id: String) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    if !settings.delete_tts_preset(&preset_id) {
-        return Err(format!("Unknown voice preset '{}'.", preset_id));
-    }
-    settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone());
-    settings.sync_legacy_tts_state_from_active_preset();
-    write_settings(&app, settings);
-    Ok(())
+    crate::settings::try_update(&app, |settings| {
+        if !settings.delete_tts_preset(&preset_id) {
+            return Err(format!("Unknown voice preset '{}'.", preset_id));
+        }
+        settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone());
+        settings.sync_legacy_tts_state_from_active_preset();
+        Ok(())
+    })
 }
 
 #[tauri::command]
@@ -1926,14 +1832,15 @@ pub fn set_active_tts_voice_preset(
     app: AppHandle,
     preset_id: String,
 ) -> Result<TtsVoicePreset, String> {
-    let mut settings = get_settings(&app);
-    let Some(preset) = settings.tts_preset(&preset_id).cloned() else {
-        return Err(format!("Unknown voice preset '{}'.", preset_id));
-    };
-    settings.set_active_tts_preset_id(Some(preset_id));
-    settings.sync_legacy_tts_state_from_active_preset();
-    write_settings(&app, settings);
-    Ok(preset)
+    crate::settings::try_update(&app, |settings| {
+        let preset = settings
+            .tts_preset(&preset_id)
+            .cloned()
+            .ok_or_else(|| format!("Unknown voice preset '{}'.", preset_id))?;
+        settings.set_active_tts_preset_id(Some(preset_id));
+        settings.sync_legacy_tts_state_from_active_preset();
+        Ok(preset)
+    })
 }
 
 #[tauri::command]
@@ -2036,15 +1943,6 @@ pub fn clear_profile_collected_data(
     profile_id: String,
 ) -> Result<TtsVoiceProfileDescriptor, String> {
     clear_collected_data(&app, &profile_id)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_voice_profile_progress(
-    app: AppHandle,
-    profile_id: String,
-) -> Result<TtsVoiceProfileDescriptor, String> {
-    get_profile_progress(&app, &profile_id)
 }
 
 #[tauri::command]
@@ -2234,4 +2132,93 @@ async fn convert_voice_source(
         provider_id,
         model_id,
     })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn tts_speak_with_preset(
+    app: AppHandle,
+    text: String,
+    locale: Option<String>,
+    preset_id: String,
+    trigger: Option<String>,
+    remember_last_output: Option<bool>,
+) -> Result<(), String> {
+    let normalized_preset_id = preset_id.trim().to_string();
+    if normalized_preset_id.is_empty() {
+        return Err("A voice preset is required for Reader playback.".to_string());
+    }
+
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_dedicated_thread(
+        manager,
+        SpeakRequest {
+            text,
+            locale,
+            preferred_voice_id: None,
+            preset_id: Some(normalized_preset_id),
+            inline_preset: None,
+            trigger,
+            remember_last_output: remember_last_output.unwrap_or(false),
+        },
+        "tts-command-speak-preset",
+    )
+    .await
+    .map(|_| ())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn play_reader_audio_unit(
+    app: AppHandle,
+    document_id: String,
+    unit: ReaderAudioCacheUnit,
+    playback_rate: Option<f32>,
+    language: Option<String>,
+) -> Result<ReaderAudioCachePlayResult, String> {
+    let normalized_rate = normalize_reader_playback_rate(playback_rate)?;
+    ensure_reader_units_within_limits(std::iter::once(unit.text.as_str()), 1)?;
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    run_tts_async_on_dedicated_stack("tts-command-reader-cache-play", move || async move {
+        let settings = get_settings(&app);
+        let (cache_path, cache_hit) = ensure_reader_audio_cache_unit(
+            &app,
+            Arc::clone(&manager),
+            &settings,
+            &document_id,
+            &unit,
+            normalized_rate,
+            language.as_deref(),
+        )
+        .await?;
+        manager.play_cached_audio_file(cache_path)?;
+        Ok(ReaderAudioCachePlayResult { cache_hit })
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_tts_voice(
+    app: AppHandle,
+    voice_id: Option<String>,
+    preview_text: Option<String>,
+) -> Result<(), String> {
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_dedicated_thread(
+        manager,
+        default_preview_request(voice_id, normalize_optional_string(preview_text)),
+        "tts-command-preview-voice",
+    )
+    .await
+    .map(|_| ())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_voice_profile_progress(
+    app: AppHandle,
+    profile_id: String,
+) -> Result<TtsVoiceProfileDescriptor, String> {
+    get_profile_progress(&app, &profile_id)
 }

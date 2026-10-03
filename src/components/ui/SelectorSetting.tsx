@@ -1,27 +1,29 @@
 import React from "react";
-import type { AppSettings } from "@/bindings";
 import { Dropdown, type DropdownOption } from "./Dropdown";
 import { SettingContainer } from "./SettingContainer";
 import { ResetButton } from "./ResetButton";
 import { useSetting } from "@/hooks/useSettings";
-import { useSettingsStore } from "@/stores/settingsStore";
+import {
+  useSettingsStore,
+  type SettingKey,
+  type SettingValue,
+} from "@/stores/settingsStore";
 
 type StringSettingKey = {
-  [K in keyof AppSettings]-?: NonNullable<AppSettings[K]> extends string
-    ? K
-    : never;
-}[keyof AppSettings];
+  [K in SettingKey]: NonNullable<SettingValue<K>> extends string ? K : never;
+}[SettingKey];
 
 interface SelectorSettingProps {
   settingKey: StringSettingKey;
   title: string;
   description: string;
+  /** Every option value must be a valid value for `settingKey`. */
   options: DropdownOption[];
   /** Shown when no value has been chosen yet. */
   placeholder?: string;
   /** Shown instead of `placeholder` while options are loading / unavailable. */
   loadingPlaceholder?: string;
-  /** Marks the dropdown as loading / unavailable (e.g. device enumeration in-flight). */
+  /** Marks the dropdown as loading / unavailable. */
   loading?: boolean;
   /** Optional outside reason to disable the entire row (e.g. TTS off). */
   disabled?: boolean;
@@ -31,8 +33,6 @@ interface SelectorSettingProps {
   onRefresh?: () => void;
   /** Default value to render when the setting is unset. */
   defaultValue?: string;
-  /** Map the raw persisted value into the value passed to the Dropdown. */
-  valueTransform?: (raw: string | undefined) => string;
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
 }
@@ -56,17 +56,14 @@ export const SelectorSetting: React.FC<SelectorSettingProps> = React.memo(
     showResetButton = false,
     onRefresh,
     defaultValue,
-    valueTransform,
     descriptionMode = "tooltip",
     grouped = false,
   }) => {
     const updateSetting = useSettingsStore((s) => s.updateSetting);
     const resetSetting = useSettingsStore((s) => s.resetSetting);
     const isUpdating = useSettingsStore((s) => s.isUpdatingKey(settingKey));
-    const raw = useSetting(settingKey) as string | undefined;
-    const selectedValue = valueTransform
-      ? valueTransform(raw)
-      : (raw ?? defaultValue ?? "");
+    const raw = useSetting(settingKey) as string | null | undefined;
+    const selectedValue = raw ?? defaultValue ?? "";
     const optionsEmpty = options.length === 0;
     const dropdownDisabled = disabled || isUpdating || loading || optionsEmpty;
     const resolvedPlaceholder =
@@ -89,7 +86,7 @@ export const SelectorSetting: React.FC<SelectorSettingProps> = React.memo(
             onSelect={(value) => {
               void updateSetting(
                 settingKey,
-                value as AppSettings[typeof settingKey],
+                value as SettingValue<typeof settingKey>,
               );
             }}
             placeholder={resolvedPlaceholder}

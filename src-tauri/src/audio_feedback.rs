@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use tauri::{AppHandle, Manager};
 
+#[derive(Debug, Clone, Copy, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
 pub enum SoundType {
     Start,
     Stop,

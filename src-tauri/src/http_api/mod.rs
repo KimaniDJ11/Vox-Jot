@@ -28,6 +28,9 @@
 //! through the same `TranscriptionManager.transcribe_with_segments`
 //! method the GUI uses, which already serializes via `transcribe_lock`.
 
+mod settings_contract;
+use settings_contract::{apply_settings_command, parse_setting_updates, protected_settings_route};
+
 use crate::commands::story_studio::{
     download_creative_audio_model, generate_story_sound, get_creative_audio_model_catalog,
     render_story_audio, render_story_audio_now, CreativeAudioModelCatalog,
@@ -52,7 +55,7 @@ use crate::post_processing::WriteRule;
 use crate::settings::{
     build_tts_preset_from_legacy, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
-use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
+use crate::settings::{get_settings, get_settings_without_secrets, SettingUpdate};
 use crate::sidecar::SidecarManager;
 use crate::snippets::Snippet;
 use crate::tts::{
@@ -69,7 +72,7 @@ use axum::{
 };
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -184,6 +187,11 @@ struct SettingsCommandApiRequest {
 }
 
 #[derive(Deserialize)]
+struct AudioDeviceSelectionApiRequest {
+    device_name: String,
+}
+
+#[derive(Deserialize)]
 struct DictationControlApiRequest {
     binding_id: Option<String>,
 }
@@ -225,11 +233,6 @@ struct OcrModelApiRequest {
 #[derive(Deserialize)]
 struct OcrSelectApiRequest {
     neural_model_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct AudioDeviceSelectionApiRequest {
-    device_name: String,
 }
 
 #[derive(Deserialize)]
@@ -528,10 +531,10 @@ struct DictationControlResponse {
 #[derive(Serialize)]
 struct AudioDevicesResponse {
     microphones: Vec<AudioDevice>,
-    selected_microphone: String,
+    selected_microphone: Option<String>,
     output_devices: Vec<AudioDevice>,
-    selected_output_device: String,
-    clamshell_microphone: String,
+    selected_output_device: Option<String>,
+    clamshell_microphone: Option<String>,
     always_on_microphone: bool,
     recording: bool,
 }
@@ -697,13 +700,13 @@ impl HttpApiManager {
             .route("/v1/audio/devices", get(handle_audio_devices))
             .route("/v1/audio/microphone", post(handle_set_microphone))
             .route("/v1/audio/output", post(handle_set_output_device))
-            .route("/v1/audio/transcribe-file", post(handle_transcribe_file))
-            .route("/v1/audio/clean", post(handle_audio_clean))
-            .route("/v1/audio/enhance", post(handle_audio_enhance))
             .route(
                 "/v1/audio/clamshell-microphone",
                 post(handle_set_clamshell_microphone),
             )
+            .route("/v1/audio/transcribe-file", post(handle_transcribe_file))
+            .route("/v1/audio/clean", post(handle_audio_clean))
+            .route("/v1/audio/enhance", post(handle_audio_enhance))
             .route(
                 "/v1/history",
                 get(handle_history_page_default).post(handle_history_page),
@@ -1076,16 +1079,20 @@ async fn handle_settings_patch(
         return *response;
     }
 
-    let updates = match extract_settings_updates(body) {
+    let updates = match parse_setting_updates(body) {
         Ok(updates) => updates,
         Err(error) => return api_error(StatusCode::BAD_REQUEST, error),
     };
 
-    match apply_settings_patch(&state.app, updates) {
-        Ok((updated_keys, settings)) => Json(SettingsPatchResponse {
+    let updated_keys = updates
+        .iter()
+        .map(|update| update.key().to_string())
+        .collect();
+    match apply_setting_updates(&state.app, updates).await {
+        Ok(_) => Json(SettingsPatchResponse {
             status: "ok",
             updated_keys,
-            settings,
+            settings: get_settings_without_secrets(&state.app),
         })
         .into_response(),
         Err(error) => api_error(StatusCode::BAD_REQUEST, error),
@@ -1151,151 +1158,10 @@ async fn handle_shortcut_reset(
     }
 }
 
-fn protected_settings_route(key: &str) -> Option<(&'static str, &'static str)> {
-    match key {
-        "acoustic_profile" | "adaptive_selection_rewrite_enabled"
-        | "cloud_selection_rewrite_allowed" | "markdown_export_enabled"
-        | "markdown_export_dir" | "markdown_export_min_words"
-        | "markdown_export_content_source" | "markdown_export_frontmatter"
-        | "markdown_export_include_rewrite_selection" | "markdown_export_include_failed_paste" => Some((
-            "/v1/settings/command",
-            "These settings require privacy, folder authorization, or recording-pipeline validation.",
-        )),
-        "http_api_token" => Some(("protected", "Local API token lives in the OS credential store.")),
-        "post_process_api_keys" => {
-            Some(("protected", "Provider API keys live in the OS credential store."))
-        }
-        "post_process_api_key_status" => Some((
-            "protected",
-            "API key status is derived from the credential store; update keys through provider-specific commands.",
-        )),
-        "bindings" => Some((
-            "/v1/settings/shortcut",
-            "Shortcut bindings require registration side effects.",
-        )),
-        "selected_model" | "selected_stt_provider_id" | "selected_stt_model_id" => Some((
-            "/v1/models/stt/select",
-            "STT selection requires model load side effects.",
-        )),
-        "selected_tts_provider_id" | "selected_tts_model_id" | "selected_tts_voice_id"
-        | "selected_tts_profile_id" => Some((
-            "/v1/models/tts/select",
-            "TTS selection should stay synchronized with the runtime catalog.",
-        )),
-        "selected_creative_audio_model_id" => Some((
-            "/v1/settings/command",
-            "Creative Audio model selection validates install/runtime readiness.",
-        )),
-        "tts_engine_preference" | "tts_default_voice_id" | "tts_rate" | "tts_volume" => Some((
-            "/v1/settings/command",
-            "TTS preference settings synchronize related voice/provider fields or clamp values.",
-        )),
-        "speech_runtime_path" | "tts_model_store_path"
-        | "external_model_storage_enabled"
-        | "external_model_storage_auto_detect"
-        | "external_model_storage_path" => Some((
-            "/v1/settings/command",
-            "Runtime path settings are trimmed and normalized before saving.",
-        )),
-        "audio_enhancement_enabled" | "audio_enhancement_model" => Some((
-            "/v1/settings/command",
-            "Audio enhancement changes refresh the active audio pipeline.",
-        )),
-        "screen_context_ocr_neural_model_id" => Some((
-            "/v1/ocr/select",
-            "OCR model selection validates install/runtime readiness.",
-        )),
-        "snippets" | "snippets_enabled" => Some((
-            "/v1/phrase-keys",
-            "Phrase Keys have dedicated CRUD routes that validate triggers and preserve import/export behavior.",
-        )),
-        "write_rules" | "write_rules_enabled_override" | "write_rules_url_capture_enabled" => Some((
-            "/v1/write-rules",
-            "Write Profile changes have dedicated routes for validation, ordering, and rule-resolution tests.",
-        )),
-        "autostart_enabled" | "update_checks_enabled" | "enable_crash_reporting"
-        | "enable_usage_analytics"
-        | "keyboard_implementation" => Some((
-            "/v1/settings/command",
-            "This setting applies runtime platform side effects.",
-        )),
-        "post_process_enabled" | "local_privacy_mode" | "post_process_provider_id"
-        | "post_process_models" | "selected_llm_provider_id" | "selected_llm_model_id"
-        | "post_process_cleanup_level" | "max_rewrite_strength" | "post_process_providers" => {
-            Some((
-                "/v1/settings/command",
-                "Post-processing settings validate providers and synchronize related LLM fields.",
-            ))
-        },
-        "translate_to_english"
-        | "translation_route_preference"
-        | "translation_provider_id"
-        | "translation_model_ids" => Some((
-            "/v1/settings/command",
-            "Translation settings validate providers and local privacy constraints.",
-        )),
-        "overlay_position" | "recording_overlay_style" => Some((
-            "/v1/settings/command",
-            "Overlay settings apply to live windows immediately.",
-        )),
-        "debug_mode" | "show_technical_features" | "start_hidden" => Some((
-            "/v1/settings/command",
-            "This setting emits runtime state updates after saving.",
-        )),
-        "screen_context_enabled"
-        | "screen_context_excluded_bundle_ids"
-        | "screen_context_pause_on_idle"
-        | "screen_context_idle_threshold_ms"
-        | "context_capture_mode"
-        | "screen_context_ocr_quality"
-        | "screen_context_ocr_engine"
-        | "screen_context_ocr_timeout_ms"
-        | "screen_context_token_budget"
-        | "screen_context_stale_threshold_ms" => Some((
-            "/v1/settings/command",
-            "Screen-context settings use command validation, clamping, or UI notification side effects.",
-        )),
-        "app_theme" | "app_font_scale" => Some((
-            "/v1/settings/command",
-            "Appearance settings are validated or clamped before saving.",
-        )),
-        "external_script_path" => Some((
-            "/v1/settings/command",
-            "External paste scripts must be absolute executable paths.",
-        )),
-        "app_language" => Some((
-            "/v1/settings/command",
-            "Changing app language refreshes the tray menu.",
-        )),
-        "selected_microphone" => Some((
-            "/v1/audio/microphone",
-            "Microphone selection updates the active audio manager.",
-        )),
-        "selected_output_device" => Some((
-            "/v1/audio/output",
-            "Output-device selection has a dedicated audio route.",
-        )),
-        "clamshell_microphone" => Some((
-            "/v1/audio/clamshell-microphone",
-            "Clamshell microphone selection has a dedicated audio route.",
-        )),
-        "http_api_enabled" | "http_api_port" => Some((
-            "Settings > Diagnostics",
-            "Changing the running API server from inside its own request is intentionally blocked.",
-        )),
-        _ => None,
-    }
-}
-
-fn is_patchable_setting(key: &str) -> bool {
-    protected_settings_route(key).is_none()
-}
-
 fn settings_schema_for_app(app: &AppHandle) -> Result<SettingsSchemaResponse, String> {
-    let settings = get_settings_without_secrets(app);
-    let value = serde_json::to_value(settings)
+    let settings = serde_json::to_value(get_settings_without_secrets(app))
         .map_err(|err| format!("Failed to serialize settings: {err}"))?;
-    let object = value
+    let object = settings
         .as_object()
         .ok_or_else(|| "Settings did not serialize to an object.".to_string())?;
 
@@ -1303,10 +1169,11 @@ fn settings_schema_for_app(app: &AppHandle) -> Result<SettingsSchemaResponse, St
         .iter()
         .map(|(key, value)| {
             let route = protected_settings_route(key);
+            let patchable = route.is_none();
             SettingFieldDescriptor {
                 key: key.clone(),
                 value_type: json_value_type(value),
-                patchable: is_patchable_setting(key),
+                patchable,
                 route: route.map(|(route, _)| route),
                 note: route.map(|(_, note)| note),
             }
@@ -1338,538 +1205,16 @@ fn json_value_type(value: &Value) -> &'static str {
     }
 }
 
-fn extract_settings_updates(body: Value) -> Result<Map<String, Value>, String> {
-    let object = body
-        .as_object()
-        .ok_or_else(|| "Expected a JSON object or { \"updates\": { ... } }.".to_string())?;
-    if let Some(updates) = object.get("updates") {
-        return updates
-            .as_object()
-            .cloned()
-            .ok_or_else(|| "updates must be a JSON object.".to_string());
-    }
-    Ok(object.clone())
-}
-
-fn apply_settings_patch(
+async fn apply_setting_updates(
     app: &AppHandle,
-    updates: Map<String, Value>,
-) -> Result<(Vec<String>, crate::settings::AppSettings), String> {
-    if updates.is_empty() {
-        return Err("At least one setting update is required.".to_string());
-    }
-
-    let current = get_settings_without_secrets(app);
-    let mut value = serde_json::to_value(current)
-        .map_err(|err| format!("Failed to serialize current settings: {err}"))?;
-    let object = value
-        .as_object_mut()
-        .ok_or_else(|| "Settings did not serialize to an object.".to_string())?;
-
-    let mut updated_keys = Vec::new();
-    for (key, next_value) in updates {
-        if let Some((route, note)) = protected_settings_route(&key) {
-            return Err(format!(
-                "'{key}' is not patchable through /v1/settings/patch. Use {route}. {note}"
-            ));
-        }
-        if !object.contains_key(&key) {
-            return Err(format!("Unknown setting field: '{key}'."));
-        }
-        object.insert(key.clone(), next_value);
-        updated_keys.push(key);
-    }
-
-    let next_settings = serde_json::from_value::<crate::settings::AppSettings>(value)
-        .map_err(|err| format!("Invalid settings patch: {err}"))?;
-    apply_settings_patch_side_effects(app, &updated_keys, &next_settings)?;
-    write_settings(app, next_settings);
-    Ok((updated_keys, get_settings_without_secrets(app)))
-}
-
-async fn apply_settings_command(
-    app: &AppHandle,
-    key: String,
-    value: Value,
+    updates: Vec<SettingUpdate>,
 ) -> Result<Vec<String>, String> {
-    let key = key.trim();
-    if key.is_empty() {
-        return Err("key is required.".to_string());
-    }
-
-    match key {
-        "acoustic_profile" => crate::shortcut::change_acoustic_profile_setting(
-            app.clone(), setting_string(&value, key)?,
-        ).await.map(|_| vec![key.to_string()]),
-        "adaptive_selection_rewrite_enabled" => crate::shortcut::change_adaptive_selection_rewrite_enabled_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "cloud_selection_rewrite_allowed" => crate::shortcut::change_cloud_selection_rewrite_allowed_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_enabled" => crate::shortcut::change_markdown_export_enabled_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_dir" => crate::shortcut::change_markdown_export_dir_setting(
-            app.clone(), if value.is_null() { None } else { Some(setting_string(&value, key)?) },
-        ).map(|_| vec![key.to_string(), "markdown_export_enabled".to_string()]),
-        "markdown_export_min_words" => crate::shortcut::change_markdown_export_min_words_setting(
-            app.clone(), value.as_u64().and_then(|n| usize::try_from(n).ok()).ok_or("Minimum words must be a nonnegative integer.")?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_content_source" => crate::shortcut::change_markdown_export_content_source_setting(
-            app.clone(), setting_string(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_frontmatter" => crate::shortcut::change_markdown_export_frontmatter_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_include_rewrite_selection" => crate::shortcut::change_markdown_export_include_rewrite_selection_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "markdown_export_include_failed_paste" => crate::shortcut::change_markdown_export_include_failed_paste_setting(
-            app.clone(), setting_bool(&value, key)?,
-        ).map(|_| vec![key.to_string()]),
-        "keyboard_implementation" => crate::shortcut::change_keyboard_implementation_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string(), "bindings".to_string()]),
-        "autostart_enabled" => {
-            crate::shortcut::change_autostart_setting(app.clone(), setting_bool(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        }
-        "update_checks_enabled" => {
-            crate::shortcut::change_update_checks_setting(app.clone(), setting_bool(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        }
-        "enable_crash_reporting" => crate::shortcut::change_crash_reporting_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "enable_usage_analytics" => crate::shortcut::change_usage_analytics_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "audio_enhancement_enabled" => crate::shortcut::change_audio_enhancement_enabled_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "audio_enhancement_model" => crate::shortcut::change_audio_enhancement_model_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "app_theme" => crate::shortcut::change_app_theme_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "app_font_scale" => {
-            crate::shortcut::change_app_font_scale_setting(app.clone(), setting_f32(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        },
-        "translate_to_english" => crate::shortcut::change_translate_to_english_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| {
-            vec![
-                key.to_string(),
-                "translation_output_mode".to_string(),
-                "translation_target_language".to_string(),
-                "translation_route_preference".to_string(),
-            ]
-        }),
-        "translation_route_preference" => crate::shortcut::change_translation_route_preference_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "overlay_position" => crate::shortcut::change_overlay_position_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "recording_overlay_style" => crate::shortcut::change_recording_overlay_style_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "debug_mode" => crate::shortcut::change_debug_mode_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string(), "log_level".to_string()]),
-        "show_technical_features" => crate::shortcut::change_show_technical_features_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "start_hidden" => crate::shortcut::change_start_hidden_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "screen_context_enabled" => crate::shortcut::change_screen_context_enabled_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "screen_context_excluded_bundle_ids" => {
-            crate::shortcut::change_screen_context_excluded_bundle_ids_setting(
-                app.clone(),
-                setting_string_vec(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "screen_context_pause_on_idle" => {
-            crate::shortcut::change_screen_context_pause_on_idle_setting(
-                app.clone(),
-                setting_bool(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "screen_context_idle_threshold_ms" => {
-            crate::shortcut::change_screen_context_idle_threshold_ms_setting(
-                app.clone(),
-                setting_u32(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "context_capture_mode" => crate::shortcut::change_context_capture_mode_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "screen_context_ocr_quality" => crate::shortcut::change_screen_context_ocr_quality_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "screen_context_ocr_engine" => crate::shortcut::change_screen_context_ocr_engine_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "screen_context_ocr_timeout_ms" => {
-            crate::shortcut::change_screen_context_ocr_timeout_ms_setting(
-                app.clone(),
-                setting_u32(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "screen_context_token_budget" => {
-            crate::shortcut::change_screen_context_token_budget_setting(
-                app.clone(),
-                setting_u32(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "screen_context_stale_threshold_ms" => {
-            crate::shortcut::change_screen_context_stale_threshold_ms_setting(
-                app.clone(),
-                setting_u32(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "speech_runtime_path" => crate::shortcut::change_speech_runtime_path_setting(
-            app.clone(),
-            setting_optional_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "tts_model_store_path" => crate::shortcut::change_tts_model_store_path_setting(
-            app.clone(),
-            setting_optional_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "external_model_storage_enabled" => {
-            crate::shortcut::change_external_model_storage_enabled_setting(
-                app.clone(),
-                setting_bool(&value, key)?,
-            )
-            .map(|_| vec![key.to_string()])
-        }
-        "external_model_storage_auto_detect" => {
-            crate::shortcut::change_external_model_storage_auto_detect_setting(
-                app.clone(),
-                setting_bool(&value, key)?,
-            )
-            .map(|_| vec![key.to_string()])
-        }
-        "external_model_storage_path" => {
-            crate::shortcut::change_external_model_storage_path_setting(
-                app.clone(),
-                setting_optional_string(&value, key)?,
-            )
-            .map(|_| vec![key.to_string()])
-        }
-        "tts_engine_preference" => crate::shortcut::change_tts_engine_preference_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| {
-            vec![
-                key.to_string(),
-                "selected_tts_provider_id".to_string(),
-                "selected_tts_model_id".to_string(),
-            ]
-        }),
-        "tts_default_voice_id" => crate::shortcut::change_tts_default_voice_id_setting(
-            app.clone(),
-            setting_optional_string(&value, key)?,
-        )
-        .map(|_| {
-            vec![
-                key.to_string(),
-                "selected_tts_voice_id".to_string(),
-                "selected_tts_model_id".to_string(),
-            ]
-        }),
-        "tts_rate" => {
-            crate::shortcut::change_tts_rate_setting(app.clone(), setting_f32(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        }
-        "tts_volume" => {
-            crate::shortcut::change_tts_volume_setting(app.clone(), setting_f32(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        }
-        "selected_creative_audio_model_id" => {
-            commands::story_studio::set_creative_audio_model_selection(
-                app.clone(),
-                setting_string(&value, key)?,
-            )?;
-            Ok(vec![key.to_string()])
-        }
-        "post_process_enabled" => crate::shortcut::change_post_process_enabled_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "local_privacy_mode" => crate::shortcut::change_local_privacy_mode_setting(
-            app.clone(),
-            setting_bool(&value, key)?,
-        )
-        .map(|_| {
-            vec![
-                key.to_string(),
-                "post_process_provider_id".to_string(),
-                "translation_provider_id".to_string(),
-            ]
-        }),
-        "post_process_provider_id" | "selected_llm_provider_id" => {
-            crate::shortcut::set_post_process_provider(app.clone(), setting_string(&value, key)?)?;
-            Ok(vec![
-                "post_process_provider_id".to_string(),
-                "selected_llm_provider_id".to_string(),
-                "selected_llm_model_id".to_string(),
-            ])
-        },
-        "post_process_models" => {
-            let (provider_id, model) = provider_model_from_value(&value, key)?;
-            crate::shortcut::change_post_process_model_setting(app.clone(), provider_id, model)?;
-            Ok(vec![
-                "post_process_models".to_string(),
-                "selected_llm_model_id".to_string(),
-            ])
-        },
-        "selected_llm_model_id" => {
-            let settings = get_settings_without_secrets(app);
-            crate::shortcut::change_post_process_model_setting(
-                app.clone(),
-                settings.post_process_provider_id,
-                setting_string(&value, key)?,
-            )?;
-            Ok(vec![
-                "post_process_models".to_string(),
-                "selected_llm_model_id".to_string(),
-            ])
-        }
-        "post_process_cleanup_level" => crate::shortcut::change_post_process_cleanup_level_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| {
-            vec![
-                key.to_string(),
-                "post_process_mode".to_string(),
-                "max_rewrite_strength".to_string(),
-            ]
-        }),
-        "max_rewrite_strength" => crate::shortcut::change_max_rewrite_strength_setting(
-            app.clone(),
-            setting_u8(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "post_process_providers" => {
-            let (provider_id, base_url) = provider_base_url_from_value(&value, key)?;
-            crate::shortcut::change_post_process_base_url_setting(
-                app.clone(),
-                provider_id,
-                base_url,
-            )?;
-            Ok(vec![key.to_string()])
-        },
-        "translation_provider_id" => {
-            crate::shortcut::set_translation_provider(app.clone(), setting_string(&value, key)?)?;
-            Ok(vec![key.to_string()])
-        },
-        "translation_model_ids" => {
-            let (provider_id, model) = provider_model_from_value(&value, key)?;
-            crate::shortcut::change_translation_model_setting(app.clone(), provider_id, model)?;
-            Ok(vec![key.to_string()])
-        },
-        "external_script_path" => crate::shortcut::change_external_script_path_setting(
-            app.clone(),
-            setting_optional_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        "app_language" => crate::shortcut::change_app_language_setting(
-            app.clone(),
-            setting_string(&value, key)?,
-        )
-        .map(|_| vec![key.to_string()]),
-        _ => Err(format!(
-            "'{key}' is not a command-backed setting. Use /v1/settings/patch for patchable fields or /v1/settings/schema for routing."
-        )),
-    }
-}
-
-fn setting_bool(value: &Value, key: &str) -> Result<bool, String> {
-    value
-        .as_bool()
-        .ok_or_else(|| format!("'{key}' expects a boolean value."))
-}
-
-fn setting_string(value: &Value, key: &str) -> Result<String, String> {
-    value
-        .as_str()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-        .ok_or_else(|| format!("'{key}' expects a non-empty string value."))
-}
-
-fn setting_optional_string(value: &Value, key: &str) -> Result<Option<String>, String> {
-    if value.is_null() {
-        return Ok(None);
-    }
-    value
-        .as_str()
-        .map(|raw| {
-            let trimmed = raw.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        })
-        .ok_or_else(|| format!("'{key}' expects a string or null value."))
-}
-
-fn setting_f32(value: &Value, key: &str) -> Result<f32, String> {
-    value
-        .as_f64()
-        .map(|value| value as f32)
-        .ok_or_else(|| format!("'{key}' expects a numeric value."))
-}
-
-fn setting_u8(value: &Value, key: &str) -> Result<u8, String> {
-    let number = value
-        .as_u64()
-        .ok_or_else(|| format!("'{key}' expects an unsigned integer value."))?;
-    u8::try_from(number).map_err(|_| format!("'{key}' is too large."))
-}
-
-fn setting_u32(value: &Value, key: &str) -> Result<u32, String> {
-    let number = value
-        .as_u64()
-        .ok_or_else(|| format!("'{key}' expects an unsigned integer value."))?;
-    u32::try_from(number).map_err(|_| format!("'{key}' is too large."))
-}
-
-fn setting_string_vec(value: &Value, key: &str) -> Result<Vec<String>, String> {
-    let values = value
-        .as_array()
-        .ok_or_else(|| format!("'{key}' expects an array of strings."))?;
-    values
-        .iter()
-        .map(|value| setting_string(value, key))
-        .collect()
-}
-
-fn provider_model_from_value(value: &Value, key: &str) -> Result<(String, String), String> {
-    let object = value
-        .as_object()
-        .ok_or_else(|| format!("'{key}' expects an object value."))?;
-
-    if let (Some(provider_id), Some(model)) = (object.get("provider_id"), object.get("model")) {
-        return Ok((
-            setting_string(provider_id, "provider_id")?,
-            setting_string(model, "model")?,
-        ));
-    }
-
-    if object.len() == 1 {
-        let (provider_id, model) = object.iter().next().expect("object has one entry");
-        return Ok((provider_id.clone(), setting_string(model, provider_id)?));
-    }
-
-    Err(format!(
-        "'{key}' expects {{ \"provider_id\": string, \"model\": string }} or a one-entry provider map."
-    ))
-}
-
-fn provider_base_url_from_value(value: &Value, key: &str) -> Result<(String, String), String> {
-    let object = value
-        .as_object()
-        .ok_or_else(|| format!("'{key}' expects an object value."))?;
-    let provider_id = object
-        .get("provider_id")
-        .ok_or_else(|| format!("'{key}' requires provider_id."))?;
-    let base_url = object
-        .get("base_url")
-        .ok_or_else(|| format!("'{key}' requires base_url."))?;
-    Ok((
-        setting_string(provider_id, "provider_id")?,
-        setting_string(base_url, "base_url")?,
-    ))
-}
-
-fn apply_settings_patch_side_effects(
-    app: &AppHandle,
-    updated_keys: &[String],
-    settings: &crate::settings::AppSettings,
-) -> Result<(), String> {
-    if updated_keys.iter().any(|key| key == "always_on_microphone") {
-        let Some(audio_manager) = app.try_state::<Arc<AudioRecordingManager>>() else {
-            return Err("AudioRecordingManager is unavailable.".to_string());
-        };
-        let mode = if settings.always_on_microphone {
-            crate::managers::audio::MicrophoneMode::AlwaysOn
-        } else {
-            crate::managers::audio::MicrophoneMode::OnDemand
-        };
-        audio_manager
-            .update_mode(mode)
-            .map_err(|err| format!("Failed to update microphone mode: {err}"))?;
-    }
-
-    if updated_keys.iter().any(|key| key == "show_tray_icon") {
-        crate::tray::set_tray_visibility(app, settings.show_tray_icon);
-    }
-
-    if updated_keys.iter().any(|key| key == "log_level") {
-        let tauri_log_level: tauri_plugin_log::LogLevel = settings.log_level.into();
-        let log_level: log::Level = tauri_log_level.into();
-        crate::FILE_LOG_LEVEL.store(
-            log_level.to_level_filter() as u8,
-            std::sync::atomic::Ordering::Relaxed,
-        );
-    }
-
-    Ok(())
+    let app = app.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::settings_runtime::apply_setting_updates(&app, updates)
+    })
+    .await
+    .unwrap_or_else(|error| Err(format!("Settings update did not finish: {error}")))
 }
 
 fn required_trimmed(value: String, field: &str) -> Result<String, String> {
@@ -1883,9 +1228,6 @@ fn required_trimmed(value: String, field: &str) -> Result<String, String> {
 fn list_corrections(app: &AppHandle) -> Result<Vec<StoredCorrection>, String> {
     commands::corrections::get_corrections(app.clone())
 }
-
-const PHRASE_KEY_MAX_TRIGGER_CHARS: usize = 60;
-const PHRASE_KEY_MAX_EXPANSION_CHARS: usize = 4000;
 
 fn phrase_keys_response(app: &AppHandle) -> PhraseKeysResponse {
     let settings = get_settings(app);
@@ -1910,33 +1252,26 @@ fn normalize_phrase_key(
     expansion: String,
     enabled: Option<bool>,
 ) -> Result<Snippet, String> {
-    let trigger = required_trimmed(trigger, "trigger")?;
-    let expansion = required_trimmed(expansion, "expansion")?;
-    if trigger.chars().count() > PHRASE_KEY_MAX_TRIGGER_CHARS {
-        return Err("trigger must be 60 characters or fewer.".to_string());
-    }
-    if expansion.chars().count() > PHRASE_KEY_MAX_EXPANSION_CHARS {
-        return Err("expansion must be 4,000 characters or fewer.".to_string());
-    }
-    let unsupported = crate::snippets::unsupported_template_variables(&expansion);
-    if !unsupported.is_empty() {
-        return Err(format!(
-            "Unsupported Phrase Key variables: {}",
-            unsupported.join(", ")
-        ));
-    }
     let id = id
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
         .unwrap_or_else(|| format!("snippet_{}", Uuid::new_v4().simple()));
-
-    Ok(Snippet {
+    let snippet = Snippet {
         id,
-        trigger,
-        expansion,
+        trigger: trigger.trim().to_string(),
+        expansion: expansion.trim().to_string(),
         enabled: enabled.unwrap_or(true),
+    };
+    crate::snippets::validate_snippet(&snippet)?;
+    Ok(snippet)
+}
+
+fn trigger_taken(snippets: &[Snippet], trigger: &str, except_id: Option<&str>) -> bool {
+    snippets.iter().any(|existing| {
+        Some(existing.id.as_str()) != except_id
+            && existing.trigger.trim().eq_ignore_ascii_case(trigger.trim())
     })
 }
 
@@ -1950,27 +1285,23 @@ fn create_phrase_key(
         request.expansion,
         request.enabled,
     )?;
-    let mut settings = get_settings(app);
-    if settings
-        .snippets
-        .iter()
-        .any(|existing| existing.id == snippet.id)
-    {
-        return Err(format!("Phrase key id '{}' already exists.", snippet.id));
-    }
-    if settings.snippets.iter().any(|existing| {
-        existing
-            .trigger
-            .trim()
-            .eq_ignore_ascii_case(snippet.trigger.trim())
-    }) {
-        return Err(format!(
-            "A phrase key for trigger '{}' already exists.",
-            snippet.trigger
-        ));
-    }
-    settings.snippets.push(snippet);
-    write_settings(app, settings);
+    crate::settings::try_update(app, |settings| {
+        if settings
+            .snippets
+            .iter()
+            .any(|existing| existing.id == snippet.id)
+        {
+            return Err(format!("Phrase key id '{}' already exists.", snippet.id));
+        }
+        if trigger_taken(&settings.snippets, &snippet.trigger, None) {
+            return Err(format!(
+                "A phrase key for trigger '{}' already exists.",
+                snippet.trigger
+            ));
+        }
+        settings.snippets.push(snippet);
+        crate::snippets::validate_snippets(&settings.snippets)
+    })?;
     Ok(phrase_keys_mutation_response(app))
 }
 
@@ -1985,40 +1316,34 @@ fn update_phrase_key(
         request.expansion,
         request.enabled,
     )?;
-    let mut settings = get_settings(app);
-    if settings.snippets.iter().any(|existing| {
-        existing.id != id
-            && existing
-                .trigger
-                .trim()
-                .eq_ignore_ascii_case(snippet.trigger.trim())
-    }) {
-        return Err(format!(
-            "A phrase key for trigger '{}' already exists.",
-            snippet.trigger
-        ));
-    }
-    let Some(existing) = settings
-        .snippets
-        .iter_mut()
-        .find(|existing| existing.id == id)
-    else {
-        return Err(format!("Phrase key id '{id}' was not found."));
-    };
-    *existing = snippet;
-    write_settings(app, settings);
+    crate::settings::try_update(app, |settings| {
+        if trigger_taken(&settings.snippets, &snippet.trigger, Some(&id)) {
+            return Err(format!(
+                "A phrase key for trigger '{}' already exists.",
+                snippet.trigger
+            ));
+        }
+        let existing = settings
+            .snippets
+            .iter_mut()
+            .find(|existing| existing.id == id)
+            .ok_or_else(|| format!("Phrase key id '{id}' was not found."))?;
+        *existing = snippet;
+        Ok(())
+    })?;
     Ok(phrase_keys_mutation_response(app))
 }
 
 fn delete_phrase_key(app: &AppHandle, id: String) -> Result<PhraseKeysMutationResponse, String> {
     let id = required_trimmed(id, "id")?;
-    let mut settings = get_settings(app);
-    let before = settings.snippets.len();
-    settings.snippets.retain(|snippet| snippet.id != id);
-    if settings.snippets.len() == before {
-        return Err(format!("Phrase key id '{id}' was not found."));
-    }
-    write_settings(app, settings);
+    crate::settings::try_update(app, |settings| {
+        let before = settings.snippets.len();
+        settings.snippets.retain(|snippet| snippet.id != id);
+        if settings.snippets.len() == before {
+            return Err(format!("Phrase key id '{id}' was not found."));
+        }
+        Ok(())
+    })?;
     Ok(phrase_keys_mutation_response(app))
 }
 
@@ -2026,7 +1351,6 @@ fn reorder_phrase_keys(
     app: &AppHandle,
     ordered_ids: Vec<String>,
 ) -> Result<PhraseKeysMutationResponse, String> {
-    let mut settings = get_settings(app);
     let order = ordered_ids
         .into_iter()
         .map(|id| id.trim().to_string())
@@ -2037,22 +1361,23 @@ fn reorder_phrase_keys(
     if order.is_empty() {
         return Err("ordered_ids must include at least one phrase key id.".to_string());
     }
-    let original_positions = settings
-        .snippets
-        .iter()
-        .enumerate()
-        .map(|(index, snippet)| (snippet.id.clone(), index))
-        .collect::<HashMap<_, _>>();
-    settings.snippets.sort_by_key(|snippet| {
-        (
-            order.get(&snippet.id).copied().unwrap_or(usize::MAX / 2),
-            original_positions
-                .get(&snippet.id)
-                .copied()
-                .unwrap_or(usize::MAX / 2),
-        )
+    crate::settings::update(app, |settings| {
+        let original_positions = settings
+            .snippets
+            .iter()
+            .enumerate()
+            .map(|(index, snippet)| (snippet.id.clone(), index))
+            .collect::<HashMap<_, _>>();
+        settings.snippets.sort_by_key(|snippet| {
+            (
+                order.get(&snippet.id).copied().unwrap_or(usize::MAX / 2),
+                original_positions
+                    .get(&snippet.id)
+                    .copied()
+                    .unwrap_or(usize::MAX / 2),
+            )
+        });
     });
-    write_settings(app, settings);
     Ok(phrase_keys_mutation_response(app))
 }
 
@@ -2558,33 +1883,16 @@ async fn handle_audio_devices(
         Ok(devices) => devices,
         Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     };
-    let selected_microphone = match commands::audio::get_selected_microphone(state.app.clone()) {
-        Ok(device) => device,
-        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
-    };
-    let selected_output_device =
-        match commands::audio::get_selected_output_device(state.app.clone()) {
-            Ok(device) => device,
-            Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
-        };
-    let clamshell_microphone = match commands::audio::get_clamshell_microphone(state.app.clone()) {
-        Ok(device) => device,
-        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
-    };
-    let always_on_microphone = match commands::audio::get_microphone_mode(state.app.clone()) {
-        Ok(mode) => mode,
-        Err(error) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
-    };
-    let recording = commands::audio::is_recording(state.app.clone());
+    let settings = get_settings(&state.app);
 
     Json(AudioDevicesResponse {
         microphones,
-        selected_microphone,
+        selected_microphone: settings.selected_microphone,
         output_devices,
-        selected_output_device,
-        clamshell_microphone,
-        always_on_microphone,
-        recording,
+        selected_output_device: settings.selected_output_device,
+        clamshell_microphone: settings.clamshell_microphone,
+        always_on_microphone: settings.always_on_microphone,
+        recording: commands::audio::is_recording(state.app.clone()),
     })
     .into_response()
 }
@@ -2682,7 +1990,12 @@ async fn handle_set_microphone(
         return *response;
     }
 
-    match commands::audio::set_selected_microphone(state.app.clone(), request.device_name) {
+    match commands::settings::preferences::set_selected_microphone(
+        state.app.clone(),
+        request.device_name,
+    )
+    .await
+    {
         Ok(()) => ok_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
@@ -2697,7 +2010,12 @@ async fn handle_set_output_device(
         return *response;
     }
 
-    match commands::audio::set_selected_output_device(state.app.clone(), request.device_name) {
+    match commands::settings::preferences::set_selected_output_device(
+        state.app.clone(),
+        request.device_name,
+    )
+    .await
+    {
         Ok(()) => ok_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
@@ -2712,7 +2030,12 @@ async fn handle_set_clamshell_microphone(
         return *response;
     }
 
-    match commands::audio::set_clamshell_microphone(state.app.clone(), request.device_name) {
+    match commands::settings::preferences::set_clamshell_microphone(
+        state.app.clone(),
+        request.device_name,
+    )
+    .await
+    {
         Ok(()) => ok_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
@@ -3104,7 +2427,7 @@ async fn handle_phrase_keys_import(
     if request.json.trim().is_empty() {
         return api_error(StatusCode::BAD_REQUEST, "json is required.");
     }
-    match crate::shortcut::import_snippets(state.app.clone(), request.json) {
+    match commands::snippets::import_snippets(state.app.clone(), request.json) {
         Ok(imported) => {
             let response = phrase_keys_response(&state.app);
             Json(PhraseKeysImportApiResponse {
@@ -3127,7 +2450,7 @@ async fn handle_phrase_keys_export(
         return *response;
     }
 
-    match crate::shortcut::export_snippets(state.app) {
+    match commands::snippets::export_snippets(state.app) {
         Ok(json) => Json(JsonExportResponse { json }).into_response(),
         Err(error) => api_error(StatusCode::INTERNAL_SERVER_ERROR, error),
     }
@@ -3142,8 +2465,13 @@ async fn handle_phrase_keys_enabled(
         return *response;
     }
 
-    match crate::shortcut::change_snippets_enabled_setting(state.app.clone(), request.enabled) {
-        Ok(()) => Json(phrase_keys_mutation_response(&state.app)).into_response(),
+    match apply_setting_updates(
+        &state.app,
+        vec![SettingUpdate::SnippetsEnabled(request.enabled)],
+    )
+    .await
+    {
+        Ok(_) => Json(phrase_keys_mutation_response(&state.app)).into_response(),
         Err(error) => api_error(StatusCode::BAD_REQUEST, error),
     }
 }
@@ -3271,8 +2599,13 @@ async fn handle_write_rules_enabled(
         return *response;
     }
 
-    match crate::shortcut::change_write_rules_enabled_setting(state.app.clone(), request.enabled) {
-        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+    match apply_setting_updates(
+        &state.app,
+        vec![SettingUpdate::WriteRulesEnabledOverride(request.enabled)],
+    )
+    .await
+    {
+        Ok(_) => Json(write_rules_mutation_response(&state.app)).into_response(),
         Err(error) => api_error(StatusCode::BAD_REQUEST, error),
     }
 }
@@ -3286,11 +2619,13 @@ async fn handle_write_rules_url_capture_enabled(
         return *response;
     }
 
-    match commands::write_rules::change_write_rules_url_capture_enabled_setting(
-        state.app.clone(),
-        request.enabled,
-    ) {
-        Ok(()) => Json(write_rules_mutation_response(&state.app)).into_response(),
+    match apply_setting_updates(
+        &state.app,
+        vec![SettingUpdate::WriteRulesUrlCaptureEnabled(request.enabled)],
+    )
+    .await
+    {
+        Ok(_) => Json(write_rules_mutation_response(&state.app)).into_response(),
         Err(error) => api_error(StatusCode::BAD_REQUEST, error),
     }
 }
@@ -4655,20 +3990,10 @@ pub(crate) fn require_api_token(
 /// Cold path: read the credential store and migrate a token that still lives in
 /// settings from an older build. Runs once per session (and after rotation).
 fn resolve_api_token_uncached(app: &AppHandle) -> String {
-    let mut settings = get_settings(app);
-    let token =
-        match crate::secret_store::get_or_create_http_api_token(Some(&settings.http_api_token)) {
-            Ok(token) => token,
-            Err(err) => {
-                warn!("Local API token unavailable: {err}");
-                String::new()
-            }
-        };
-    if !settings.http_api_token.trim().is_empty() {
-        settings.http_api_token.clear();
-        write_settings(app, settings);
-    }
-    token
+    commands::http_api::resolve_http_api_token(app).unwrap_or_else(|err| {
+        warn!("Local API token unavailable: {err}");
+        String::new()
+    })
 }
 
 fn api_token_authorized(expected: &str, headers: &HeaderMap) -> bool {
@@ -4820,60 +4145,77 @@ mod tests {
 
     #[test]
     fn api_settings_patch_accepts_raw_or_wrapped_update_objects() {
-        let raw = serde_json::json!({ "app_theme": "dark" });
-        assert_eq!(
-            extract_settings_updates(raw)
-                .unwrap()
-                .get("app_theme")
-                .and_then(Value::as_str),
-            Some("dark")
-        );
-
-        let wrapped = serde_json::json!({ "updates": { "debug_mode": true } });
-        assert_eq!(
-            extract_settings_updates(wrapped)
-                .unwrap()
-                .get("debug_mode")
-                .and_then(Value::as_bool),
-            Some(true)
-        );
+        let raw = parse_setting_updates(serde_json::json!({ "audio_feedback": true })).unwrap();
+        assert!(matches!(&raw[..], [SettingUpdate::AudioFeedback(true)]));
+        let wrapped =
+            parse_setting_updates(serde_json::json!({ "updates": { "push_to_talk": false } }))
+                .unwrap();
+        assert!(matches!(&wrapped[..], [SettingUpdate::PushToTalk(false)]));
+        assert!(parse_setting_updates(serde_json::json!(["audio_feedback"])).is_err());
+        assert!(parse_setting_updates(serde_json::json!({ "updates": [] })).is_err());
+        assert!(parse_setting_updates(serde_json::json!({})).is_err());
+        assert!(parse_setting_updates(serde_json::json!({ "paste_method": "telepathy" })).is_err());
+        assert!(parse_setting_updates(serde_json::json!({ "audio_feedback": "loud" })).is_err());
     }
 
     #[test]
-    fn api_settings_patch_marks_side_effect_fields_unpatchable() {
-        for key in [
-            "acoustic_profile",
-            "adaptive_selection_rewrite_enabled",
-            "cloud_selection_rewrite_allowed",
-            "markdown_export_enabled",
-            "markdown_export_dir",
-            "markdown_export_min_words",
-            "markdown_export_content_source",
-            "markdown_export_frontmatter",
-            "markdown_export_include_rewrite_selection",
-            "markdown_export_include_failed_paste",
+    fn api_settings_patch_keeps_protected_routes_and_rejects_unknown_keys() {
+        for (key, route) in [
+            ("bindings", "/v1/settings/shortcut"),
+            ("keyboard_implementation", "/v1/settings/command"),
+            ("selected_model", "/v1/models/stt/select"),
+            ("translation_model_ids", "/v1/settings/command"),
+            ("post_process_models", "/v1/settings/command"),
+            ("post_process_api_key_status", "protected"),
+            ("write_rules", "/v1/write-rules"),
         ] {
-            assert!(
-                !is_patchable_setting(key),
-                "{key} must use validated commands"
-            );
+            let body = serde_json::Map::from_iter([(key.to_string(), Value::Null)]);
+            let error = parse_setting_updates(Value::Object(body)).unwrap_err();
+            assert!(error.contains(route), "{key}: {error}");
         }
-        assert!(is_patchable_setting("audio_feedback"));
-        assert!(!is_patchable_setting("bindings"));
-        assert!(!is_patchable_setting("app_theme"));
-        assert!(!is_patchable_setting("selected_model"));
-        assert!(!is_patchable_setting("post_process_provider_id"));
-        assert!(!is_patchable_setting("translation_model_ids"));
-        assert!(!is_patchable_setting("translate_to_english"));
-        assert!(!is_patchable_setting("tts_volume"));
-        assert!(!is_patchable_setting("audio_enhancement_enabled"));
-        assert!(!is_patchable_setting("overlay_position"));
-        assert!(!is_patchable_setting("debug_mode"));
-        assert!(!is_patchable_setting("post_process_api_keys"));
-        assert!(!is_patchable_setting("snippets"));
-        assert!(!is_patchable_setting("snippets_enabled"));
-        assert!(!is_patchable_setting("write_rules"));
-        assert!(!is_patchable_setting("write_rules_url_capture_enabled"));
+        let error =
+            parse_setting_updates(serde_json::json!({ "not_a_setting": true })).unwrap_err();
+        assert!(error.contains("Unknown setting field"), "{error}");
+    }
+
+    #[test]
+    fn api_settings_preserves_every_published_patchable_field() {
+        let contract: Value =
+            serde_json::from_str(include_str!("../../../tests/contracts/http-api.v1.json"))
+                .unwrap();
+        let defaults = serde_json::to_value(crate::settings::get_default_settings()).unwrap();
+        let actual: Vec<_> = defaults
+            .as_object()
+            .unwrap()
+            .keys()
+            .filter(|key| protected_settings_route(key).is_none())
+            .cloned()
+            .collect();
+        let expected: Vec<String> = serde_json::from_value(contract["patchable"].clone()).unwrap();
+        assert_eq!(actual, expected);
+        for key in actual {
+            let updates = parse_setting_updates(serde_json::json!({ key.clone(): defaults[&key] }))
+                .unwrap_or_else(|error| panic!("{key}: {error}"));
+            assert_eq!(updates[0].key(), key);
+        }
+        let empty_prompt =
+            parse_setting_updates(serde_json::json!({ "post_process_selected_prompt_id": null }))
+                .unwrap();
+        assert!(matches!(
+            &empty_prompt[..],
+            [SettingUpdate::PostProcessSelectedPromptId(None)]
+        ));
+    }
+
+    #[test]
+    fn published_settings_and_audio_request_shapes_are_accepted() {
+        let command: SettingsCommandApiRequest =
+            serde_json::from_value(serde_json::json!({ "key": "app_theme", "value": "dark" }))
+                .unwrap();
+        assert_eq!(command.key, "app_theme");
+        let audio: AudioDeviceSelectionApiRequest =
+            serde_json::from_value(serde_json::json!({ "device_name": "default" })).unwrap();
+        assert_eq!(audio.device_name, "default");
     }
 
     #[test]
@@ -4922,27 +4264,6 @@ mod tests {
             None,
         )
         .is_err());
-    }
-
-    #[test]
-    fn api_settings_command_parses_provider_model_shapes() {
-        assert_eq!(
-            provider_model_from_value(
-                &serde_json::json!({ "provider_id": "openai", "model": "gpt-4.1-mini" }),
-                "post_process_models",
-            )
-            .unwrap(),
-            ("openai".to_string(), "gpt-4.1-mini".to_string())
-        );
-        assert_eq!(
-            provider_model_from_value(
-                &serde_json::json!({ "anthropic": "claude-sonnet-4" }),
-                "post_process_models",
-            )
-            .unwrap(),
-            ("anthropic".to_string(), "claude-sonnet-4".to_string())
-        );
-        assert!(provider_model_from_value(&serde_json::json!({}), "post_process_models").is_err());
     }
 
     #[test]

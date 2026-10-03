@@ -22,7 +22,6 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
 }) => {
   const { t } = useTranslation();
   const updateSetting = useSettingsStore((state) => state.updateSetting);
-  const refreshSettings = useSettingsStore((state) => state.refreshSettings);
   const isUpdating = useSettingsStore((state) => state.isUpdatingKey);
   const [folderError, setFolderError] = useState<string | null>(null);
   const [isChoosingFolder, setIsChoosingFolder] = useState(false);
@@ -57,12 +56,11 @@ export const MarkdownExportSettings: React.FC<MarkdownExportSettingsProps> = ({
     try {
       const picked = await open({ directory: true, multiple: false });
       if (typeof picked !== "string") return;
-      const result = await commands.changeMarkdownExportDirSetting(picked);
-      if (result.status === "error") {
-        setFolderError(result.error);
-        return;
-      }
-      await refreshSettings();
+      const result = await commands.updateSetting({
+        key: "markdown_export_dir",
+        value: picked,
+      });
+      if (result.status === "error") setFolderError(result.error);
     } catch (error) {
       setFolderError(
         error instanceof Error

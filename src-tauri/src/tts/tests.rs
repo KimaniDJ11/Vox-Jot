@@ -321,15 +321,6 @@ fn repaired_app_path_tts_models_are_not_catalog_blocked() {
 }
 
 #[test]
-fn hf_access_error_points_to_model_terms_page() {
-    let message = super::hf_access_error("coqui/XTTS-v2");
-
-    assert!(message.contains("https://huggingface.co/coqui/XTTS-v2"));
-    assert!(message.contains("accept the model terms"));
-    assert!(message.contains("Hugging Face read token"));
-}
-
-#[test]
 fn outetts_catalog_uses_working_llama_checkpoint() {
     let definition = mlx_audio_tts_model_definition("outetts-1b-4bit")
         .expect("OuteTTS Llama model definition should remain discoverable");

@@ -43,7 +43,7 @@ import {
   listTtsVoicePresets,
   type TtsVoicePreset,
 } from "@/lib/ttsVoicePresets";
-import { commands, type VoiceInfo } from "@/bindings";
+import type { VoiceInfo } from "@/bindings";
 import {
   buildCreateVoiceHubRows,
   type CreateVoiceHubVoiceRow,

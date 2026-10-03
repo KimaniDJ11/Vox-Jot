@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Menu lệnh",
             "description": "Mở bảng lệnh từ bất cứ đâu."
+          },
+          "pin_field": {
+            "name": "Ghim ô văn bản",
+            "description": "Nhấp vào ô văn bản rồi dùng phím tắt Ghim ô văn bản. Nội dung đọc chính tả hoặc cuộc họp tiếp theo sẽ được nối vào đó khi bạn làm việc ở nơi khác. Cần quyền Trợ năng. Tin nhắn không bao giờ được gửi tự động."
+          },
+          "clear_pin": {
+            "name": "Bỏ ghim ô văn bản",
+            "description": "Bỏ ghim ô văn bản"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Trình hỗ trợ đang chờ",
       "app": "Ứng dụng {{count}} MB",
       "sidecar": "Trình hỗ trợ {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Không thể lưu thay đổi của bạn: {{error}}",
+      "modelListFailed": "Không thể tải các mô hình: {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Không huỷ được tải xuống: {{detail}}",
       "deleteModel": "Không xoá được mô hình: {{detail}}",
       "extractModel": "Không giải nén được mô hình: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Đích đã ghim",
+    "label": "Giữ đích của bản ghi âm",
+    "description": "Nhấp vào ô văn bản rồi dùng phím tắt Ghim ô văn bản. Nội dung đọc chính tả hoặc cuộc họp tiếp theo sẽ được nối vào đó khi bạn làm việc ở nơi khác. Cần quyền Trợ năng. Tin nhắn không bao giờ được gửi tự động.",
+    "pinShortcut": "Ghim ô văn bản",
+    "clearShortcut": "Bỏ ghim ô văn bản",
+    "status": "Đã ghim: {{app}}",
+    "bound": "đã gắn với bản ghi",
+    "next": "bản ghi tiếp theo",
+    "clear": "Bỏ ghim",
+    "copied": "Đã sao chép văn bản đã lưu",
+    "copy": "Sao chép văn bản đã lưu",
+    "working": "Đang xử lý…",
+    "retry": "Thử chèn lại trong nền",
+    "paste": "Đưa ứng dụng ra trước và dán",
+    "dismiss": "Đóng",
+    "inserted": "Đã chèn vào {{app}}",
+    "loadError": "Không thể tải bản ghi chuyển văn bản đã lưu.",
+    "delivery": {
+      "pending": "Đã lưu · đang chờ chèn",
+      "delivering": "Đang chèn vào ô đã ghim…",
+      "delivered": "Đã chèn vào ô đã ghim",
+      "deferred": "Đã lưu · chưa chèn",
+      "partial": "Đã chèn một phần · hãy kiểm tra ô",
+      "uncertain": "Chưa xác nhận việc chèn · hãy kiểm tra ô",
+      "cancelled": "Đã lưu · đã hủy chuyển văn bản"
     }
   }
 }

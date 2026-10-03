@@ -32,8 +32,8 @@ const configPath = join(root, "src-tauri", "tauri.appstore.conf.json");
 const entitlementsPath = join(root, "src-tauri", "Entitlements.appstore.plist");
 const infoPath = join(root, "src-tauri", "Info.plist");
 const libPath = join(root, "src-tauri", "src", "lib.rs");
-const shortcutPath = join(root, "src-tauri", "src", "shortcut", "mod.rs");
 const distributionPath = join(root, "src", "lib", "distribution.ts");
+const pinModulePath = join(root, "src-tauri", "src", "pinned_target", "mod.rs");
 const englishLocalePath = join(
   root,
   "src",
@@ -130,6 +130,24 @@ if (!existsSync(infoPath)) {
 }
 
 const lib = existsSync(libPath) ? read(libPath) : "";
+if (existsSync(pinModulePath)) {
+  const pinModule = read(pinModulePath);
+  if (
+    !/#\[cfg\(all\(target_os\s*=\s*"macos",\s*not\(vox_jot_app_store\)\)\)\]\s*mod macos;/.test(
+      pinModule,
+    )
+  ) {
+    add(
+      "fail",
+      "Pinned-target Accessibility writes must be excluded from App Store builds.",
+    );
+  } else {
+    add(
+      "pass",
+      "Pinned-target native writes are excluded from App Store builds.",
+    );
+  }
+}
 if (!lib.includes("cfg(not(vox_jot_app_store))")) {
   add(
     "fail",
@@ -146,11 +164,18 @@ if (
   );
 }
 
-const shortcut = existsSync(shortcutPath) ? read(shortcutPath) : "";
-if (!shortcut.includes("cfg(vox_jot_app_store)")) {
+const settingsUpdatePath = join(root, "src-tauri/src/settings/update.rs");
+const settingsUpdates = existsSync(settingsUpdatePath)
+  ? read(settingsUpdatePath)
+  : "";
+if (
+  !["autostart_enabled", "update_checks_enabled"].every((field) =>
+    settingsUpdates.includes(`s.${field} = value && !cfg!(vox_jot_app_store)`),
+  )
+) {
   add(
     "fail",
-    "Settings commands must force unsupported App Store toggles off.",
+    "Shared settings updates must force unsupported App Store toggles off.",
   );
 }
 

@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Befehlsmenü",
             "description": "Öffnen Sie die Befehlspalette von überall."
+          },
+          "pin_field": {
+            "name": "Textfeld anheften",
+            "description": "Klicken Sie in ein Textfeld und verwenden Sie den Kurzbefehl zum Anheften. Das nächste Diktat oder Meeting wird dort angefügt, während Sie woanders arbeiten. Die Berechtigung für Bedienungshilfen ist erforderlich. Nachrichten werden nie automatisch gesendet."
+          },
+          "clear_pin": {
+            "name": "Angeheftetes Feld lösen",
+            "description": "Angeheftetes Feld lösen"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Helfer inaktiv",
       "app": "Anwendung {{count}} MB",
       "sidecar": "Helfer {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Änderung konnte nicht gespeichert werden: {{error}}",
+      "modelListFailed": "Modelle konnten nicht geladen werden: {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Download konnte nicht abgebrochen werden: {{detail}}",
       "deleteModel": "Modell konnte nicht gelöscht werden: {{detail}}",
       "extractModel": "Modell konnte nicht entpackt werden: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Angeheftetes Ziel",
+    "label": "Ziel einer Aufnahme beibehalten",
+    "description": "Klicken Sie in ein Textfeld und verwenden Sie den Kurzbefehl zum Anheften. Das nächste Diktat oder Meeting wird dort angefügt, während Sie woanders arbeiten. Die Berechtigung für Bedienungshilfen ist erforderlich. Nachrichten werden nie automatisch gesendet.",
+    "pinShortcut": "Textfeld anheften",
+    "clearShortcut": "Angeheftetes Feld lösen",
+    "status": "Angeheftet: {{app}}",
+    "bound": "an Aufnahme gebunden",
+    "next": "nächste Aufnahme",
+    "clear": "Lösen",
+    "copied": "Gespeicherten Text kopiert",
+    "copy": "Gespeicherten Text kopieren",
+    "working": "Wird ausgeführt…",
+    "retry": "Einfügen im Hintergrund erneut versuchen",
+    "paste": "App in den Vordergrund holen und einfügen",
+    "dismiss": "Schließen",
+    "inserted": "In {{app}} eingefügt",
+    "loadError": "Gespeicherte Übertragung konnte nicht geladen werden.",
+    "delivery": {
+      "pending": "Gespeichert · wartet auf Einfügen",
+      "delivering": "Wird in angeheftetes Feld eingefügt…",
+      "delivered": "In angeheftetes Feld eingefügt",
+      "deferred": "Gespeichert · nicht eingefügt",
+      "partial": "Teilweise eingefügt · Feld prüfen",
+      "uncertain": "Einfügen unbestätigt · Feld prüfen",
+      "cancelled": "Gespeichert · Übertragung abgebrochen"
     }
   }
 }

@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Menu poleceń",
             "description": "Otwórz paletę poleceń z dowolnego miejsca."
+          },
+          "pin_field": {
+            "name": "Przypnij pole tekstowe",
+            "description": "Kliknij pole tekstowe i użyj skrótu Przypnij pole tekstowe. Następne dyktowanie lub spotkanie zostanie tam dopisane, gdy pracujesz gdzie indziej. Wymagane jest uprawnienie dostępności. Wiadomości nigdy nie są wysyłane automatycznie."
+          },
+          "clear_pin": {
+            "name": "Odepnij pole",
+            "description": "Odepnij pole"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Pomocnik bezczynny",
       "app": "Aplikacja {{count}} MB",
       "sidecar": "Pomocnik {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Nie udało się zapisać zmiany: {{error}}",
+      "modelListFailed": "Nie udało się wczytać modeli: {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Nie udało się anulować pobierania: {{detail}}",
       "deleteModel": "Nie udało się usunąć modelu: {{detail}}",
       "extractModel": "Nie udało się wypakować modelu: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Przypięte miejsce docelowe",
+    "label": "Zachowaj cel nagrania",
+    "description": "Kliknij pole tekstowe i użyj skrótu Przypnij pole tekstowe. Następne dyktowanie lub spotkanie zostanie tam dopisane, gdy pracujesz gdzie indziej. Wymagane jest uprawnienie dostępności. Wiadomości nigdy nie są wysyłane automatycznie.",
+    "pinShortcut": "Przypnij pole tekstowe",
+    "clearShortcut": "Odepnij pole",
+    "status": "Przypięto: {{app}}",
+    "bound": "powiązane z nagraniem",
+    "next": "następne nagranie",
+    "clear": "Odepnij",
+    "copied": "Skopiowano zapisany tekst",
+    "copy": "Kopiuj zapisany tekst",
+    "working": "W toku…",
+    "retry": "Ponów wstawianie w tle",
+    "paste": "Przenieś aplikację na pierwszy plan i wklej",
+    "dismiss": "Zamknij",
+    "inserted": "Wstawiono do {{app}}",
+    "loadError": "Nie udało się wczytać zapisanego dostarczenia.",
+    "delivery": {
+      "pending": "Zapisano · oczekiwanie na wstawienie",
+      "delivering": "Wstawianie do przypiętego pola…",
+      "delivered": "Wstawiono do przypiętego pola",
+      "deferred": "Zapisano · nie wstawiono",
+      "partial": "Wstawiono częściowo · sprawdź pole",
+      "uncertain": "Wstawienie niepotwierdzone · sprawdź pole",
+      "cancelled": "Zapisano · dostarczenie anulowane"
     }
   }
 }

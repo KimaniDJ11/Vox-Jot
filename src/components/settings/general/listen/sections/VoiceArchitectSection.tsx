@@ -85,13 +85,7 @@ export const VoiceArchitectSection: React.FC<{
     initialDraft.voiceProfileId,
   );
   const [draftVoices, setDraftVoices] = useState<VoiceInfo[]>([]);
-  const [draftVoiceErrorMessage, setDraftVoiceErrorMessage] = useState<
-    string | null
-  >(null);
   const [draftTuning, setDraftTuning] = useState(initialDraft.tuning);
-  const [previewTextDraft, setPreviewTextDraft] = useState(
-    initialUiDraft.previewTextDraft,
-  );
   const [draftPreviewRunning, setDraftPreviewRunning] = useState(false);
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
   const [saveTunedVoiceWindowOpen, setSaveTunedVoiceWindowOpen] =
@@ -120,16 +114,10 @@ export const VoiceArchitectSection: React.FC<{
   useEffect(() => {
     writeVoiceArchitectUiDraft({
       saveProfileNameDraft,
-      previewTextDraft,
       modelSearchQuery,
       createVoiceTool,
     });
-  }, [
-    createVoiceTool,
-    modelSearchQuery,
-    previewTextDraft,
-    saveProfileNameDraft,
-  ]);
+  }, [createVoiceTool, modelSearchQuery, saveProfileNameDraft]);
 
   useEffect(() => {
     if (!speech.activePreset) return;
@@ -235,44 +223,31 @@ export const VoiceArchitectSection: React.FC<{
 
     if (!providerIdForControls || !modelIdForControls) {
       setDraftVoices([]);
-      setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (isVoiceFixedToModel(providerIdForControls)) {
       setDraftVoices([]);
-      setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (matchesActiveModel) {
       setDraftVoices(speech.voices);
-      setDraftVoiceErrorMessage(null);
       return;
     }
 
     let cancelled = false;
-    setDraftVoiceErrorMessage(null);
 
+    // The voices only name the preview; without them it uses the model's
+    // default voice name.
     void getTtsVoicesForSelection(providerIdForControls, modelIdForControls)
       .then((voices) => {
-        if (cancelled) return;
-        setDraftVoices(voices);
-        setDraftVoiceErrorMessage(null);
+        if (!cancelled) setDraftVoices(voices);
       })
       .catch((error) => {
         if (cancelled) return;
+        console.warn("Failed to load voices for the draft model:", error);
         setDraftVoices([]);
-        setDraftVoiceErrorMessage(
-          error instanceof Error
-            ? error.message
-            : t("listen.createVoices.loadVoicesFailed", {
-                defaultValue: "Failed to load voices for the selected model",
-              }),
-        );
-      })
-      .finally(() => {
-        if (cancelled) return;
       });
 
     return () => {
@@ -287,7 +262,6 @@ export const VoiceArchitectSection: React.FC<{
     speech.setStatusMessage,
     availableDraftModels,
     speech.voices,
-    t,
   ]);
 
   const saveProfileName = saveProfileNameDraft.trim();
@@ -709,7 +683,7 @@ export const VoiceArchitectSection: React.FC<{
 
     await speech.previewPresetDraft(
       buildDraftPresetInput(),
-      previewTextDraft.trim() ? previewTextDraft : DEFAULT_TTS_PREVIEW_TEXT,
+      DEFAULT_TTS_PREVIEW_TEXT,
     );
   };
   const handleSaveCurrent = async () => {
@@ -755,7 +729,6 @@ export const VoiceArchitectSection: React.FC<{
       model.provider_id === (speech.activePreset?.provider_id ?? "") &&
       model.id === (speech.activePreset?.model_id ?? "");
     lastDraftSelectionKeyRef.current = `${model.provider_id}::${model.id}`;
-    setDraftVoiceErrorMessage(null);
     setDraftProviderId(model.provider_id);
     setDraftModelId(model.id);
     setDraftVoiceId(voiceId ?? "__auto__");
@@ -773,7 +746,6 @@ export const VoiceArchitectSection: React.FC<{
 
   const handleSelectSavedPreset = (preset: TtsVoicePreset) => {
     lastDraftSelectionKeyRef.current = `${preset.provider_id}::${preset.model_id}`;
-    setDraftVoiceErrorMessage(null);
     setDraftProviderId(preset.provider_id);
     setDraftModelId(preset.model_id);
     setDraftVoiceId(preset.voice_id ?? "__auto__");

@@ -45,6 +45,7 @@ mod ocr_models;
 mod ocr_runtime;
 mod ollama;
 pub mod overlay;
+mod pinned_target;
 pub mod portable;
 mod post_processing;
 mod product_architecture;
@@ -60,6 +61,7 @@ mod screen_context_ocr_backup;
 mod screen_context_windows;
 mod secret_store;
 mod settings;
+mod settings_runtime;
 mod shared_model_assets;
 mod shortcut;
 mod sidecar;
@@ -158,7 +160,7 @@ pub use transcription_coordinator::TranscriptionCoordinator;
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Listener, Manager};
 #[cfg(not(vox_jot_app_store))]
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::detail_view::DetailViewRoutingState;
@@ -562,22 +564,18 @@ async fn maybe_warm_selected_ollama_model(app_handle: AppHandle, settings: setti
     if !model_is_installed {
         let replacement_model = status.models.first().cloned().unwrap_or_default();
         let replacement_model_for_log = replacement_model.clone();
-        // Startup probing awaits external I/O. Re-read settings before writing
-        // so a user change made during that wait is neither reverted nor
-        // replaced based on the obsolete startup snapshot.
-        let mut current_settings = settings::get_settings(&app_handle);
-        if !replace_unavailable_startup_ollama_model(
-            &mut current_settings,
-            &model,
-            &replacement_model,
-        ) {
+        // Startup probing awaits external I/O, so the repair applies only if
+        // the user has not changed the selection in the meantime.
+        let repaired = settings::update(&app_handle, |current_settings| {
+            replace_unavailable_startup_ollama_model(current_settings, &model, &replacement_model)
+        });
+        if !repaired {
             log::debug!(
                 "Skipping stale Ollama startup repair for '{}' because settings changed",
                 model
             );
             return;
         }
-        settings::write_settings(&app_handle, current_settings);
 
         if status.models.is_empty() {
             log::info!(
@@ -685,6 +683,7 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
         file_transcription_engine.clone(),
     ));
     app_handle.manage(history_manager.clone());
+    app_handle.manage(Arc::new(pinned_target::PinManager::default()));
     app_handle.manage(tts_manager.clone());
     app_handle.manage(continuous_cloning_manager.clone());
     app_handle.manage(sidecar_manager.clone());
@@ -806,11 +805,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
                 navigate_main_window(app, "settings");
             }
             "check_updates" => {
-                #[cfg(vox_jot_app_store)]
-                {
-                    return;
-                }
-
                 #[cfg(not(vox_jot_app_store))]
                 {
                     let settings = settings::get_settings(app);
@@ -852,6 +846,9 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
             "stop_meeting" => {
                 meeting_capture::stop_active(app);
             }
+            "clear_pin" => {
+                app.state::<Arc<pinned_target::PinManager>>().clear(app);
+            }
             "cancel" => {
                 use crate::utils::cancel_current_operation;
 
@@ -890,18 +887,8 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
 
     let settings = settings::get_settings(app_handle);
 
-    #[cfg(not(vox_jot_app_store))]
-    {
-        // Get the autostart manager and configure based on user setting
-        let autostart_manager = app_handle.autolaunch();
-
-        if settings.autostart_enabled {
-            // Enable autostart if user has opted in
-            let _ = autostart_manager.enable();
-        } else {
-            // Disable autostart if user has opted out
-            let _ = autostart_manager.disable();
-        }
+    if let Err(error) = settings_runtime::apply_autostart(app_handle, settings.autostart_enabled) {
+        log::warn!("{error}");
     }
 
     // Auto-start and preload Ollama if it's the configured post-process provider.
@@ -961,27 +948,6 @@ fn shutdown_core_logic(app: &AppHandle) {
 
 #[tauri::command]
 #[specta::specta]
-fn trigger_update_check(app: AppHandle) -> Result<(), String> {
-    #[cfg(vox_jot_app_store)]
-    {
-        let _ = app;
-        return Ok(());
-    }
-
-    #[cfg(not(vox_jot_app_store))]
-    {
-        let settings = settings::get_settings(&app);
-        if !settings.update_checks_enabled {
-            return Ok(());
-        }
-        app.emit("check-for-updates", ())
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-}
-
-#[tauri::command]
-#[specta::specta]
 fn show_main_window_command(app: AppHandle) -> Result<(), String> {
     show_main_window(&app);
     Ok(())
@@ -991,135 +957,44 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
     let specta_builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         shortcut::change_binding,
         shortcut::reset_binding,
-        shortcut::change_ptt_setting,
-        shortcut::change_audio_feedback_setting,
-        shortcut::change_audio_feedback_volume_setting,
-        shortcut::change_sound_theme_setting,
-        shortcut::change_app_theme_setting,
-        shortcut::change_app_font_scale_setting,
-        shortcut::change_start_hidden_setting,
-        shortcut::change_autostart_setting,
-        shortcut::change_translate_to_english_setting,
-        shortcut::change_selected_language_setting,
-        shortcut::change_translation_output_mode_setting,
-        shortcut::change_translation_target_language_setting,
-        shortcut::change_translation_route_preference_setting,
-        shortcut::change_translation_bilingual_layout_setting,
-        shortcut::change_translation_translate_snippets_setting,
-        shortcut::change_translation_destination_mode_setting,
-        shortcut::change_selection_translation_destination_mode_setting,
-        shortcut::change_tts_enabled_setting,
-        shortcut::change_tts_engine_preference_setting,
-        shortcut::change_tts_auto_readback_mode_setting,
-        shortcut::change_tts_auto_readback_scope_setting,
-        shortcut::change_tts_readback_text_mode_setting,
-        shortcut::change_tts_default_voice_id_setting,
-        shortcut::change_tts_rate_setting,
-        shortcut::change_tts_volume_setting,
-        shortcut::change_tts_stop_on_record_setting,
-        shortcut::change_audio_enhancement_enabled_setting,
-        shortcut::change_audio_enhancement_model_setting,
-        shortcut::change_acoustic_profile_setting,
-        shortcut::change_tts_model_store_path_setting,
-        shortcut::change_external_model_storage_enabled_setting,
-        shortcut::change_external_model_storage_auto_detect_setting,
-        shortcut::change_external_model_storage_path_setting,
-        shortcut::change_speech_runtime_path_setting,
-        shortcut::change_overlay_position_setting,
-        shortcut::change_recording_overlay_style_setting,
-        shortcut::change_debug_mode_setting,
-        shortcut::change_show_technical_features_setting,
-        shortcut::change_word_correction_threshold_setting,
-        shortcut::change_paste_method_setting,
-        shortcut::get_available_typing_tools,
-        shortcut::change_typing_tool_setting,
-        shortcut::change_external_script_path_setting,
-        shortcut::change_clipboard_handling_setting,
-        shortcut::change_auto_submit_setting,
-        shortcut::change_auto_submit_key_setting,
-        shortcut::change_post_process_enabled_setting,
-        shortcut::change_adaptive_selection_rewrite_enabled_setting,
-        shortcut::change_cloud_selection_rewrite_allowed_setting,
-        shortcut::change_markdown_export_enabled_setting,
-        shortcut::change_markdown_export_dir_setting,
-        shortcut::change_markdown_export_min_words_setting,
-        shortcut::change_markdown_export_content_source_setting,
-        shortcut::change_markdown_export_frontmatter_setting,
-        shortcut::change_markdown_export_include_rewrite_selection_setting,
-        shortcut::change_markdown_export_include_failed_paste_setting,
-        shortcut::test_markdown_export_write,
-        shortcut::change_suggest_meeting_apps_setting,
-        shortcut::change_show_live_partials_setting,
-        shortcut::change_local_privacy_mode_setting,
-        settings::set_onboarding_completed,
-        shortcut::change_screen_context_enabled_setting,
-        shortcut::change_screen_context_excluded_bundle_ids_setting,
-        shortcut::change_screen_context_pause_on_idle_setting,
-        shortcut::change_screen_context_idle_threshold_ms_setting,
-        shortcut::change_context_capture_mode_setting,
-        shortcut::change_screen_context_ocr_quality_setting,
-        shortcut::change_screen_context_ocr_engine_setting,
-        shortcut::change_screen_context_ocr_timeout_ms_setting,
-        shortcut::change_screen_context_token_budget_setting,
-        shortcut::change_screen_context_stale_threshold_ms_setting,
-        shortcut::change_post_process_mode_setting,
-        shortcut::change_post_process_cleanup_level_setting,
-        shortcut::change_experimental_enabled_setting,
-        shortcut::change_post_process_base_url_setting,
-        shortcut::change_post_process_api_key_setting,
-        shortcut::change_post_process_model_setting,
-        shortcut::change_translation_model_setting,
-        shortcut::change_translation_model_ids_setting,
-        shortcut::set_post_process_provider,
-        shortcut::set_translation_provider,
-        shortcut::fetch_post_process_models,
-        shortcut::add_post_process_prompt,
-        shortcut::update_post_process_prompt,
-        shortcut::delete_post_process_prompt,
-        shortcut::set_post_process_selected_prompt,
-        shortcut::update_custom_words,
-        shortcut::change_custom_filler_words_setting,
-        shortcut::update_personal_dictionary,
-        shortcut::change_max_rewrite_strength_setting,
-        shortcut::change_show_preview_before_paste_setting,
-        shortcut::change_fallback_to_raw_on_failure_setting,
-        shortcut::change_app_aware_tone_enabled_setting,
-        shortcut::change_write_rules_enabled_setting,
-        shortcut::update_tone_definitions,
         shortcut::suspend_binding,
         shortcut::resume_binding,
-        shortcut::change_mute_while_recording_setting,
-        shortcut::change_audio_ducking_setting,
-        shortcut::change_append_trailing_space_setting,
-        shortcut::change_app_language_setting,
-        shortcut::change_global_language_sync_enabled_setting,
-        shortcut::change_update_checks_setting,
-        shortcut::change_crash_reporting_setting,
-        shortcut::change_usage_analytics_setting,
-        shortcut::change_keyboard_implementation_setting,
-        shortcut::get_keyboard_implementation,
-        shortcut::change_show_tray_icon_setting,
-        shortcut::change_correction_tracking_enabled_setting,
-        shortcut::change_file_transcription_apply_dictionary_setting,
-        shortcut::change_snippets_enabled_setting,
-        shortcut::update_snippets,
-        shortcut::import_snippets,
-        shortcut::export_snippets,
+        shortcut::change_keyboard_implementation,
         shortcut::handy_keys::start_handy_keys_recording,
         shortcut::handy_keys::stop_handy_keys_recording,
-        trigger_update_check,
+        commands::settings::get_app_settings,
+        commands::settings::get_settings_snapshot,
+        commands::settings::get_default_settings,
+        commands::settings::update_setting,
+        commands::settings::get_available_typing_tools,
+        commands::settings::test_markdown_export_write,
+        commands::post_process::set_post_process_base_url,
+        commands::post_process::set_post_process_api_key,
+        commands::post_process::set_post_process_model,
+        commands::post_process::set_translation_model,
+        commands::post_process::fetch_post_process_models,
+        commands::post_process::add_post_process_prompt,
+        commands::post_process::update_post_process_prompt,
+        commands::post_process::delete_post_process_prompt,
+        commands::snippets::import_snippets,
+        commands::snippets::export_snippets,
         show_main_window_command,
         commands::cancel_operation,
+        commands::pinned_target::get_pin_state,
+        commands::pinned_target::pin_field,
+        commands::pinned_target::clear_pin,
+        commands::pinned_target::copy_pinned_delivery,
+        commands::pinned_target::get_pinned_delivery,
+        commands::pinned_target::get_unsaved_pinned_deliveries,
+        commands::pinned_target::get_unresolved_pinned_deliveries,
+        commands::pinned_target::retry_delivery,
+        commands::pinned_target::deliver_via_paste,
+        commands::pinned_target::open_pinned_delivery_target,
         commands::get_app_dir_path,
         commands::get_external_model_storage_status,
-        commands::get_external_model_storage_disconnect_event,
-        commands::refresh_external_model_storage,
         commands::pick_external_model_storage_dir,
         commands::open_external_model_storage_dir,
-        commands::get_app_settings,
-        commands::get_default_settings,
         commands::get_log_dir_path,
-        commands::set_log_level,
         commands::open_recordings_folder,
         commands::open_log_dir,
         commands::open_app_data_dir,
@@ -1132,19 +1007,16 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::prepare_macos_permission_relaunch,
         commands::open_screen_recording_settings,
         commands::tts::tts_speak,
-        commands::tts::tts_speak_with_preset,
         commands::tts::tts_speak_reader,
         commands::tts::export_reader_audio,
         commands::tts::export_reader_audiobook,
         commands::tts::get_reader_audio_cache_status,
         commands::tts::prepare_reader_audio_cache,
-        commands::tts::play_reader_audio_unit,
         commands::tts::synthesize_reader_audio_unit,
         commands::tts::tts_stop,
         commands::tts::get_available_tts_voices,
         commands::tts::get_tts_voices_for_selection,
         commands::tts::refresh_tts_voices,
-        commands::tts::preview_tts_voice,
         commands::tts::preview_tts_voice_preset,
         commands::tts::preview_tts_voice_preset_draft,
         commands::tts::prepare_sidecar_engine,
@@ -1162,7 +1034,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::tts::delete_tts_voice_profile,
         commands::tts::set_active_improvement_profile,
         commands::tts::clear_profile_collected_data,
-        commands::tts::get_voice_profile_progress,
         commands::tts::convert_voice_sample,
         commands::tts::convert_voice_recording,
         commands::initialize_enigo,
@@ -1174,38 +1045,23 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::models::download_model,
         commands::models::delete_model,
         commands::models::cancel_download,
-        commands::models::set_stt_platform_selection,
         commands::models::set_tts_platform_selection,
         commands::models::download_tts_hf_model,
         commands::models::cancel_artifact_download,
-        commands::models::delete_tts_hf_model,
         commands::models::set_active_model,
         commands::models::get_current_model,
         commands::models::get_transcription_model_status,
-        commands::models::is_model_loading,
         commands::models::has_any_models_available,
-        commands::models::has_any_models_or_downloads,
-        commands::audio::update_microphone_mode,
-        commands::audio::get_microphone_mode,
         commands::audio::start_microphone_level_preview,
         commands::audio::stop_microphone_level_preview,
         commands::audio::get_windows_microphone_permission_status,
         commands::audio::open_microphone_privacy_settings,
         commands::audio::get_available_microphones,
-        commands::audio::set_selected_microphone,
-        commands::audio::get_selected_microphone,
         commands::audio::get_available_output_devices,
-        commands::audio::set_selected_output_device,
-        commands::audio::get_selected_output_device,
         commands::audio::play_test_sound,
         commands::audio::check_custom_sounds,
-        commands::audio::set_clamshell_microphone,
-        commands::audio::get_clamshell_microphone,
         commands::audio::is_recording,
-        commands::transcription::set_model_unload_timeout,
-        commands::transcription::get_model_load_status,
         commands::transcription::get_runtime_memory_status,
-        commands::transcription::unload_model_manually,
         commands::transcription::clean_audio_file,
         commands::transcription::enhance_audio_file,
         commands::transcription::demucs_runtime_status,
@@ -1236,7 +1092,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::transcription::list_watch_folder_files,
         commands::transcription::transcribe_watch_folder_files,
         commands::transcription::remove_watch_folder,
-        commands::transcription::set_watch_folder_enabled,
         commands::transcription::update_watch_folder_format,
         commands::reader::list_reader_documents,
         commands::reader::read_reader_document,
@@ -1244,8 +1099,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::reader::reader_transform_text,
         commands::reader::render_reader_page,
         commands::speech_analysis::get_speech_analysis_catalog,
-        commands::speech_analysis::get_speech_analysis_model,
-        commands::speech_analysis::get_speech_analysis_selection,
         commands::speech_analysis::set_speech_analysis_selection,
         commands::speech_analysis::download_speech_analysis_model,
         commands::speech_analysis::cancel_speech_analysis_download,
@@ -1262,7 +1115,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::write_rules::reorder_write_rules,
         commands::write_rules::test_resolve_write_rule,
         commands::write_rules::get_frontmost_url_for_write_rules,
-        commands::write_rules::change_write_rules_url_capture_enabled_setting,
         commands::http_api::set_http_api_enabled,
         commands::http_api::set_http_api_port,
         commands::http_api::get_http_api_status,
@@ -1278,14 +1130,9 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::history::retry_history_markdown_export,
         commands::history::reveal_history_markdown_export,
         commands::history::delete_history_entry,
-        commands::history::update_history_limit,
-        commands::history::update_history_auto_analyze_speakers_long_recordings_enabled,
-        commands::history::update_history_auto_analyze_speakers_min_duration_ms,
-        commands::history::update_recording_retention_period,
         commands::history::update_field_snapshot,
         commands::history::update_history_entry_transcription,
         commands::history::update_history_entry_display_title,
-        commands::history::update_history_entry_speaker_labels_visible,
         commands::history::update_history_entry_speaker_display_names,
         commands::history::analyze_history_entry_speakers,
         helpers::clamshell::is_laptop,
@@ -1321,9 +1168,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::corrections::add_transcript_word_correction,
         commands::stats::get_dictation_stats,
         commands::story_studio::render_story_audio,
-        commands::story_studio::generate_create_speech_audio,
-        commands::story_studio::get_stable_audio3_status,
-        commands::story_studio::prepare_stable_audio3,
         commands::story_studio::get_creative_audio_model_catalog,
         commands::story_studio::set_creative_audio_model_selection,
         commands::story_studio::download_creative_audio_model,
@@ -1340,7 +1184,6 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::story_studio::list_story_audio,
         commands::story_studio::toggle_story_audio_starred,
         commands::story_studio::rename_story_audio,
-        commands::story_studio::update_story_audio_title,
         commands::story_studio::delete_story_audio,
         commands::story_studio::create_processed_story_audio,
         commands::show_detail_view,
@@ -1349,9 +1192,152 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::list_installed_apps,
         commands::get_app_icon,
         commands::get_file_icon,
-        commands::convo::convo_check_availability,
         commands::convo::convo_prepare_session,
         commands::convo::convo_send_text_turn,
+        commands::convo::convo_start_audio_capture,
+        commands::convo::convo_stop_audio_capture,
+        commands::convo::convo_save_audio_capture,
+            commands::settings::preferences::change_ptt_setting,
+        commands::settings::preferences::change_audio_feedback_setting,
+        commands::settings::preferences::change_audio_feedback_volume_setting,
+        commands::settings::preferences::change_sound_theme_setting,
+        commands::settings::preferences::change_app_theme_setting,
+        commands::settings::preferences::change_app_font_scale_setting,
+        commands::settings::preferences::change_start_hidden_setting,
+        commands::settings::preferences::change_autostart_setting,
+        commands::settings::preferences::change_translate_to_english_setting,
+        commands::settings::preferences::change_selected_language_setting,
+        commands::settings::preferences::change_translation_output_mode_setting,
+        commands::settings::preferences::change_translation_target_language_setting,
+        commands::settings::preferences::change_translation_route_preference_setting,
+        commands::settings::preferences::change_translation_bilingual_layout_setting,
+        commands::settings::preferences::change_translation_translate_snippets_setting,
+        commands::settings::preferences::change_translation_destination_mode_setting,
+        commands::settings::preferences::change_selection_translation_destination_mode_setting,
+        commands::settings::preferences::change_tts_enabled_setting,
+        commands::settings::preferences::change_tts_engine_preference_setting,
+        commands::settings::preferences::change_tts_auto_readback_mode_setting,
+        commands::settings::preferences::change_tts_auto_readback_scope_setting,
+        commands::settings::preferences::change_tts_readback_text_mode_setting,
+        commands::settings::preferences::change_tts_default_voice_id_setting,
+        commands::settings::preferences::change_tts_rate_setting,
+        commands::settings::preferences::change_tts_volume_setting,
+        commands::settings::preferences::change_tts_stop_on_record_setting,
+        commands::settings::preferences::change_audio_enhancement_enabled_setting,
+        commands::settings::preferences::change_audio_enhancement_model_setting,
+        commands::settings::preferences::change_acoustic_profile_setting,
+        commands::settings::preferences::change_tts_model_store_path_setting,
+        commands::settings::preferences::change_external_model_storage_enabled_setting,
+        commands::settings::preferences::change_external_model_storage_auto_detect_setting,
+        commands::settings::preferences::change_external_model_storage_path_setting,
+        commands::settings::preferences::change_speech_runtime_path_setting,
+        commands::settings::preferences::change_overlay_position_setting,
+        commands::settings::preferences::change_recording_overlay_style_setting,
+        commands::settings::preferences::change_debug_mode_setting,
+        commands::settings::preferences::change_show_technical_features_setting,
+        commands::settings::preferences::change_word_correction_threshold_setting,
+        commands::settings::preferences::change_paste_method_setting,
+        commands::settings::preferences::change_typing_tool_setting,
+        commands::settings::preferences::change_external_script_path_setting,
+        commands::settings::preferences::change_clipboard_handling_setting,
+        commands::settings::preferences::change_auto_submit_setting,
+        commands::settings::preferences::change_auto_submit_key_setting,
+        commands::settings::preferences::change_post_process_enabled_setting,
+        commands::settings::preferences::change_adaptive_selection_rewrite_enabled_setting,
+        commands::settings::preferences::change_cloud_selection_rewrite_allowed_setting,
+        commands::settings::preferences::change_markdown_export_enabled_setting,
+        commands::settings::preferences::change_markdown_export_dir_setting,
+        commands::settings::preferences::change_markdown_export_min_words_setting,
+        commands::settings::preferences::change_markdown_export_content_source_setting,
+        commands::settings::preferences::change_markdown_export_frontmatter_setting,
+        commands::settings::preferences::change_markdown_export_include_rewrite_selection_setting,
+        commands::settings::preferences::change_markdown_export_include_failed_paste_setting,
+        commands::settings::preferences::change_suggest_meeting_apps_setting,
+        commands::settings::preferences::change_show_live_partials_setting,
+        commands::settings::preferences::change_local_privacy_mode_setting,
+        commands::settings::preferences::set_onboarding_completed,
+        commands::settings::preferences::change_screen_context_enabled_setting,
+        commands::settings::preferences::change_screen_context_excluded_bundle_ids_setting,
+        commands::settings::preferences::change_screen_context_pause_on_idle_setting,
+        commands::settings::preferences::change_screen_context_idle_threshold_ms_setting,
+        commands::settings::preferences::change_context_capture_mode_setting,
+        commands::settings::preferences::change_screen_context_ocr_quality_setting,
+        commands::settings::preferences::change_screen_context_ocr_engine_setting,
+        commands::settings::preferences::change_screen_context_ocr_timeout_ms_setting,
+        commands::settings::preferences::change_screen_context_token_budget_setting,
+        commands::settings::preferences::change_screen_context_stale_threshold_ms_setting,
+        commands::settings::preferences::change_post_process_mode_setting,
+        commands::settings::preferences::change_post_process_cleanup_level_setting,
+        commands::settings::preferences::change_experimental_enabled_setting,
+        commands::settings::aliases::change_post_process_base_url_setting,
+        commands::settings::aliases::change_post_process_api_key_setting,
+        commands::settings::aliases::change_post_process_model_setting,
+        commands::settings::aliases::change_translation_model_setting,
+        commands::settings::aliases::change_translation_model_ids_setting,
+        commands::settings::preferences::set_post_process_provider,
+        commands::settings::preferences::set_translation_provider,
+        commands::settings::preferences::set_post_process_selected_prompt,
+        commands::settings::preferences::update_custom_words,
+        commands::settings::preferences::change_custom_filler_words_setting,
+        commands::settings::preferences::update_personal_dictionary,
+        commands::settings::preferences::change_max_rewrite_strength_setting,
+        commands::settings::preferences::change_show_preview_before_paste_setting,
+        commands::settings::preferences::change_fallback_to_raw_on_failure_setting,
+        commands::settings::preferences::change_app_aware_tone_enabled_setting,
+        commands::settings::preferences::change_write_rules_enabled_setting,
+        commands::settings::preferences::update_tone_definitions,
+        commands::settings::preferences::change_mute_while_recording_setting,
+        commands::settings::preferences::change_audio_ducking_setting,
+        commands::settings::preferences::change_append_trailing_space_setting,
+        commands::settings::preferences::change_app_language_setting,
+        commands::settings::preferences::change_global_language_sync_enabled_setting,
+        commands::settings::preferences::change_update_checks_setting,
+        commands::settings::preferences::change_crash_reporting_setting,
+        commands::settings::preferences::change_usage_analytics_setting,
+        commands::settings::aliases::change_keyboard_implementation_setting,
+        commands::settings::aliases::get_keyboard_implementation,
+        commands::settings::preferences::change_show_tray_icon_setting,
+        commands::settings::preferences::change_correction_tracking_enabled_setting,
+        commands::settings::preferences::change_file_transcription_apply_dictionary_setting,
+        commands::settings::preferences::change_snippets_enabled_setting,
+        commands::settings::preferences::update_snippets,
+        trigger_update_check,
+        commands::get_external_model_storage_disconnect_event,
+        commands::refresh_external_model_storage,
+        commands::settings::preferences::set_log_level,
+        commands::tts::tts_speak_with_preset,
+        commands::tts::play_reader_audio_unit,
+        commands::tts::preview_tts_voice,
+        commands::tts::get_voice_profile_progress,
+        commands::models::set_stt_platform_selection,
+        commands::models::delete_tts_hf_model,
+        commands::models::is_model_loading,
+        commands::models::has_any_models_or_downloads,
+        commands::settings::preferences::update_microphone_mode,
+        commands::audio::get_microphone_mode,
+        commands::settings::preferences::set_selected_microphone,
+        commands::audio::get_selected_microphone,
+        commands::settings::preferences::set_selected_output_device,
+        commands::audio::get_selected_output_device,
+        commands::settings::preferences::set_clamshell_microphone,
+        commands::audio::get_clamshell_microphone,
+        commands::settings::preferences::set_model_unload_timeout,
+        commands::transcription::get_model_load_status,
+        commands::transcription::unload_model_manually,
+        commands::transcription::set_watch_folder_enabled,
+        commands::speech_analysis::get_speech_analysis_model,
+        commands::speech_analysis::get_speech_analysis_selection,
+        commands::settings::preferences::change_write_rules_url_capture_enabled_setting,
+        commands::settings::preferences::update_history_limit,
+        commands::settings::preferences::update_history_auto_analyze_speakers_long_recordings_enabled,
+        commands::settings::preferences::update_history_auto_analyze_speakers_min_duration_ms,
+        commands::settings::preferences::update_recording_retention_period,
+        commands::history::update_history_entry_speaker_labels_visible,
+        commands::story_studio::generate_create_speech_audio,
+        commands::story_studio::get_stable_audio3_status,
+        commands::story_studio::prepare_stable_audio3,
+        commands::story_studio::update_story_audio_title,
+        commands::convo::convo_check_availability,
         commands::convo::convo_reset_session,
         commands::convo::convo_get_session,
         commands::convo::convo_update_speak_replies,
@@ -1363,15 +1349,14 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::convo::convo_pick_files_context,
         commands::convo::convo_pick_folder_context,
         commands::convo::convo_get_settings_catalog,
-        commands::convo::convo_start_audio_capture,
-        commands::convo::convo_stop_audio_capture,
-        commands::convo::convo_save_audio_capture,
         commands::convo::convo_send_audio_turn,
         commands::convo::convo_play_audio_reply,
         commands::convo::convo_ensure_helper_running,
         commands::convo::convo_is_audio_capturing,
     ]);
-    specta_builder.dangerously_cast_bigints_to_number()
+    specta_builder
+        .typ::<external_model_storage::ExternalModelStorageDisconnectEvent>()
+        .dangerously_cast_bigints_to_number()
 }
 
 pub fn generate_typescript_bindings() -> Result<String, String> {
@@ -1713,10 +1698,7 @@ pub fn run(cli_args: CliArgs) {
                 settings.log_level = settings::LogLevel::Trace;
             }
 
-            let tauri_log_level: tauri_plugin_log::LogLevel = settings.log_level.into();
-            let file_log_level: log::Level = tauri_log_level.into();
-            // Store the file log level in the atomic for the filter to use
-            FILE_LOG_LEVEL.store(file_log_level.to_level_filter() as u8, Ordering::Relaxed);
+            settings_runtime::set_file_log_level(settings.log_level);
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
             app.manage(PreviewManager::default());
 
@@ -1965,5 +1947,26 @@ mod specta_tests {
                 .map(String::as_str),
             Some("user-selected:latest")
         );
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+fn trigger_update_check(app: AppHandle) -> Result<(), String> {
+    #[cfg(vox_jot_app_store)]
+    {
+        let _ = app;
+        Ok(())
+    }
+
+    #[cfg(not(vox_jot_app_store))]
+    {
+        let settings = settings::get_settings(&app);
+        if !settings.update_checks_enabled {
+            return Ok(());
+        }
+        app.emit("check-for-updates", ())
+            .map_err(|e| e.to_string())?;
+        Ok(())
     }
 }

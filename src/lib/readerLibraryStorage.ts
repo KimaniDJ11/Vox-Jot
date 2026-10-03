@@ -1,4 +1,5 @@
-export type ReaderDocumentKind = "pdf" | "docx" | "epub" | "markdown" | "text";
+import type { ReaderDocumentKind } from "@/bindings";
+export type { ReaderDocumentKind } from "@/bindings";
 
 export type ReaderLibraryItem = {
   id: string;

@@ -14,6 +14,10 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
 
+mod update;
+pub(crate) use update::VALID_APP_THEMES;
+pub use update::{apply_updates, SettingUpdate};
+
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
@@ -834,6 +838,8 @@ pub struct AppSettings {
     pub audio_ducking_enabled: bool,
     #[serde(default)]
     pub append_trailing_space: bool,
+    #[serde(default)]
+    pub pinned_paste_enabled: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
     #[serde(default = "default_global_language_sync_enabled")]
@@ -2000,20 +2006,62 @@ pub const SETTINGS_STORE_PATH: &str = "settings_store.json";
 /// settings JSON and re-running the `ensure_*_defaults` passes per call is
 /// wasted work. Every write goes through `write_settings`, which refreshes
 /// this snapshot, so readers can serve a clone instead.
-static SETTINGS_CACHE: std::sync::RwLock<Option<AppSettings>> = std::sync::RwLock::new(None);
+#[derive(Clone, Serialize, Type)]
+pub struct SettingsSnapshot {
+    pub revision: u64,
+    pub settings: AppSettings,
+}
+
+impl SettingsSnapshot {
+    fn without_secrets(mut self) -> Self {
+        self.settings.http_api_token.clear();
+        self.settings.post_process_api_keys.clear();
+        self
+    }
+}
+
+static SETTINGS_CACHE: std::sync::RwLock<Option<SettingsSnapshot>> = std::sync::RwLock::new(None);
 
 fn cached_settings() -> Option<AppSettings> {
     SETTINGS_CACHE
         .read()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .clone()
+        .as_ref()
+        .map(|snapshot| snapshot.settings.clone())
 }
 
-fn store_settings_cache(settings: &AppSettings) {
+fn store_settings_cache(settings: &AppSettings) -> u64 {
     let mut cache = SETTINGS_CACHE
         .write()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    *cache = Some(settings.clone());
+    let revision = cache.as_ref().map_or(1, |snapshot| snapshot.revision + 1);
+    *cache = Some(SettingsSnapshot {
+        revision,
+        settings: settings.clone(),
+    });
+    revision
+}
+
+/// A coherent snapshot for UI synchronization. Dictation keeps using the
+/// existing cached `get_settings` path without additional locks or work.
+pub fn get_settings_snapshot(app: &AppHandle) -> SettingsSnapshot {
+    if let Some(snapshot) = SETTINGS_CACHE
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+    {
+        return snapshot.without_secrets();
+    }
+    let settings = get_settings_without_secrets(app);
+    SETTINGS_CACHE
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+        .unwrap_or(SettingsSnapshot {
+            revision: 0,
+            settings,
+        })
+        .without_secrets()
 }
 
 /// Open the settings store, returning `None` instead of panicking.
@@ -2043,6 +2091,21 @@ pub fn get_default_settings() -> AppSettings {
     let default_shortcut = "alt+space";
 
     let mut bindings = HashMap::new();
+    for (id, name, key) in [
+        ("pin_field", "Pin text field", "option+command+p"),
+        ("clear_pin", "Clear pinned field", "option+command+u"),
+    ] {
+        bindings.insert(
+            id.into(),
+            ShortcutBinding {
+                id: id.into(),
+                name: name.into(),
+                description: "Choose or clear the destination for the next recording.".into(),
+                default_binding: key.into(),
+                current_binding: key.into(),
+            },
+        );
+    }
     bindings.insert(
         "transcribe".to_string(),
         ShortcutBinding {
@@ -2304,6 +2367,7 @@ pub fn get_default_settings() -> AppSettings {
         mute_while_recording: false,
         audio_ducking_enabled: false,
         append_trailing_space: false,
+        pinned_paste_enabled: false,
         app_language: default_app_language(),
         global_language_sync_enabled: default_global_language_sync_enabled(),
         experimental_enabled: default_experimental_enabled(),
@@ -2708,7 +2772,7 @@ impl AppSettings {
     }
 }
 
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
+pub(crate) fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
         let trimmed = value.trim();
         if trimmed.is_empty() {
@@ -3035,6 +3099,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
     let screen_context_changed = ensure_screen_context_defaults(&mut settings);
+    let pin_changed = ensure_pin_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -3044,6 +3109,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         || model_platform_changed
         || http_api_changed
         || screen_context_changed
+        || pin_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -3065,6 +3131,14 @@ fn normalized_default_settings() -> AppSettings {
     ensure_screen_context_defaults(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
     settings
+}
+
+fn ensure_pin_defaults(settings: &mut AppSettings) -> bool {
+    if !crate::pinned_target::AVAILABLE && settings.pinned_paste_enabled {
+        settings.pinned_paste_enabled = false;
+        return true;
+    }
+    false
 }
 
 /// Read the current settings.
@@ -3100,6 +3174,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
     let screen_context_changed = ensure_screen_context_defaults(&mut settings);
+    let pin_changed = ensure_pin_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -3109,6 +3184,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         || model_platform_changed
         || http_api_changed
         || screen_context_changed
+        || pin_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -3126,10 +3202,45 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
 pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
     let mut settings = get_settings(app);
     settings.http_api_token.clear();
+    settings.post_process_api_keys.clear();
     settings
 }
 
-pub fn write_settings(app: &AppHandle, settings: AppSettings) {
+/// Serializes every read-modify-write of the persisted settings so concurrent
+/// writers cannot overwrite each other's changes.
+static SETTINGS_WRITE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Change the current settings and persist the result.
+pub fn update<T>(app: &AppHandle, change: impl FnOnce(&mut AppSettings) -> T) -> T {
+    match try_update(app, |settings| {
+        Ok::<_, std::convert::Infallible>(change(settings))
+    }) {
+        Ok(value) => value,
+        Err(never) => match never {},
+    }
+}
+
+/// Change the current settings, persisting the result only when `change`
+/// succeeds. Unchanged settings are neither written nor broadcast.
+pub fn try_update<T, E>(
+    app: &AppHandle,
+    change: impl FnOnce(&mut AppSettings) -> Result<T, E>,
+) -> Result<T, E> {
+    let _guard = SETTINGS_WRITE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut settings = get_settings(app);
+    let before = serde_json::to_value(&settings).ok();
+    let value = change(&mut settings)?;
+    if before.is_none() || before != serde_json::to_value(&settings).ok() {
+        write_settings(app, settings);
+    }
+    Ok(value)
+}
+
+/// Persist and publish one snapshot. The existing unit event remains available
+/// to native listeners and public clients; webviews consume revisioned snapshots.
+fn write_settings(app: &AppHandle, settings: AppSettings) {
     let mut settings = settings;
     settings.post_process_api_keys.clear();
     settings.http_api_token.clear();
@@ -3137,31 +3248,22 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
 
     // Refresh the shared snapshot before persisting so concurrent readers
     // never observe the pre-write value once this call returns.
-    store_settings_cache(&settings);
+    let revision = store_settings_cache(&settings);
 
-    let Some(store) = open_settings_store(app) else {
-        error!("Settings change could not be persisted; keeping it in memory only");
-        let _ = app.emit("settings-changed", ());
-        return;
-    };
+    match open_settings_store(app) {
+        Some(store) => match serde_json::to_value(&settings) {
+            Ok(value) => store.set("settings", value),
+            Err(error) => error!("Settings could not be serialized for persistence: {error}"),
+        },
+        None => error!("Settings change could not be persisted; keeping it in memory only"),
+    }
 
-    store.set("settings", serde_json::to_value(&settings).unwrap());
-
-    // Notify all WebViews so each window's settings store stays in sync.
-    let _ = app.emit("settings-changed", ());
-}
-
-/// Persist whether the first-run onboarding wizard has been completed. The
-/// frontend calls this when the wizard finishes so subsequent launches skip
-/// straight to the app, while a fresh install (no stored flag) always shows
-/// onboarding regardless of which speech models happen to be available.
-#[tauri::command]
-#[specta::specta]
-pub fn set_onboarding_completed(app: AppHandle, completed: bool) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    settings.onboarding_completed = completed;
-    write_settings(&app, settings);
-    Ok(())
+    if let Err(error) = app.emit("settings-changed", ()) {
+        warn!("Failed to broadcast settings change: {error}");
+    }
+    if let Err(error) = app.emit("settings-snapshot", SettingsSnapshot { revision, settings }) {
+        warn!("Failed to broadcast settings snapshot: {error}");
+    }
 }
 
 pub fn get_bindings(app: &AppHandle) -> HashMap<String, ShortcutBinding> {
@@ -3188,6 +3290,26 @@ pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn public_snapshots_never_expose_cached_legacy_credentials() {
+        let mut settings = get_default_settings();
+        settings.http_api_token = "legacy-test-token".to_string();
+        settings
+            .post_process_api_keys
+            .insert("custom".to_string(), "legacy-test-key".to_string());
+        let snapshot = SettingsSnapshot {
+            revision: 42,
+            settings,
+        }
+        .without_secrets();
+        assert_eq!(snapshot.revision, 42);
+        assert!(snapshot.settings.http_api_token.is_empty());
+        assert!(snapshot.settings.post_process_api_keys.is_empty());
+        let payload = serde_json::to_value(snapshot).unwrap();
+        assert_eq!(payload["settings"]["http_api_token"], "");
+        assert!(payload["settings"].get("post_process_api_keys").is_none());
+    }
 
     #[test]
     fn local_provider_urls_require_a_real_loopback_host() {

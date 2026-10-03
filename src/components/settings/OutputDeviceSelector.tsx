@@ -1,8 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import type { AudioDevice } from "@/bindings";
-import { SelectorSetting } from "../ui/SelectorSetting";
-import { useSettings } from "../../hooks/useSettings";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { DeviceSelectorSetting } from "./DeviceSelectorSetting";
 
 interface OutputDeviceSelectorProps {
   descriptionMode?: "inline" | "tooltip";
@@ -14,26 +13,18 @@ export const OutputDeviceSelector: React.FC<OutputDeviceSelectorProps> = (
   props,
 ) => {
   const { t } = useTranslation();
-  const { outputDevices, refreshOutputDevices, isLoading } = useSettings();
-  const outputDeviceOptions = outputDevices.map((device: AudioDevice) => ({
-    value: device.name,
-    label: device.name,
-  }));
+  const devices = useSettingsStore((s) => s.outputDevices);
+  const refresh = useSettingsStore((s) => s.refreshOutputDevices);
 
   return (
-    <SelectorSetting
+    <DeviceSelectorSetting
       settingKey="selected_output_device"
+      devices={devices}
+      onRefresh={refresh}
       title={t("settings.sound.outputDevice.title")}
       description={t("settings.sound.outputDevice.description")}
-      options={outputDeviceOptions}
       placeholder={t("settings.sound.outputDevice.placeholder")}
       loadingPlaceholder={t("settings.sound.outputDevice.loading")}
-      loading={isLoading || outputDevices.length === 0}
-      onRefresh={refreshOutputDevices}
-      showResetButton
-      valueTransform={(raw) =>
-        raw === "default" ? "Default" : raw || "Default"
-      }
       {...props}
     />
   );

@@ -155,7 +155,6 @@ function providerPreference(providerId: string) {
 
 export function pickTtsModelForLanguage(
   overview: ModelPlatformOverview,
-  settings: Settings | null | undefined,
   targetLanguage: string,
   trigger: LanguageSyncTrigger,
 ) {

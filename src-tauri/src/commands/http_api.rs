@@ -2,19 +2,29 @@
 //! query its current status.
 //!
 //! The actual server lives in `crate::http_api`. These commands persist
-//! the user-visible settings to disk; the `settings-changed` listener in
-//! `lib.rs` then asks the manager to start/stop the server. This split
-//! keeps the UI thin and means flipping the toggle from any window
-//! (main, detail, etc.) is consistent.
+//! the user-visible settings and start or stop the server to match.
 
 use crate::http_api::HttpApiManager;
 use crate::secret_store;
-use crate::settings::{get_settings, write_settings};
+use crate::settings::{self, get_settings};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, State};
+
+const HTTP_API_PORTS: std::ops::RangeInclusive<u16> = 1024..=65535;
+
+/// The Local API token from the credential store, moving a token left in
+/// settings by an older build into the store first.
+pub(crate) fn resolve_http_api_token(app: &AppHandle) -> Result<String, String> {
+    let legacy_token = get_settings(app).http_api_token;
+    let token = secret_store::get_or_create_http_api_token(Some(&legacy_token))?;
+    if !legacy_token.trim().is_empty() {
+        settings::update(app, |settings| settings.http_api_token.clear());
+    }
+    Ok(token)
+}
 
 #[derive(Serialize, Type)]
 pub struct HttpApiStatus {
@@ -40,17 +50,15 @@ pub async fn set_http_api_enabled(
     manager: State<'_, Arc<HttpApiManager>>,
     enabled: bool,
 ) -> Result<(), String> {
-    let mut settings = get_settings(&app);
-    if settings.http_api_enabled == enabled {
+    let (changed, port) = settings::update(&app, |settings| {
+        let changed = settings.http_api_enabled != enabled;
+        settings.http_api_enabled = enabled;
+        (changed, settings.http_api_port)
+    });
+    if !changed {
         return Ok(());
     }
-    settings.http_api_enabled = enabled;
-    let port = settings.http_api_port;
-    write_settings(&app, settings);
 
-    // The settings-changed listener will eventually re-sync, but we also
-    // call directly here so the UI doesn't need to wait a tick to see
-    // the badge flip.
     if enabled {
         manager.start(port).await;
     } else {
@@ -69,10 +77,10 @@ pub async fn set_http_api_port(
     if port == 0 {
         return Err("Port must be > 0".into());
     }
-    let mut settings = get_settings(&app);
-    settings.http_api_port = port;
-    let enabled = settings.http_api_enabled;
-    write_settings(&app, settings);
+    let enabled = settings::update(&app, |settings| {
+        settings.http_api_port = port;
+        settings.http_api_enabled
+    });
 
     if enabled {
         // Restart on the new port.
@@ -84,15 +92,11 @@ pub async fn set_http_api_port(
 #[tauri::command]
 #[specta::specta]
 pub fn get_http_api_status(app: AppHandle) -> Result<HttpApiStatus, String> {
-    let mut s = get_settings(&app);
-    let token = secret_store::get_or_create_http_api_token(Some(&s.http_api_token))?;
-    if !s.http_api_token.trim().is_empty() {
-        s.http_api_token.clear();
-        write_settings(&app, s.clone());
-    }
+    let token = resolve_http_api_token(&app)?;
+    let settings = get_settings(&app);
     Ok(HttpApiStatus {
-        enabled: s.http_api_enabled,
-        port: s.http_api_port,
+        enabled: settings.http_api_enabled,
+        port: settings.http_api_port,
         token: mask_token(&token),
         token_available: true,
     })
@@ -101,13 +105,7 @@ pub fn get_http_api_status(app: AppHandle) -> Result<HttpApiStatus, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn reveal_http_api_token(app: AppHandle) -> Result<String, String> {
-    let mut settings = get_settings(&app);
-    let token = secret_store::get_or_create_http_api_token(Some(&settings.http_api_token))?;
-    if !settings.http_api_token.trim().is_empty() {
-        settings.http_api_token.clear();
-        write_settings(&app, settings);
-    }
-    Ok(token)
+    resolve_http_api_token(&app)
 }
 
 #[tauri::command]
@@ -131,7 +129,7 @@ pub async fn check_local_api_health(app: AppHandle) -> Result<LocalApiHealthResu
         return Err("Local API is not enabled in settings.".into());
     }
     let port = settings.http_api_port;
-    if !(1024..=65535).contains(&port) {
+    if !HTTP_API_PORTS.contains(&port) {
         return Err(format!("Invalid port configuration: {port}"));
     }
     let client = reqwest::Client::builder()

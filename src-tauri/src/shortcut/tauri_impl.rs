@@ -11,7 +11,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 #[cfg(not(target_os = "linux"))]
 use crate::settings::get_settings;
-use crate::settings::{self, ShortcutBinding};
+use crate::settings::ShortcutBinding;
 
 use super::handler::handle_shortcut_event;
 
@@ -26,56 +26,6 @@ fn report_contained_shortcut_panic(binding_id: &str) {
         std::io::stderr().lock(),
         "Vox Jot contained a panic while handling shortcut '{binding_id}'"
     );
-}
-
-/// Initialize shortcuts using Tauri's global-shortcut plugin
-pub fn init_shortcuts(app: &AppHandle) {
-    let default_bindings = settings::get_default_settings().bindings;
-    let mut user_settings = settings::load_or_create_app_settings(app);
-    let mut reset_bindings = Vec::new();
-
-    // Register all default shortcuts, applying user customizations
-    for (id, default_binding) in default_bindings {
-        if id == "cancel" {
-            continue; // Skip cancel shortcut, it will be registered dynamically
-        }
-        // Skip post-processing shortcut when the feature is disabled
-        if (id == "transcribe_with_post_process" || id == "rewrite_selection")
-            && !user_settings.post_process_enabled
-        {
-            continue;
-        }
-        let binding = user_settings
-            .bindings
-            .get(&id)
-            .cloned()
-            .unwrap_or_else(|| default_binding.clone());
-
-        let binding = match validate_shortcut(&binding.current_binding) {
-            Ok(()) => binding,
-            Err(error) => {
-                warn!(
-                    "Resetting invalid Tauri shortcut '{}' ({}): {}",
-                    id, binding.current_binding, error
-                );
-                let mut reset_binding = binding;
-                reset_binding.current_binding = default_binding.current_binding.clone();
-                user_settings
-                    .bindings
-                    .insert(id.clone(), reset_binding.clone());
-                reset_bindings.push(id.clone());
-                reset_binding
-            }
-        };
-
-        if let Err(e) = register_shortcut(app, binding) {
-            error!("Failed to register shortcut {} during init: {}", id, e);
-        }
-    }
-
-    if !reset_bindings.is_empty() {
-        settings::write_settings(app, user_settings);
-    }
 }
 
 /// Validate a shortcut string for the Tauri global-shortcut implementation.

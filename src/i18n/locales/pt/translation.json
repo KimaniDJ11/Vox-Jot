@@ -532,6 +532,14 @@
           "toggle_command_menu": {
             "name": "Menu de comando",
             "description": "Abra a paleta de comandos de qualquer lugar."
+          },
+          "pin_field": {
+            "name": "Fixar campo de texto",
+            "description": "Clique num campo de texto e use o atalho Fixar campo de texto. O próximo ditado ou reunião será acrescentado ali enquanto trabalha noutro local. É necessária permissão de acessibilidade. As mensagens nunca são enviadas automaticamente."
+          },
+          "clear_pin": {
+            "name": "Libertar campo fixado",
+            "description": "Libertar campo fixado"
           }
         },
         "errors": {
@@ -1637,6 +1645,10 @@
       "sidecarIdle": "Assistente ocioso",
       "app": "Aplicativo {{count}} MB",
       "sidecar": "Assistente {{count}} MB"
+    },
+    "errors": {
+      "saveFailed": "Não foi possível salvar a alteração: {{error}}",
+      "modelListFailed": "Não foi possível carregar os modelos: {{error}}"
     }
   },
   "footer": {
@@ -3753,6 +3765,34 @@
       "cancelDownload": "Falha ao cancelar o download: {{detail}}",
       "deleteModel": "Falha ao excluir o modelo: {{detail}}",
       "extractModel": "Falha ao extrair o modelo: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Destino fixado",
+    "label": "Manter o destino de uma gravação",
+    "description": "Clique num campo de texto e use o atalho Fixar campo de texto. O próximo ditado ou reunião será acrescentado ali enquanto trabalha noutro local. É necessária permissão de acessibilidade. As mensagens nunca são enviadas automaticamente.",
+    "pinShortcut": "Fixar campo de texto",
+    "clearShortcut": "Libertar campo fixado",
+    "status": "Fixado: {{app}}",
+    "bound": "ligado à gravação",
+    "next": "próxima gravação",
+    "clear": "Libertar",
+    "copied": "Texto guardado copiado",
+    "copy": "Copiar texto guardado",
+    "working": "Em curso…",
+    "retry": "Repetir inserção em segundo plano",
+    "paste": "Trazer a aplicação para a frente e colar",
+    "dismiss": "Fechar",
+    "inserted": "Inserido em {{app}}",
+    "loadError": "Não foi possível carregar a entrega guardada.",
+    "delivery": {
+      "pending": "Guardado · à espera de inserção",
+      "delivering": "A inserir no campo fixado…",
+      "delivered": "Inserido no campo fixado",
+      "deferred": "Guardado · não inserido",
+      "partial": "Parcialmente inserido · verifique o campo",
+      "uncertain": "Inserção não confirmada · verifique o campo",
+      "cancelled": "Guardado · entrega cancelada"
     }
   }
 }

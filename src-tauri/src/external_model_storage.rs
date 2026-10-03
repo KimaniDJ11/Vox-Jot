@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::settings::{get_settings, write_settings};
+use crate::settings::get_settings;
 
 pub const STATUS_EVENT: &str = "external-model-storage-changed";
 pub const DISCONNECT_TOAST_EVENT: &str = "external-model-storage-disconnected";
@@ -608,43 +608,6 @@ fn watcher_needs_refresh() -> bool {
         return !root.is_dir();
     }
     snap.status.auto_detect || snap.status.configured_path.is_some()
-}
-
-pub fn set_enabled(app: &AppHandle, enabled: bool) -> Result<ExternalModelStorageStatus, String> {
-    let mut settings = get_settings(app);
-    settings.external_model_storage_enabled = enabled;
-    write_settings(app, settings);
-    Ok(refresh_and_notify(app))
-}
-
-pub fn set_auto_detect(
-    app: &AppHandle,
-    auto_detect: bool,
-) -> Result<ExternalModelStorageStatus, String> {
-    let mut settings = get_settings(app);
-    settings.external_model_storage_auto_detect = auto_detect;
-    write_settings(app, settings);
-    Ok(refresh_and_notify(app))
-}
-
-pub fn set_path(
-    app: &AppHandle,
-    path: Option<String>,
-) -> Result<ExternalModelStorageStatus, String> {
-    let mut settings = get_settings(app);
-    settings.external_model_storage_path = path.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    });
-    if settings.external_model_storage_path.is_some() {
-        settings.external_model_storage_enabled = true;
-    }
-    write_settings(app, settings);
-    Ok(refresh_and_notify(app))
 }
 
 #[cfg(test)]

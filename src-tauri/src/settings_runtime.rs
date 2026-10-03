@@ -137,6 +137,17 @@ fn sync_runtime(app: &AppHandle, before: &AppSettings, after: &AppSettings) -> R
             after.post_process_enabled,
         ));
     }
+    if before.pinned_paste_enabled != after.pinned_paste_enabled {
+        record(crate::shortcut::set_pin_shortcuts_registered(
+            app,
+            after.pinned_paste_enabled,
+        ));
+        if !after.pinned_paste_enabled {
+            if let Some(manager) = app.try_state::<Arc<crate::pinned_target::PinManager>>() {
+                manager.clear(app);
+            }
+        }
+    }
     if before.always_on_microphone != after.always_on_microphone {
         let mode = if after.always_on_microphone {
             MicrophoneMode::AlwaysOn

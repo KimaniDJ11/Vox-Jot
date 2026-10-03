@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Menù comandi",
             "description": "Apri la tavolozza dei comandi da qualsiasi luogo."
+          },
+          "pin_field": {
+            "name": "Fissa campo di testo",
+            "description": "Fai clic in un campo di testo e usa la scorciatoia Fissa campo di testo. La prossima dettatura o riunione verrà aggiunta lì mentre lavori altrove. È richiesta l’autorizzazione di accessibilità. I messaggi non vengono mai inviati automaticamente."
+          },
+          "clear_pin": {
+            "name": "Libera campo fissato",
+            "description": "Libera campo fissato"
           }
         },
         "errors": {
@@ -3757,6 +3765,34 @@
       "cancelDownload": "Annullamento del download non riuscito: {{detail}}",
       "deleteModel": "Eliminazione del modello non riuscita: {{detail}}",
       "extractModel": "Estrazione del modello non riuscita: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Destinazione fissata",
+    "label": "Mantieni la destinazione di una registrazione",
+    "description": "Fai clic in un campo di testo e usa la scorciatoia Fissa campo di testo. La prossima dettatura o riunione verrà aggiunta lì mentre lavori altrove. È richiesta l’autorizzazione di accessibilità. I messaggi non vengono mai inviati automaticamente.",
+    "pinShortcut": "Fissa campo di testo",
+    "clearShortcut": "Libera campo fissato",
+    "status": "Fissato: {{app}}",
+    "bound": "collegato alla registrazione",
+    "next": "prossima registrazione",
+    "clear": "Libera",
+    "copied": "Testo salvato copiato",
+    "copy": "Copia testo salvato",
+    "working": "In corso…",
+    "retry": "Riprova inserimento in background",
+    "paste": "Porta l’app in primo piano e incolla",
+    "dismiss": "Chiudi",
+    "inserted": "Inserito in {{app}}",
+    "loadError": "Impossibile caricare la consegna salvata.",
+    "delivery": {
+      "pending": "Salvato · in attesa di inserimento",
+      "delivering": "Inserimento nel campo fissato…",
+      "delivered": "Inserito nel campo fissato",
+      "deferred": "Salvato · non inserito",
+      "partial": "Inserito in parte · controlla il campo",
+      "uncertain": "Inserimento non confermato · controlla il campo",
+      "cancelled": "Salvato · consegna annullata"
     }
   }
 }

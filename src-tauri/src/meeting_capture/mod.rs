@@ -89,6 +89,10 @@ pub struct MeetingSession {
     pub fallback_reason: Option<String>,
     #[serde(default)]
     pub speaker_names: HashMap<String, String>,
+    #[serde(default)]
+    pub pinned_target: Option<crate::pinned_target::PinnedTarget>,
+    #[serde(default)]
+    pub pinned_delivery_id: Option<String>,
 }
 
 impl MeetingSession {
@@ -570,6 +574,30 @@ fn run_capture(
     signals.finished.store(true, Ordering::Release);
     changed(&app, &session);
     crate::tray::refresh_current_menu(&app);
+    if session.state == "recorded"
+        && session.pinned_target.is_some()
+        && !EXIT_AFTER_CAPTURE.load(Ordering::Acquire)
+    {
+        let app = app.clone();
+        let id = session.id.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) =
+                start_meeting_transcription(app.clone(), id.clone(), None, true).await
+            {
+                if let Ok(path) = directory(&app, &id) {
+                    if let Ok(mut session) = load(&path) {
+                        session.analysis_error=Some(format!("Pinned transcription could not start: {error}. Your recording is saved."));
+                        let _ = save(&path, &session);
+                        changed(&app, &session);
+                    }
+                }
+                let _ = app.emit(
+                    "pin-error",
+                    format!("Meeting recording saved. Transcription could not start: {error}"),
+                );
+            }
+        });
+    }
 }
 
 pub fn recover(app: &AppHandle) -> Result<(), String> {
@@ -689,6 +717,17 @@ pub async fn start_meeting(
     if manager.recovering.load(Ordering::Acquire) {
         return Err("Recovering saved meetings. Please try again in a moment.".into());
     }
+    if get_settings(&app).pinned_paste_enabled {
+        if let Some(error) = app
+            .state::<Arc<crate::pinned_target::PinManager>>()
+            .snapshot()
+            .error
+        {
+            return Err(format!(
+                "{error} Clear the failed destination or pin another field before recording."
+            ));
+        }
+    }
     let capabilities = get_meeting_capabilities().await?;
     if !capabilities.supported {
         return Err("Meeting capture requires macOS 15 or newer on Apple Silicon.".into());
@@ -742,6 +781,16 @@ pub async fn start_meeting(
         *active = Some(signals.clone());
     }
     crate::tray::refresh_current_menu(&app);
+    let pinned_target = if get_settings(&app).pinned_paste_enabled {
+        app.state::<Arc<crate::pinned_target::PinManager>>().bind()
+    } else {
+        None
+    };
+    let pin_for_recovery = pinned_target.clone();
+    if pinned_target.is_some() {
+        app.state::<Arc<crate::pinned_target::PinManager>>()
+            .publish(&app);
+    }
     let result = tokio::task::spawn_blocking({
         let signals = signals.clone();
         let app = app.clone();
@@ -789,6 +838,8 @@ pub async fn start_meeting(
                 audio_source: None,
                 fallback_reason: None,
                 speaker_names: HashMap::new(),
+                pinned_target,
+                pinned_delivery_id: None,
             };
             save(&path, &session)?;
             let worker_session = session.clone();
@@ -802,6 +853,11 @@ pub async fn start_meeting(
     .await
     .map_err(|e| e.to_string())?;
     if result.is_err() {
+        if let Some(target) = pin_for_recovery.as_ref() {
+            let manager = app.state::<Arc<crate::pinned_target::PinManager>>();
+            manager.release_binding(target);
+            manager.publish(&app);
+        }
         signals.finished.store(true, Ordering::Release);
         crate::tray::refresh_current_menu(&app);
     }
@@ -1110,6 +1166,15 @@ pub async fn transcribe_meeting(
     id: String,
     enhance: Option<bool>,
 ) -> Result<(), String> {
+    start_meeting_transcription(app, id, enhance, false).await
+}
+
+async fn start_meeting_transcription(
+    app: AppHandle,
+    id: String,
+    enhance: Option<bool>,
+    deliver_after: bool,
+) -> Result<(), String> {
     let job = claim_job(&app, &id)?;
     let path = directory(&app, &id)?;
     let mut session = load(&path)?;
@@ -1159,8 +1224,94 @@ pub async fn transcribe_meeting(
         }
         if let Err(error) = save(&path, &session) {
             log::error!("Meeting analysis status could not be saved: {error}");
+            let _=app.emit("pin-error",format!("Meeting transcript is saved, but its status could not be saved: {error}. Delivery was not attempted."));
+            return;
         }
         changed(&app, &session);
+        if deliver_after && session.transcript_ready && !_job.cancel.load(Ordering::Acquire) {
+            if let Some(target) = session.pinned_target.clone() {
+                let app = app.clone();
+                let session_id = session.id.clone();
+                let path = path.clone();
+                let delivery_cancel = _job.cancel.clone();
+                // Analysis has already saved transcript.json and transcript.md.
+                // Only this first post-capture job can enqueue delivery; the
+                // normal re-transcribe command never inserts a second copy.
+                async move {
+                    let _delivery_job = _job;
+                    let manager = app
+                        .state::<Arc<crate::pinned_target::PinManager>>()
+                        .inner()
+                        .clone();
+                    let history = app
+                        .state::<Arc<crate::managers::history::HistoryManager>>()
+                        .inner()
+                        .clone();
+                    let work = tauri::async_runtime::spawn_blocking({
+                        let app = app.clone();
+                        let manager = manager.clone();
+                        let delivery_cancel = delivery_cancel.clone();
+                        move || {
+                            let text = fs::read_to_string(path.join("transcript.md"))
+                                .map_err(|e| e.to_string())?;
+                            let mut record = crate::pinned_target::DeliveryRecord::pending(
+                                crate::pinned_target::DeliverySource::Meeting,
+                                session_id,
+                                target,
+                                text,
+                            );
+                            if !manager.valid(&record.target)
+                                || delivery_cancel.load(Ordering::Acquire)
+                            {
+                                record.state = crate::pinned_target::DeliveryState::Cancelled;
+                                record.reason = Some(crate::pinned_target::PinFailure::Cancelled);
+                                record.message = record.reason.as_ref().map(ToString::to_string);
+                            }
+                            if let Err(error) = history.create_meeting_delivery(&record) {
+                                manager.retain_unsaved(&app, record);
+                                return Err(error.to_string());
+                            }
+                            let mut session = load(&path)?;
+                            session.pinned_delivery_id = Some(record.id.clone());
+                            save(&path, &session)?;
+                            changed(&app, &session);
+                            let _ = app.emit("pin-delivery-updated", &record);
+                            Ok::<_, String>(record)
+                        }
+                    })
+                    .await;
+                    match work {
+                        Ok(Ok(record))
+                            if record.state == crate::pinned_target::DeliveryState::Pending =>
+                        {
+                            if let Err(error) = manager
+                                .deliver(
+                                    &app,
+                                    &record.id,
+                                    Arc::new(move || delivery_cancel.load(Ordering::Acquire)),
+                                )
+                                .await
+                            {
+                                let _ = app.emit(
+                                    "pin-error",
+                                    format!("Meeting transcript saved. Delivery stopped: {error}"),
+                                );
+                            }
+                        }
+                        Ok(Ok(_)) => {}
+                        Ok(Err(error)) => {
+                            let _=app.emit("pin-error",format!("Meeting transcript is saved. Delivery could not start: {error}"));
+                        }
+                        Err(error) => {
+                            let _ = app.emit(
+                                "pin-error",
+                                format!("Meeting delivery was interrupted: {error}"),
+                            );
+                        }
+                    }
+                }.await;
+            }
+        }
     });
     Ok(())
 }
@@ -1785,6 +1936,8 @@ mod tests {
             audio_source: None,
             fallback_reason: None,
             speaker_names: HashMap::new(),
+            pinned_target: None,
+            pinned_delivery_id: None,
         };
 
         session.apply_analysis_outcome(&outcome);
@@ -1820,6 +1973,8 @@ mod tests {
             audio_source: Some("enhanced".into()),
             fallback_reason: Some("stale fallback".into()),
             speaker_names: HashMap::new(),
+            pinned_target: None,
+            pinned_delivery_id: None,
         };
 
         let outcome = AnalysisOutcome {
@@ -1895,6 +2050,8 @@ mod tests {
             audio_source: None,
             fallback_reason: None,
             speaker_names: HashMap::new(),
+            pinned_target: None,
+            pinned_delivery_id: None,
         };
 
         session.apply_analysis_outcome(&outcome);
@@ -1973,6 +2130,8 @@ mod tests {
             audio_source: None,
             fallback_reason: None,
             speaker_names: HashMap::new(),
+            pinned_target: None,
+            pinned_delivery_id: None,
         };
 
         session.apply_analysis_outcome(&outcome);

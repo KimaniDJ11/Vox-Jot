@@ -458,6 +458,9 @@ pub fn init_shortcuts(app: &AppHandle) -> Result<(), String> {
         if super::is_post_process_binding(&id) && !user_settings.post_process_enabled {
             continue;
         }
+        if !super::pin_binding_enabled(&id, &user_settings) {
+            continue;
+        }
 
         let binding = user_settings
             .bindings

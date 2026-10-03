@@ -385,6 +385,7 @@
     "paste_delay_ms",
     "paste_method",
     "personal_dictionary",
+    "pinned_paste_enabled",
     "post_process_mode",
     "post_process_prompt_policy_version",
     "post_process_prompts",

@@ -25,6 +25,7 @@ const baseEntry = (overrides: Partial<HistoryEntry> = {}): HistoryEntry => ({
   post_process_prompt: null,
   dictionary_hits: [],
   pasted_text: null,
+  pinned_delivery: null,
   field_snapshot_text: null,
   field_snapshot_at: null,
   field_snapshot_status: "not_requested",

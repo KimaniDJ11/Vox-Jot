@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { MeetingPinnedDelivery } from "@/components/pinned-target/PinnedDelivery";
 import {
   CheckCircle2,
   FileText,
@@ -940,6 +941,7 @@ export default function MeetingsSection({
                     )}
                   </div>
                 </div>
+                <MeetingPinnedDelivery id={session.pinned_delivery_id} />
                 {(session.error || session.analysis_error) && (
                   <p
                     role="alert"

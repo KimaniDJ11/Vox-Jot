@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "Komut Menüsü",
             "description": "Komut paletini herhangi bir yerden açın."
+          },
+          "pin_field": {
+            "name": "Metin alanını sabitle",
+            "description": "Bir metin alanına tıklayıp Metin alanını sabitle kısayolunu kullanın. Siz başka yerde çalışırken sonraki dikte veya toplantı buraya eklenir. Erişilebilirlik izni gerekir. Mesajlar hiçbir zaman otomatik gönderilmez."
+          },
+          "clear_pin": {
+            "name": "Sabitlenmiş alanı bırak",
+            "description": "Sabitlenmiş alanı bırak"
           }
         },
         "errors": {
@@ -3757,6 +3765,34 @@
       "cancelDownload": "İndirme iptal edilemedi: {{detail}}",
       "deleteModel": "Model silinemedi: {{detail}}",
       "extractModel": "Model çıkarılamadı: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "Sabitlenmiş hedef",
+    "label": "Kaydın hedefini koru",
+    "description": "Bir metin alanına tıklayıp Metin alanını sabitle kısayolunu kullanın. Siz başka yerde çalışırken sonraki dikte veya toplantı buraya eklenir. Erişilebilirlik izni gerekir. Mesajlar hiçbir zaman otomatik gönderilmez.",
+    "pinShortcut": "Metin alanını sabitle",
+    "clearShortcut": "Sabitlenmiş alanı bırak",
+    "status": "Sabitlendi: {{app}}",
+    "bound": "kayda bağlandı",
+    "next": "sonraki kayıt",
+    "clear": "Bırak",
+    "copied": "Kaydedilen metin kopyalandı",
+    "copy": "Kaydedilen metni kopyala",
+    "working": "İşleniyor…",
+    "retry": "Arka planda eklemeyi yeniden dene",
+    "paste": "Uygulamayı öne getir ve yapıştır",
+    "dismiss": "Kapat",
+    "inserted": "{{app}} içine eklendi",
+    "loadError": "Kaydedilen teslim yüklenemedi.",
+    "delivery": {
+      "pending": "Kaydedildi · ekleme bekleniyor",
+      "delivering": "Sabitlenmiş alana ekleniyor…",
+      "delivered": "Sabitlenmiş alana eklendi",
+      "deferred": "Kaydedildi · eklenmedi",
+      "partial": "Kısmen eklendi · alanı kontrol edin",
+      "uncertain": "Ekleme doğrulanmadı · alanı kontrol edin",
+      "cancelled": "Kaydedildi · teslim iptal edildi"
     }
   }
 }

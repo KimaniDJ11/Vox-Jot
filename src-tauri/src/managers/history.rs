@@ -12,8 +12,10 @@ use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
 use crate::audio_toolkit::save_wav_file;
+use crate::pinned_target::{DeliveryRecord, DeliverySource};
 use crate::screen_context::ContextCaptureStatus;
 use crate::tts::TtsHistoryContext;
+mod delivery;
 
 /// Database migrations for transcription history.
 /// Each migration is applied in order. The library tracks which migrations
@@ -87,9 +89,11 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN markdown_export_error TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN markdown_exported_at INTEGER;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN markdown_export_settings_json TEXT;"),
+    M::up(delivery::SCHEMA),
+    M::up(delivery::CLEANUP_SCHEMA),
 ];
 
-const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json, markdown_export_status, markdown_export_path, markdown_export_error, markdown_exported_at";
+const HISTORY_SELECT_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms, display_title, display_title_source, summary, speaker_status, speaker_error, speaker_model_id, speaker_analyzed_at, speaker_count, speaker_labels_visible, speaker_segments_json, speaker_transcript_text, speaker_display_names_json, markdown_export_status, markdown_export_path, markdown_export_error, markdown_exported_at, (SELECT record_json FROM pinned_deliveries WHERE source = 'history' AND source_id = CAST(transcription_history.id AS TEXT)) AS pinned_delivery";
 
 fn history_audio_file_name(timestamp: i64) -> String {
     format!("vox-jot-{timestamp}-{}.wav", Uuid::new_v4())
@@ -211,6 +215,7 @@ pub struct HistoryEntry {
     pub post_process_prompt: Option<String>,
     pub dictionary_hits: Vec<String>,
     pub pasted_text: Option<String>,
+    pub pinned_delivery: Option<DeliveryRecord>,
     pub field_snapshot_text: Option<String>,
     pub field_snapshot_at: Option<i64>,
     pub field_snapshot_status: FieldSnapshotStatus,
@@ -339,6 +344,10 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         post_process_prompt: row.get("post_process_prompt").unwrap_or(None),
         dictionary_hits,
         pasted_text: row.get("pasted_text").unwrap_or(None),
+        pinned_delivery: row
+            .get::<_, Option<String>>("pinned_delivery")
+            .unwrap_or(None)
+            .and_then(|json| serde_json::from_str(&json).ok()),
         field_snapshot_text,
         field_snapshot_at,
         field_snapshot_status,
@@ -706,6 +715,7 @@ impl HistoryManager {
 
         // Apply any pending migrations
         migrations.to_latest(&mut conn)?;
+        delivery::recover(&mut conn)?;
 
         // Get version after migration
         let version_after: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
@@ -951,6 +961,36 @@ impl HistoryManager {
         screen_context_metadata: Option<ScreenContextHistoryMetadata>,
         duration_ms: Option<i64>,
     ) -> Result<i64> {
+        self.save_transcription_with_delivery(
+            audio_samples,
+            transcription_text,
+            post_processed_text,
+            post_process_prompt,
+            dictionary_hits,
+            pasted_text,
+            translation_context,
+            tts_context,
+            screen_context_metadata,
+            duration_ms,
+            None,
+        )
+        .await
+    }
+
+    pub async fn save_transcription_with_delivery(
+        &self,
+        audio_samples: Arc<Vec<f32>>,
+        transcription_text: String,
+        post_processed_text: Option<String>,
+        post_process_prompt: Option<String>,
+        dictionary_hits: Vec<String>,
+        pasted_text: Option<String>,
+        translation_context: TranslationHistoryContext,
+        tts_context: TtsHistoryContext,
+        screen_context_metadata: Option<ScreenContextHistoryMetadata>,
+        duration_ms: Option<i64>,
+        delivery: Option<DeliveryRecord>,
+    ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         // Multiple transcriptions can finish in the same second. A timestamp-only
         // name lets one save overwrite another and leaves two database rows sharing
@@ -993,6 +1033,7 @@ impl HistoryManager {
             duration_ms,
             display_title,
             display_title_source,
+            delivery,
         ) {
             Ok(id) => id,
             Err(error) => {
@@ -1057,8 +1098,10 @@ impl HistoryManager {
         duration_ms: Option<i64>,
         display_title: String,
         display_title_source: DisplayTitleSource,
+        mut pinned_delivery: Option<DeliveryRecord>,
     ) -> Result<i64> {
-        let conn = self.get_connection()?;
+        let mut connection = self.get_connection()?;
+        let conn = connection.transaction()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
             None
         } else {
@@ -1133,6 +1176,12 @@ impl HistoryManager {
         )?;
 
         let id = conn.last_insert_rowid();
+        if let Some(record) = pinned_delivery.as_mut() {
+            record.source = DeliverySource::History;
+            record.source_id = id.to_string();
+            delivery::insert(&conn, record)?;
+        }
+        conn.commit()?;
         debug!("Saved transcription to database with id {}", id);
         Ok(id)
     }
@@ -1491,7 +1540,7 @@ impl HistoryManager {
 
         // Get all entries that are not saved, ordered by timestamp desc
         let mut stmt = conn.prepare(
-            "SELECT id, file_name FROM transcription_history WHERE saved = 0 ORDER BY timestamp DESC"
+            "SELECT id, file_name FROM transcription_history WHERE saved = 0 AND NOT EXISTS (SELECT 1 FROM pinned_deliveries WHERE source='history' AND source_id=CAST(transcription_history.id AS TEXT) AND state != 'delivered') ORDER BY timestamp DESC"
         )?;
 
         let rows = stmt.query_map([], |row| {
@@ -1539,7 +1588,7 @@ impl HistoryManager {
 
         // Get all unsaved entries older than the cutoff timestamp
         let mut stmt = conn.prepare(
-            "SELECT id, file_name FROM transcription_history WHERE saved = 0 AND timestamp < ?1",
+            "SELECT id, file_name FROM transcription_history WHERE saved = 0 AND NOT EXISTS (SELECT 1 FROM pinned_deliveries WHERE source='history' AND source_id=CAST(transcription_history.id AS TEXT) AND state != 'delivered') AND timestamp < ?1",
         )?;
 
         let rows = stmt.query_map(params![cutoff_timestamp], |row| {
@@ -1591,7 +1640,7 @@ impl HistoryManager {
         conn: &Connection,
         recordings_dir: &Path,
     ) -> Result<usize> {
-        let mut stmt = conn.prepare("SELECT id, file_name FROM transcription_history")?;
+        let mut stmt = conn.prepare("SELECT id, file_name FROM transcription_history WHERE NOT EXISTS (SELECT 1 FROM pinned_deliveries WHERE source='history' AND source_id=CAST(transcription_history.id AS TEXT))")?;
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, i64>("id")?, row.get::<_, String>("file_name")?))
         })?;
@@ -1893,15 +1942,22 @@ impl HistoryManager {
     }
 
     pub async fn delete_entry(&self, id: i64) -> Result<()> {
-        let conn = self.get_connection()?;
+        // Claim/delete share the same database write lock. A retry cannot start
+        // between this check and deleting the durable transcript.
+        let file_name = self.get_entry_by_id(id).await?.map(|entry| entry.file_name);
+        let mut connection = self.get_connection()?;
+        let conn =
+            connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let active:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM pinned_deliveries WHERE source='history' AND source_id=?1 AND state IN ('pending','delivering'))",[id.to_string()],|r|r.get(0))?;
+        anyhow::ensure!(!active,"Wait for pinned delivery to finish or clear the destination before deleting this recording.");
 
         // Get the entry to find the file name
-        if let Some(entry) = self.get_entry_by_id(id).await? {
+        if let Some(file_name) = file_name {
             // Delete the audio file first
-            let file_path = self.get_audio_file_path(&entry.file_name);
+            let file_path = self.get_audio_file_path(&file_name);
             if file_path.exists() {
                 if let Err(e) = fs::remove_file(&file_path) {
-                    error!("Failed to delete audio file {}: {}", entry.file_name, e);
+                    error!("Failed to delete audio file {}: {}", file_name, e);
                     // Continue with database deletion even if file deletion fails
                 }
             }
@@ -1912,6 +1968,11 @@ impl HistoryManager {
             "DELETE FROM transcription_history WHERE id = ?1",
             params![id],
         )?;
+        conn.execute(
+            "DELETE FROM pinned_deliveries WHERE source='history' AND source_id=?1",
+            [id.to_string()],
+        )?;
+        conn.commit()?;
 
         debug!("Deleted history entry with id: {}", id);
 
@@ -1983,6 +2044,8 @@ mod tests {
             );",
         )
         .expect("create transcription_history table");
+        conn.execute_batch(delivery::SCHEMA)
+            .expect("create delivery table");
         conn
     }
 

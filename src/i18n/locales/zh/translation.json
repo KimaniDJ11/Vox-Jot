@@ -570,6 +570,14 @@
           "toggle_command_menu": {
             "name": "命令菜单",
             "description": "从任何地方打开命令面板。"
+          },
+          "pin_field": {
+            "name": "固定文本框",
+            "description": "点击文本框，然后使用“固定文本框”快捷键。即使您正在其他地方工作，下一次听写或会议转写也会追加到该文本框。需要辅助功能权限。消息绝不会自动发送。"
+          },
+          "clear_pin": {
+            "name": "取消固定文本框",
+            "description": "取消固定文本框"
           }
         },
         "errors": {
@@ -3753,6 +3761,34 @@
       "cancelDownload": "取消下载失败：{{detail}}",
       "deleteModel": "删除模型失败：{{detail}}",
       "extractModel": "解压模型失败：{{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "固定的目标位置",
+    "label": "保留录音的输入位置",
+    "description": "点击文本框，然后使用“固定文本框”快捷键。即使您正在其他地方工作，下一次听写或会议转写也会追加到该文本框。需要辅助功能权限。消息绝不会自动发送。",
+    "pinShortcut": "固定文本框",
+    "clearShortcut": "取消固定文本框",
+    "status": "已固定：{{app}}",
+    "bound": "已关联录音",
+    "next": "下次录音",
+    "clear": "取消固定",
+    "copied": "已复制保存的文本",
+    "copy": "复制保存的文本",
+    "working": "处理中…",
+    "retry": "重试后台插入",
+    "paste": "将应用置于前台并粘贴",
+    "dismiss": "关闭",
+    "inserted": "已插入到 {{app}}",
+    "loadError": "无法加载保存的投递记录。",
+    "delivery": {
+      "pending": "已保存 · 等待插入",
+      "delivering": "正在插入固定的文本框…",
+      "delivered": "已插入固定的文本框",
+      "deferred": "已保存 · 未插入",
+      "partial": "已部分插入 · 请检查文本框",
+      "uncertain": "插入未确认 · 请检查文本框",
+      "cancelled": "已保存 · 已取消投递"
     }
   }
 }

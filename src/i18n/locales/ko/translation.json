@@ -532,6 +532,14 @@
           "toggle_command_menu": {
             "name": "명령 메뉴",
             "description": "어디에서나 명령 팔레트를 엽니다."
+          },
+          "pin_field": {
+            "name": "텍스트 필드 고정",
+            "description": "텍스트 필드를 클릭한 뒤 텍스트 필드 고정 단축키를 사용하세요. 다른 작업 중에도 다음 받아쓰기나 회의 내용이 해당 필드에 추가됩니다. 손쉬운 사용 권한이 필요합니다. 메시지는 자동으로 전송되지 않습니다."
+          },
+          "clear_pin": {
+            "name": "고정된 필드 해제",
+            "description": "고정된 필드 해제"
           }
         },
         "errors": {
@@ -3757,6 +3765,34 @@
       "cancelDownload": "다운로드를 취소하지 못했습니다: {{detail}}",
       "deleteModel": "모델을 삭제하지 못했습니다: {{detail}}",
       "extractModel": "모델을 추출하지 못했습니다: {{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "고정된 입력 위치",
+    "label": "녹음의 입력 위치 유지",
+    "description": "텍스트 필드를 클릭한 뒤 텍스트 필드 고정 단축키를 사용하세요. 다른 작업 중에도 다음 받아쓰기나 회의 내용이 해당 필드에 추가됩니다. 손쉬운 사용 권한이 필요합니다. 메시지는 자동으로 전송되지 않습니다.",
+    "pinShortcut": "텍스트 필드 고정",
+    "clearShortcut": "고정된 필드 해제",
+    "status": "고정됨: {{app}}",
+    "bound": "녹음에 연결됨",
+    "next": "다음 녹음",
+    "clear": "해제",
+    "copied": "저장된 텍스트를 복사했습니다",
+    "copy": "저장된 텍스트 복사",
+    "working": "처리 중…",
+    "retry": "백그라운드 삽입 다시 시도",
+    "paste": "앱을 앞으로 가져와 붙여넣기",
+    "dismiss": "닫기",
+    "inserted": "{{app}}에 삽입했습니다",
+    "loadError": "저장된 전달 결과를 불러올 수 없습니다.",
+    "delivery": {
+      "pending": "저장됨 · 삽입 대기",
+      "delivering": "고정된 필드에 삽입 중…",
+      "delivered": "고정된 필드에 삽입됨",
+      "deferred": "저장됨 · 삽입되지 않음",
+      "partial": "일부 삽입됨 · 필드를 확인하세요",
+      "uncertain": "삽입 미확인 · 필드를 확인하세요",
+      "cancelled": "저장됨 · 전달 취소됨"
     }
   }
 }

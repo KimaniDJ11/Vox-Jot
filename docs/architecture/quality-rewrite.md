@@ -160,3 +160,29 @@ in the jsdom test dependency chain. No application feature depends on this chang
   remain the recording-path read mechanism. Language/overlay consumers avoid
   redundant settings reads. End-to-end recording and stop-to-paste timings were
   not measured in a new installed build.
+
+## Main integration review, October 3, 2026
+
+The integration review also finishes the separately authorized pinned-destination
+draft. Its ownership, compatibility, recovery and acceptance map is documented in
+[`pinned-paste-target-plan.md`](../pinned-paste-target-plan.md). The original
+settings, file workflow, Reader, download and language ownership boundaries above
+remain intact. The four published HTTP settings/audio routes still use the shared
+settings transaction implementation; `pinned_paste_enabled` is an additive setting.
+
+The review corrected native command permissions (including the overlay settings
+snapshot), cancellation and pin-generation races, no-paste policy, meeting job
+ownership through delivery, final-status save failures, history cleanup and
+focus revalidation immediately before explicit keyboard recovery. Tests now cover
+stale pin events, listener disposal, duplicate recovery clicks and delivery-aware
+history deletion. The App Store audit reads the new shared settings owner.
+
+Dependency verification required brace-expansion 5.0.12 and yoke-derive 0.8.4;
+Bun/Nix metadata and license notices were regenerated. The existing Rust advisory
+policy remains unchanged. Formatting excludes generated Python test caches.
+
+Fresh source verification logs are under
+`/tmp/vox-jot-main-sync-2026-10-02-gy20hro6/`. Final protected-branch CI and native
+installed-app acceptance are recorded in the integration PR's validation report.
+The September source-only verification above is historical and does not establish
+the state of the newly installed build.

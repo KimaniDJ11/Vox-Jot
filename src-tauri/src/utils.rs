@@ -72,6 +72,11 @@ pub fn child_stderr_tail_snapshot(tail: &ChildStderrTail, max_chars: usize) -> S
 /// Handles cancelling both recording and transcription operations and updates UI state.
 pub fn cancel_current_operation(app: &AppHandle) {
     info!("Initiating operation cancellation...");
+    if let Some(manager) = app.try_state::<Arc<crate::pinned_target::PinManager>>() {
+        if manager.snapshot().bound {
+            manager.clear(app);
+        }
+    }
 
     // Unregister the cancel shortcut asynchronously
     shortcut::unregister_cancel_shortcut(app);

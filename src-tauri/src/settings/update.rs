@@ -133,6 +133,7 @@ setting_updates! {
     AutoSubmit(bool) = "auto_submit",
     AutoSubmitKey(AutoSubmitKey) = "auto_submit_key",
     AppendTrailingSpace(bool) = "append_trailing_space",
+    PinnedPasteEnabled(bool) = "pinned_paste_enabled",
     HistoryLimit(usize) = "history_limit",
     HistoryAutoAnalyzeSpeakersLongRecordingsEnabled(bool) = "history_auto_analyze_speakers_long_recordings_enabled",
     HistoryAutoAnalyzeSpeakersMinDurationMs(u32) = "history_auto_analyze_speakers_min_duration_ms",
@@ -346,6 +347,12 @@ impl SettingUpdate {
             Self::AutoSubmit(value) => s.auto_submit = value,
             Self::AutoSubmitKey(value) => s.auto_submit_key = value,
             Self::AppendTrailingSpace(value) => s.append_trailing_space = value,
+            Self::PinnedPasteEnabled(value) => {
+                if value && !crate::pinned_target::AVAILABLE {
+                    return Err(crate::pinned_target::PinFailure::Unsupported.to_string());
+                }
+                s.pinned_paste_enabled = value;
+            }
             Self::HistoryLimit(value) => s.history_limit = value,
             Self::HistoryAutoAnalyzeSpeakersLongRecordingsEnabled(value) => {
                 s.history_auto_analyze_speakers_long_recordings_enabled = value

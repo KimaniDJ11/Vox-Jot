@@ -16,6 +16,7 @@ import {
   type ResolvedWriteRule,
 } from "@/bindings";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
+import { usePinState } from "@/hooks/usePinState";
 import i18n from "@/i18n";
 import { SETTINGS_SNAPSHOT_EVENT } from "@/lib/settingsEvents";
 import { getLanguageDirection } from "@/lib/utils/rtl";
@@ -248,6 +249,7 @@ function roundedRect(
 }
 
 const RecordingOverlay: React.FC = () => {
+  const pin = usePinState();
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
@@ -624,6 +626,16 @@ const RecordingOverlay: React.FC = () => {
                               …
                             </span>
                           </div>
+                        ) : pin?.target && pin.bound && !isEditingSelection ? (
+                          <span
+                            className="truncate text-xs text-[var(--text)]"
+                            title={pin.target.locator.label}
+                          >
+                            {t("pinnedTarget.status", {
+                              defaultValue: "Pinned: {{app}}",
+                              app: pin.target.app_name,
+                            })}
+                          </span>
                         ) : matchedRule ? (
                           <button
                             type="button"

@@ -45,6 +45,7 @@ mod ocr_models;
 mod ocr_runtime;
 mod ollama;
 pub mod overlay;
+mod pinned_target;
 pub mod portable;
 mod post_processing;
 mod product_architecture;
@@ -682,6 +683,7 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
         file_transcription_engine.clone(),
     ));
     app_handle.manage(history_manager.clone());
+    app_handle.manage(Arc::new(pinned_target::PinManager::default()));
     app_handle.manage(tts_manager.clone());
     app_handle.manage(continuous_cloning_manager.clone());
     app_handle.manage(sidecar_manager.clone());
@@ -803,11 +805,6 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
                 navigate_main_window(app, "settings");
             }
             "check_updates" => {
-                #[cfg(vox_jot_app_store)]
-                {
-                    return;
-                }
-
                 #[cfg(not(vox_jot_app_store))]
                 {
                     let settings = settings::get_settings(app);
@@ -848,6 +845,9 @@ fn initialize_core_logic(app_handle: &AppHandle) -> anyhow::Result<()> {
             }
             "stop_meeting" => {
                 meeting_capture::stop_active(app);
+            }
+            "clear_pin" => {
+                app.state::<Arc<pinned_target::PinManager>>().clear(app);
             }
             "cancel" => {
                 use crate::utils::cancel_current_operation;
@@ -980,6 +980,16 @@ pub fn create_specta_builder() -> Builder<tauri::Wry> {
         commands::snippets::export_snippets,
         show_main_window_command,
         commands::cancel_operation,
+        commands::pinned_target::get_pin_state,
+        commands::pinned_target::pin_field,
+        commands::pinned_target::clear_pin,
+        commands::pinned_target::copy_pinned_delivery,
+        commands::pinned_target::get_pinned_delivery,
+        commands::pinned_target::get_unsaved_pinned_deliveries,
+        commands::pinned_target::get_unresolved_pinned_deliveries,
+        commands::pinned_target::retry_delivery,
+        commands::pinned_target::deliver_via_paste,
+        commands::pinned_target::open_pinned_delivery_target,
         commands::get_app_dir_path,
         commands::get_external_model_storage_status,
         commands::pick_external_model_storage_dir,
@@ -1946,7 +1956,7 @@ fn trigger_update_check(app: AppHandle) -> Result<(), String> {
     #[cfg(vox_jot_app_store)]
     {
         let _ = app;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(vox_jot_app_store))]

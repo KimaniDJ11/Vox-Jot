@@ -23,6 +23,33 @@ use crate::settings::{self, get_settings, KeyboardImplementation, ShortcutBindin
 /// Shortcuts that exist only while post-processing is enabled.
 const POST_PROCESS_BINDING_IDS: [&str; 2] = ["transcribe_with_post_process", "rewrite_selection"];
 
+pub(crate) fn pin_binding_enabled(id: &str, settings: &settings::AppSettings) -> bool {
+    !crate::pinned_target::BINDING_IDS.contains(&id)
+        || (crate::pinned_target::AVAILABLE && settings.pinned_paste_enabled)
+}
+
+pub fn set_pin_shortcuts_registered(app: &AppHandle, enabled: bool) -> Result<(), String> {
+    let bindings = settings::get_bindings(app);
+    let mut errors = Vec::new();
+    for id in crate::pinned_target::BINDING_IDS {
+        if let Some(binding) = bindings.get(id).cloned() {
+            let result = if enabled && crate::pinned_target::AVAILABLE {
+                register_shortcut(app, binding)
+            } else {
+                unregister_shortcut(app, binding)
+            };
+            if let Err(error) = result {
+                errors.push(error);
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
+}
+
 pub(crate) fn is_post_process_binding(id: &str) -> bool {
     POST_PROCESS_BINDING_IDS.contains(&id)
 }
@@ -105,6 +132,9 @@ pub fn unregister_cancel_shortcut(app: &AppHandle) {
 /// Register a shortcut using the appropriate implementation
 pub fn register_shortcut(app: &AppHandle, binding: ShortcutBinding) -> Result<(), String> {
     let settings = get_settings(app);
+    if !pin_binding_enabled(&binding.id, &settings) {
+        return Ok(());
+    }
     match settings.keyboard_implementation {
         KeyboardImplementation::Tauri => tauri_impl::register_shortcut(app, binding),
         KeyboardImplementation::HandyKeys => handy_keys::register_shortcut(app, binding),
@@ -353,6 +383,9 @@ fn register_all_shortcuts_for_implementation(
         }
 
         if is_post_process_binding(id) && !current_settings.post_process_enabled {
+            continue;
+        }
+        if !pin_binding_enabled(id, &current_settings) {
             continue;
         }
 

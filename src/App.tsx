@@ -1,4 +1,5 @@
 import { unwrapCommandResult } from "@/lib/commandResult";
+import { PinnedTargetStatus } from "@/components/pinned-target/PinnedDelivery";
 import React, {
   lazy,
   useCallback,
@@ -1379,6 +1380,7 @@ function App() {
         }}
       />
 
+      <PinnedTargetStatus />
       {macTitlebarOverlay ? (
         <header
           className={`app-macos-titlebar-overlay${macosWindowFullscreen ? " app-macos-titlebar-overlay--fullscreen" : ""}`}

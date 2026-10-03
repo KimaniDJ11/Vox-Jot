@@ -27,6 +27,24 @@ describe("published native command contracts", () => {
       expect(permissions, match[1]).toContain(`"${match[1]}"`);
     }
   });
+
+  it("permits new generated commands and overlay snapshot reads", () => {
+    const permissions = readFileSync(
+      "src-tauri/permissions/app-commands.toml",
+      "utf8",
+    );
+    const [app, overlay] = permissions.split(
+      'identifier = "recording-overlay-commands"',
+    );
+    const generated = readFileSync("src/bindings.ts", "utf8");
+    for (const match of generated.matchAll(
+      /__TAURI_INVOKE(?:<[^\n]*?>)?\("([a-z][a-z_0-9]+)"/g,
+    )) {
+      expect(app, match[1]).toContain(`"${match[1]}"`);
+    }
+    expect(overlay).toContain('"get_settings_snapshot"');
+    expect(overlay).toContain('"get_pin_state"');
+  });
 });
 
 describe("published local HTTP API routes", () => {

@@ -838,6 +838,8 @@ pub struct AppSettings {
     pub audio_ducking_enabled: bool,
     #[serde(default)]
     pub append_trailing_space: bool,
+    #[serde(default)]
+    pub pinned_paste_enabled: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
     #[serde(default = "default_global_language_sync_enabled")]
@@ -2089,6 +2091,21 @@ pub fn get_default_settings() -> AppSettings {
     let default_shortcut = "alt+space";
 
     let mut bindings = HashMap::new();
+    for (id, name, key) in [
+        ("pin_field", "Pin text field", "option+command+p"),
+        ("clear_pin", "Clear pinned field", "option+command+u"),
+    ] {
+        bindings.insert(
+            id.into(),
+            ShortcutBinding {
+                id: id.into(),
+                name: name.into(),
+                description: "Choose or clear the destination for the next recording.".into(),
+                default_binding: key.into(),
+                current_binding: key.into(),
+            },
+        );
+    }
     bindings.insert(
         "transcribe".to_string(),
         ShortcutBinding {
@@ -2350,6 +2367,7 @@ pub fn get_default_settings() -> AppSettings {
         mute_while_recording: false,
         audio_ducking_enabled: false,
         append_trailing_space: false,
+        pinned_paste_enabled: false,
         app_language: default_app_language(),
         global_language_sync_enabled: default_global_language_sync_enabled(),
         experimental_enabled: default_experimental_enabled(),
@@ -3081,6 +3099,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
     let screen_context_changed = ensure_screen_context_defaults(&mut settings);
+    let pin_changed = ensure_pin_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -3090,6 +3109,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         || model_platform_changed
         || http_api_changed
         || screen_context_changed
+        || pin_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -3111,6 +3131,14 @@ fn normalized_default_settings() -> AppSettings {
     ensure_screen_context_defaults(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
     settings
+}
+
+fn ensure_pin_defaults(settings: &mut AppSettings) -> bool {
+    if !crate::pinned_target::AVAILABLE && settings.pinned_paste_enabled {
+        settings.pinned_paste_enabled = false;
+        return true;
+    }
+    false
 }
 
 /// Read the current settings.
@@ -3146,6 +3174,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
     let screen_context_changed = ensure_screen_context_defaults(&mut settings);
+    let pin_changed = ensure_pin_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
 
@@ -3155,6 +3184,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         || model_platform_changed
         || http_api_changed
         || screen_context_changed
+        || pin_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());

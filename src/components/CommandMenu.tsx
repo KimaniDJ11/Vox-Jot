@@ -194,6 +194,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
           }
           const latest = result.data;
           const text =
+            latest.pinned_delivery?.text ||
             latest.pasted_text?.trim() ||
             latest.post_processed_text?.trim() ||
             latest.transcription_text.trim();

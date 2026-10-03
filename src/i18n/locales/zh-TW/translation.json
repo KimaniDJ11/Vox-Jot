@@ -532,6 +532,14 @@
           "toggle_command_menu": {
             "name": "命令選單",
             "description": "從任何地方打開命令面板。"
+          },
+          "pin_field": {
+            "name": "固定文字欄位",
+            "description": "點選文字欄位，然後使用「固定文字欄位」快捷鍵。即使您正在其他地方工作，下一次聽寫或會議轉錄也會附加到該欄位。需要輔助使用權限。訊息絕不會自動傳送。"
+          },
+          "clear_pin": {
+            "name": "取消固定文字欄位",
+            "description": "取消固定文字欄位"
           }
         },
         "errors": {
@@ -3753,6 +3761,34 @@
       "cancelDownload": "取消下載失敗：{{detail}}",
       "deleteModel": "刪除模型失敗：{{detail}}",
       "extractModel": "解壓模型失敗：{{detail}}"
+    }
+  },
+  "pinnedTarget": {
+    "settingsTitle": "固定的目標位置",
+    "label": "保留錄音的輸入位置",
+    "description": "點選文字欄位，然後使用「固定文字欄位」快捷鍵。即使您正在其他地方工作，下一次聽寫或會議轉錄也會附加到該欄位。需要輔助使用權限。訊息絕不會自動傳送。",
+    "pinShortcut": "固定文字欄位",
+    "clearShortcut": "取消固定文字欄位",
+    "status": "已固定：{{app}}",
+    "bound": "已連結錄音",
+    "next": "下次錄音",
+    "clear": "取消固定",
+    "copied": "已複製儲存的文字",
+    "copy": "複製儲存的文字",
+    "working": "處理中…",
+    "retry": "重試背景插入",
+    "paste": "將應用程式移至前景並貼上",
+    "dismiss": "關閉",
+    "inserted": "已插入至 {{app}}",
+    "loadError": "無法載入儲存的傳送紀錄。",
+    "delivery": {
+      "pending": "已儲存 · 等待插入",
+      "delivering": "正在插入固定的欄位…",
+      "delivered": "已插入固定的欄位",
+      "deferred": "已儲存 · 未插入",
+      "partial": "已部分插入 · 請檢查欄位",
+      "uncertain": "插入未確認 · 請檢查欄位",
+      "cancelled": "已儲存 · 已取消傳送"
     }
   }
 }

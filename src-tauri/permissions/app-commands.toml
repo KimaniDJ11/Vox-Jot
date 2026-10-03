@@ -9,6 +9,16 @@
 identifier = "app-commands"
 description = "Allows Vox Jot webviews to invoke the app command surface."
 commands.allow = [
+  "get_pin_state",
+  "pin_field",
+  "clear_pin",
+  "copy_pinned_delivery",
+  "get_pinned_delivery",
+  "get_unsaved_pinned_deliveries",
+  "get_unresolved_pinned_deliveries",
+  "retry_delivery",
+  "deliver_via_paste",
+  "open_pinned_delivery_target",
   "change_binding",
   "reset_binding",
   "suspend_binding",
@@ -404,6 +414,8 @@ identifier = "recording-overlay-commands"
 description = "Allows the recording overlay to read display settings, cancel current work, and open detail views."
 commands.allow = [
   "get_app_settings",
+  "get_settings_snapshot",
+  "get_pin_state",
   "get_screen_context_diagnostics",
   "show_detail_view",
   "cancel_operation",

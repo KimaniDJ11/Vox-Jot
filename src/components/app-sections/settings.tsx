@@ -83,6 +83,7 @@ import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { MarkdownExportSettings } from "@/components/settings/MarkdownExportSettings";
 import { PasteMethodSetting } from "@/components/settings/PasteMethod";
+import { PinnedPasteSettings } from "@/components/settings/PinnedPasteSettings";
 import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
 import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
 import { PushToTalk } from "@/components/settings/PushToTalk";
@@ -1022,6 +1023,7 @@ export const OutputPasteSettingsSection: React.FC = () => {
         <AutoSubmit descriptionMode="inline" grouped={true} />
         <AppendTrailingSpace descriptionMode="inline" grouped={true} />
       </SettingsGroup>
+      <PinnedPasteSettings />
     </div>
   );
 };

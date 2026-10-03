@@ -481,6 +481,18 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
           case "get_default_settings":
           case "get_app_settings":
             return state.settings;
+          case "get_pin_state":
+            return {
+              available: true,
+              revision: 0,
+              target: null,
+              bound: false,
+              error: null,
+            };
+          case "get_unsaved_pinned_deliveries":
+            return [];
+          case "get_unresolved_pinned_deliveries":
+            return { status: "ok", data: [] };
           case "get_settings_snapshot":
             return {
               revision: settingsRevision,

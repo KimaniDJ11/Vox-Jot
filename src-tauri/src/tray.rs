@@ -254,6 +254,27 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             )?,
         };
 
+        if let Some(manager) = app.try_state::<Arc<crate::pinned_target::PinManager>>() {
+            let pin = manager.snapshot();
+            if let Some(target) = pin.target {
+                let label = MenuItem::with_id(
+                    app,
+                    "pinned_destination",
+                    format!("Pinned: {} · {}", target.app_name, target.locator.label),
+                    false,
+                    None::<&str>,
+                )?;
+                let clear = MenuItem::with_id(
+                    app,
+                    "clear_pin",
+                    "Clear pinned destination",
+                    true,
+                    None::<&str>,
+                )?;
+                menu.prepend(&label)?;
+                menu.insert(&clear, 1)?;
+            }
+        }
         tray.set_menu(Some(menu))?;
         tray.set_icon_as_template(true)?;
         Ok(())
@@ -265,6 +286,9 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
 }
 
 fn last_transcript_text(entry: &HistoryEntry) -> &str {
+    if let Some(delivery) = &entry.pinned_delivery {
+        return &delivery.text;
+    }
     entry
         .pasted_text
         .as_deref()
@@ -324,6 +348,7 @@ mod tests {
             post_process_prompt: None,
             dictionary_hits: Vec::new(),
             pasted_text: post_processed.map(|text| text.to_string()),
+            pinned_delivery: None,
             field_snapshot_text: None,
             field_snapshot_at: None,
             field_snapshot_status: crate::managers::history::FieldSnapshotStatus::NotRequested,

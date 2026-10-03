@@ -32,6 +32,7 @@ import {
 import { listen } from "@/lib/tauriEvents";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { commands, type HistoryEntry } from "@/bindings";
+import { PinnedDeliveryCard } from "@/components/pinned-target/PinnedDelivery";
 import { TranscriptView } from "./TranscriptView";
 import { humanizeBundleId } from "@/lib/installedApps";
 import {
@@ -393,7 +394,11 @@ export const HistorySettings: React.FC = () => {
                     snippet={snippet}
                     onToggleSaved={() => toggleSaved(entry.id)}
                     onCopyText={() =>
-                      copyToClipboard(transcriptText || audioOnlyLabel)
+                      copyToClipboard(
+                        entry.pinned_delivery?.text ||
+                          transcriptText ||
+                          audioOnlyLabel,
+                      )
                     }
                     onRevealInFolder={() =>
                       void revealRecordingInFolder(entry.file_name)
@@ -1172,6 +1177,11 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             ) : undefined
           }
         />
+        {entry.pinned_delivery && (
+          <div className="mt-3" onClick={(event) => event.stopPropagation()}>
+            <PinnedDeliveryCard record={entry.pinned_delivery} />
+          </div>
+        )}
       </div>
     </article>
   );

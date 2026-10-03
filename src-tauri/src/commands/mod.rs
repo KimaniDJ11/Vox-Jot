@@ -5,6 +5,7 @@ pub mod denoise;
 pub mod history;
 pub mod http_api;
 pub mod models;
+pub mod pinned_target;
 pub mod post_process;
 pub mod reader;
 pub mod settings;
